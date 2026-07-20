@@ -420,7 +420,7 @@ import { runGlobeLodgingDiscovery } from "@/lib/globe/lodging/run-globe-lodging-
 
 const PIN_REVERT_MS = 1_100;
 /** Pin tap and globe click fire together — ignore the follow-up globe press. */
-const GLOBE_PIN_PRESS_SUPPRESS_MS = 900;
+const GLOBE_PIN_PRESS_SUPPRESS_MS = 120;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
@@ -650,6 +650,8 @@ function GlobeHomeBody() {
   const [projectionRevision, setProjectionRevision] = useState(0);
   const [hubDetailOpen, setHubDetailOpen] = useState(false);
   const [contextConditionPanelOpen, setContextConditionPanelOpen] = useState(false);
+  const contextConditionPanelOpenRef = useRef(false);
+  contextConditionPanelOpenRef.current = contextConditionPanelOpen;
   const [contextAgentSession, setContextAgentSession] = useState<GlobeContextAgentDetail>(
     () => readGlobeContextAgentSession(),
   );
@@ -792,6 +794,12 @@ function GlobeHomeBody() {
     return subscribeGlobeContextConditionPanel((detail) => {
       // Open/close only — bind + dismiss already ran in bindContextAgentToEventId.
       setContextConditionPanelOpen(detail.open);
+      if (!detail.open) {
+        // Flush snapshots skipped while the assistant panel owned the main thread.
+        setGlobeClusters(clustersRef.current);
+        setClustersRevision((value) => value + 1);
+        setGraphCommandRevision((value) => value + 1);
+      }
     });
   }, []);
 
@@ -809,6 +817,10 @@ function GlobeHomeBody() {
 
   const onClustersSnapshot = useCallback((clusters: readonly PinCluster[]) => {
     clustersRef.current = clusters;
+    // Don't setState while the assistant owns the main thread for IME.
+    if (contextConditionPanelOpenRef.current) {
+      return;
+    }
     setGlobeClusters(clusters);
     setClustersRevision((value) => value + 1);
   }, []);
@@ -1144,6 +1156,24 @@ function GlobeHomeBody() {
     contextAgentBoundEventId,
     contextAgentPanelCluster,
   ]);
+
+  // Keep last-good panel payload so cluster flicker cannot unmount the composer mid-IME.
+  const lastAgentPanelEventRef = useRef(activeContextEvent);
+  const lastAgentAnchorRef = useRef(contextAgentAnchorCoords);
+  if (contextConditionPanelOpen && activeContextEvent) {
+    lastAgentPanelEventRef.current = activeContextEvent;
+  }
+  if (contextConditionPanelOpen && contextAgentAnchorCoords) {
+    lastAgentAnchorRef.current = contextAgentAnchorCoords;
+  }
+  const contextConditionPanelEvent =
+    contextConditionPanelOpen
+      ? (activeContextEvent ?? lastAgentPanelEventRef.current)
+      : activeContextEvent;
+  const contextConditionPanelCoords =
+    contextConditionPanelOpen
+      ? (contextAgentAnchorCoords ?? lastAgentAnchorRef.current)
+      : contextAgentAnchorCoords;
 
   const activeContextProjectionManifest = useMemo(() => {
     void projectionRevision;
@@ -2242,6 +2272,9 @@ function GlobeHomeBody() {
     let frame = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsub = subscribeSessionGraph(() => {
+      if (contextConditionPanelOpenRef.current) {
+        return;
+      }
       // Coalesce write+bump storms so Globe home doesn't double-commit mid-touch.
       if (frame) {
         cancelAnimationFrame(frame);
@@ -2254,6 +2287,9 @@ function GlobeHomeBody() {
         frame = 0;
         timer = setTimeout(() => {
           timer = null;
+          if (contextConditionPanelOpenRef.current) {
+            return;
+          }
           setGraphCommandRevision((value) => value + 1);
         }, 48);
       });
@@ -4590,7 +4626,9 @@ function GlobeHomeBody() {
     mediaPoolOpen ||
     bridgeGhostOpen ||
     shareSheetOpen ||
-    layerSwitchSuspend;
+    layerSwitchSuspend ||
+    // Soft keyboard + IME need the main thread — freeze WebGL/pins while composing.
+    contextConditionPanelOpen;
 
   useBridgeMediaSync({
     enabled: Boolean(user?.id) && !globeRenderSuspended,
@@ -5139,24 +5177,24 @@ function GlobeHomeBody() {
       <GlobeContextConditionPromptFrame
         open={
           contextConditionPanelOpen &&
-          Boolean(activeContextEvent) &&
-          contextAgentAnchorCoords != null
+          Boolean(contextConditionPanelEvent) &&
+          contextConditionPanelCoords != null
         }
-        event={activeContextEvent}
+        event={contextConditionPanelEvent}
         operatorBlueprint={realitySurfaceSession?.operatorBlueprint ?? null}
         destinationConfirmed={Boolean(
           realitySurfaceSession?.operatorBlueprint &&
             !blueprintNeedsDestination(realitySurfaceSession.operatorBlueprint),
         )}
-        anchorPlaceId={`context-center:${activeContextEvent?.id ?? "unknown"}`}
+        anchorPlaceId={`context-center:${contextConditionPanelEvent?.id ?? "unknown"}`}
         anchorPlaceName={
           contextAgentPanelCluster?.placeLabel?.trim() ||
-          activeContextEvent?.place?.trim() ||
-          activeContextEvent?.title.trim() ||
+          contextConditionPanelEvent?.place?.trim() ||
+          contextConditionPanelEvent?.title.trim() ||
           copy.globe.contextConditionPanelEyebrow
         }
-        anchorLat={contextAgentAnchorCoords?.lat ?? 0}
-        anchorLng={contextAgentAnchorCoords?.lng ?? 0}
+        anchorLat={contextConditionPanelCoords?.lat ?? 0}
+        anchorLng={contextConditionPanelCoords?.lng ?? 0}
         userLat={liveLocation?.lat ?? null}
         userLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
@@ -5166,12 +5204,12 @@ function GlobeHomeBody() {
         visible={
           contextConditionPanelOpen &&
           contextAgentSession.phase === "bound" &&
-          contextAgentAnchorCoords != null &&
+          contextConditionPanelCoords != null &&
           !discoveryFeedFocus
         }
         globeRef={globeRef}
-        pinLat={contextAgentAnchorCoords?.lat ?? null}
-        pinLng={contextAgentAnchorCoords?.lng ?? null}
+        pinLat={contextConditionPanelCoords?.lat ?? null}
+        pinLng={contextConditionPanelCoords?.lng ?? null}
       />
       <GlobeHomeLeftChrome
         mapMediaFocusOpen={mapMediaFocusOpen}

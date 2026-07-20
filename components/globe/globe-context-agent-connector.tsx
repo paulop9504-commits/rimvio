@@ -24,6 +24,35 @@ function resolveFrameAnchor(layout: GlobeInfoFrameLayout): { x: number; y: numbe
   };
 }
 
+function frameLayoutEqual(
+  left: GlobeInfoFrameLayout | null,
+  right: GlobeInfoFrameLayout | null,
+): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (!left || !right) {
+    return false;
+  }
+  return (
+    left.left === right.left &&
+    left.top === right.top &&
+    left.width === right.width &&
+    left.height === right.height
+  );
+}
+
+function isComposeInputFocused(): boolean {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) {
+    return false;
+  }
+  return Boolean(
+    active.closest("[data-globe-context-condition-compose-input]") ||
+      active.closest("[data-globe-context-condition-pin-bar]"),
+  );
+}
+
 /** Visual link — selected context pin ↔ Container AI floating frame. */
 export function GlobeContextAgentConnector({
   visible,
@@ -35,12 +64,7 @@ export function GlobeContextAgentConnector({
   const [frameLayout, setFrameLayout] = useState<GlobeInfoFrameLayout | null>(
     null,
   );
-  const pinAnchor = useGlobePinScreenAnchor({
-    globeRef,
-    lat: pinLat,
-    lng: pinLng,
-    enabled: visible,
-  });
+  const [composeFocused, setComposeFocused] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -48,20 +72,52 @@ export function GlobeContextAgentConnector({
 
   useEffect(() => {
     if (!visible) {
-      setFrameLayout(null);
+      setComposeFocused(false);
       return;
     }
+    const syncFocus = () => {
+      setComposeFocused(isComposeInputFocused());
+    };
+    syncFocus();
+    document.addEventListener("focusin", syncFocus);
+    document.addEventListener("focusout", syncFocus);
+    return () => {
+      document.removeEventListener("focusin", syncFocus);
+      document.removeEventListener("focusout", syncFocus);
+    };
+  }, [visible]);
+
+  const pinAnchor = useGlobePinScreenAnchor({
+    globeRef,
+    lat: pinLat,
+    lng: pinLng,
+    // Freeze pin projection while IME owns the main thread.
+    enabled: visible && !composeFocused,
+  });
+
+  useEffect(() => {
+    if (!visible || composeFocused) {
+      return;
+    }
+    let last: GlobeInfoFrameLayout | null = null;
     const tick = () => {
-      setFrameLayout(readGlobeInfoFrameLayout("context-condition-prompt"));
+      const next = readGlobeInfoFrameLayout("context-condition-prompt");
+      if (frameLayoutEqual(last, next)) {
+        return;
+      }
+      last = next;
+      setFrameLayout(next);
     };
     tick();
-    const intervalId = window.setInterval(tick, 66);
+    // 4fps is enough for a decorative line; 15fps was starving Korean IME.
+    const intervalId = window.setInterval(tick, 250);
     return () => window.clearInterval(intervalId);
-  }, [visible]);
+  }, [visible, composeFocused]);
 
   if (
     !mounted ||
     !visible ||
+    composeFocused ||
     !pinAnchor?.onScreen ||
     pinAnchor.x == null ||
     pinAnchor.y == null ||

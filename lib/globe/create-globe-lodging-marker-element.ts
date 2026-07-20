@@ -1,5 +1,6 @@
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import { bindGlobeMapMarkerPress } from "@/lib/globe/bind-globe-map-marker-press";
 import {
   mountGlobeMapCalloutPill,
   prependGlobeDiscoveryPillThumbnail,
@@ -24,10 +25,7 @@ function bindLodgingMarkerPress(
   marker: GlobeLodgingMapMarker,
   handlers: GlobeLodgingMarkerHandlers,
 ): void {
-  root.addEventListener("pointerdown", (event) => event.stopPropagation());
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    event.preventDefault();
+  bindGlobeMapMarkerPress(root, () => {
     handlers.onPress(marker.resourceId, marker.carouselIndex);
   });
 }

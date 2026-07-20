@@ -11,6 +11,10 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import {
+  GlobeContextConditionComposeInput,
+  type GlobeContextConditionComposeInputHandle,
+} from "@/components/globe/globe-context-condition-compose-input";
 import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-booking-slot-chips";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
@@ -446,18 +450,14 @@ export const GlobeContextConditionPinBar = forwardRef<
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   busyRef.current = busy;
-  /** Uncontrolled composer — keystrokes must not re-render this ~3k-line tree. */
-  const messageInputRef = useRef<HTMLInputElement>(null);
-  const [composerHasText, setComposerHasText] = useState(false);
+  /** Leaf composer — keystrokes stay off this ~3k-line tree. */
+  const composeInputRef = useRef<GlobeContextConditionComposeInputHandle>(null);
   const readComposerMessage = useCallback(
-    () => messageInputRef.current?.value ?? "",
+    () => composeInputRef.current?.getValue() ?? "",
     [],
   );
   const clearComposerMessage = useCallback(() => {
-    if (messageInputRef.current) {
-      messageInputRef.current.value = "";
-    }
-    setComposerHasText(false);
+    composeInputRef.current?.clear();
   }, []);
   const processPhaseNarrationRef = useRef<{
     raf: number | null;
@@ -529,14 +529,9 @@ export const GlobeContextConditionPinBar = forwardRef<
     onRecommendationsChange?.(wired);
     const pending = readContextConditionPending(contextEventId);
     onQuestionsChange?.(pending?.questions ?? []);
-  }, [
-    anchorLat,
-    anchorLng,
-    contextEventId,
-    hydrateFromBatch,
-    onQuestionsChange,
-    onRecommendationsChange,
-  ]);
+    // Hydrate once per event — geocode lat/lng must not re-push recommendations mid-IME.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contextEventId gates hydrate
+  }, [contextEventId, hydrateFromBatch]);
 
   const tryPublishActionInjection = useCallback(
     async (triggerMessage: string): Promise<boolean> => {
@@ -2826,7 +2821,15 @@ export const GlobeContextConditionPinBar = forwardRef<
     tryPublishActionInjection,
     userLat,
     userLng,
+    readComposerMessage,
+    clearComposerMessage,
   ]);
+
+  const handleSubmitRef = useRef(handleSubmit);
+  handleSubmitRef.current = handleSubmit;
+  const onComposeSubmit = useCallback(() => {
+    void handleSubmitRef.current();
+  }, []);
 
   const submitTrigger = useCallback(
     async (
@@ -3339,42 +3342,13 @@ export const GlobeContextConditionPinBar = forwardRef<
           onEdit={openLodgingIntakeEditInThread}
         />
       ) : null}
-      <div className="flex items-center gap-2 rounded-xl bg-[#f5f5f7] px-3 py-2 ring-1 ring-black/[0.04]">
-        <input
-          ref={messageInputRef}
-          type="text"
-          defaultValue=""
-          onChange={(event) => {
-            const hasText = event.target.value.trim().length > 0;
-            setComposerHasText((prev) => (prev === hasText ? prev : hasText));
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") {
-              return;
-            }
-            // Ignore Enter while IME composition is active (KO/JA mid-syllable).
-            if (event.nativeEvent.isComposing || event.keyCode === 229) {
-              return;
-            }
-            event.preventDefault();
-            if (busy || !readComposerMessage().trim()) {
-              return;
-            }
-            void handleSubmit();
-          }}
-          placeholder={copy.globe.contextConditionPinPlaceholder}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none"
-          aria-label={copy.globe.contextConditionPinPlaceholder}
-        />
-        <button
-          type="button"
-          onClick={() => void handleSubmit()}
-          disabled={busy || !composerHasText}
-          className="shrink-0 rounded-lg bg-[#1d1d1f] px-2.5 py-1 text-[11px] font-semibold text-white active:scale-[0.98] disabled:opacity-40"
-        >
-          {busy ? "…" : copy.globe.contextConditionPinSubmit}
-        </button>
-      </div>
+      <GlobeContextConditionComposeInput
+        ref={composeInputRef}
+        busy={busy}
+        placeholder={copy.globe.contextConditionPinPlaceholder}
+        submitLabel={copy.globe.contextConditionPinSubmit}
+        onSubmit={onComposeSubmit}
+      />
 
       {lastBatch ? (
         <button

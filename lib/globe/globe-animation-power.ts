@@ -1,6 +1,6 @@
 import type { GlobeInstance } from "globe.gl";
 
-export const GLOBE_IDLE_AFTER_MS = 2_000;
+export const GLOBE_IDLE_AFTER_MS = 12_000;
 
 export type GlobeAnimationPowerMode = "full" | "suspended";
 

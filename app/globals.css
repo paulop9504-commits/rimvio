@@ -3365,6 +3365,27 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   transform: translateZ(0);
 }
 
+/* During pan/zoom, keep only dots — heavy HTML cards hitch CSS2D every frame. */
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-3d-pin__card,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-3d-pin__peers,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-3d-pin__share-corner,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-reality-object__shell,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-lodging-marker__pill,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-map-callout,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-context-hub-anchor__pill,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-brain-surface-marker__callout-field,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-brain-surface-marker__trace-label {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-3d-pin,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-lodging-marker,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-context-hub-anchor,
+[data-rimvio-globe-3d][data-globe-interacting="true"] .rimvio-globe-brain-surface-marker {
+  transition: none;
+}
+
 .rimvio-globe-satellite-shade {
   background: radial-gradient(
     circle at 38% 32%,
@@ -3463,13 +3484,15 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   gap: 0.3rem;
   border: 0;
   background: transparent;
-  padding: 0.35rem;
-  margin: -0.35rem;
+  padding: 0.2rem;
+  margin: -0.2rem;
   cursor: pointer;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+  /* Root chrome does not steal pan — only the dot / share / cluster card. */
+  pointer-events: none;
   /* Anchor dot tip to lat/lng — CSS2D must not use scale (breaks geo lock). */
   transform: translate(-50%, -100%);
   transform-origin: center bottom;
@@ -3495,6 +3518,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
     0 8px 24px rgba(49, 130, 246, 0.08);
   transform: scale(var(--globe-pin-scale, 1));
   transform-origin: center bottom;
+  pointer-events: none;
+}
+
+.rimvio-globe-3d-pin--cluster .rimvio-globe-3d-pin__card,
+.rimvio-globe-3d-pin--market .rimvio-globe-3d-pin__card {
+  pointer-events: auto;
+}
+
+.rimvio-globe-3d-pin__dot,
+.rimvio-globe-3d-pin__dot-only {
+  pointer-events: auto;
 }
 
 .rimvio-globe-3d-pin__share-corner {
@@ -3518,6 +3552,7 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   letter-spacing: -0.01em;
   cursor: pointer;
   touch-action: manipulation;
+  pointer-events: auto;
 }
 
 .rimvio-globe-3d-pin__share-corner--shared {

@@ -19,6 +19,11 @@ export function tuneGlobeOrbitControls(controls: OrbitControlsLike): void {
   controls.dampingFactor = profile.dampingFactor;
   controls.zoomSpeed = profile.zoomSpeed;
 
+  // Keep min distance sane so street zoom does not fight damping.
+  if ("minDistance" in controls && typeof controls.minDistance === "number") {
+    controls.minDistance = Math.max(controls.minDistance, 0.01);
+  }
+
   const touches = controls.touches as
     | { ONE?: number; TWO?: number }
     | undefined;

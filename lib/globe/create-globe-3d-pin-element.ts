@@ -3,12 +3,13 @@ import {
   feedSlotPeerChipGradientCss,
   feedSlotPeerChipShortLabel,
 } from "@/lib/feed/feed-slot-peer-chip-colors";
+import { GLOBE_MAP_TAP_MOVE_PX } from "@/lib/globe/bind-globe-map-marker-press";
 import { dispatchGlobeContextShareRequest } from "@/lib/globe/globe-context-share-request";
 import { marketGlobePinRoleLabelKo } from "@/lib/globe/market/market-globe-pin-label";
 
 const LONG_PRESS_MS = 520;
-/** Finger jitter on mobile — above this, treat as globe drag not tap. */
-const TAP_MOVE_PX = 20;
+/** Cancel long-press relocate as soon as the finger clearly starts a pan. */
+const LONG_PRESS_CANCEL_PX = 8;
 
 export type Globe3dPinInteractionHandlers = {
   onPress: (pinId: string) => void;
@@ -171,6 +172,7 @@ function bindGlobe3dPinPress(
 ): void {
   const gesturePassthrough = options?.gesturePassthrough === true;
   let session: PinPressSession | null = null;
+  let controlsLocked = false;
 
   const clearSession = () => {
     if (!session) {
@@ -185,6 +187,16 @@ function bindGlobe3dPinPress(
     session = null;
   };
 
+  const unlockIfNeeded = () => {
+    if (!controlsLocked) {
+      return;
+    }
+    controlsLocked = false;
+    if (!gesturePassthrough) {
+      handlers.unlockControls?.();
+    }
+  };
+
   const finish = (event: PointerEvent) => {
     if (!session || event.pointerId !== session.pointerId) {
       return;
@@ -195,12 +207,11 @@ function bindGlobe3dPinPress(
     if (longPress) {
       root.classList.remove("rimvio-globe-3d-pin--relocating");
       root.removeAttribute("data-globe-pin-relocating");
+      unlockIfNeeded();
       return;
     }
 
-    if (!gesturePassthrough) {
-      handlers.unlockControls?.();
-    }
+    unlockIfNeeded();
 
     if (!suppressTap && !moved) {
       event.stopPropagation();
@@ -219,12 +230,19 @@ function bindGlobe3dPinPress(
     }
     const dx = event.clientX - session.startX;
     const dy = event.clientY - session.startY;
-    if (Math.hypot(dx, dy) > TAP_MOVE_PX) {
+    const distance = Math.hypot(dx, dy);
+    if (distance > LONG_PRESS_CANCEL_PX && session.timer !== null) {
+      window.clearTimeout(session.timer);
+      session.timer = null;
+    }
+    if (distance > GLOBE_MAP_TAP_MOVE_PX) {
       session.moved = true;
       if (session.timer !== null) {
         window.clearTimeout(session.timer);
         session.timer = null;
       }
+      // Drag started on a pin — release any lock so orbit keeps the gesture.
+      unlockIfNeeded();
     }
   };
 
@@ -238,12 +256,9 @@ function bindGlobe3dPinPress(
       if (event.button !== 0 || session) {
         return;
       }
-      if (!gesturePassthrough) {
-        event.stopPropagation();
-        event.preventDefault();
-        handlers.lockControls?.();
-      }
 
+      // Drag-first: do not steal pointerdown. Pan/zoom must start even when
+      // the finger lands on pin chrome. Controls lock only for long-press relocate.
       session = {
         pointerId: event.pointerId,
         startX: event.clientX,
@@ -259,13 +274,17 @@ function bindGlobe3dPinPress(
 
       if (relocateEnabled) {
         session.timer = window.setTimeout(() => {
-          if (!session) {
+          if (!session || session.moved) {
             return;
           }
           session.longPress = true;
           session.suppressTap = true;
           root.classList.add("rimvio-globe-3d-pin--relocating");
           root.setAttribute("data-globe-pin-relocating", "true");
+          if (!gesturePassthrough) {
+            controlsLocked = true;
+            handlers.lockControls?.();
+          }
           handlers.onRelocateStart?.(pinId);
           if (typeof navigator !== "undefined" && "vibrate" in navigator) {
             navigator.vibrate(12);
@@ -277,7 +296,7 @@ function bindGlobe3dPinPress(
       window.addEventListener("pointerup", onWindowUp, { passive: false });
       window.addEventListener("pointercancel", onWindowUp, { passive: false });
     },
-    { passive: false },
+    { passive: true },
   );
 }
 

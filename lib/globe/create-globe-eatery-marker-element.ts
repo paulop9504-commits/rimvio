@@ -1,5 +1,6 @@
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import type { GlobeDetailLevel } from "@/lib/globe/globe-zoom-levels";
+import { bindGlobeMapMarkerPress } from "@/lib/globe/bind-globe-map-marker-press";
 import { mountRealityObjectMarkerVisual } from "@/lib/visual-projection";
 
 export type GlobeEateryMarkerHandlers = {
@@ -62,10 +63,7 @@ export function createGlobeEateryMarkerElement(
     root.querySelector(".rimvio-globe-reality-object__shell")?.appendChild(price);
   }
 
-  root.addEventListener("pointerdown", (event) => event.stopPropagation());
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    event.preventDefault();
+  bindGlobeMapMarkerPress(root, () => {
     handlers.onPress(marker.resourceId, marker.carouselIndex);
   });
 

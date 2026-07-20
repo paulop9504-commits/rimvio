@@ -1,4 +1,5 @@
 import type { GlobeContextHubMapAnchor } from "@/lib/globe/context-hub/context-hub-globe-anchor-types";
+import { bindGlobeMapMarkerPress } from "@/lib/globe/bind-globe-map-marker-press";
 
 export type GlobeContextHubAnchorHandlers = {
   onPress: (contextEventId: string) => void;
@@ -34,12 +35,7 @@ export function createGlobeContextHubAnchorElement(
   tail.className = "rimvio-globe-context-hub-anchor__tail";
   root.appendChild(tail);
 
-  root.addEventListener("pointerdown", (event) => {
-    event.stopPropagation();
-  });
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    event.preventDefault();
+  bindGlobeMapMarkerPress(root, () => {
     handlers.onPress(anchor.contextEventId);
   });
 

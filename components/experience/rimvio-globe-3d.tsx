@@ -34,6 +34,8 @@ import { useGlobeOverviewTexture } from "@/hooks/use-globe-equirect-texture";
 import { tuneGlobeOrbitControls } from "@/lib/globe/tune-globe-orbit-controls";
 import { useGlobeFocalPinch } from "@/hooks/use-globe-focal-pinch";
 import { resolveTripArcAltitude } from "@/lib/globe/resolve-trip-arc-altitude";
+import { applyGlobeAnimationPower } from "@/lib/globe/globe-animation-power";
+import { GLOBE_POST_GESTURE_FLUSH_MS } from "@/lib/globe/globe-gesture-tuning";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { shouldApplyGlobeOverviewTexture } from "@/lib/globe/globe-overview-texture-altitude";
 import {
@@ -333,9 +335,12 @@ export const RimvioGlobe3D = memo(
     lockGlobeControlsRef.current = () => {
       pinPressLockRef.current = true;
       controlsBlockedRef.current = true;
-      suppressGlobeClickUntilRef.current = Date.now() + 900;
+      // Only suppress empty-globe clicks until the next frame after unlock —
+      // a fixed 900ms dead zone made the next tap feel broken.
+      suppressGlobeClickUntilRef.current = Date.now() + 120;
       const globe = globeRef.current;
       if (globe) {
+        applyGlobeAnimationPower(globe, "full");
         globe.controls().enabled = false;
       }
     };
@@ -866,7 +871,15 @@ export const RimvioGlobe3D = memo(
       requestAnimationFrame(() => syncGlobeViewport(globe, root));
 
       const resizeObserver = new ResizeObserver(() => {
-        syncGlobeViewport(globe, root);
+        if (gestureActiveRef.current) {
+          return;
+        }
+        requestAnimationFrame(() => {
+          if (gestureActiveRef.current) {
+            return;
+          }
+          syncGlobeViewport(globe, root);
+        });
       });
       resizeObserver.observe(root);
 
@@ -888,6 +901,7 @@ export const RimvioGlobe3D = memo(
           onDetailLevelChangeRef.current?.(pendingDetailLevelRef.current);
           pendingDetailLevelRef.current = null;
         }
+        syncOverviewTexture(globe.pointOfView().altitude);
         if (pendingPinSyncRef.current) {
           pendingPinSyncRef.current = false;
           syncHtmlElementsRef.current();
@@ -895,15 +909,41 @@ export const RimvioGlobe3D = memo(
         applyGlobePinUiScale(root, pinUiScaleRef.current);
         syncContextWarmthRef.current();
         scheduleTileTextureFiltering();
+        const pov = globe.pointOfView();
+        onPointOfViewChangeRef.current?.({
+          ...pov,
+          altitude: pov.altitude,
+          detailLevel: warmthDetailRef.current,
+        });
       };
-      flushDeferredGlobeVisualsRef.current = flushDeferredGlobeVisuals;
+
+      let flushAfterGestureTimer: ReturnType<typeof setTimeout> | null = null;
+      const scheduleFlushDeferredGlobeVisuals = () => {
+        if (flushAfterGestureTimer != null) {
+          clearTimeout(flushAfterGestureTimer);
+        }
+        // Wait out orbit damping so HTML pin rebuilds don't hitch mid-coast.
+        flushAfterGestureTimer = setTimeout(() => {
+          flushAfterGestureTimer = null;
+          if (gestureActiveRef.current) {
+            return;
+          }
+          flushDeferredGlobeVisuals();
+        }, GLOBE_POST_GESTURE_FLUSH_MS);
+      };
+      flushDeferredGlobeVisualsRef.current = scheduleFlushDeferredGlobeVisuals;
 
       controls.addEventListener("start", () => {
+        if (flushAfterGestureTimer != null) {
+          clearTimeout(flushAfterGestureTimer);
+          flushAfterGestureTimer = null;
+        }
+        applyGlobeAnimationPower(globe, "full");
         setGlobeInteracting(true);
       });
       controls.addEventListener("end", () => {
         setGlobeInteracting(false);
-        flushDeferredGlobeVisuals();
+        scheduleFlushDeferredGlobeVisuals();
       });
 
       const warmthSyncTimer: { current: ReturnType<typeof setTimeout> | null } = {
@@ -945,7 +985,10 @@ export const RimvioGlobe3D = memo(
         const prevAltitude = warmthAltitudeRef.current;
         const prevDetail = warmthDetailRef.current;
         const detailLevel = resolveGlobeDetailLevel(altitude);
-        const altitudeChanged = Math.abs(altitude - prevAltitude) > 0.0008;
+        const interacting = gestureActiveRef.current;
+        // During drag, ignore micro altitude noise so we don't thrash CSS/shell attrs.
+        const altitudeEpsilon = interacting ? 0.004 : 0.0008;
+        const altitudeChanged = Math.abs(altitude - prevAltitude) > altitudeEpsilon;
         const detailChanged = detailLevel !== prevDetail;
 
         warmthAltitudeRef.current = altitude;
@@ -960,10 +1003,11 @@ export const RimvioGlobe3D = memo(
           globe.showAtmosphere(
             altitude >= GLOBE_TOSS_THEME.atmosphereCutoffAltitude,
           );
-          syncOverviewTexture(altitude);
-          if (gestureActiveRef.current) {
+          if (interacting) {
+            // Texture URL swaps mid-gesture hitch the main thread — defer.
             pendingDetailLevelRef.current = detailLevel;
           } else {
+            syncOverviewTexture(altitude);
             onDetailLevelChangeRef.current?.(detailLevel);
             syncHtmlElementsRef.current();
           }
@@ -972,24 +1016,28 @@ export const RimvioGlobe3D = memo(
         if (altitudeChanged) {
           const prevUsesOverview = shouldApplyGlobeOverviewTexture(prevAltitude);
           const nextUsesOverview = shouldApplyGlobeOverviewTexture(altitude);
-          if (prevUsesOverview !== nextUsesOverview) {
+          if (prevUsesOverview !== nextUsesOverview && !interacting) {
             syncOverviewTexture(altitude);
           }
           const pinScale = resolveGlobePinUiScaleBlended(altitude, detailLevel);
-          if (Math.abs(pinScale - pinUiScaleRef.current) > 0.012) {
+          if (Math.abs(pinScale - pinUiScaleRef.current) > (interacting ? 0.04 : 0.012)) {
             pinUiScaleRef.current = pinScale;
             shellRef.current?.style.setProperty(
               "--globe-pin-scale",
               String(pinScale),
             );
-            if (!gestureActiveRef.current) {
+            if (!interacting) {
               applyGlobePinUiScale(root, pinScale);
             }
           }
-          scheduleWarmthSync();
+          if (!interacting) {
+            scheduleWarmthSync();
+          }
         }
 
-        onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
+        if (!interacting) {
+          onPointOfViewChangeRef.current?.({ ...pov, altitude, detailLevel });
+        }
       };
 
       const syncTileTextureFiltering = () => {
@@ -1084,6 +1132,9 @@ export const RimvioGlobe3D = memo(
         if (warmthSyncTimer.current != null) {
           clearTimeout(warmthSyncTimer.current);
         }
+        if (flushAfterGestureTimer != null) {
+          clearTimeout(flushAfterGestureTimer);
+        }
         if (zoomRaf != null) {
           cancelAnimationFrame(zoomRaf);
         }
@@ -1137,7 +1188,15 @@ export const RimvioGlobe3D = memo(
         return;
       }
       syncHtmlElementsRef.current();
-    }, [pins, lodgingMarkers, eateryMarkers, hubAnchors, globeReady, contextAgentPickMode]);
+    }, [
+      pins,
+      lodgingMarkers,
+      eateryMarkers,
+      hubAnchors,
+      brainSurfaceMarkers,
+      globeReady,
+      contextAgentPickMode,
+    ]);
 
     useEffect(() => {
       shellRef.current?.setAttribute(

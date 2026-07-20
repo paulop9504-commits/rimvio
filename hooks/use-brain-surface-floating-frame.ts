@@ -88,6 +88,15 @@ export function useBrainSurfaceFloatingFrame(frameId: GlobeInfoFrameId) {
 
   useEffect(() => {
     const onResize = () => {
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        (active.closest("[data-globe-context-condition-compose-input]") ||
+          active.closest("[data-globe-context-condition-pin-bar]"))
+      ) {
+        // Soft keyboard resize must not rewrite layout mid-IME.
+        return;
+      }
       persistLayout(layoutRef.current);
     };
     window.addEventListener("resize", onResize);

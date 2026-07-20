@@ -2,12 +2,23 @@ import type { BrainSurfaceProjectionCandidate } from "@/lib/situation-projection
 import {
   resolveBrainSurfaceMarkerMediaKind,
 } from "@/lib/globe/brain-surface-marker-media";
+import { bindGlobeMapMarkerPress } from "@/lib/globe/bind-globe-map-marker-press";
 import { sanitizeMapMarkerSupportLabel } from "@/lib/globe/resolve-context-resource-map-markers";
 import { prependGlobeDiscoveryPillThumbnail } from "@/lib/globe/globe-map-callout-element";
 
 export type GlobeBrainSurfaceMarkerHandlers = {
   onPress: (candidateId: string) => void;
 };
+
+function bindBrainMarkerPress(
+  root: HTMLElement,
+  candidateId: string,
+  handlers: GlobeBrainSurfaceMarkerHandlers,
+): void {
+  bindGlobeMapMarkerPress(root, () => {
+    handlers.onPress(candidateId);
+  });
+}
 
 function fallbackGlyph(
   family: BrainSurfaceProjectionCandidate["family"],
@@ -293,12 +304,7 @@ export function createGlobeBrainSurfaceMarkerElement(
     dot.className = "rimvio-globe-lodging-marker__dot rimvio-globe-brain-surface-marker__story-dot";
     root.appendChild(dot);
     root.setAttribute("aria-label", candidate.label.trim() || candidate.placeLabel);
-    root.addEventListener("pointerdown", (event) => event.stopPropagation());
-    root.addEventListener("click", (event) => {
-      event.stopPropagation();
-      event.preventDefault();
-      handlers.onPress(candidate.id);
-    });
+    bindBrainMarkerPress(root, candidate.id, handlers);
     return root;
   }
 
@@ -317,12 +323,7 @@ export function createGlobeBrainSurfaceMarkerElement(
     }
     root.appendChild(dot);
     root.setAttribute("aria-label", `${candidate.placeLabel} · ${candidate.label}`);
-    root.addEventListener("pointerdown", (event) => event.stopPropagation());
-    root.addEventListener("click", (event) => {
-      event.stopPropagation();
-      event.preventDefault();
-      handlers.onPress(candidate.id);
-    });
+    bindBrainMarkerPress(root, candidate.id, handlers);
     return root;
   }
 
@@ -362,11 +363,6 @@ export function createGlobeBrainSurfaceMarkerElement(
   }
 
   root.setAttribute("aria-label", `${candidate.placeLabel} · ${candidate.label}`);
-  root.addEventListener("pointerdown", (event) => event.stopPropagation());
-  root.addEventListener("click", (event) => {
-    event.stopPropagation();
-    event.preventDefault();
-    handlers.onPress(candidate.id);
-  });
+  bindBrainMarkerPress(root, candidate.id, handlers);
   return root;
 }

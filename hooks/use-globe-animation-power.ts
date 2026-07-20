@@ -76,7 +76,8 @@ export function useGlobeAnimationPower(input: {
     const controls = globe.controls();
     const activityEvents = ["pointerdown", "wheel", "touchstart"] as const;
     for (const eventName of activityEvents) {
-      root.addEventListener(eventName, markActive, { passive: true });
+      // Capture so pin/marker HTML cannot hide activity from resume.
+      root.addEventListener(eventName, markActive, { passive: true, capture: true });
     }
     controls.addEventListener("start", markActive);
     controls.addEventListener("end", onControlEnd);
@@ -94,7 +95,7 @@ export function useGlobeAnimationPower(input: {
     return () => {
       clearIdleTimer();
       for (const eventName of activityEvents) {
-        root.removeEventListener(eventName, markActive);
+        root.removeEventListener(eventName, markActive, true);
       }
       controls.removeEventListener("start", markActive);
       controls.removeEventListener("end", onControlEnd);
