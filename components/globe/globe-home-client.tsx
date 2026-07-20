@@ -142,6 +142,7 @@ import { subscribeGlobeMapMediaFocus } from "@/lib/globe/globe-map-media-focus-b
 import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
+import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { subscribeFieldFlyToIntent, subscribeFieldSheetOpenState } from "@/lib/nav/field-sheet-bridge";
 import {
@@ -434,6 +435,11 @@ function GlobeHomeBody() {
     onFocus: () => void;
     onBlur: () => void;
   } | null>(null);
+  // localStorage-backed event store must not paint on SSR (#418).
+  const [eventsHydrated, setEventsHydrated] = useState(false);
+  useEffect(() => {
+    setEventsHydrated(true);
+  }, []);
   const [globeMemoryDismissToken, setGlobeMemoryDismissToken] = useState(0);
   const [portalPeekOpen, setPortalPeekOpen] = useState(false);
   const [globeGuideOpen, setGlobeGuideOpen] = useState(false);
@@ -1114,21 +1120,47 @@ function GlobeHomeBody() {
 
   const peerOptions = useMemo(() => {
     void peerOptionsRevision;
+    if (!eventsHydrated) {
+      return [];
+    }
     return listGlobeContextPeerOptions(listLifeEventCandidates());
-  }, [peerOptionsRevision]);
+  }, [eventsHydrated, peerOptionsRevision]);
 
   const activeContextEvent = useMemo(() => {
+    if (!eventsHydrated) {
+      return null;
+    }
     const eventId =
       contextAgentBoundEventId ?? activeCluster?.eventId?.trim() ?? null;
     if (!eventId) {
       return null;
     }
-    return (
-      findLifeEventCandidate(eventId) ?? recoverGlobeContextEventFromPin(eventId)
-    );
+    // Never commitEventUpsert during render — recover in an effect below.
+    return findLifeEventCandidate(eventId);
   }, [
     activeCluster?.eventId,
     contextAgentBoundEventId,
+    eventsHydrated,
+    mediaStoreRevision,
+  ]);
+
+  useEffect(() => {
+    if (!eventsHydrated) {
+      return;
+    }
+    const eventId =
+      contextAgentBoundEventId ?? activeCluster?.eventId?.trim() ?? null;
+    if (!eventId || findLifeEventCandidate(eventId)) {
+      return;
+    }
+    const recovered = recoverGlobeContextEventFromPin(eventId);
+    if (recovered) {
+      setMediaStoreRevision((value) => value + 1);
+    }
+  }, [
+    activeCluster?.eventId,
+    contextAgentBoundEventId,
+    eventsHydrated,
     mediaStoreRevision,
   ]);
 
@@ -1150,11 +1182,23 @@ function GlobeHomeBody() {
     if (cardCluster?.lat != null && cardCluster?.lng != null) {
       return { lat: cardCluster.lat, lng: cardCluster.lng };
     }
+    if (!eventsHydrated) {
+      return null;
+    }
+    const pin = findPersonalGlobePinByEventId(eventId);
+    if (
+      pin &&
+      Number.isFinite(pin.lat) &&
+      Number.isFinite(pin.lng)
+    ) {
+      return { lat: pin.lat, lng: pin.lng };
+    }
     return null;
   }, [
     activeCluster?.eventId,
     contextAgentBoundEventId,
     contextAgentPanelCluster,
+    eventsHydrated,
   ]);
 
   // Keep last-good panel payload so cluster flicker cannot unmount the composer mid-IME.
@@ -1174,6 +1218,14 @@ function GlobeHomeBody() {
     contextConditionPanelOpen
       ? (contextAgentAnchorCoords ?? lastAgentAnchorRef.current)
       : contextAgentAnchorCoords;
+
+  // Keep PromptFrame open whenever the panel is open + we have an event.
+  // Missing coords used to force open=false while WebGL stayed suspended → frozen UI.
+  const contextConditionPromptOpen = Boolean(
+    contextConditionPanelOpen && contextConditionPanelEvent,
+  );
+  const contextConditionPromptLat = contextConditionPanelCoords?.lat ?? 34.6937;
+  const contextConditionPromptLng = contextConditionPanelCoords?.lng ?? 135.5023;
 
   const activeContextProjectionManifest = useMemo(() => {
     void projectionRevision;
@@ -2096,11 +2148,20 @@ function GlobeHomeBody() {
   const navigableContexts = useMemo(() => {
     void peerOptionsRevision;
     void mediaStoreRevision;
+    if (!eventsHydrated) {
+      return [];
+    }
     return listGlobeContextNavigationOrder({
       timeFilter,
       peopleFilter,
     });
-  }, [peerOptionsRevision, mediaStoreRevision, peopleFilter, timeFilter]);
+  }, [
+    eventsHydrated,
+    peerOptionsRevision,
+    mediaStoreRevision,
+    peopleFilter,
+    timeFilter,
+  ]);
 
   const contextHasMapMedia = useMemo(() => {
     if (!activeCluster?.eventId || !activeContextEvent) {
@@ -4627,8 +4688,8 @@ function GlobeHomeBody() {
     bridgeGhostOpen ||
     shareSheetOpen ||
     layerSwitchSuspend ||
-    // Soft keyboard + IME need the main thread — freeze WebGL/pins while composing.
-    contextConditionPanelOpen;
+    // Soft keyboard + IME — freeze WebGL only while the PromptFrame is actually up.
+    contextConditionPromptOpen;
 
   useBridgeMediaSync({
     enabled: Boolean(user?.id) && !globeRenderSuspended,
@@ -5175,11 +5236,7 @@ function GlobeHomeBody() {
         </p>
       ) : null}
       <GlobeContextConditionPromptFrame
-        open={
-          contextConditionPanelOpen &&
-          Boolean(contextConditionPanelEvent) &&
-          contextConditionPanelCoords != null
-        }
+        open={contextConditionPromptOpen}
         event={contextConditionPanelEvent}
         operatorBlueprint={realitySurfaceSession?.operatorBlueprint ?? null}
         destinationConfirmed={Boolean(
@@ -5193,8 +5250,8 @@ function GlobeHomeBody() {
           contextConditionPanelEvent?.title.trim() ||
           copy.globe.contextConditionPanelEyebrow
         }
-        anchorLat={contextConditionPanelCoords?.lat ?? 0}
-        anchorLng={contextConditionPanelCoords?.lng ?? 0}
+        anchorLat={contextConditionPromptLat}
+        anchorLng={contextConditionPromptLng}
         userLat={liveLocation?.lat ?? null}
         userLng={liveLocation?.lng ?? null}
         globeRef={globeRef}
@@ -5202,9 +5259,8 @@ function GlobeHomeBody() {
       />
       <GlobeContextAgentConnector
         visible={
-          contextConditionPanelOpen &&
+          contextConditionPromptOpen &&
           contextAgentSession.phase === "bound" &&
-          contextConditionPanelCoords != null &&
           !discoveryFeedFocus
         }
         globeRef={globeRef}
@@ -5841,7 +5897,15 @@ function GlobeHomeBody() {
 /** Globe-first home — pins only, tap → replay. */
 export function GlobeHomeClient() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div
+          className="relative h-dvh w-full bg-[#0b1220]"
+          data-rimvio-globe-hub-loading
+          aria-busy
+        />
+      }
+    >
       <GlobeHomeBody />
     </Suspense>
   );

@@ -31,6 +31,13 @@ function syncHostBox(): void {
     return;
   }
   const rect = slot.getBoundingClientRect();
+  if (rect.width < 8 || rect.height < 8) {
+    host.style.visibility = "hidden";
+    host.style.pointerEvents = "none";
+    return;
+  }
+  host.style.visibility = "visible";
+  host.style.pointerEvents = "auto";
   host.style.position = "fixed";
   host.style.left = `${rect.left}px`;
   host.style.top = `${rect.top}px`;
@@ -38,7 +45,6 @@ function syncHostBox(): void {
   host.style.height = `${Math.max(rect.height, 40)}px`;
   host.style.zIndex = "90";
   host.style.boxSizing = "border-box";
-  host.style.pointerEvents = "auto";
 }
 
 function renderIsland(): void {
@@ -61,24 +67,44 @@ function onViewportChange(): void {
   syncHostBox();
 }
 
+function disposeIslandHost(): void {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+  window.removeEventListener("resize", onViewportChange);
+  window.visualViewport?.removeEventListener("resize", onViewportChange);
+  window.visualViewport?.removeEventListener("scroll", onViewportChange);
+  try {
+    root?.unmount();
+  } catch {
+    // ignore double-unmount after hydration recovery
+  }
+  root = null;
+  host?.remove();
+  host = null;
+  slot = null;
+  props = null;
+}
+
 export function mountGlobeComposeIsland(
   slotEl: HTMLElement,
   next: IslandProps,
 ): void {
+  // Always remount cleanly — orphan hosts after #418 remount broke the composer.
+  if (host || root) {
+    disposeIslandHost();
+  }
+
   slot = slotEl;
   props = next;
 
-  if (!host) {
-    host = document.createElement("div");
-    host.setAttribute("data-globe-compose-island-host", "true");
-    document.body.appendChild(host);
-    root = createRoot(host);
-    window.addEventListener("resize", onViewportChange);
-    window.visualViewport?.addEventListener("resize", onViewportChange);
-    window.visualViewport?.addEventListener("scroll", onViewportChange);
-  }
+  host = document.createElement("div");
+  host.setAttribute("data-globe-compose-island-host", "true");
+  document.body.appendChild(host);
+  root = createRoot(host);
+  window.addEventListener("resize", onViewportChange);
+  window.visualViewport?.addEventListener("resize", onViewportChange);
+  window.visualViewport?.addEventListener("scroll", onViewportChange);
 
-  resizeObserver?.disconnect();
   resizeObserver = new ResizeObserver(() => syncHostBox());
   resizeObserver.observe(slotEl);
 
@@ -87,7 +113,7 @@ export function mountGlobeComposeIsland(
 }
 
 export function updateGlobeComposeIsland(partial: Partial<IslandProps>): void {
-  if (!props) {
+  if (!props || !root) {
     return;
   }
   const next = { ...props, ...partial };
@@ -95,7 +121,6 @@ export function updateGlobeComposeIsland(partial: Partial<IslandProps>): void {
   const copyChanged =
     next.placeholder !== props.placeholder ||
     next.submitLabel !== props.submitLabel;
-  // onSubmit always via ref on caller — still refresh closure
   props = next;
   if (busyChanged || copyChanged || partial.onSubmit) {
     renderIsland();
@@ -104,17 +129,7 @@ export function updateGlobeComposeIsland(partial: Partial<IslandProps>): void {
 }
 
 export function unmountGlobeComposeIsland(): void {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-  window.removeEventListener("resize", onViewportChange);
-  window.visualViewport?.removeEventListener("resize", onViewportChange);
-  window.visualViewport?.removeEventListener("scroll", onViewportChange);
-  root?.unmount();
-  root = null;
-  host?.remove();
-  host = null;
-  slot = null;
-  props = null;
+  disposeIslandHost();
 }
 
 export function readGlobeComposeIslandHandle(): GlobeContextConditionComposeInputHandle | null {

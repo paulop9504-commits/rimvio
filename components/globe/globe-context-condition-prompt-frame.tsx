@@ -1305,8 +1305,7 @@ export function GlobeContextConditionPromptFrame({
       dragLabel={copy.globe.contextConditionPanelDragLabel}
       className={cn(
         className,
-        discoveryFeedFocus &&
-          "pointer-events-none invisible transition-[opacity,transform] duration-200",
+        discoveryFeedFocus && "opacity-40 transition-opacity duration-200",
       )}
       shellClassName={rimvioAssistantFrameShellClass()}
       bodyClassName="flex min-h-0 flex-col"

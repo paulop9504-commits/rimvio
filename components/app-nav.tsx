@@ -299,7 +299,13 @@ function PortaledBottomNavBar({
   onCapture: () => void;
   fieldSheetOpen: boolean;
 }) {
-  if (typeof document === "undefined") {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // SSR must match first client paint (null) — portal only after mount (#418).
+  if (!mounted) {
     return null;
   }
 
