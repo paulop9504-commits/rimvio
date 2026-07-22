@@ -42,6 +42,7 @@ import {
   stampSearchToolResultsToDiff,
   toolCandidatesToPlaceHits,
 } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
+import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hub-action";
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
 
 function slug(label: string): string {
@@ -262,6 +263,13 @@ function applySearchProject(
     candidates: toolResult.candidates,
     summaryKo: toolResult.summaryKo,
   });
+  emitToolSearchHubAction({
+    contextEventId: graph.contextEventId,
+    toolId,
+    domain: command.domain,
+    query: command.query,
+    candidateCount: toolResult.candidates?.length ?? 0,
+  });
   return next;
 }
 
@@ -302,6 +310,13 @@ async function applySearchProjectAsync(
     query: command.query,
     candidates: toolResult.candidates,
     summaryKo: toolResult.summaryKo,
+  });
+  emitToolSearchHubAction({
+    contextEventId: graph.contextEventId,
+    toolId,
+    domain: command.domain,
+    query: command.query,
+    candidateCount: toolResult.candidates?.length ?? 0,
   });
   return next;
 }
@@ -1147,6 +1162,9 @@ function replyFor(
     const count = graph.nodes.filter(
       (n) => n.visible && n.kind !== "compare" && n.kind !== "simulation",
     ).length;
+    if (count === 0) {
+      return "검색 결과가 없어요 · 조건을 바꿔 다시 찾아볼까요";
+    }
     return `지도에 ${count}곳을 펼쳤어요`;
   }
   if (op === "filter") {

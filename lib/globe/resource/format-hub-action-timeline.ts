@@ -5,6 +5,8 @@
 
 import { copy } from "@/lib/copy/human-ko";
 import type { HubAction } from "@/lib/globe/resource/hub-action-record";
+import type { RimvioToolId } from "@/lib/tool-registry";
+import { getRimvioTool } from "@/lib/tool-registry/invoke-rimvio-tool";
 
 export type HubActionTimelineRow = {
   actionId: string;
@@ -26,11 +28,20 @@ function hubKindLabel(sourceHubId: string | undefined): string {
   }
 }
 
+/** Prefer Tool Registry label when search was stamped from Tool Diff. */
 export function formatHubActionTimelineLabel(action: HubAction): string | null {
+  if (action.type === "search") {
+    const toolId = action.externalRef?.trim();
+    if (toolId) {
+      const tool = getRimvioTool(toolId as RimvioToolId);
+      if (tool?.labelKo?.trim()) {
+        return tool.labelKo.trim();
+      }
+    }
+    return copy.globe.hubActionLog.search(hubKindLabel(action.sourceHubId));
+  }
   const hub = hubKindLabel(action.sourceHubId);
   switch (action.type) {
-    case "search":
-      return copy.globe.hubActionLog.search(hub);
     case "reserve":
       return copy.globe.hubActionLog.reserve(hub);
     case "purchase":

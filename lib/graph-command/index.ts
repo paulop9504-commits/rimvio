@@ -59,6 +59,7 @@ export {
   fieldScoutOwnsLodgingGraphMarkers,
   TOOL_SEARCH_BATCH_ID_PREFIX,
 } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
+export { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hub-action";
 export { alignSessionGraphLodgingToScout } from "@/lib/graph-command/align-session-graph-lodging-to-scout";
 export { shouldDeferSearchProjectToDiscoveryScout } from "@/lib/graph-command/should-defer-search-project-to-scout";
 export { isSameProjectReSearchUtterance } from "@/lib/graph-command/is-same-project-re-search";

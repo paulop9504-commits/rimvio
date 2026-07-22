@@ -5,10 +5,35 @@
 
 import type { IntentFamily, ToolFamily } from "@/lib/rule-engine/constitution";
 import { routeToolFamily } from "@/lib/rule-engine/route-tool-family";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { isAmenityLookupQuery } from "@/lib/tool-registry/amenity-lookup-cue";
 import type { RimvioToolId } from "@/lib/tool-registry";
 
 export type PlannerLookupDomain = "lodging" | "eatery" | "poi" | "amenity";
+
+/** Infer lookup domain from utterance when planner omitted domain. */
+export function resolvePlannerLookupDomain(
+  query?: string | null,
+): PlannerLookupDomain {
+  const text = query?.trim() ?? "";
+  if (!text) {
+    return "lodging";
+  }
+  if (isAmenityLookupQuery(text) || /약\s*사러/iu.test(text)) {
+    return "amenity";
+  }
+  if (hasEateryDomainCue(text) || /맛집|식당|카페|restaurant|food/iu.test(text)) {
+    return "eatery";
+  }
+  if (
+    hasLodgingDomainCue(text) ||
+    /호텔|숙소|모텔|hotel|stay|capsule|캡슐/iu.test(text)
+  ) {
+    return "lodging";
+  }
+  return "lodging";
+}
 
 /**
  * Map Intent family (+ optional domain) to a registry tool id.
@@ -21,6 +46,11 @@ export function resolveToolIdForIntent(input: {
   readonly query?: string | null;
 }): RimvioToolId | null {
   const family = input.toolFamily ?? routeToolFamily(input.intent);
+  const domain =
+    input.domain ??
+    (input.intent === "Search" || family === "maps"
+      ? resolvePlannerLookupDomain(input.query)
+      : null);
 
   if (input.intent === "Reserve" || family === "booking") {
     return "booking.prepare";
@@ -36,15 +66,15 @@ export function resolveToolIdForIntent(input: {
     return "ranking.pick";
   }
   if (input.intent === "Search" || family === "maps") {
-    if (input.domain === "lodging") {
+    if (domain === "lodging") {
       return "hotel.lookup";
     }
-    if (input.domain === "eatery") {
+    if (domain === "eatery") {
       return "restaurant.lookup";
     }
     if (
-      input.domain === "amenity" ||
-      (input.domain === "poi" && isAmenityLookupQuery(input.query ?? ""))
+      domain === "amenity" ||
+      (domain === "poi" && isAmenityLookupQuery(input.query ?? ""))
     ) {
       return "pharmacy.lookup";
     }

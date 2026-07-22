@@ -40,8 +40,10 @@ import {
   TOOL_SEARCH_BATCH_ID_PREFIX,
   type SearchToolCandidate,
 } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
+import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hub-action";
 import { invokeRimvioTool, invokeRimvioToolAsync } from "@/lib/tool-registry";
 import type { ToolInvokeInput, RimvioToolId } from "@/lib/tool-registry";
+import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 
 function markStep(
   plan: ActionPlanV1,
@@ -132,6 +134,17 @@ function injectLookupCandidates(input: {
       candidates: ordered,
       summaryKo: null,
       batchId: input.batchId,
+    });
+    const toolId = resolveLookupToolId(
+      domain === "eatery" ? "eatery" : domain === "poi" ? "poi" : "lodging",
+      preferred || domain,
+    );
+    emitToolSearchHubAction({
+      contextEventId: input.contextEventId,
+      toolId,
+      domain,
+      query: preferred || domain,
+      candidateCount: ordered.length,
     });
     bumpSessionGraphProjection(input.contextEventId);
   }
@@ -262,7 +275,19 @@ function stampWorkingSetSearchDiff(input: {
   plan: ActionPlanV1;
   buffer: WorkingSetDiffBuffer;
 }): void {
+  const domain = input.buffer.domain;
+  const toolId = resolveLookupToolId(
+    domain === "eatery" ? "eatery" : domain === "poi" ? "poi" : "lodging",
+    input.plan.utterance,
+  );
   if (input.buffer.candidates.length === 0) {
+    emitToolSearchHubAction({
+      contextEventId: input.plan.contextEventId,
+      toolId,
+      domain,
+      query: input.plan.utterance,
+      candidateCount: 0,
+    });
     return;
   }
   stampSearchToolResultsToDiff({
@@ -270,8 +295,15 @@ function stampWorkingSetSearchDiff(input: {
     domain: input.buffer.domain,
     query: input.plan.utterance,
     candidates: input.buffer.candidates,
-    summaryKo: `${input.buffer.pinLabels.join(" ? ")} ?? Diff`,
+    summaryKo: `${input.buffer.pinLabels.join(" · ")} Diff`,
     batchId: searchBatchIdForPlan(input.plan),
+  });
+  emitToolSearchHubAction({
+    contextEventId: input.plan.contextEventId,
+    toolId,
+    domain,
+    query: input.plan.utterance,
+    candidateCount: input.buffer.candidates.length,
   });
 }
 

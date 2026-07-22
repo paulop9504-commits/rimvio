@@ -8,9 +8,47 @@ import {
   isLodgingStayReviseUtterance,
   isRelativeLodgingStayReviseUtterance,
 } from "@/lib/globe/context-hub/parse-lodging-stay-revise";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import { isAmenityLookupQuery } from "@/lib/tool-registry/amenity-lookup-cue";
 
 function normalize(text: string): string {
   return text.trim().replace(/\s+/gu, " ");
+}
+
+/** Noun-heavy domain utterance without 찾/추천 — still Search. */
+function isDomainNounSearch(text: string): boolean {
+  if (hasLodgingDomainCue(text) || hasEateryDomainCue(text)) {
+    return true;
+  }
+  if (isAmenityLookupQuery(text)) {
+    return true;
+  }
+  if (/약\s*사러|사러\s*갈|약\s*사러\s*가/iu.test(text)) {
+    return true;
+  }
+  if (
+    /(?:어디야|어디\s*있|어디에|어디\s*가)/iu.test(text) &&
+    (hasLodgingDomainCue(text) ||
+      hasEateryDomainCue(text) ||
+      isAmenityLookupQuery(text))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Bare stay-length revise — 「2박으로」 (not 「2박 호텔 찾아줘」). */
+function isBareStayLengthRevise(text: string): boolean {
+  if (/(?:찾|추천|보여|알려|주변|근처|search|find)/iu.test(text)) {
+    return false;
+  }
+  return (
+    /^\d{1,2}\s*박(?:\s*\d{1,2}\s*일)?(?:\s*(?:로|으로))?$/u.test(text) ||
+    /^\d{1,2}\s*박(?:\s*\d{1,2}\s*일)?\s*(?:로|으로)\s*(?:해|바꿔?|갈게|가자)?$/u.test(
+      text,
+    )
+  );
 }
 
 /**
@@ -45,7 +83,7 @@ export function classifyIntentFamily(utterance: string): IntentFamily {
     return "Purchase";
   }
   if (
-    /(?:예약\s*준비|예약해|예매|잡아(?:줘|요|주세요)?|부킹|reserve|첫\s*(?:번\s*)?째\s*예약|(?:두|세)\s*(?:번\s*)?째\s*예약)/iu.test(
+    /(?:예약\s*준비|예약해|예약할게|예약할래|예매|잡아(?:줘|요|주세요)?|부킹|reserve|이걸로\s*예약|첫\s*(?:번\s*)?째\s*예약|(?:두|세)\s*(?:번\s*)?째\s*예약)/iu.test(
       text,
     )
   ) {
@@ -60,6 +98,7 @@ export function classifyIntentFamily(utterance: string): IntentFamily {
   }
   // Project edit — absolute/relative stay · guests · trip revise (before Search / Filter).
   if (
+    isBareStayLengthRevise(text) ||
     isRelativeLodgingStayReviseUtterance(text) ||
     isTripReviseUtterance(text) ||
     (isLodgingStayReviseUtterance(text) &&
@@ -112,7 +151,11 @@ export function classifyIntentFamily(utterance: string): IntentFamily {
   ) {
     return "Navigate";
   }
-  if (/(?:캘린더|일정\s*(?:넣|추가)|calendar|스케줄에\s*넣)/iu.test(text)) {
+  if (
+    /(?:캘린더|일정\s*(?:넣|추가)|일정에\s*넣|calendar|스케줄에\s*넣)/iu.test(
+      text,
+    )
+  ) {
     return "Calendar";
   }
   if (/(?:예측|predict)/iu.test(text)) {
@@ -121,6 +164,10 @@ export function classifyIntentFamily(utterance: string): IntentFamily {
   if (
     /(?:찾|추천|보여|알려|골라|주변|근처|near|around|search|find)/iu.test(text)
   ) {
+    return "Search";
+  }
+  // Domain noun alone — 「오사카 캡슐호텔」「맛집」「편의점 어디야」
+  if (isDomainNounSearch(text)) {
     return "Search";
   }
   if (/(?:만들|생성|create)/iu.test(text)) {

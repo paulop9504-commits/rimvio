@@ -17,6 +17,7 @@ export { routeToolFamily } from "@/lib/rule-engine/route-tool-family";
 export {
   resolveToolIdForIntent,
   resolveLookupToolId,
+  resolvePlannerLookupDomain,
   type PlannerLookupDomain,
 } from "@/lib/rule-engine/resolve-tool-id";
 

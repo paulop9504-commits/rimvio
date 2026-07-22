@@ -34,15 +34,25 @@ assert.equal(classifyIntentFamily("APA호텔 고정해"), "Pin");
 assert.equal(classifyIntentFamily("주변 맛집 찾아줘"), "Search");
 assert.equal(classifyIntentFamily("A랑 B 비교해"), "Compare");
 assert.equal(classifyIntentFamily("예약해"), "Reserve");
+assert.equal(classifyIntentFamily("이걸로 예약"), "Reserve");
 assert.equal(classifyIntentFamily("결제해"), "Purchase");
 assert.equal(classifyIntentFamily("빼줘"), "Delete");
 assert.equal(classifyIntentFamily("길 찾아줘"), "Navigate");
 assert.equal(classifyIntentFamily("캘린더에 넣어"), "Calendar");
+assert.equal(classifyIntentFamily("일정에 넣기"), "Calendar");
 assert.equal(classifyIntentFamily("공유해줘"), "Share");
 assert.equal(classifyIntentFamily("메모해줘"), "Note");
 assert.equal(classifyIntentFamily("5박6일로 갈게"), "Revise");
 assert.equal(classifyIntentFamily("인원 3명으로 바꿔"), "Revise");
 assert.equal(classifyIntentFamily("일본 여행 수정해줘"), "Revise");
+assert.equal(classifyIntentFamily("2박으로"), "Revise");
+// Domain nouns without 찾 — still Search (STEP 1).
+assert.equal(classifyIntentFamily("오사카 캡슐호텔"), "Search");
+assert.equal(classifyIntentFamily("캡슐호텔"), "Search");
+assert.equal(classifyIntentFamily("숙소"), "Search");
+assert.equal(classifyIntentFamily("맛집"), "Search");
+assert.equal(classifyIntentFamily("편의점 어디야"), "Search");
+assert.equal(classifyIntentFamily("약 사러"), "Search");
 assert.equal(isActionFirstUtterance("5박6일로 바꿔줘"), true);
 assert.equal(routeToolFamily("Reserve"), "booking");
 assert.equal(routeToolFamily("Search"), "maps");
@@ -54,6 +64,27 @@ assert.equal(
   "Revise is graph/slots only — no Tool Registry",
 );
 assert.equal(resolveLookupToolId("lodging"), "hotel.lookup");
+assert.equal(
+  resolveToolIdForIntent({
+    intent: "Search",
+    query: "오사카 캡슐호텔",
+  }),
+  "hotel.lookup",
+);
+assert.equal(
+  resolveToolIdForIntent({
+    intent: "Search",
+    query: "난바 맛집",
+  }),
+  "restaurant.lookup",
+);
+assert.equal(
+  resolveToolIdForIntent({
+    intent: "Search",
+    query: "근처 편의점",
+  }),
+  "pharmacy.lookup",
+);
 assert.equal(routeToolFamily("Navigate"), "maps");
 assert.equal(routeToolFamily("Calendar"), "calendar");
 

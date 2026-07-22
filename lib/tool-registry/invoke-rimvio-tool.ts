@@ -83,22 +83,22 @@ export type ToolInvokeResult = {
 const TOOLS: readonly RimvioToolDefinition[] = [
   {
     id: "maps.search",
-    labelKo: "지도 검색",
+    labelKo: "지도 찾기",
     skills: ["maps", "travel"],
   },
   {
     id: "hotel.lookup",
-    labelKo: "숙소 조회",
+    labelKo: "숙소 찾기",
     skills: ["travel"],
   },
   {
     id: "restaurant.lookup",
-    labelKo: "맛집 조회",
+    labelKo: "맛집 찾기",
     skills: ["restaurant", "travel"],
   },
   {
     id: "pharmacy.lookup",
-    labelKo: "약국·편의 조회",
+    labelKo: "편의 찾기",
     skills: ["maps", "travel"],
   },
   {
