@@ -31,6 +31,11 @@ export {
   resetGlobeProjectionLayerPolicy,
   subscribeGlobeProjectionLayerPolicy,
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
+export {
+  enterContextSoloStage,
+  exitContextSoloStage,
+  isContextSoloStageActive,
+} from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
 export type {
   GlobeProjectionLayerMode,
   GlobeProjectionLayerPolicy,

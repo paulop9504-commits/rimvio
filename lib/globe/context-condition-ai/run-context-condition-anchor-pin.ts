@@ -540,8 +540,10 @@ export async function runContextConditionAnchorPin(
       radiusM: lodgingRadiusM,
       keyword: lodgingKeyword,
     });
-    // Google often returns only 1–2 capsule names; top up with Japan mock when thin.
+    // Thin capsule results — only invent mock names when the whole load is already mock.
+    // Live LiteAPI/Places must keep real photos; empty-image top-up looked "disconnected."
     if (
+      loaded.source === "mock" &&
       (spec.lodgingStayType === "capsule" ||
         spec.lodgingKind === "hostel" ||
         /캡슐|capsule/iu.test(input.message ?? "")) &&
@@ -574,7 +576,7 @@ export async function runContextConditionAnchorPin(
       if (extras.length > 0) {
         loaded = {
           rows: [...loaded.rows, ...extras].slice(0, lodgingMaxResults),
-          source: loaded.source === "mock" ? "mock" : loaded.source,
+          source: "mock",
         };
       }
     }

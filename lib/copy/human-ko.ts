@@ -2385,6 +2385,7 @@ export const copy = {
       purchase: (hub: string) => `${hub} 결제`,
       cancel: (hub: string) => `${hub} 취소`,
     },
+    contextAssistantWorkChipsAria: "이 맥락에서 실행한 작업",
     engineEventTimeline: {
       flight_booking: {
         scout_complete: "항공 찾기",

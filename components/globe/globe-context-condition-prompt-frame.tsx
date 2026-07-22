@@ -12,6 +12,7 @@ import { GlobePalantirOperatorCommitRail } from "@/components/globe/globe-palant
 import { GlobePalantirOntologyHistoryHint } from "@/components/globe/globe-palantir-ontology-history-hint";
 import { GlobeContextAgentOntologyGraph } from "@/components/globe/globe-context-agent-ontology-graph";
 import { GlobeContextAgentProcessStrip } from "@/components/globe/globe-context-agent-process-strip";
+import { GlobeContextAssistantWorkChips } from "@/components/globe/globe-context-assistant-work-chips";
 import { GlobeContextAgentRefineChips } from "@/components/globe/globe-context-agent-refine-chips";
 import { GlobeContextExplorationModeChips } from "@/components/globe/globe-context-exploration-mode-chips";
 import { GlobeContextActionInjectionCard } from "@/components/globe/globe-context-action-injection-card";
@@ -92,6 +93,7 @@ import { openIdentityVaultSettings } from "@/lib/identity-vault/open-identity-va
 import {
   appendContextAgentComposeTurn,
   appendLodgingRoomCardsComposeTurn,
+  buildContextAssistantWorkChips,
   clearContextAgentComposeThread,
   CONTEXT_AGENT_ASK_FIRST,
   markScoutFeedGateOpened,
@@ -102,6 +104,10 @@ import {
   subscribeContextAgentComposeThread,
   type ContextAgentComposeTurn,
 } from "@/lib/globe/assistant";
+import {
+  HUB_ACTION_LOG_EVENT,
+  readHubActionLog,
+} from "@/lib/globe/resource/hub-action-record-store";
 import {
   enrichContextIntentBlueprintClient,
   isTripReviseUtterance,
@@ -258,6 +264,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
   const discoveryFeedFocus = useIntelligentDiscoveryFeedFocus(event?.id);
   const { opacity: shellOpacity, setOpacity: setShellOpacity } =
     useContextAssistantShellOpacity();
+  const [hubActionLogRevision, setHubActionLogRevision] = useState(0);
   const [pinnedRevision, setPinnedRevision] = useState(0);
   const [explorationRevision, setExplorationRevision] = useState(0);
   const [activeSpec, setActiveSpec] = useState<
@@ -289,6 +296,29 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       }
       setLensSession(session);
     });
+  }, [event, open]);
+
+  useEffect(() => {
+    if (!open || !event) {
+      return;
+    }
+    const onHubActionLog = (raw: Event) => {
+      if (isGlobeComposeInputFocused()) {
+        return;
+      }
+      const detail = (raw as CustomEvent<{ contextEventId?: string }>).detail;
+      if (
+        detail?.contextEventId &&
+        detail.contextEventId !== event.id
+      ) {
+        return;
+      }
+      setHubActionLogRevision((value) => value + 1);
+    };
+    window.addEventListener(HUB_ACTION_LOG_EVENT, onHubActionLog);
+    return () => {
+      window.removeEventListener(HUB_ACTION_LOG_EVENT, onHubActionLog);
+    };
   }, [event, open]);
 
   // Open once per event — do not re-run when geocode fills lat/lng (that
@@ -1320,6 +1350,16 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     (recommendations.length > 0 || activeSpec != null) &&
     !showBusyStatus;
 
+  const workChips = buildContextAssistantWorkChips({
+    hubLog: readHubActionLog(event.id),
+    liveLabelKo: showBusyStatus
+      ? processStatusHint?.trim() || pipelineLabel
+      : null,
+    max: 5,
+  });
+  // Touch revision so emitSearchHubAction re-renders this strip.
+  void hubActionLogRevision;
+
   const opacityPercent = Math.round(shellOpacity * 100);
   const opacityControl = (
     <label
@@ -1409,6 +1449,8 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
             <X className="size-3.5" aria-hidden />
           </button>
         </div>
+
+        <GlobeContextAssistantWorkChips chips={workChips} />
 
         {questions.length > 0 ? (
           <div className="border-b border-black/[0.05] px-3 py-2">

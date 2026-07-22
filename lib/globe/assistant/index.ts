@@ -35,3 +35,7 @@ export {
   type IntentExecutionTimelinePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 export { CONTEXT_AGENT_ASK_FIRST } from "@/lib/globe/assistant/context-agent-ask-first";
+export {
+  buildContextAssistantWorkChips,
+  type ContextAssistantWorkChip,
+} from "@/lib/globe/assistant/build-context-assistant-work-chips";

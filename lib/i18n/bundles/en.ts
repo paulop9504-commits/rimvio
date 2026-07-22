@@ -2366,6 +2366,7 @@ export const copyEn: Copy = {
       purchase: (hub: string) => `Pay ${hub}`,
       cancel: (hub: string) => `Cancel ${hub}`,
     },
+    contextAssistantWorkChipsAria: "Work run in this context",
     engineEventTimeline: {
       flight_booking: {
         scout_complete: "Flight search",

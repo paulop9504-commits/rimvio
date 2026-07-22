@@ -2,6 +2,10 @@ import { buildContextInstance } from "@/lib/context-instance/build-context-insta
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
 import {
+  lodgingInventoryHasLivePhotos,
+  mergeLodgingInventoryRows,
+} from "@/lib/globe/context-hub/merge-lodging-inventory-rows";
+import {
   isLiteApiConfigured,
   searchLiteApiLodgingNearby,
 } from "@/lib/globe/context-hub/providers/liteapi";
@@ -42,7 +46,7 @@ async function fetchLodgingInventoryFromApi(input: {
   maxResults?: number;
   event: EventCandidate;
   keyword?: string | null;
-}): Promise<ContextLodgingInventoryRow[]> {
+}): Promise<LoadedLodgingInventory> {
   const plan = readPlanContextFromEvent(input.event);
   const slots = readLodgingBookingSlots(input.event);
   const params = new URLSearchParams({
@@ -66,15 +70,92 @@ async function fetchLodgingInventoryFromApi(input: {
   }
   const response = await fetch(`/api/globe/lodging-inventory?${params.toString()}`);
   if (!response.ok) {
-    return [];
+    return { rows: [], source: "mock" };
   }
   const body = (await response.json()) as {
     inventory?: ContextLodgingInventoryRow[];
+    source?: string;
   };
-  return Array.isArray(body.inventory) ? body.inventory : [];
+  const rows = Array.isArray(body.inventory) ? body.inventory : [];
+  if (rows.length === 0) {
+    return { rows: [], source: "mock" };
+  }
+  const source =
+    body.source === "liteapi" || body.source === "google_places"
+      ? body.source
+      : lodgingInventoryHasLivePhotos(rows)
+        ? "liteapi"
+        : "google_places";
+  return { rows, source };
 }
 
-/** Hub factory load — Places API when configured, mock fallback for dev/tests. */
+async function loadLodgingInventoryOnServer(input: {
+  lat: number;
+  lng: number;
+  maxResults?: number;
+  event: EventCandidate;
+  keyword?: string | null;
+  radiusM: number;
+}): Promise<LoadedLodgingInventory> {
+  const plan = readPlanContextFromEvent(input.event);
+  const liteApiRows = isLiteApiConfigured()
+    ? await searchLiteApiLodgingNearby({
+        lat: input.lat,
+        lng: input.lng,
+        maxResults: input.maxResults,
+        checkInIso: plan?.windowStartIso ?? input.event.datetime,
+        checkOutIso: plan?.windowEndIso ?? null,
+      })
+    : [];
+
+  const needsPlaces =
+    Boolean(input.keyword?.trim()) ||
+    liteApiRows.length === 0 ||
+    !lodgingInventoryHasLivePhotos(liteApiRows);
+  const placesRows = needsPlaces
+    ? await fetchPlacesLodgingNearby({
+        lat: input.lat,
+        lng: input.lng,
+        maxResults: input.maxResults,
+        keyword: input.keyword,
+      })
+    : [];
+
+  let rows: ContextLodgingInventoryRow[] = [];
+  let source: LodgingInventorySource = "google_places";
+
+  if (liteApiRows.length > 0 && placesRows.length > 0) {
+    rows = mergeLodgingInventoryRows({
+      primary: liteApiRows,
+      secondary: placesRows,
+      maxResults: input.maxResults ?? 5,
+    });
+    source = lodgingInventoryHasLivePhotos(rows) ? "liteapi" : "google_places";
+  } else if (liteApiRows.length > 0) {
+    rows = [...liteApiRows];
+    source = "liteapi";
+  } else {
+    rows = [...placesRows];
+    source = placesRows.length > 0 ? "google_places" : "google_places";
+  }
+
+  if (rows.length === 0) {
+    return { rows: [], source: "mock" };
+  }
+
+  const filtered = filterLodgingRowsWithinRadius({
+    rows,
+    lat: input.lat,
+    lng: input.lng,
+    radiusM: input.radiusM,
+  });
+  return {
+    rows: withStayWindow(input.event, filtered.length > 0 ? filtered : rows),
+    source,
+  };
+}
+
+/** Hub factory load — LiteAPI photos first, Places keyword merge, mock last. */
 export async function loadLodgingInventoryRows(input: {
   event: EventCandidate;
   lat?: number | null;
@@ -92,59 +173,44 @@ export async function loadLodgingInventoryRows(input: {
     preferUserLocation: input.preferUserLocation,
   });
   const searchOrigin = resolveInventorySearchOrigin(input);
-  let rows: ContextLodgingInventoryRow[] = [];
 
   if (searchOrigin) {
-    if (typeof window !== "undefined") {
-      rows = await fetchLodgingInventoryFromApi({
-        lat: searchOrigin.lat,
-        lng: searchOrigin.lng,
-        maxResults: input.maxResults,
-        event: input.event,
-        keyword: input.keyword,
-      });
-    } else {
-      if (isLiteApiConfigured() && !input.keyword?.trim()) {
-        rows = await searchLiteApiLodgingNearby({
-          lat: searchOrigin.lat,
-          lng: searchOrigin.lng,
-          maxResults: input.maxResults,
-          checkInIso: readPlanContextFromEvent(input.event)?.windowStartIso ?? input.event.datetime,
-          checkOutIso: readPlanContextFromEvent(input.event)?.windowEndIso ?? null,
-        });
-        if (rows.length > 0) {
-          const filtered = filterLodgingRowsWithinRadius({
-            rows,
+    const loaded =
+      typeof window !== "undefined"
+        ? await fetchLodgingInventoryFromApi({
             lat: searchOrigin.lat,
             lng: searchOrigin.lng,
+            maxResults: input.maxResults,
+            event: input.event,
+            keyword: input.keyword,
+          })
+        : await loadLodgingInventoryOnServer({
+            lat: searchOrigin.lat,
+            lng: searchOrigin.lng,
+            maxResults: input.maxResults,
+            event: input.event,
+            keyword: input.keyword,
             radiusM,
           });
-          return {
-            rows: withStayWindow(input.event, filtered.length > 0 ? filtered : rows),
-            source: "liteapi",
-          };
-        }
-      }
-      rows = await fetchPlacesLodgingNearby({
-        lat: searchOrigin.lat,
-        lng: searchOrigin.lng,
-        maxResults: input.maxResults,
-        keyword: input.keyword,
-      });
-    }
-  }
 
-  if (rows.length > 0) {
-    const filtered = filterLodgingRowsWithinRadius({
-      rows,
-      lat: searchOrigin?.lat ?? null,
-      lng: searchOrigin?.lng ?? null,
-      radiusM,
-    });
-    return {
-      rows: withStayWindow(input.event, filtered.length > 0 ? filtered : rows),
-      source: "google_places",
-    };
+    if (loaded.rows.length > 0) {
+      if (typeof window !== "undefined") {
+        const filtered = filterLodgingRowsWithinRadius({
+          rows: loaded.rows,
+          lat: searchOrigin.lat,
+          lng: searchOrigin.lng,
+          radiusM,
+        });
+        return {
+          rows: withStayWindow(
+            input.event,
+            filtered.length > 0 ? filtered : loaded.rows,
+          ),
+          source: loaded.source === "mock" ? "google_places" : loaded.source,
+        };
+      }
+      return loaded;
+    }
   }
 
   const place =

@@ -412,6 +412,10 @@ import {
   dispatchGlobeMarketQuickListResult,
 } from "@/lib/portal/globe-market-quick-list-bridge";
 import { isExternalPinCluster } from "@/lib/globe/merge-globe-pin-clusters";
+import {
+  enterContextSoloStage,
+  exitContextSoloStage,
+} from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
@@ -900,6 +904,7 @@ function GlobeHomeBody() {
     setPinDragOverrides(new Map());
     pinDragActiveRef.current = false;
     draggedEventIdRef.current = null;
+    exitContextSoloStage({ onlyIfContextEventId: eventId });
 
     if (eventId && hadDragPreview) {
       schedulePinRevertToCardPlace(eventId);
@@ -961,6 +966,14 @@ function GlobeHomeBody() {
       }
       setStackClusters(null);
       setActiveCluster(cluster);
+
+      if (
+        eventId &&
+        !isExternalPinCluster(cluster) &&
+        cluster.variant !== "bridge_ghost"
+      ) {
+        enterContextSoloStage(eventId);
+      }
 
       const event = eventId
         ? findLifeEventCandidate(eventId) ??
@@ -1090,6 +1103,7 @@ function GlobeHomeBody() {
         setStackClusters([...nearby]);
         setActiveCluster(null);
         setSheetOpen(false);
+        exitContextSoloStage();
         return;
       }
 
@@ -1125,6 +1139,7 @@ function GlobeHomeBody() {
       setStackClusters([...nearby]);
       setActiveCluster(null);
       setSheetOpen(false);
+      exitContextSoloStage();
     },
     [clearActiveContext, handleSameContextRetap, openContextCluster],
   );
@@ -3528,6 +3543,7 @@ function GlobeHomeBody() {
       dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(key);
       setStackClusters(null);
+      enterContextSoloStage(key);
       const previewCluster =
         resolveGlobeContextPinCluster(key) ??
         resolveGlobeContextCardPinCluster(key) ??
@@ -4122,6 +4138,7 @@ function GlobeHomeBody() {
       if (activeCluster && eventIds.includes(activeCluster.eventId)) {
         setSheetOpen(false);
         setActiveCluster(null);
+        exitContextSoloStage({ onlyIfContextEventId: activeCluster.eventId });
       }
       if (realitySurfaceEventId && eventIds.includes(realitySurfaceEventId)) {
         clearRealitySurfaceSession();
