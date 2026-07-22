@@ -18,6 +18,7 @@ import {
   resolveGlobeContextVideoScreenLayout,
   type GlobeContextVideoScreenLayout,
 } from "@/lib/globe/resolve-globe-context-video-layout";
+import { isGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 import { layoutScreenAnchoredNodeOffsets } from "@/lib/globe/resolve-non-overlapping-callout-offsets";
 import {
   nudgeMapAnchorDragOffsets,
@@ -483,6 +484,9 @@ export function GlobeContextBrainMapOverlay({
         typeof document !== "undefined" &&
         document.querySelector('[data-globe-interacting="true"]')
       ) {
+        return;
+      }
+      if (isGlobeComposeInputFocused()) {
         return;
       }
       const globe = globeRef.current;

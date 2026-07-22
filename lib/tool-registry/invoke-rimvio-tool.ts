@@ -13,6 +13,10 @@ import {
 import { mergeLodgingStayForToolInvoke } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
 import { rankByValueConsensus } from "@/lib/search-engine/score-value-consensus";
 import { composeAmenityLookupQuery } from "@/lib/tool-registry/amenity-lookup-cue";
+import {
+  formatLookupCountSummaryKo,
+  withToolBudget,
+} from "@/lib/tool-registry/with-tool-budget";
 
 export const RIMVIO_TOOL_IDS = [
   "maps.search",
@@ -326,7 +330,7 @@ export function invokeRimvioTool(
     return {
       ok: true,
       toolId,
-      summaryKo: `${candidates.length}곳을 지도에서 찾았어요`,
+      summaryKo: formatLookupCountSummaryKo("지도", candidates.length),
       candidates,
     };
   }
@@ -336,7 +340,7 @@ export function invokeRimvioTool(
     return {
       ok: true,
       toolId,
-      summaryKo: `숙소 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("숙소", candidates.length),
       candidates,
     };
   }
@@ -346,7 +350,7 @@ export function invokeRimvioTool(
     return {
       ok: true,
       toolId,
-      summaryKo: `맛집 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("맛집", candidates.length),
       candidates,
     };
   }
@@ -359,7 +363,7 @@ export function invokeRimvioTool(
     return {
       ok: true,
       toolId,
-      summaryKo: `약국·편의 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("약국·편의", candidates.length),
       candidates,
     };
   }
@@ -381,6 +385,7 @@ export function invokeRimvioTool(
       ? `${input.placeName} 예약 준비를 연결해요`
       : "예약 준비를 연결해요",
     meta: {
+      prepareOnly: true,
       placeId: input.placeId ?? null,
       placeName: input.placeName ?? null,
       guestCount: stay.guestCount,
@@ -418,32 +423,68 @@ export async function invokeRimvioToolAsync(
 
   if (toolId === "maps.search") {
     const domain = input.domain ?? "poi";
-    const candidates = await placeSearchCandidatesAsync(domain, input);
+    const budgeted = await withToolBudget({
+      run: () => placeSearchCandidatesAsync(domain, input),
+      isEmpty: (rows) => rows.length === 0,
+    });
+    const candidates = budgeted.value ?? [];
     return {
       ok: true,
       toolId,
-      summaryKo: `${candidates.length}곳을 지도에서 찾았어요`,
+      summaryKo: formatLookupCountSummaryKo("지도", candidates.length),
       candidates,
+      ...(budgeted.timedOut || budgeted.retried
+        ? {
+            meta: {
+              timedOut: budgeted.timedOut,
+              softRetry: budgeted.retried,
+            },
+          }
+        : {}),
     };
   }
 
   if (toolId === "hotel.lookup") {
-    const candidates = await placeSearchCandidatesAsync("lodging", input);
+    const budgeted = await withToolBudget({
+      run: () => placeSearchCandidatesAsync("lodging", input),
+      isEmpty: (rows) => rows.length === 0,
+    });
+    const candidates = budgeted.value ?? [];
     return {
       ok: true,
       toolId,
-      summaryKo: `숙소 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("숙소", candidates.length),
       candidates,
+      ...(budgeted.timedOut || budgeted.retried
+        ? {
+            meta: {
+              timedOut: budgeted.timedOut,
+              softRetry: budgeted.retried,
+            },
+          }
+        : {}),
     };
   }
 
   if (toolId === "restaurant.lookup") {
-    const candidates = await placeSearchCandidatesAsync("eatery", input);
+    const budgeted = await withToolBudget({
+      run: () => placeSearchCandidatesAsync("eatery", input),
+      isEmpty: (rows) => rows.length === 0,
+    });
+    const candidates = budgeted.value ?? [];
     return {
       ok: true,
       toolId,
-      summaryKo: `맛집 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("맛집", candidates.length),
       candidates,
+      ...(budgeted.timedOut || budgeted.retried
+        ? {
+            meta: {
+              timedOut: budgeted.timedOut,
+              softRetry: budgeted.retried,
+            },
+          }
+        : {}),
     };
   }
 
@@ -451,15 +492,28 @@ export async function invokeRimvioToolAsync(
     const query = composeAmenityLookupQuery(
       input.query?.trim() || input.labels?.[0] || input.utterance || "약국",
     );
-    const candidates = await placeSearchCandidatesAsync("poi", {
-      ...input,
-      query,
+    const budgeted = await withToolBudget({
+      run: () =>
+        placeSearchCandidatesAsync("poi", {
+          ...input,
+          query,
+        }),
+      isEmpty: (rows) => rows.length === 0,
     });
+    const candidates = budgeted.value ?? [];
     return {
       ok: true,
       toolId,
-      summaryKo: `약국·편의 ${candidates.length}곳을 확인했어요`,
+      summaryKo: formatLookupCountSummaryKo("약국·편의", candidates.length),
       candidates,
+      ...(budgeted.timedOut || budgeted.retried
+        ? {
+            meta: {
+              timedOut: budgeted.timedOut,
+              softRetry: budgeted.retried,
+            },
+          }
+        : {}),
     };
   }
 

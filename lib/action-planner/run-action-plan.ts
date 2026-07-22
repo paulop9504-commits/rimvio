@@ -44,6 +44,7 @@ import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hu
 import { invokeRimvioTool, invokeRimvioToolAsync } from "@/lib/tool-registry";
 import type { ToolInvokeInput, RimvioToolId } from "@/lib/tool-registry";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
+import { writeActionPlanUi } from "@/lib/action-planner/action-plan-ui-store";
 
 function markStep(
   plan: ActionPlanV1,
@@ -51,12 +52,19 @@ function markStep(
   status: ActionPlanStepV1["status"],
   patch?: Partial<ActionPlanStepV1>,
 ): ActionPlanV1 {
-  return {
+  const next: ActionPlanV1 = {
     ...plan,
     steps: plan.steps.map((step) =>
       step.id === stepId ? { ...step, ...patch, status } : step,
     ),
   };
+  /** STEP6 — Diff chip refresh after every step completion. */
+  writeActionPlanUi(next, {
+    waitingCommit: next.steps.some(
+      (step) => step.kind === "wait_commit" && step.status === "done",
+    ),
+  });
+  return next;
 }
 
 function visiblePlaceNodes(graph: ReturnType<typeof readSessionGraph>): SessionGraphNode[] {

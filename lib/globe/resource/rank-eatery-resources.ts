@@ -12,6 +12,8 @@ import { readPinnedEateryResourceId } from "@/lib/globe/eatery/pin-eatery-select
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
 import type { ContextResource } from "@/lib/globe/resource/types";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
+import { computeRecallRankBoost } from "@/lib/personal-memory/apply-recall-rank-boost";
+import { readPinContextNote } from "@/lib/globe/pin-context-note";
 
 function syntheticEateryHubRow(
   event: EventCandidate,
@@ -99,6 +101,17 @@ export function rankEateryResources(input: {
   const inventoryByPlaceId = new Map(
     readEateryInventoryRows(input.event).map((row) => [row.placeId, row]),
   );
+  const recallPlaceNeedles = [
+    input.event.place?.trim() ?? "",
+    input.event.title?.trim() ?? "",
+  ].filter(Boolean);
+  const recallQuery = [
+    input.event.title,
+    input.event.place,
+    readPinContextNote(input.event),
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return input.resources
     .map((resource) => {
@@ -123,11 +136,21 @@ export function rankEateryResources(input: {
             lng,
             recommendBonus: placeId ? (recommendScores[placeId]?.score ?? 0) : 0,
           });
+      const recallBoost = computeRecallRankBoost({
+        resourceLabel: resource.label,
+        placeLabel: resource.spacetime.placeLabel ?? inventoryRow?.name ?? null,
+        recallPlaceNeedles,
+        recallQuery,
+        contextKey: input.event.id,
+        actionId: "eatery.resource",
+      });
       return {
         resource,
         hubRow,
         rankScore:
-          rankScoreBase + (pinnedResourceId === resource.resourceId ? 220 : 0),
+          rankScoreBase +
+          (pinnedResourceId === resource.resourceId ? 220 : 0) +
+          recallBoost,
       };
     })
     .sort((left, right) => {

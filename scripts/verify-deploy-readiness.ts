@@ -156,6 +156,31 @@ checks.push({
     : "optional — GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET not set",
 });
 
+{
+  const mvpPath = path.join(process.cwd(), "reports", "mvp-verify-latest.json");
+  let mvpOk = false;
+  let mvpDetail = "reports/mvp-verify-latest.json missing — run npm run test:mvp";
+  if (existsSync(mvpPath)) {
+    try {
+      const report = JSON.parse(readFileSync(mvpPath, "utf8")) as {
+        ok?: boolean;
+        failed?: string[];
+      };
+      mvpOk = report.ok === true;
+      mvpDetail = mvpOk
+        ? "mvp-verify-latest.json ok"
+        : `mvp-verify failed: ${(report.failed ?? []).join(", ") || "see report"}`;
+    } catch {
+      mvpDetail = "mvp-verify-latest.json unreadable";
+    }
+  }
+  checks.push({
+    id: "mvp-verify-report",
+    ok: mvpOk,
+    detail: mvpDetail,
+  });
+}
+
 async function main(): Promise<boolean> {
   if (isSupabaseConfigured()) {
     const localHealth = await collectHealthReport();

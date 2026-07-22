@@ -62,7 +62,8 @@ export type ActionPlanV1 = {
     | "search_payment"
     | "filter_navigate"
     | "compare_filter"
-    | "move_share";
+    | "move_share"
+    | "short_tool";
   /** Reserve/Purchase prepare → Field; revise-research stays Globe Diff only. */
   readonly requiresFieldCommit: boolean;
 };

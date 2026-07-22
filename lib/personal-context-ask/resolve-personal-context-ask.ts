@@ -22,6 +22,7 @@ import {
 import { enrichAskRecallContext } from "@/lib/personal-context-ask/enrich-ask-recall-context";
 import { pickAskPrimaryHit } from "@/lib/personal-context-ask/pick-ask-primary-hit";
 import { resolveMarketTradeRecall } from "@/lib/personal-context-ask/resolve-market-trade-recall";
+import { queryPersonalMemoryTopK } from "@/lib/personal-memory/query-top-k";
 import {
   buildRecallEventSnapshot,
   type RecallEventSnapshot,
@@ -330,6 +331,61 @@ function resolveGeneral(
   return scored.map((entry) => toHit(entry.row, "맥락 일치"));
 }
 
+function mergeSemanticHits(input: {
+  lexicalHits: readonly PersonalContextBridgeHit[];
+  events: readonly EventCandidate[];
+  query: string;
+  snapshots: readonly RecallEventSnapshot[];
+}): PersonalContextBridgeHit[] {
+  const semantic = queryPersonalMemoryTopK({
+    query: input.query,
+    events: input.events,
+    k: MAX_HITS,
+  });
+  if (semantic.length === 0) {
+    return [...input.lexicalHits];
+  }
+
+  const byId = new Map(input.snapshots.map((row) => [row.eventId, row]));
+  const merged = new Map<string, PersonalContextBridgeHit>();
+
+  for (const hit of input.lexicalHits) {
+    merged.set(hit.eventId, hit);
+  }
+  for (const row of semantic) {
+    if (merged.has(row.eventId)) {
+      continue;
+    }
+    const snap = byId.get(row.eventId);
+    if (!snap) {
+      continue;
+    }
+    merged.set(row.eventId, toHit(snap, "그때 거기"));
+  }
+
+  const order = [
+    ...input.lexicalHits.map((hit) => hit.eventId),
+    ...semantic.map((row) => row.eventId),
+  ];
+  const seen = new Set<string>();
+  const out: PersonalContextBridgeHit[] = [];
+  for (const id of order) {
+    if (seen.has(id)) {
+      continue;
+    }
+    const hit = merged.get(id);
+    if (!hit) {
+      continue;
+    }
+    seen.add(id);
+    out.push(hit);
+    if (out.length >= MAX_HITS) {
+      break;
+    }
+  }
+  return out;
+}
+
 function resolveHits(
   snapshots: RecallEventSnapshot[],
   parsed: ParsedPersonalContextQuery,
@@ -340,23 +396,44 @@ function resolveHits(
     return resolveBridgeContextSearch(snapshots, parsed);
   }
 
+  let lexical: PersonalContextBridgeHit[];
   switch (parsed.intent) {
     case "last_meet_place":
-      return resolveLastMeetPlace(snapshots, parsed);
+      lexical = resolveLastMeetPlace(snapshots, parsed);
+      break;
     case "schedule_week":
-      return resolveScheduleWeek(snapshots, parsed, now);
+      lexical = resolveScheduleWeek(snapshots, parsed, now);
+      break;
     case "travel_recall":
-      return resolveTravelRecall(snapshots, parsed);
+      lexical = resolveTravelRecall(snapshots, parsed);
+      break;
     case "place_with_person":
-      return resolvePlaceWithPerson(snapshots, parsed);
+      lexical = resolvePlaceWithPerson(snapshots, parsed);
+      break;
     case "frequent_person":
-      return resolveFrequentPerson(snapshots);
+      lexical = resolveFrequentPerson(snapshots);
+      break;
     case "sell_price_recall":
     case "market_trade_recall":
       return resolveMarketTradeRecall(snapshots, events, parsed);
     default:
-      return resolveGeneral(snapshots, parsed);
+      lexical = resolveGeneral(snapshots, parsed);
+      break;
   }
+
+  if (
+    parsed.intent === "travel_recall" ||
+    parsed.intent === "general" ||
+    parsed.intent === "place_with_person"
+  ) {
+    return mergeSemanticHits({
+      lexicalHits: lexical,
+      events,
+      query: parsed.raw,
+      snapshots,
+    });
+  }
+  return lexical;
 }
 
 /** Pure resolve — deterministic bridge retrieval from life events. */

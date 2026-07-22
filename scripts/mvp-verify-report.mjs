@@ -35,6 +35,15 @@ const CORE_STEPS = [
   { id: "market-trade-regression", command: "npx", args: ["tsx", "scripts/test-market-trade-pipeline.ts"] },
   { id: "market-trade-session-view", command: "npx", args: ["tsx", "scripts/test-market-trade-session-view.ts"] },
   { id: "timeline-read-only", command: "npx", args: ["tsx", "scripts/test-timeline-read-only-boundary.ts"] },
+  /** STEP8 spine goldens — Intent · ToolId · Solo Stage · scout→refine · memory */
+  { id: "cursor-os-spine", command: "npx", args: ["tsx", "scripts/test-cursor-os-spine.ts"] },
+  { id: "rule-engine", command: "npx", args: ["tsx", "scripts/test-rule-engine.ts"] },
+  { id: "solo-stage", command: "npx", args: ["tsx", "scripts/test-enter-context-solo-stage.ts"] },
+  { id: "scout-chip-stage-refine", command: "npx", args: ["tsx", "scripts/test-scout-chip-stage-refine.ts"] },
+  { id: "personal-memory-step5", command: "npx", args: ["tsx", "scripts/test-personal-memory-step5.ts"] },
+  { id: "short-tool-plan", command: "npx", args: ["tsx", "scripts/test-short-tool-plan.ts"] },
+  { id: "compose-focus-storm-guards", command: "npx", args: ["tsx", "scripts/test-compose-focus-storm-guards.ts"] },
+  { id: "merge-lodging-inventory", command: "npx", args: ["tsx", "scripts/test-merge-lodging-inventory-rows.ts"] },
 ];
 
 const EXTENDED_STEPS = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { Blend, X } from "lucide-react";
 import type { RefObject } from "react";
 import { toast } from "sonner";
@@ -294,7 +294,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       if (session && session.contextEventId !== event.id) {
         return;
       }
-      setLensSession(session);
+      startTransition(() => {
+        setLensSession(session);
+      });
     });
   }, [event, open]);
 
@@ -447,7 +449,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       if (isGlobeComposeInputFocused()) {
         return;
       }
-      setRuntime(next);
+      startTransition(() => {
+        setRuntime(next);
+      });
     });
   }, []);
 
@@ -456,7 +460,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       if (isGlobeComposeInputFocused()) {
         return;
       }
-      setAgentSession(next);
+      startTransition(() => {
+        setAgentSession(next);
+      });
     });
   }, []);
 

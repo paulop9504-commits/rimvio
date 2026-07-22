@@ -2,6 +2,11 @@
  * Optional live Maps / LiteAPI search — falls back to deterministic runPlaceSearch.
  */
 
+import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import {
+  lodgingInventoryHasLivePhotos,
+  mergeLodgingInventoryRows,
+} from "@/lib/globe/context-hub/merge-lodging-inventory-rows";
 import { isLiteApiConfigured } from "@/lib/globe/context-hub/providers/liteapi/liteapi-config";
 import { searchLiteApiLodgingNearby } from "@/lib/globe/context-hub/providers/liteapi/search-liteapi-lodging-nearby";
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
@@ -76,7 +81,9 @@ async function liveLodgingHits(
     return null;
   }
   const limit = input.limit ?? 4;
+  const maxResults = Math.max(limit, 5);
 
+  let liteRows: ContextLodgingInventoryRow[] = [];
   if (isLiteApiConfigured()) {
     try {
       const guestCount =
@@ -85,51 +92,64 @@ async function liveLodgingHits(
         input.guestCount > 0
           ? Math.round(input.guestCount)
           : 2;
-      const rows = await searchLiteApiLodgingNearby({
-        lat,
-        lng,
-        maxResults: Math.max(limit, 5),
-        guestCount,
-        checkInIso: input.checkInIso,
-        checkOutIso: input.checkOutIso,
-      });
-      if (rows.length > 0) {
-        const hits = mapLodgingInventoryToPlaceHits({
-          rows,
-          query: input.query,
-          anchorLat: lat,
-          anchorLng: lng,
-          limit,
-        });
-        if (hits.length > 0) {
-          return hits;
-        }
-      }
+      liteRows = [
+        ...(await searchLiteApiLodgingNearby({
+          lat,
+          lng,
+          maxResults,
+          guestCount,
+          checkInIso: input.checkInIso,
+          checkOutIso: input.checkOutIso,
+        })),
+      ];
     } catch {
-      // fall through to Google Places
+      liteRows = [];
+    }
+  }
+
+  let placesRows: ContextLodgingInventoryRow[] = [];
+  const needsPlaces =
+    liteRows.length === 0 || !lodgingInventoryHasLivePhotos(liteRows);
+  if (isGooglePlacesConfigured() && needsPlaces) {
+    try {
+      placesRows = [
+        ...(await fetchPlacesLodgingNearby({
+          lat,
+          lng,
+          maxResults,
+          keyword: input.query?.trim() || null,
+        })),
+      ];
+    } catch {
+      placesRows = [];
+    }
+  }
+
+  const rows =
+    liteRows.length > 0 && placesRows.length > 0
+      ? mergeLodgingInventoryRows({
+          primary: liteRows,
+          secondary: placesRows,
+          maxResults,
+        })
+      : liteRows.length > 0
+        ? liteRows
+        : placesRows;
+
+  if (rows.length > 0) {
+    const hits = mapLodgingInventoryToPlaceHits({
+      rows,
+      query: input.query,
+      anchorLat: lat,
+      anchorLng: lng,
+      limit,
+    });
+    if (hits.length > 0) {
+      return hits;
     }
   }
 
   if (isGooglePlacesConfigured()) {
-    try {
-      const rows = await fetchPlacesLodgingNearby({
-        lat,
-        lng,
-        maxResults: limit,
-      });
-      if (rows.length > 0) {
-        return mapLodgingInventoryToPlaceHits({
-          rows,
-          query: input.query,
-          anchorLat: lat,
-          anchorLng: lng,
-          limit,
-        });
-      }
-    } catch {
-      // fall through
-    }
-
     try {
       const found = await findPlacesByName({
         placeName: mapsTextQuery(input),

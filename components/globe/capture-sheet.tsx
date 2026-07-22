@@ -443,6 +443,13 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                   scope,
                 },
               ]);
+              /** STEP5 — top-k summon → Solo Stage via ask bridge focus. */
+              if (isPersonal && result.featuredHitId?.trim()) {
+                if (!onGlobeHome) {
+                  router.push("/");
+                }
+                requestGlobeAskBridgeFocus(result.featuredHitId.trim(), "bridge");
+              }
             },
             onExternalContextAsk: (result) => {
               setMessages((prev) =>
@@ -492,6 +499,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     liveLocation?.lat,
     liveLocation?.lng,
     onGlobeHome,
+    router,
     showComposerHint,
   ]);
 

@@ -146,7 +146,8 @@ export type ActionPlanKind =
   | "search_payment"
   | "filter_navigate"
   | "compare_filter"
-  | "move_share";
+  | "move_share"
+  | "short_tool";
 
 /**
  * True when utterance needs a multi-step plan (not a single Graph Command).
