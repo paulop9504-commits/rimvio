@@ -4529,9 +4529,26 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   border: none;
   background: transparent;
   padding: 0;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -100%) scale(var(--globe-resource-marker-scale, 1));
+  transform-origin: center bottom;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+/* Solo Stage — Resources lighter than Context pins (후보 ≠ 프로젝트). */
+[data-rimvio-globe-hub][data-globe-solo-stage="true"] .rimvio-globe-lodging-marker,
+[data-rimvio-globe-hub][data-globe-solo-stage="true"] .rimvio-globe-eatery-marker {
+  --globe-resource-marker-scale: 0.72;
+  opacity: 0.78;
+}
+
+[data-rimvio-globe-hub][data-globe-solo-stage="true"] .rimvio-globe-3d-pin {
+  z-index: 2;
+}
+
+[data-rimvio-globe-hub][data-globe-solo-stage="true"] .rimvio-globe-lodging-marker,
+[data-rimvio-globe-hub][data-globe-solo-stage="true"] .rimvio-globe-eatery-marker {
+  z-index: 1;
 }
 
 .rimvio-globe-lodging-marker__operation-signal {

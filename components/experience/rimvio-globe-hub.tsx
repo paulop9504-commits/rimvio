@@ -89,6 +89,7 @@ import {
   readGlobeProjectionLayerPolicy,
   subscribeGlobeProjectionLayerPolicy,
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
+import { isGlobeSoloStagePolicy } from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
 import {
   filterContextConditionMarkersByPlaceIds,
   filterHubMarkersByProjectionPolicy,
@@ -498,6 +499,7 @@ const RimvioGlobeHubBody = memo(
       void layerPolicyRevision;
       return readGlobeProjectionLayerPolicy();
     }, [layerPolicyRevision]);
+    const soloStageActive = isGlobeSoloStagePolicy(layerPolicy);
     const gatedDiscoveryOverlay = useMemo(() => {
       if (!contextConditionDiscoveryOverlay) {
         return null;
@@ -1039,6 +1041,7 @@ const RimvioGlobeHubBody = memo(
         data-rimvio-globe-hub
         data-rimvio-globe-surface="globe3d"
         data-rimvio-globe-layer-mode={layerMode}
+        data-globe-solo-stage={soloStageActive ? "true" : "false"}
       >
         <RimvioGlobe3DClient
           ref={innerGlobeRef}

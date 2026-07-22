@@ -5,6 +5,7 @@ import {
   enterContextSoloStage,
   exitContextSoloStage,
   isContextSoloStageActive,
+  isGlobeSoloStagePolicy,
 } from "../lib/globe/spatial-semantic/enter-context-solo-stage";
 import {
   publishFocusGlobeProjection,
@@ -45,5 +46,9 @@ assert.equal(
 exitContextSoloStage({ onlyIfContextEventId: "trip-tokyo" });
 assert.equal(readGlobeProjectionLayerPolicy().mode, "overview");
 assert.equal(isContextSoloStageActive(), false);
+assert.equal(isGlobeSoloStagePolicy(), false);
+
+enterContextSoloStage("trip-osaka");
+assert.equal(isGlobeSoloStagePolicy(), true);
 
 console.log("test-enter-context-solo-stage: ok");

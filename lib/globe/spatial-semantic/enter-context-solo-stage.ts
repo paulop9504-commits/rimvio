@@ -27,6 +27,15 @@ export function enterContextSoloStage(contextEventId: string): void {
   publishContextOnlyGlobeProjection(id);
 }
 
+/** True when Globe is in a non-overview projection for a context. */
+export function isGlobeSoloStagePolicy(
+  policy: ReturnType<typeof readGlobeProjectionLayerPolicy> = readGlobeProjectionLayerPolicy(),
+): boolean {
+  return (
+    policy.mode !== "overview" && Boolean(policy.activeContextEventId?.trim())
+  );
+}
+
 /** Leave Solo Stage → Overview (many context dots again). */
 export function exitContextSoloStage(options?: {
   onlyIfContextEventId?: string | null;

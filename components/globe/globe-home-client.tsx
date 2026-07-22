@@ -4044,6 +4044,10 @@ function GlobeHomeBody() {
     closeGlobeContextConditionPanel();
     clearGlobeContextAgent();
     resetContextAgentRuntime();
+    // Panel-only dismiss keeps Solo Stage when a context pin is still selected.
+    if (!activeClusterRef.current?.eventId?.trim()) {
+      exitContextSoloStage();
+    }
   }, []);
 
   const openGlobeChat = useCallback(() => {

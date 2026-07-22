@@ -35,6 +35,7 @@ export {
   enterContextSoloStage,
   exitContextSoloStage,
   isContextSoloStageActive,
+  isGlobeSoloStagePolicy,
 } from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
 export type {
   GlobeProjectionLayerMode,
