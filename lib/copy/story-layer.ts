@@ -6,8 +6,13 @@
 /** L0 — keynote · App Store · pitch. No tech words. */
 export const STORY_L0 = {
   personal: {
-    en: "You were here. And it mattered.",
-    ko: "당신은 이곳에 있었고, 그것은 의미가 있었습니다.",
+    en: "Everything starts with context.",
+    ko: "모든 것은 맥락에서 시작합니다.",
+  },
+  /** Empty Globe first paint — second line under personal. */
+  livingGlobe: {
+    en: "Plan, remember, and execute your next step on a living globe.",
+    ko: "살아 있는 지구 위에서 다음을 계획하고, 기억하고, 실행하세요.",
   },
   external: {
     en: "Every place has a story. Now, it can remember yours.",

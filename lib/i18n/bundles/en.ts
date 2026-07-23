@@ -134,10 +134,36 @@ export const copyEn: Copy = {
     stackPickerSub: (count: number) => `${count} · pick one`,
     stackPickerShowAll: (overflow: number) => `${overflow} more · show all`,
     hubEmpty: "Traces show up here as they stack",
-    emptyFirstTitle: "Start with you were here",
-    emptyFirstBody: "As photos and time with friends stack, context resurfaces when it fits",
-    emptyFirstCta: "Leave first trace",
+    emptyFirstTitle: "Everything starts with context.",
+    emptyFirstBody:
+      "Plan, remember, and execute your next step on a living globe.",
+    emptyFirstCta: "Start with context",
     emptyFirstPeersLink: "Add a friend",
+    firstDemo: {
+      loopHint: "One loop on a living globe",
+      stages: [
+        {
+          id: "plan",
+          label: "Travel plan",
+          caption: "Your itinerary takes place on the globe.",
+        },
+        {
+          id: "discover",
+          label: "Place discovery",
+          caption: "Places that fit the context rise as pins.",
+        },
+        {
+          id: "execute",
+          label: "AI execute",
+          caption: "Agents prepare compare & booking — you Commit.",
+        },
+        {
+          id: "recall",
+          label: "Recall",
+          caption: "When it fits again, Recall continues the next step.",
+        },
+      ],
+    },
     guide: {
       eyebrow: "Get started",
       title: "Friends and places you lived",

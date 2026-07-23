@@ -149,6 +149,7 @@ import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
 import { dispatchOpenCaptureSheet } from "@/lib/nav/open-capture-sheet-bridge";
 import { RimvioStarterExampleChips } from "@/components/rimvio-starter-example-chips";
+import { GlobeContextFirstDemo } from "@/components/globe/globe-context-first-demo";
 import { cn } from "@/lib/utils";
 import { projectGhostEateryGlobeMarkers } from "@/lib/situation-projection/project-ghost-eatery-globe-markers";
 import {
@@ -1199,15 +1200,16 @@ const RimvioGlobeHubBody = memo(
             </p>
           ) : (
             <div
-              className="absolute inset-x-4 bottom-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-10 flex flex-col items-center gap-2.5 rounded-[1.35rem] bg-white/95 px-5 py-4 text-center shadow-lg ring-1 ring-[#0220470a] backdrop-blur-md"
+              className="absolute inset-x-4 bottom-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-10 flex max-h-[min(72dvh,34rem)] flex-col items-center gap-2.5 overflow-y-auto rounded-[1.35rem] bg-white/95 px-5 py-4 text-center shadow-lg ring-1 ring-[#0220470a] backdrop-blur-md"
               data-rimvio-globe-hub-empty
             >
-              <p className="text-[15px] font-semibold text-[#191f28]">
+              <p className="text-[17px] font-semibold tracking-tight text-[#191f28]">
                 {copy.globe.emptyFirstTitle}
               </p>
-              <p className="max-w-[16rem] text-[13px] leading-relaxed text-[#6b7684]">
+              <p className="max-w-[18rem] text-[13px] leading-relaxed text-[#6b7684]">
                 {copy.globe.emptyFirstBody}
               </p>
+              <GlobeContextFirstDemo className="mt-1" />
               <button
                 type="button"
                 onClick={() => dispatchOpenCaptureSheet()}

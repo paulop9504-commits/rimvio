@@ -141,10 +141,36 @@ export const copy = {
     stackPickerSub: (count: number) => `${count}개 · 하나를 골라보세요`,
     stackPickerShowAll: (overflow: number) => `외 ${overflow}개 · 전체 보기`,
     hubEmpty: "흔적이 쌓이면 여기에 나타나요",
-    emptyFirstTitle: "그때 거기, 여기서 시작해요",
-    emptyFirstBody: "사진이나 친구와의 시간이 쌓이면, 맞을 때 다시 떠올라요",
-    emptyFirstCta: "첫 흔적 남기기",
+    emptyFirstTitle: "Everything starts with context.",
+    emptyFirstBody:
+      "Plan, remember, and execute your next step on a living globe.",
+    emptyFirstCta: "맥락으로 시작",
     emptyFirstPeersLink: "친구 추가하기",
+    firstDemo: {
+      loopHint: "한 Globe에서 이어지는 흐름",
+      stages: [
+        {
+          id: "plan",
+          label: "여행 계획",
+          caption: "일정이 지구 위에 자리 잡습니다.",
+        },
+        {
+          id: "discover",
+          label: "장소 탐색",
+          caption: "맥락에 맞는 장소가 핀으로 떠오릅니다.",
+        },
+        {
+          id: "execute",
+          label: "AI 실행",
+          caption: "에이전트가 비교·예약을 준비하고, Commit은 당신.",
+        },
+        {
+          id: "recall",
+          label: "기억 · Recall",
+          caption: "맞을 때 다시 — Recall이 다음을 이어줍니다.",
+        },
+      ],
+    },
     guide: {
       eyebrow: "시작하기",
       title: "친구와 그때 거기",
