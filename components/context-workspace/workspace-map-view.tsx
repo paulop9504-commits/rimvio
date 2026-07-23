@@ -16,6 +16,7 @@ import {
 } from "@/lib/context-workspace/map/workspace-map-provider";
 import { applyTossWorkspaceMapCanvas } from "@/lib/context-workspace/map/apply-toss-workspace-map-canvas";
 import { buildTossWorkspaceMarkerEl } from "@/lib/context-workspace/map/build-toss-workspace-marker-el";
+import { TOSS_WORKSPACE_MAP_CANVAS } from "@/lib/context-workspace/map/toss-workspace-map-canvas-theme";
 import { GLOBE_VECTOR_MAP_STYLE_URL } from "@/lib/globe/globe-vector-map-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
@@ -86,7 +87,7 @@ function PlaceholderPinMap({
       <div
         className="flex h-full items-center justify-center text-[12px]"
         style={{
-          background: GLOBE_TOSS_THEME.shellBg,
+          background: TOSS_WORKSPACE_MAP_CANVAS.background,
           color: GLOBE_TOSS_THEME.inkMuted,
         }}
       >

@@ -1,5 +1,5 @@
 /**
- * Toss-style Workspace map markers — white chips, blue when selected.
+ * Toss-style Workspace map markers — clean white / blue pills.
  */
 
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
@@ -29,7 +29,7 @@ export function buildTossWorkspaceMarkerEl(input: {
     "display:flex",
     "flex-direction:column",
     "align-items:center",
-    "gap:4px",
+    "gap:3px",
     "border:0",
     "background:transparent",
     "padding:0",
@@ -40,35 +40,44 @@ export function buildTossWorkspaceMarkerEl(input: {
   const chip = document.createElement("span");
   const price = pin.amountLabel?.trim() || null;
   const pinned = Boolean(pin.bookmarked);
+  const rating =
+    pin.rating != null && Number.isFinite(pin.rating)
+      ? pin.rating.toFixed(1)
+      : null;
   const label = compact
-    ? `★${pin.rating != null ? pin.rating.toFixed(1) : "—"}`
+    ? `★${rating ?? "—"}`
     : selected
-      ? shortTitle(pin.title, 12)
+      ? shortTitle(pin.title, 11)
       : pinned
-        ? `📌 ${shortTitle(pin.title, 8)}`
-        : `★${pin.rating != null ? pin.rating.toFixed(1) : String(index + 1)}`;
+        ? shortTitle(pin.title, 9)
+        : `★${rating ?? String(index + 1)}`;
 
   chip.textContent = label;
   chip.style.cssText = [
     "display:inline-flex",
     "align-items:center",
     "justify-content:center",
+    "gap:3px",
     "min-width:28px",
-    "height:28px",
-    compact ? "padding:0 8px" : selected || pinned ? "padding:0 10px" : "padding:0 2px",
+    "height:26px",
+    compact
+      ? "padding:0 8px"
+      : selected || pinned
+        ? "padding:0 10px"
+        : "padding:0 8px",
     "border-radius:999px",
     "font-size:11px",
     "font-weight:700",
-    "letter-spacing:-0.02em",
+    "letter-spacing:-0.03em",
     "line-height:1",
-    "box-shadow:0 2px 8px rgba(25,31,40,0.12), 0 0 0 1px rgba(25,31,40,0.04)",
+    "box-shadow:0 1px 3px rgba(25,31,40,0.08), 0 0 0 1px rgba(25,31,40,0.04)",
     selected
-      ? `background:${GLOBE_TOSS_THEME.blue};color:#fff`
+      ? `background:${GLOBE_TOSS_THEME.blue};color:#fff;box-shadow:0 2px 8px rgba(49,130,246,0.35)`
       : pinned
         ? "background:#191f28;color:#fff"
-        : `background:#fff;color:${GLOBE_TOSS_THEME.ink}`,
+        : "background:#fff;color:#191f28",
     "transition:transform 120ms ease, box-shadow 120ms ease",
-    selected || pinned ? "transform:scale(1.06)" : "",
+    selected || pinned ? "transform:scale(1.04)" : "",
   ]
     .filter(Boolean)
     .join(";");
@@ -82,13 +91,14 @@ export function buildTossWorkspaceMarkerEl(input: {
       "display:inline-flex",
       "align-items:center",
       "justify-content:center",
-      "padding:3px 8px",
+      "padding:2px 7px",
       "border-radius:999px",
       "font-size:10px",
       "font-weight:650",
-      `color:${GLOBE_TOSS_THEME.ink}`,
+      "letter-spacing:-0.02em",
+      "color:#191f28",
       "background:rgba(255,255,255,0.96)",
-      "box-shadow:0 1px 4px rgba(25,31,40,0.1)",
+      "box-shadow:0 1px 3px rgba(25,31,40,0.08)",
       "white-space:nowrap",
     ].join(";");
     el.appendChild(priceChip);

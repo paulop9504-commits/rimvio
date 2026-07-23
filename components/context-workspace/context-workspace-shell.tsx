@@ -208,7 +208,7 @@ export function ContextWorkspaceShell({
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-0 z-[46] bg-[#f2f4f6]",
+        "pointer-events-auto absolute inset-0 z-[46] bg-[#f7f8fa]",
         className,
       )}
       role="dialog"
