@@ -26,13 +26,13 @@ export const STORY_L0 = {
     ko: "그때 거기, 함께한 사람 — 맞을 때 다시.",
   },
   memoryOs: {
-    en: "Not forgotten links — lived context that comes back.",
-    ko: "잊어버린 링크가 아니라, 살아본 맥락이 다시 떠오르는 OS",
+    en: "Lived ontology — agents prepare the next move.",
+    ko: "살아본 온톨로지 위에서, 에이전트가 다음을 준비한다",
   },
-  /** Product mission — synaptic connect → re-execute (not passive recall). */
+  /** Product mission — ontology SSOT + agentic prep → human Commit. */
   mission: {
-    en: "When context connects, Rimvio runs it again.",
-    ko: "맥락이 연결되면, Rimvio가 다시 실행한다.",
+    en: "Ontology holds context. Agents prepare. You Commit.",
+    ko: "온톨로지가 맥락을 붙잡고, 에이전트가 준비한다 — Commit은 당신.",
   },
 } as const;
 
@@ -168,7 +168,7 @@ export function buildStoryLayerPromptHeader(surface: "globe" | "feed" | "peers" 
     `- L0: ${l0}`,
     `- Mission: ${STORY_L0.mission.ko} / ${STORY_L0.mission.en}`,
     `- L1 verbs: ${Object.values(STORY_L1_VERBS).join(" · ")}`,
-    `- Synaptic layer: context edges strengthen on use; recall triggers @ re-execution — docs/RIMVIO_SYNAPTIC_LAYER.md`,
+    `- Synaptic / ontology layer: lived context as graph SSOT; agentic tools prepare Diff — docs/RIMVIO_SYNAPTIC_LAYER.md`,
     `- Never say in UI: ${STORY_FORBIDDEN_USER_FACING.slice(0, 6).join(", ")}…`,
     `- Implement as L3 (Globe): PinEntity projection + EventCandidate truth; no Post model, no like counts.`,
     `- Hub · Resource (locked): docs/GLOBE_HUB_RESOURCE.md — Hub factory/transactions; Resource rank → MAIN slot.`,
