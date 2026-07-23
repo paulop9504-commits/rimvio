@@ -11,6 +11,7 @@ import type {
   TravelBudgetBand,
   TravelLodgingPriority,
 } from "@/lib/situation-projection/travel-brain-personalization";
+import { resolveLodgingWhyIntent } from "@/lib/globe/lodging/resolve-lodging-why-intent";
 
 export type LodgingRowDimensionScores = Readonly<
   Record<LodgingRankDimension, number>
@@ -67,6 +68,11 @@ export function inferLodgingPriorityFromContext(
   }
   if (context.title.searchBias.comfortBias === "comfort") {
     return "family";
+  }
+  /** Stay-type default why (캡슐 → 가성비 등) when no explicit cue. */
+  const why = resolveLodgingWhyIntent({ utterance: blob });
+  if (why.stayType) {
+    return why.lodgingPriority;
   }
   return null;
 }

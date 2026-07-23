@@ -51,17 +51,33 @@ export function isGlobeContextVideoScreenVisible(
   );
 }
 
+/**
+ * globe.gl often returns `{0,0}` before the pin is projected — treat as invalid
+ * (same sentinel as map callout offsets) so overlays do not pin to top-left.
+ */
+export function isValidGlobeScreenAnchor(
+  screen: { x: number; y: number } | null | undefined,
+): screen is { x: number; y: number } {
+  if (
+    !screen ||
+    !Number.isFinite(screen.x) ||
+    !Number.isFinite(screen.y)
+  ) {
+    return false;
+  }
+  if (screen.x === 0 && screen.y === 0) {
+    return false;
+  }
+  return true;
+}
+
 export function resolveGlobeContextVideoScreenLayout(input: {
   screen: { x: number; y: number } | null;
   altitude: number | null | undefined;
   viewportWidth: number;
   viewportHeight: number;
 }): GlobeContextVideoScreenLayout | null {
-  if (
-    !input.screen ||
-    !Number.isFinite(input.screen.x) ||
-    !Number.isFinite(input.screen.y)
-  ) {
+  if (!isValidGlobeScreenAnchor(input.screen)) {
     return null;
   }
 

@@ -38,7 +38,22 @@ function testOffScreenHidden() {
   );
 }
 
+function testRejectsOriginSentinel() {
+  const layout = resolveGlobeContextVideoScreenLayout({
+    screen: { x: 0, y: 0 },
+    altitude: GLOBE_ALTITUDE.neighborhood,
+    viewportWidth: 390,
+    viewportHeight: 844,
+  });
+  assert.equal(
+    layout,
+    null,
+    "globe.gl {0,0} must not pin ontology/overlays to top-left",
+  );
+}
+
 testScaleShrinksOnZoomOut();
 testWidthScalesWithViewport();
 testOffScreenHidden();
+testRejectsOriginSentinel();
 console.log("test-globe-context-video-layout: ok");

@@ -76,6 +76,21 @@ export {
 } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
 export type { ScoredLodgingRecommendation } from "@/lib/globe/lodging/score-lodging-recommendations";
 export { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
+export type {
+  LodgingWhyIntent,
+  LodgingWhyIntentResolution,
+  LodgingStayWhyDefault,
+} from "@/lib/globe/lodging/resolve-lodging-why-intent";
+export {
+  LODGING_STAY_WHY_DEFAULTS,
+  LODGING_WHY_FALLBACK,
+  assertLodgingStayWhyCoverage,
+  defaultWhyForStayType,
+  parseLodgingWhyFromUtterance,
+  priorityFromWhy,
+  resolveLodgingWhyIntent,
+  reviewOrderForWhy,
+} from "@/lib/globe/lodging/resolve-lodging-why-intent";
 export {
   LODGING_STAY_BRANCHES,
   LODGING_STAY_TYPES,

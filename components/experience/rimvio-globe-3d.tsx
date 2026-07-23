@@ -642,7 +642,8 @@ export const RimvioGlobe3D = memo(
         if (
           !coords ||
           !Number.isFinite(coords.x) ||
-          !Number.isFinite(coords.y)
+          !Number.isFinite(coords.y) ||
+          (coords.x === 0 && coords.y === 0)
         ) {
           return null;
         }

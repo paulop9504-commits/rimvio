@@ -53,6 +53,7 @@ import type {
   TravelBudgetBand,
   TravelLodgingPriority,
 } from "@/lib/situation-projection/travel-brain-personalization";
+import { resolveLodgingWhyIntent } from "@/lib/globe/lodging/resolve-lodging-why-intent";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { scoreValueConsensusCandidate } from "@/lib/search-engine/score-value-consensus";
 
@@ -213,9 +214,19 @@ export function scoreLodgingRecommendations(input: {
     ? describeLodgingRankTravelBrainAxes(travelBrain)
     : null;
   const contextPriority = inferLodgingPriorityFromContext(input.context);
+  const whyIntent = resolveLodgingWhyIntent({
+    utterance: [
+      input.context?.input.message,
+      input.context?.title.rawTitle,
+      input.context?.title.normalizedTitle,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  });
   const lodgingPriority: TravelLodgingPriority | null =
     brainAxes?.lodgingPriority ??
     contextPriority ??
+    whyIntent.lodgingPriority ??
     ((findLatestPersonaSignal("travel.lodging_priority")?.value as
       | TravelLodgingPriority
       | undefined) ??
@@ -227,9 +238,22 @@ export function scoreLodgingRecommendations(input: {
       | TravelBudgetBand
       | undefined) ??
       null);
+  const whyBudgetBand: TravelBudgetBand | null =
+    whyIntent.primary === "value" || whyIntent.primary === "price"
+      ? "value"
+      : budgetBand;
   if (!event && contextPriority && profile.mode === "auto") {
     profile = applyLodgingRankContextHints(profile, {
       lodgingPriority: contextPriority,
+    });
+  }
+  if (
+    profile.mode === "auto" &&
+    (whyIntent.stayType != null || whyIntent.primary !== "location")
+  ) {
+    profile = applyLodgingRankContextHints(profile, {
+      lodgingPriority: lodgingPriority ?? whyIntent.lodgingPriority,
+      budgetBand: whyBudgetBand,
     });
   }
   if (input.fieldRankHints) {
@@ -240,7 +264,7 @@ export function scoreLodgingRecommendations(input: {
     trajectory.dominant_cluster === "travel" && trajectory.strength >= 0.15;
   const valueLeaning = isLodgingValueLeaning({
     mode: profile.mode,
-    budgetBand,
+    budgetBand: whyBudgetBand,
     lodgingPriority,
     priceWeight: profile.weights.price,
   });
@@ -261,7 +285,7 @@ export function scoreLodgingRecommendations(input: {
       lat,
       lng,
       lodgingPriority,
-      budgetBand,
+      budgetBand: whyBudgetBand,
       context: input.context,
       valueForMoney: valueLeaning,
       cohortMedianPriceKrw,
@@ -307,7 +331,7 @@ export function scoreLodgingRecommendations(input: {
             priceKrw: row.priceKrw ?? null,
             cohortMedianPriceKrw,
             lodgingPriority,
-            budgetBand,
+            budgetBand: whyBudgetBand,
             rankMode: profile.mode,
             overseas,
           })
@@ -338,6 +362,9 @@ export function scoreLodgingRecommendations(input: {
       score,
       reasonKo,
       matchReasons: [
+        ...(whyIntent.stayType != null || whyIntent.primary !== "location"
+          ? [whyIntent.reasonKo]
+          : []),
         ...businessBias.reasons,
         ...titleReasons,
         ...(verifiedLine ? [verifiedLine] : []),

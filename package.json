@@ -145,6 +145,7 @@
     "test:intent-relationship": "npx tsx scripts/test-intent-relationship.ts",
     "test:context-anchor": "npx tsx scripts/test-context-anchor-system.ts",
     "test:lodging-stay-types": "npx tsx scripts/test-lodging-stay-types.ts",
+    "test:lodging-why-intent": "npx tsx scripts/test-lodging-why-intent.ts",
     "test:resolution": "npx tsx scripts/test-resolution-pipeline.ts",
     "test:reality-graph": "npx tsx scripts/test-reality-graph.ts",
     "test:location-engine": "npx tsx scripts/test-location-engine.ts",

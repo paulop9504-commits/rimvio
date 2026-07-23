@@ -13,6 +13,7 @@ import type {
   FeedEntityReviewFocusWire,
   FeedEntitySlotWire,
 } from "@/lib/globe/feed-entity/types";
+import { resolveLodgingWhyIntent } from "@/lib/globe/lodging/resolve-lodging-why-intent";
 import type { PlaceReviewKind } from "@/lib/globe/place-review-video";
 import type { GlobeResourceReelItem } from "@/lib/globe/resource-reel/types";
 import { copy } from "@/lib/copy/human-ko";
@@ -252,12 +253,21 @@ export function buildFeedEntityProfile(input: {
     (filledCount / Math.max(1, prioritySlots.length)) * 100,
   );
 
-  const reviewFocus: FeedEntityReviewFocusWire[] = schema.reviewCategories.map(
-    (categoryId) => ({
+  const reviewFocus: FeedEntityReviewFocusWire[] = (() => {
+    const why = resolveLodgingWhyIntent({
+      utterance: [input.triggerMessage, input.userIntentKo].filter(Boolean).join(" "),
+    });
+    const order =
+      entityKind === "hotel" ? why.reviewFocusOrder : schema.reviewCategories;
+    const preferred = order.filter((id) =>
+      schema.reviewCategories.includes(id),
+    );
+    const rest = schema.reviewCategories.filter((id) => !preferred.includes(id));
+    return [...preferred, ...rest].map((categoryId) => ({
       categoryId,
       labelKo: reviewCategoryLabelKo(categoryId),
-    }),
-  );
+    }));
+  })();
 
   return {
     entityKind,
