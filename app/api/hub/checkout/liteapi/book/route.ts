@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuthUserId } from "@/lib/auth/session";
 import { bookLiteApiRate } from "@/lib/globe/context-hub/providers/liteapi/book-liteapi-rate";
 import type { LiteApiGuestPayload } from "@/lib/globe/context-hub/providers/liteapi/build-liteapi-guest-payload";
 import { isLiteApiConfigured } from "@/lib/globe/context-hub/providers/liteapi";
@@ -8,6 +9,11 @@ export const dynamic = "force-dynamic";
 
 /** LiteAPI book — after Payment SDK success on return URL. */
 export async function POST(request: NextRequest) {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "login_required" }, { status: 401 });
+  }
+
   if (!isLiteApiConfigured()) {
     return NextResponse.json({ error: "liteapi_not_configured" }, { status: 503 });
   }

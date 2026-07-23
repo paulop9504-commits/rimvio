@@ -54,6 +54,12 @@ export type GraphCommand =
       readonly query: string;
       readonly domain: GraphEntityDomain;
       readonly anchorRef?: GraphEntityRef | null;
+      /** Trip frame — day index (1-based) for Globe Diff badge. */
+      readonly planDayIndex?: number | null;
+      /** Trip frame — stay nights from 「N박」. */
+      readonly planNights?: number | null;
+      /** Destination city/region for map anchor (e.g. 오사카). */
+      readonly destinationLabelKo?: string | null;
     }
   | {
       readonly op: "filter";

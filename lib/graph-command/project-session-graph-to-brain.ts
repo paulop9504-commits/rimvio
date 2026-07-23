@@ -35,6 +35,7 @@ export function projectSessionGraphToBrainCandidates(
 ): readonly BrainSurfaceProjectionCandidate[] {
   const out: BrainSurfaceProjectionCandidate[] = [];
   let order = 40;
+  const mainId = graph.selectionIds[0] ?? null;
   for (const node of graph.nodes) {
     if (node.kind === "compare" || node.kind === "group" || node.kind === "note") {
       continue;
@@ -54,12 +55,30 @@ export function projectSessionGraphToBrainCandidates(
         ? "lodging"
         : node.kind === "eatery"
           ? "eatery"
-          : "trace_place";
-    const solid = node.pinned || node.alwaysVisible;
+          : node.kind === "anchor"
+            ? "trace_place"
+            : "trace_place";
+    const solid = node.pinned || node.alwaysVisible || node.kind === "anchor";
     const realityObjectId =
       typeof node.attrs.realityObjectId === "string"
         ? node.attrs.realityObjectId.trim()
         : "";
+    const planDayIndex =
+      typeof node.attrs.planDayIndex === "number" && node.attrs.planDayIndex >= 1
+        ? node.attrs.planDayIndex
+        : null;
+    const isMain =
+      node.attrs.isMain === true ||
+      (mainId != null && node.id === mainId && node.kind !== "anchor");
+    const badgeLabelKo = solid
+      ? node.kind === "anchor"
+        ? "목적지"
+        : "고정"
+      : planDayIndex != null
+        ? `${planDayIndex}일차`
+        : isMain
+          ? "MAIN"
+          : "근처";
     out.push({
       id: `brain-surface:${graph.contextEventId}:gcmd:${node.id}`,
       eventId: graph.contextEventId,
@@ -71,17 +90,29 @@ export function projectSessionGraphToBrainCandidates(
       markerStyle: solid ? "solid" : "dashed",
       confidence: node.rating != null ? Math.min(0.95, node.rating / 5) : 0.7,
       confidenceLabelKo: node.rating != null ? `${node.rating}` : null,
-      inferenceLabelKo: solid ? "고정" : realityObjectId ? "후보" : "탐색",
+      inferenceLabelKo: solid
+        ? node.kind === "anchor"
+          ? "목적지"
+          : "고정"
+        : isMain
+          ? "MAIN"
+          : realityObjectId
+            ? "후보"
+            : "탐색",
       focusAffinityFamilies: [family, "trace_place", "info"],
       label: node.labelKo,
       previewTitle: node.labelKo,
       previewBody:
-        node.walkMinutes != null ? `도보 ${node.walkMinutes}분` : null,
+        planDayIndex != null
+          ? `${planDayIndex}일차`
+          : node.walkMinutes != null
+            ? `도보 ${node.walkMinutes}분`
+            : null,
       placeLabel: node.labelKo,
       lat: node.lat,
       lng: node.lng,
       accent: mapAccent(node.accent, family),
-      badgeLabelKo: solid ? "고정" : "근처",
+      badgeLabelKo,
       relationMemoKo: null,
       sourceLabelKo: realityObjectId ? "오브젝트" : "맥락",
       validityLabelKo: null,
@@ -92,7 +123,7 @@ export function projectSessionGraphToBrainCandidates(
       mapsUrl: null,
       searchQuery: node.labelKo,
       sourceGuideNodeId: realityObjectId || null,
-      revealOrder: order++,
+      revealOrder: isMain ? 1 : order++,
       virtualCandidate: true,
       memoCommitDraft: null,
     });

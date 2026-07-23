@@ -15,6 +15,16 @@ export {
   composeAmenityLookupQuery,
 } from "@/lib/tool-registry/amenity-lookup-cue";
 export {
+  BROWSE_EXTRACT_TOOL_ID,
+  BROWSE_EXTRACT_ALLOWLIST,
+  isBrowseExtractQuery,
+  isBrowseAllowlistedHost,
+  runBrowseExtract,
+  browseOffersToPlaceHits,
+  type BrowseExtractOffer,
+  type BrowseExtractResult,
+} from "@/lib/tool-registry/browse-extract";
+export {
   RIMVIO_TOOL_BUDGET_MS,
   withToolBudget,
   formatLookupEmptySummaryKo,

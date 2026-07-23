@@ -13,6 +13,7 @@ import {
 import type {
   GraphCommand,
   GraphCommandApplyResult,
+  GraphEntityDomain,
   GraphEntityRef,
   GraphPinAccent,
   SessionGraphEdge,
@@ -44,6 +45,8 @@ import {
 } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hub-action";
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
+import { resolveWorldGeoEntity } from "@/lib/reality-graph/resolve-world-geo";
+import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 
 function slug(label: string): string {
   return (
@@ -128,11 +131,13 @@ function resolveNode(
 function searchHitAttrs(
   hit: import("@/lib/search-engine/run-place-search").PlaceSearchHit,
   query: string,
+  extra?: Readonly<Record<string, string | number | boolean | null>>,
 ): Readonly<Record<string, string | number | boolean | null>> {
   const attrs: Record<string, string | number | boolean | null> = {
     query,
     searchId: hit.id,
     source: hit.source,
+    ...(extra ?? {}),
   };
   if (hit.id.startsWith("maps:")) {
     attrs.googlePlaceId = hit.id.slice("maps:".length);
@@ -152,21 +157,128 @@ function searchHitAttrs(
   return attrs;
 }
 
+function tripFrameAttrs(
+  command: Extract<GraphCommand, { op: "search_project" }>,
+  index: number,
+): Record<string, string | number | boolean | null> {
+  const attrs: Record<string, string | number | boolean | null> = {
+    isMain: index === 0,
+  };
+  if (command.planDayIndex != null && command.planDayIndex >= 1) {
+    attrs.planDayIndex = command.planDayIndex;
+  }
+  if (command.planNights != null && command.planNights >= 1) {
+    attrs.planNights = command.planNights;
+  }
+  if (command.destinationLabelKo?.trim()) {
+    attrs.destinationLabelKo = command.destinationLabelKo.trim();
+  }
+  return attrs;
+}
+
+function ensureDestinationAnchor(
+  graph: SessionGraphV1,
+  command: Extract<GraphCommand, { op: "search_project" }>,
+): SessionGraphV1 {
+  const label = command.destinationLabelKo?.trim();
+  if (!label) {
+    return graph;
+  }
+  const hit = resolveWorldGeoEntity(label);
+  if (!hit?.node.centroid) {
+    return graph;
+  }
+  const { lat, lng } = hit.node.centroid;
+  const anchorId = `gnode:${graph.contextEventId}:anchor:${slug(label)}`;
+  const existing = graph.nodes.find(
+    (n) =>
+      n.id === anchorId ||
+      (n.kind === "anchor" && n.labelKo === hit.node.labels.ko),
+  );
+  const anchorNode =
+    existing ??
+    makeNode({
+      id: anchorId,
+      labelKo: hit.node.labels.ko,
+      kind: "anchor",
+      lat,
+      lng,
+      alwaysVisible: true,
+      accent: "blue",
+      attrs: {
+        destinationLabelKo: hit.node.labels.ko,
+        ...(command.planNights != null ? { planNights: command.planNights } : {}),
+      },
+    });
+  const nodes = existing
+    ? graph.nodes.map((n) =>
+        n.id === existing.id
+          ? {
+              ...n,
+              lat,
+              lng,
+              attrs: {
+                ...n.attrs,
+                ...(command.planNights != null
+                  ? { planNights: command.planNights }
+                  : {}),
+              },
+            }
+          : n,
+      )
+    : [...graph.nodes, anchorNode];
+  return {
+    ...graph,
+    nodes,
+    anchorLat: lat,
+    anchorLng: lng,
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+function worldGeoSeedHitsForQuery(
+  query: string,
+  domain: GraphEntityDomain,
+): PlaceSearchHit[] {
+  const hit = resolveWorldGeoEntity(query);
+  if (!hit?.node.centroid || hit.node.kind !== "poi") {
+    return [];
+  }
+  return [
+    {
+      id: `seed:${hit.node.id}`,
+      labelKo: hit.node.labels.ko,
+      domain,
+      lat: hit.node.centroid.lat,
+      lng: hit.node.centroid.lng,
+      rating: null,
+      walkMinutes: null,
+      reservable: domain === "lodging" || domain === "poi",
+      localFavorite: false,
+      priceBand: null,
+      source: "seed",
+    },
+  ];
+}
+
 function mergeSearchProjectIntoGraph(
   graph: SessionGraphV1,
   command: Extract<GraphCommand, { op: "search_project" }>,
   hits: readonly import("@/lib/search-engine/run-place-search").PlaceSearchHit[],
 ): SessionGraphV1 {
+  const withDest = ensureDestinationAnchor(graph, command);
   const anchorNode = command.anchorRef
-    ? resolveNode(graph, command.anchorRef)
-    : null;
+    ? resolveNode(withDest, command.anchorRef)
+    : withDest.nodes.find((n) => n.kind === "anchor") ?? null;
   const parentId = anchorNode?.id ?? null;
   const newNodes: SessionGraphNode[] = hits.map((hit, index) => {
-    let nodeId = `gnode:${graph.contextEventId}:${command.domain}:${slug(hit.labelKo)}:${index}`;
+    let nodeId = `gnode:${withDest.contextEventId}:${command.domain}:${slug(hit.labelKo)}:${index}`;
     if (hit.id.startsWith("maps:") && hit.id.length > 10) {
-      nodeId = `gnode:${graph.contextEventId}:${command.domain}:${hit.id.slice("maps:".length).slice(0, 24)}`;
+      nodeId = `gnode:${withDest.contextEventId}:${command.domain}:${hit.id.slice("maps:".length).slice(0, 24)}`;
     } else if (hit.id.startsWith("liteapi:") && hit.id.length > 10) {
-      nodeId = `gnode:${graph.contextEventId}:${command.domain}:${hit.id.slice("liteapi:".length).slice(0, 24)}`;
+      nodeId = `gnode:${withDest.contextEventId}:${command.domain}:${hit.id.slice("liteapi:".length).slice(0, 24)}`;
+    } else if (hit.id.startsWith("seed:") && hit.id.length > 6) {
+      nodeId = `gnode:${withDest.contextEventId}:${command.domain}:${hit.id.slice("seed:".length).slice(0, 32)}`;
     }
     const raw = makeNode({
       id: nodeId,
@@ -180,11 +292,12 @@ function mergeSearchProjectIntoGraph(
       localFavorite: hit.localFavorite,
       priceBand: hit.priceBand,
       parentId,
-      attrs: searchHitAttrs(hit, command.query),
+      accent: index === 0 ? "orange" : "default",
+      attrs: searchHitAttrs(hit, command.query, tripFrameAttrs(command, index)),
     });
     // Tool result → Graph IR Diff node owns a Reality Object (session working set).
     return stampRealityObjectOntoSessionNode({
-      contextEventId: graph.contextEventId,
+      contextEventId: withDest.contextEventId,
       node: raw,
     });
   });
@@ -199,7 +312,7 @@ function mergeSearchProjectIntoGraph(
       }))
     : [];
 
-  const kept = graph.nodes.filter(
+  const kept = withDest.nodes.filter(
     (n) =>
       n.pinned ||
       n.alwaysVisible ||
@@ -212,10 +325,10 @@ function mergeSearchProjectIntoGraph(
   );
 
   return {
-    ...graph,
+    ...withDest,
     nodes: [...kept, ...newNodes],
     edges: [
-      ...graph.edges.filter((e) =>
+      ...withDest.edges.filter((e) =>
         kept.some((n) => n.id === e.toId || n.id === e.fromId),
       ),
       ...edges,
@@ -229,11 +342,12 @@ function applySearchProject(
   graph: SessionGraphV1,
   command: Extract<GraphCommand, { op: "search_project" }>,
 ): SessionGraphV1 {
+  const seeded = ensureDestinationAnchor(graph, command);
   const anchorNode = command.anchorRef
-    ? resolveNode(graph, command.anchorRef)
-    : null;
-  const baseLat = anchorNode?.lat ?? graph.anchorLat ?? 36.3621;
-  const baseLng = anchorNode?.lng ?? graph.anchorLng ?? 127.3446;
+    ? resolveNode(seeded, command.anchorRef)
+    : seeded.nodes.find((n) => n.kind === "anchor") ?? null;
+  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? 36.3621;
+  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? 127.3446;
 
   const toolId = resolveLookupToolId(
     command.domain === "eatery"
@@ -249,26 +363,40 @@ function applySearchProject(
     lat: baseLat,
     lng: baseLng,
     utterance: command.query,
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
   });
-  const hits = toolCandidatesToPlaceHits(
+  let hits = toolCandidatesToPlaceHits(
     command.domain,
     toolResult.candidates,
   );
-  const next = mergeSearchProjectIntoGraph(graph, command, hits);
+  if (hits.length === 0) {
+    hits = worldGeoSeedHitsForQuery(command.query, command.domain);
+  }
+  const next = mergeSearchProjectIntoGraph(seeded, command, hits);
   stampSearchToolResultsToDiff({
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
     domain: command.domain,
     query: command.query,
-    candidates: toolResult.candidates,
+    candidates: toolResult.candidates?.length
+      ? toolResult.candidates
+      : hits.map((h) => ({
+          id: h.id,
+          labelKo: h.labelKo,
+          lat: h.lat,
+          lng: h.lng,
+          source: h.source,
+        })),
     summaryKo: toolResult.summaryKo,
   });
   emitToolSearchHubAction({
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
     toolId,
     domain: command.domain,
     query: command.query,
-    candidateCount: toolResult.candidates?.length ?? 0,
+    candidateCount: Math.max(
+      toolResult.candidates?.length ?? 0,
+      hits.length,
+    ),
   });
   return next;
 }
@@ -277,11 +405,12 @@ async function applySearchProjectAsync(
   graph: SessionGraphV1,
   command: Extract<GraphCommand, { op: "search_project" }>,
 ): Promise<SessionGraphV1> {
+  const seeded = ensureDestinationAnchor(graph, command);
   const anchorNode = command.anchorRef
-    ? resolveNode(graph, command.anchorRef)
-    : null;
-  const baseLat = anchorNode?.lat ?? graph.anchorLat ?? 36.3621;
-  const baseLng = anchorNode?.lng ?? graph.anchorLng ?? 127.3446;
+    ? resolveNode(seeded, command.anchorRef)
+    : seeded.nodes.find((n) => n.kind === "anchor") ?? null;
+  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? 36.3621;
+  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? 127.3446;
 
   const toolId = resolveLookupToolId(
     command.domain === "eatery"
@@ -297,26 +426,40 @@ async function applySearchProjectAsync(
     lat: baseLat,
     lng: baseLng,
     utterance: command.query,
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
   });
-  const hits = toolCandidatesToPlaceHits(
+  let hits = toolCandidatesToPlaceHits(
     command.domain,
     toolResult.candidates,
   );
-  const next = mergeSearchProjectIntoGraph(graph, command, hits);
+  if (hits.length === 0) {
+    hits = worldGeoSeedHitsForQuery(command.query, command.domain);
+  }
+  const next = mergeSearchProjectIntoGraph(seeded, command, hits);
   stampSearchToolResultsToDiff({
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
     domain: command.domain,
     query: command.query,
-    candidates: toolResult.candidates,
+    candidates: toolResult.candidates?.length
+      ? toolResult.candidates
+      : hits.map((h) => ({
+          id: h.id,
+          labelKo: h.labelKo,
+          lat: h.lat,
+          lng: h.lng,
+          source: h.source,
+        })),
     summaryKo: toolResult.summaryKo,
   });
   emitToolSearchHubAction({
-    contextEventId: graph.contextEventId,
+    contextEventId: seeded.contextEventId,
     toolId,
     domain: command.domain,
     query: command.query,
-    candidateCount: toolResult.candidates?.length ?? 0,
+    candidateCount: Math.max(
+      toolResult.candidates?.length ?? 0,
+      hits.length,
+    ),
   });
   return next;
 }

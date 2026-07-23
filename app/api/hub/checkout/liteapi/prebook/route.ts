@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuthUserId } from "@/lib/auth/session";
 import { isLiteApiConfigured, prebookLiteApiOffer } from "@/lib/globe/context-hub/providers/liteapi";
 
 export const runtime = "nodejs";
@@ -6,6 +7,11 @@ export const dynamic = "force-dynamic";
 
 /** LiteAPI prebook — server-side; returns Payment SDK credentials to client. */
 export async function POST(request: NextRequest) {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "login_required" }, { status: 401 });
+  }
+
   if (!isLiteApiConfigured()) {
     return NextResponse.json({ error: "liteapi_not_configured" }, { status: 503 });
   }

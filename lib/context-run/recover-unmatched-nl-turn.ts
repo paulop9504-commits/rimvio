@@ -4,6 +4,7 @@
  */
 
 import type { ContextPackV1 } from "@/lib/context-builder";
+import type { ActionPlanV1 } from "@/lib/action-planner/types";
 import type { ClarifyLessChip } from "@/lib/rule-engine/clarify-less";
 import { writeClarifyLessPending } from "@/lib/rule-engine/clarify-less-pending-store";
 import type { RuleEngineDecision } from "@/lib/rule-engine/evaluate-utterance-rules";
@@ -370,6 +371,7 @@ export function buildScoutHandoffResult(input: {
   readonly ruleDecision: RuleEngineDecision;
   readonly pack: ContextPackV1;
   readonly utterance: string;
+  readonly actionPlan?: ActionPlanV1;
 }): {
   readonly ok: true;
   readonly via: "scout_handoff";
@@ -380,6 +382,7 @@ export function buildScoutHandoffResult(input: {
   readonly ruleDecision: RuleEngineDecision;
   readonly contextPack: ContextPackV1;
   readonly handoffKind: "discovery_scout";
+  readonly actionPlan?: ActionPlanV1;
 } {
   return {
     ok: true,
@@ -391,5 +394,6 @@ export function buildScoutHandoffResult(input: {
     ruleDecision: input.ruleDecision,
     contextPack: input.pack,
     handoffKind: "discovery_scout",
+    ...(input.actionPlan ? { actionPlan: input.actionPlan } : {}),
   };
 }

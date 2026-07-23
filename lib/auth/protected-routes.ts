@@ -1,4 +1,7 @@
-/** Routes that require a signed-in user when AUTH_REQUIRED is enabled. */
+/**
+ * Legacy path list for soft SSR checks — not a full-app AuthGate wall.
+ * Guest-first: Globe `/` is open; identity gates are checkout + peers APIs.
+ */
 export const PROTECTED_ROUTES = [
   "/feed",
   "/now",

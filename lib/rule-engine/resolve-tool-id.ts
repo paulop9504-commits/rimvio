@@ -8,6 +8,7 @@ import { routeToolFamily } from "@/lib/rule-engine/route-tool-family";
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { isAmenityLookupQuery } from "@/lib/tool-registry/amenity-lookup-cue";
+import { isBrowseExtractQuery } from "@/lib/tool-registry/browse-extract";
 import type { RimvioToolId } from "@/lib/tool-registry";
 
 export type PlannerLookupDomain = "lodging" | "eatery" | "poi" | "amenity";
@@ -31,6 +32,12 @@ export function resolvePlannerLookupDomain(
     /호텔|숙소|모텔|hotel|stay|capsule|캡슐/iu.test(text)
   ) {
     return "lodging";
+  }
+  if (
+    isBrowseExtractQuery(text) ||
+    /관광|명소|poi|테마\s*파크|액티비티|입장권|티켓/iu.test(text)
+  ) {
+    return "poi";
   }
   return "lodging";
 }
@@ -66,6 +73,9 @@ export function resolveToolIdForIntent(input: {
     return "ranking.pick";
   }
   if (input.intent === "Search" || family === "maps") {
+    if (input.query && isBrowseExtractQuery(input.query)) {
+      return "browse.extract";
+    }
     if (domain === "lodging") {
       return "hotel.lookup";
     }
@@ -100,12 +110,17 @@ export function resolveLookupToolId(
   domain: PlannerLookupDomain = "lodging",
   query?: string | null,
 ): RimvioToolId {
+  if (query && isBrowseExtractQuery(query)) {
+    return "browse.extract";
+  }
   return (
     resolveToolIdForIntent({ intent: "Search", domain, query }) ??
     (domain === "eatery"
       ? "restaurant.lookup"
       : domain === "amenity"
         ? "pharmacy.lookup"
-        : "hotel.lookup")
+        : domain === "poi"
+          ? "maps.search"
+          : "hotel.lookup")
   );
 }

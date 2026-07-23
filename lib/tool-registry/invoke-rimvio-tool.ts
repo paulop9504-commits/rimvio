@@ -17,12 +17,17 @@ import {
   formatLookupCountSummaryKo,
   withToolBudget,
 } from "@/lib/tool-registry/with-tool-budget";
+import {
+  browseOffersToPlaceHits,
+  runBrowseExtract,
+} from "@/lib/tool-registry/browse-extract";
 
 export const RIMVIO_TOOL_IDS = [
   "maps.search",
   "hotel.lookup",
   "restaurant.lookup",
   "pharmacy.lookup",
+  "browse.extract",
   "ranking.pick",
   "booking.prepare",
 ] as const;
@@ -104,6 +109,11 @@ const TOOLS: readonly RimvioToolDefinition[] = [
     id: "pharmacy.lookup",
     labelKo: "편의 찾기",
     skills: ["maps", "travel"],
+  },
+  {
+    id: "browse.extract",
+    labelKo: "사이트 브라우징",
+    skills: ["travel", "maps"],
   },
   {
     id: "ranking.pick",
@@ -370,6 +380,37 @@ export function invokeRimvioTool(
 
   if (toolId === "ranking.pick") {
     return rankingPickResult(toolId, input);
+  }
+
+  if (toolId === "browse.extract") {
+    const query =
+      input.query?.trim() ||
+      input.utterance?.trim() ||
+      input.labels?.[0] ||
+      "";
+    const extracted = runBrowseExtract({ query });
+    const candidates = hitsToCandidates(
+      rankByValueConsensus(browseOffersToPlaceHits(extracted.offers)),
+    );
+    return {
+      ok: true,
+      toolId,
+      summaryKo: extracted.summaryKo,
+      candidates,
+      meta: {
+        prepareOnly: true,
+        browseVia: extracted.via,
+        browseHost: extracted.host,
+      },
+    };
+  }
+
+  if (toolId !== "booking.prepare") {
+    return {
+      ok: true,
+      toolId,
+      summaryKo: "도구를 찾지 못했어요",
+    };
   }
 
   const stay = mergeLodgingStayForToolInvoke({

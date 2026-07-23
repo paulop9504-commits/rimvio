@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildLoginRedirectUrl,
   isAuthRequired,
+  isIdentityGateAvailable,
   isPublicApiPath,
   isPublicPagePath,
   isPublicPath,
@@ -13,9 +14,17 @@ import {
   PROTECTED_ROUTES,
 } from "../lib/auth/protected-routes";
 
+// Explicit env still enables legacy flag (AuthGate no longer full-screens).
 process.env.NEXT_PUBLIC_AUTH_REQUIRED = "true";
 process.env.AUTH_REQUIRED = "true";
 assert.equal(isAuthRequired(), true);
+
+delete process.env.NEXT_PUBLIC_AUTH_REQUIRED;
+delete process.env.AUTH_REQUIRED;
+assert.equal(isAuthRequired(), false, "guest-first: no auto wall");
+
+process.env.NEXT_PUBLIC_AUTH_REQUIRED = "true";
+process.env.AUTH_REQUIRED = "true";
 
 assert.ok(isProtectedRoute("/feed"));
 assert.ok(isProtectedRoute("/now"));
@@ -45,5 +54,7 @@ const login = buildLoginRedirectUrl(
 );
 assert.equal(login.pathname, "/feed");
 assert.equal(login.searchParams.get("next"), "/now?tab=1");
+
+assert.equal(typeof isIdentityGateAvailable(), "boolean");
 
 console.log("test-auth-policy: ok");

@@ -1,10 +1,16 @@
 import { isAuthGateBypass } from "@/lib/auth/protected-routes";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-/** When true, pages and APIs require a signed-in Supabase user. */
+/**
+ * Legacy full-app login wall flag (emergency only).
+ * Guest-first default: Globe · context chat · Diff work without login.
+ * Commit/payment/peers/vault use per-route `login_required` / `requireAuthUser`.
+ *
+ * Set NEXT_PUBLIC_AUTH_REQUIRED=true only for emergency lockdown tooling —
+ * AuthGate no longer full-screens; prefer soft gates.
+ */
 export function isAuthRequired(): boolean {
-  // Prefer NEXT_PUBLIC so AuthGate SSR HTML and client hydrate agree (#418).
-  // AUTH_REQUIRED remains a server/middleware fallback when public flag is unset.
+  // Prefer NEXT_PUBLIC so SSR and client agree (#418).
   const raw =
     process.env.NEXT_PUBLIC_AUTH_REQUIRED ??
     process.env.AUTH_REQUIRED ??
@@ -17,19 +23,13 @@ export function isAuthRequired(): boolean {
     return true;
   }
 
-  // Deployed Rimvio: Google login required (localhost stays open).
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
-  if (
-    appUrl.includes("rimvio.vercel.app") ||
-    appUrl === "https://rimvio.com" ||
-    appUrl === "https://www.rimvio.com" ||
-    appUrl === "https://rimvio.app" ||
-    (appUrl.endsWith(".vercel.app") && !appUrl.includes("localhost"))
-  ) {
-    return isSupabaseConfigured();
-  }
-
+  // No auto-wall on rimvio.com / Vercel — guest Globe first.
   return false;
+}
+
+/** True when identity is needed for Commit / cloud sync (Supabase ready). */
+export function isIdentityGateAvailable(): boolean {
+  return isSupabaseConfigured();
 }
 
 const PUBLIC_PAGE_PREFIXES = ["/auth/callback"] as const;

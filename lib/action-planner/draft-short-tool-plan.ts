@@ -17,6 +17,7 @@ import {
 } from "@/lib/rule-engine/resolve-tool-id";
 import type { RimvioToolId } from "@/lib/tool-registry";
 import { getRimvioTool } from "@/lib/tool-registry";
+import { isBrowseExtractQuery } from "@/lib/tool-registry/browse-extract";
 
 const MAX_STEPS = 5;
 
@@ -84,8 +85,11 @@ export function draftShortToolPlan(input: {
 
   if (intent === "Search" || intent === "Revise") {
     push(lookupId);
+    if (lookupId !== "browse.extract" && isBrowseExtractQuery(utterance)) {
+      push("browse.extract");
+    }
     push(resolveToolIdForIntent({ intent: "Analyze", query: utterance }));
-    if (/예약|reserve|book/iu.test(utterance)) {
+    if (/예약|reserve|book|예매|구매/iu.test(utterance)) {
       push(resolveToolIdForIntent({ intent: "Reserve", query: utterance }));
     }
   } else if (intent === "Analyze" || intent === "Predict") {

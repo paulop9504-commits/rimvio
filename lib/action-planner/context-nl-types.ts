@@ -10,7 +10,8 @@ import type { RuleEngineDecision } from "@/lib/rule-engine";
 export type ContextNlActionResult =
   | (GraphCommandApplyResult & {
       readonly via: "graph_command";
-      readonly actionPlan?: undefined;
+      /** Phase D: short ToolId plan preview (Search turns). */
+      readonly actionPlan?: ActionPlannerRunResult["plan"];
       readonly ruleDecision?: RuleEngineDecision;
       readonly contextPack?: ContextPackV1;
       /** True when reserve_prep / COMMIT_REQUIRED left ops in Field queue. */
@@ -131,6 +132,8 @@ export type ContextNlActionResult =
       readonly ruleDecision: RuleEngineDecision;
       readonly contextPack: ContextPackV1;
       readonly handoffKind: "discovery_scout";
+      /** Phase D: short plan chips while scout runs. */
+      readonly actionPlan?: ActionPlannerRunResult["plan"];
     }
   | {
       readonly ok: true;

@@ -20,7 +20,9 @@ import {
   selectionRefFromGraph,
 } from "@/lib/graph-command/resolve-selection-ref";
 import { isSameProjectReSearchUtterance } from "@/lib/graph-command/is-same-project-re-search";
+import { parseTripDayPoiSearchProject } from "@/lib/graph-command/parse-trip-day-poi-project";
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
+import { isBrowseExtractQuery } from "@/lib/tool-registry/browse-extract";
 import type {
   GraphCommand,
   GraphEntityDomain,
@@ -732,6 +734,12 @@ function parseSearchProject(
   text: string,
   graph: SessionGraphV1 | null,
 ): GraphCommand | null {
+  // Trip day + named POI (no 「찾아」 required) — live Globe Diff path.
+  const tripDay = parseTripDayPoiSearchProject(text);
+  if (tripDay) {
+    return tripDay;
+  }
+
   const reSearch = isSameProjectReSearchUtterance(text);
   const searchCue =
     reSearch ||
@@ -743,7 +751,10 @@ function parseSearchProject(
   const domainCue =
     reSearch ||
     domain !== "poi" ||
-    /관광|명소|poi|편의|약국/iu.test(text);
+    /관광|명소|poi|편의|약국|입장권|티켓|ticket|테마\s*파크|액티비티/iu.test(
+      text,
+    ) ||
+    isBrowseExtractQuery(text);
 
   if (!searchCue || !domainCue) {
     return null;

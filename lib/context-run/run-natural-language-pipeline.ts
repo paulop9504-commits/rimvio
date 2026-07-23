@@ -85,11 +85,12 @@ import {
   readPendingContextCreate,
 } from "@/lib/globe-ingress/pending-context-create-store";
 import { writeActionPlanUi } from "@/lib/action-planner/action-plan-ui-store";
+import { publishShortToolPlanPreview } from "@/lib/action-planner/publish-short-tool-plan";
 import {
   tryRunActionPlanner,
   tryRunActionPlannerAsync,
 } from "@/lib/action-planner/run-action-plan";
-import type { ActionPlannerRunResult } from "@/lib/action-planner/types";
+import type { ActionPlanV1, ActionPlannerRunResult } from "@/lib/action-planner/types";
 
 export type NlPipelineInput = {
   readonly utterance: string;
@@ -233,6 +234,22 @@ function afterActionPlanSuccess(input: {
     contextLabelKo: input.contextLabelKo ?? null,
     destinationLabelKo: input.contextLabelKo ?? null,
   });
+}
+
+/** Phase D / M1 — short plan card for non-compound Search turns. */
+function publishShortPlanIfNeeded(input: {
+  utterance: string;
+  contextEventId: string;
+  visited: NlPipelineStage[];
+}): ActionPlanV1 | null {
+  const plan = publishShortToolPlanPreview({
+    utterance: input.utterance,
+    contextEventId: input.contextEventId,
+  });
+  if (plan) {
+    pushStage(input.visited, "action_planner");
+  }
+  return plan;
 }
 
 function pushStage(
@@ -605,11 +622,17 @@ export function runNaturalLanguagePipeline(
       ))
   ) {
     pushStage(visited, "intent_parser");
+    const shortPlan = publishShortPlanIfNeeded({
+      utterance: input.utterance,
+      contextEventId,
+      visited,
+    });
     const handoff = buildScoutHandoffResult({
       contextEventId,
       ruleDecision,
       pack,
       utterance: input.utterance,
+      ...(shortPlan ? { actionPlan: shortPlan } : {}),
     });
     return {
       result: handoff,
@@ -671,13 +694,21 @@ export function runNaturalLanguagePipeline(
   // Single Graph Command — Context Engine move · Pin / Filter / Delete / Reserve …
   pushStage(visited, "entity_resolver");
   pushStage(visited, "intent_parser");
-  // Search → Tool Registry before Graph IR (canonical order).
+  let shortPlan: ActionPlanV1 | null = null;
+  // Search → short plan + Tool Registry before Graph IR (canonical order).
   {
     const peek = parseGraphCommands(
       input.utterance,
       readSessionGraph(contextEventId),
     );
     if (peek[0]?.op === "search_project") {
+      shortPlan = !compound
+        ? publishShortPlanIfNeeded({
+            utterance: input.utterance,
+            contextEventId,
+            visited,
+          })
+        : null;
       pushStage(visited, "tool_router");
     }
   }
@@ -791,6 +822,7 @@ export function runNaturalLanguagePipeline(
       waitingCommit,
       ruleDecision,
       contextPack: nextPack,
+      ...(shortPlan ? { actionPlan: shortPlan } : {}),
     },
     trace: {
       stagesVisited: visited,
@@ -1102,11 +1134,17 @@ export async function runNaturalLanguagePipelineAsync(
       ))
   ) {
     pushStage(visited, "intent_parser");
+    const shortPlan = publishShortPlanIfNeeded({
+      utterance: input.utterance,
+      contextEventId,
+      visited,
+    });
     const handoff = buildScoutHandoffResult({
       contextEventId,
       ruleDecision,
       pack,
       utterance: input.utterance,
+      ...(shortPlan ? { actionPlan: shortPlan } : {}),
     });
     return {
       result: handoff,
@@ -1167,13 +1205,21 @@ export async function runNaturalLanguagePipelineAsync(
 
   pushStage(visited, "entity_resolver");
   pushStage(visited, "intent_parser");
-  // Search → Tool Registry before Graph IR (canonical order).
+  let shortPlan: ActionPlanV1 | null = null;
+  // Search → short plan + Tool Registry before Graph IR (canonical order).
   {
     const peek = parseGraphCommands(
       input.utterance,
       readSessionGraph(contextEventId),
     );
     if (peek[0]?.op === "search_project") {
+      shortPlan = !compound
+        ? publishShortPlanIfNeeded({
+            utterance: input.utterance,
+            contextEventId,
+            visited,
+          })
+        : null;
       pushStage(visited, "tool_router");
     }
   }
@@ -1287,6 +1333,7 @@ export async function runNaturalLanguagePipelineAsync(
       waitingCommit,
       ruleDecision,
       contextPack: nextPack,
+      ...(shortPlan ? { actionPlan: shortPlan } : {}),
     },
     trace: {
       stagesVisited: visited,
