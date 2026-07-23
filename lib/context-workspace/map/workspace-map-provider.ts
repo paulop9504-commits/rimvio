@@ -14,6 +14,7 @@ export type WorkspaceMapPin = {
   readonly lat: number;
   readonly lng: number;
   readonly rating?: number | null;
+  readonly amountLabel?: string | null;
   readonly selected?: boolean;
 };
 

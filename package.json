@@ -107,6 +107,7 @@
     "test:graph-command-os": "npx tsx scripts/test-graph-command-os.ts",
     "test:search-tool-diff": "npx tsx scripts/test-search-tool-diff.ts",
     "test:context-workspace": "npx tsx scripts/test-context-workspace.ts",
+    "test:context-compiler": "npx tsx scripts/test-context-compiler.ts",
     "test:value-consensus": "npx tsx scripts/test-value-consensus.ts",
     "test:weak-stack-followups": "npx tsx scripts/test-weak-stack-followups.ts",
     "test:weak-commands": "npx tsx scripts/test-weak-commands.ts",

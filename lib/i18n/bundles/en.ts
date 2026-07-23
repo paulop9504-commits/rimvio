@@ -436,12 +436,19 @@ export const copyEn: Copy = {
     globeComposeGlobeApplyPrefix: "On globe ·",
     workspacePreviewExpand: "Open",
     workspacePreviewEmptyMap: "Open the map",
+    workspacePreviewReady: (count: number) =>
+      count > 0
+        ? `${count} places ready · Open workspace`
+        : "Places ready · Open workspace",
     workspaceOpenTitle: "Workspace",
     workspaceCommitCta: "Commit to Globe",
     workspaceCollapse: "Collapse",
     workspaceAutoSaveOn: "Auto-saved",
     workspaceCommitDoneToast: "Saved to Globe",
     workspaceDraftHint: "Edits apply as you speak · no Save button",
+    workspacePromptPlaceholder: "Ask anything",
+    workspacePromptUnhandled:
+      "Try: cheaper · #2 · compare · route · similar · remove ○○",
     workspaceSwipeHint: "Swipe to Commit",
     workspaceSwipeRelease: "Release to Commit",
     workspaceCommitCancel: "Cancel",

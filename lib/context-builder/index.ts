@@ -6,6 +6,7 @@ export {
   type ContextPackLodgingDiff,
   type ContextPackV1,
 } from "@/lib/context-builder/build-context-pack";
+export type { ContextCompilerIrV1 } from "@/lib/context-compiler";
 export {
   writeLastContextPack,
   readLastContextPack,

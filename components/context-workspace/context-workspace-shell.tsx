@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Context Workspace shell — 2D IDE for Context.
- * Preview 펼치기 후에만 full surface. Globe waits for Commit.
+ * Context Workspace shell — GPT Maps-style mobile surface.
+ * Full-bleed map · selected card · bottom prompt. Dense chrome off.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { List, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   applyWorkspaceTransition,
@@ -14,6 +15,7 @@ import {
   clearContextWorkspace,
   commitContextWorkspaceToGlobe,
   domainLabelKo,
+  estimateWorkspaceProgressPercent,
   readContextWorkspace,
   readContextWorkspaceExpanded,
   subscribeContextWorkspaceOpen,
@@ -24,10 +26,9 @@ import {
 } from "@/lib/context-workspace";
 import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
-import { CurrentContextBar } from "@/components/context-workspace/current-context-bar";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
-import { WorkspaceWhyBalloon } from "@/components/context-workspace/workspace-why-balloon";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
+import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +64,7 @@ export function ContextWorkspaceShell({
   const [expanded, setExpanded] = useState(false);
   const [commitPreviewOpen, setCommitPreviewOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
-  const [whyOpen, setWhyOpen] = useState(true);
+  const [listOpen, setListOpen] = useState(false);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -123,7 +124,10 @@ export function ContextWorkspaceShell({
   const selectedId =
     state?.selectedIds[0] ??
     visibleNodes.find((n) => n.selected)?.id ??
+    visibleNodes[0]?.id ??
     null;
+  const selectedNode =
+    visibleNodes.find((n) => n.id === selectedId) ?? null;
 
   const commitPreview = useMemo(
     () => (state ? buildWorkspaceCommitPreview(state) : null),
@@ -141,7 +145,7 @@ export function ContextWorkspaceShell({
         op: "select",
         nodeIds: [nodeId],
       });
-      setWhyOpen(true);
+      setListOpen(false);
     },
     [contextEventId],
   );
@@ -162,16 +166,18 @@ export function ContextWorkspaceShell({
     }
   }, [contextEventId]);
 
-  const onCollapse = useCallback(() => {
+  const onClose = useCallback(() => {
     const id = contextEventId?.trim();
+    if (!id) {
+      return;
+    }
+    // Collapse keeps draft; X closes chrome but keeps draft via collapse default.
     setExpanded(false);
     setCommitPreviewOpen(false);
-    if (id) {
-      writeContextWorkspaceExpanded(id, false);
-    }
+    writeContextWorkspaceExpanded(id, false);
   }, [contextEventId]);
 
-  const onClose = useCallback(() => {
+  const onDiscard = useCallback(() => {
     const id = contextEventId?.trim();
     if (!id) {
       return;
@@ -187,56 +193,26 @@ export function ContextWorkspaceShell({
   }
 
   const kindLabel = domainLabelKo(state.domain);
-  const showWhy =
-    whyOpen &&
-    state.lastWhy &&
-    (selectedId || state.lastWhy.nodeIds.length > 0);
+  const title =
+    projectTitleKo?.trim() ||
+    state.query.trim() ||
+    state.summaryKo.trim() ||
+    copy.globe.workspaceOpenTitle;
+  const progress = estimateWorkspaceProgressPercent(state);
+  const eventId = contextEventId?.trim() ?? "";
 
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-0 z-[46] flex flex-col bg-[#f5f5f7]",
+        "pointer-events-auto absolute inset-0 z-[46] bg-[#f2f4f6]",
         className,
       )}
       role="dialog"
       aria-label={copy.globe.workspaceOpenTitle}
       data-context-workspace-open
     >
-      <CurrentContextBar state={state} projectTitleKo={projectTitleKo} />
-
-      <div className="flex items-center justify-between gap-3 border-b border-black/5 bg-white/90 px-4 py-2">
-        <p className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">
-          {copy.globe.workspaceDraftHint}
-        </p>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            className="rounded-full bg-foreground px-3 py-2 text-[12px] font-semibold text-background"
-            onClick={() => setCommitPreviewOpen(true)}
-            disabled={visibleNodes.length === 0}
-            data-workspace-commit
-          >
-            {copy.globe.workspaceCommitCta}
-          </button>
-          <button
-            type="button"
-            className="rounded-full bg-muted px-3 py-2 text-[12px] font-medium"
-            onClick={onCollapse}
-          >
-            {copy.globe.workspaceCollapse}
-          </button>
-          <button
-            type="button"
-            className="rounded-full px-2 py-2 text-[12px] text-muted-foreground"
-            onClick={onClose}
-            aria-label="닫기"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-
-      <div className="relative min-h-0 flex-1">
+      {/* Full-bleed map */}
+      <div className="absolute inset-0">
         <WorkspaceMapView
           pins={visibleNodes.map((n) => ({
             id: n.id,
@@ -244,190 +220,240 @@ export function ContextWorkspaceShell({
             lat: n.lat,
             lng: n.lng,
             rating: n.rating,
+            amountLabel: n.amountLabel,
             selected: n.id === selectedId,
           }))}
           selectedId={selectedId}
           onSelectPin={onSelect}
         />
-        {showWhy && state.lastWhy ? (
-          <div className="pointer-events-auto absolute left-3 top-3 z-[2]">
-            <WorkspaceWhyBalloon
-              why={state.lastWhy}
-              onDismiss={() => setWhyOpen(false)}
-            />
+      </div>
+
+      {/* Top chrome — GPT Maps sparse */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <button
+          type="button"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+          onClick={onClose}
+          aria-label={copy.globe.workspaceCollapse}
+        >
+          <X className="h-5 w-5" strokeWidth={2.25} />
+        </button>
+        <div className="pointer-events-auto flex max-w-[55%] flex-col items-center gap-1">
+          <div className="rounded-full bg-white/95 px-3 py-1.5 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
+            <p className="truncate text-center text-[12px] font-bold tracking-tight text-[#191f28]">
+              {title}
+            </p>
+            <p className="text-center text-[10px] tabular-nums text-[#8b95a1]">
+              {visibleNodes.length}곳 · {progress}%
+            </p>
           </div>
-        ) : null}
-        <div className="absolute inset-y-0 right-0 flex w-[min(100%,300px)] flex-col border-l border-black/5 bg-white/95 shadow-sm">
-          <div className="flex items-center justify-between border-b border-black/5 px-3 py-2">
-            <p className="text-[12px] font-semibold">
+        </div>
+        <div className="pointer-events-auto flex flex-col items-end gap-2">
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+            onClick={() => setListOpen((v) => !v)}
+            aria-label="목록"
+            aria-pressed={listOpen}
+          >
+            <List className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+          <button
+            type="button"
+            className="rounded-full bg-[#3182f6] px-3 py-2 text-[11px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
+            onClick={() => setCommitPreviewOpen(true)}
+            disabled={visibleNodes.length === 0}
+            data-workspace-commit
+          >
+            {copy.globe.workspaceCommitCta}
+          </button>
+        </div>
+      </div>
+
+      {/* Optional list sheet — not a permanent right rail */}
+      {listOpen ? (
+        <div className="pointer-events-auto absolute inset-x-3 top-[5.5rem] z-[3] max-h-[42%] overflow-hidden rounded-[20px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
+          <div className="flex items-center justify-between border-b border-black/[0.04] px-4 py-2.5">
+            <p className="text-[13px] font-bold text-[#191f28]">
               {visibleNodes.length}개의 {kindLabel}
             </p>
-            {state.lastWhy && !whyOpen ? (
-              <button
-                type="button"
-                className="text-[11px] font-semibold text-foreground"
-                onClick={() => setWhyOpen(true)}
-              >
-                {copy.globe.workspaceWhyShow}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="text-[12px] font-semibold text-[#8b95a1]"
+              onClick={() => setListOpen(false)}
+            >
+              닫기
+            </button>
           </div>
-          {state.compareIds.length >= 2 ? (
-            <div className="border-b border-black/5 bg-amber-50/80 px-3 py-2 text-[11px] text-amber-950">
-              비교 {state.compareIds.length}곳 선택됨
-            </div>
-          ) : null}
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+          <div className="max-h-[min(40vh,320px)] space-y-1 overflow-y-auto p-2">
             {visibleNodes.map((node, index) => (
               <button
                 key={node.id}
                 type="button"
                 className={cn(
-                  "flex w-full gap-2 rounded-xl p-2 text-left ring-1 ring-black/5",
-                  selectedId === node.id ? "bg-muted" : "bg-white",
-                  state.compareIds.includes(node.id) && "ring-amber-400",
+                  "flex w-full items-center gap-2.5 rounded-2xl px-2.5 py-2 text-left",
+                  selectedId === node.id ? "bg-[#e8f3ff]" : "hover:bg-[#f9fafb]",
                 )}
                 onClick={() => onSelect(node.id)}
               >
-                <div className="h-14 w-14 shrink-0 rounded-lg bg-gradient-to-br from-slate-200 to-slate-100" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{node.title}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    ★ {formatRating(node.rating)} · {domainLabelKo(node.kind)}
-                  </p>
-                  <p className="text-[12px] font-medium">{formatPrice(node)}</p>
-                </div>
-                <span className="text-[11px] text-muted-foreground">{index + 1}</span>
+                <span
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold",
+                    selectedId === node.id
+                      ? "bg-[#3182f6] text-white"
+                      : "bg-[#f2f4f6] text-[#191f28]",
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-bold text-[#191f28]">
+                    {node.title}
+                  </span>
+                  <span className="block text-[11px] text-[#8b95a1]">
+                    ★ {formatRating(node.rating)} · {formatPrice(node)}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
         </div>
-        {commitPreviewOpen && commitPreview ? (
-          <WorkspaceCommitPreviewSheet
-            preview={commitPreview}
-            busy={commitBusy}
-            onConfirm={runCommit}
-            onCancel={() => setCommitPreviewOpen(false)}
-          />
+      ) : null}
+
+      {/* Bottom stack: tools · place card · prompt */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-16">
+        <div className="pointer-events-auto mx-auto flex max-w-xl gap-1.5 overflow-x-auto">
+          {(
+            [
+              {
+                label: copy.globe.workspaceToolCompare,
+                run: () =>
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "compare",
+                    nodeIds:
+                      state.selectedIds.length >= 2
+                        ? state.selectedIds
+                        : visibleNodes.slice(0, 2).map((n) => n.id),
+                  }),
+              },
+              {
+                label: copy.globe.workspaceToolSimulateRain,
+                run: () =>
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "simulate",
+                    simulateScenarioKo: "비 오면",
+                  }),
+              },
+              {
+                label: copy.globe.workspaceToolOptimizeRoute,
+                run: () =>
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "optimize_route",
+                  }),
+              },
+            ] as const
+          ).map((tool) => (
+            <button
+              key={tool.label}
+              type="button"
+              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+              onClick={tool.run}
+            >
+              {tool.label}
+            </button>
+          ))}
+          {selectedNode ? (
+            <>
+              <a
+                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+                href={buildGoogleMapsDirectionsDeepLink({
+                  lat: selectedNode.lat,
+                  lng: selectedNode.lng,
+                })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                길찾기
+              </a>
+              <a
+                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+                href={buildAppleMapsDeepLink({
+                  lat: selectedNode.lat,
+                  lng: selectedNode.lng,
+                  label: selectedNode.title,
+                })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Maps
+              </a>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#f04452] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+                onClick={() =>
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "remove",
+                    nodeIds: [selectedNode.id],
+                  })
+                }
+              >
+                빼기
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="shrink-0 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-medium text-[#8b95a1] shadow-sm"
+            onClick={onDiscard}
+          >
+            닫기
+          </button>
+        </div>
+
+        {selectedNode ? (
+          <div className="pointer-events-auto mx-auto w-full max-w-xl rounded-[20px] bg-white p-3 shadow-[0_8px_28px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.04]">
+            <div className="flex gap-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#f2f4f6] text-[18px] font-bold text-[#3182f6]">
+                ★{formatRating(selectedNode.rating)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-bold tracking-tight text-[#191f28]">
+                  {selectedNode.title}
+                </p>
+                <p className="mt-0.5 text-[12px] text-[#8b95a1]">
+                  ★ {formatRating(selectedNode.rating)} ·{" "}
+                  {domainLabelKo(selectedNode.kind)}
+                </p>
+                <p className="mt-1 text-[14px] font-semibold text-[#191f28]">
+                  {formatPrice(selectedNode)}
+                </p>
+              </div>
+            </div>
+            {state.lastChangeKo ? (
+              <p className="mt-2 truncate text-[11px] text-[#8b95a1]">
+                {state.lastChangeKo}
+              </p>
+            ) : null}
+          </div>
         ) : null}
+
+        <div className="pointer-events-auto mx-auto w-full max-w-xl">
+          <WorkspacePromptBar contextEventId={eventId} compact />
+        </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto border-t border-black/5 bg-white/95 px-3 py-2">
-        <button
-          type="button"
-          className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium"
-          onClick={() => {
-            const id = contextEventId?.trim();
-            if (!id) {
-              return;
-            }
-            applyWorkspaceTransition({
-              contextEventId: id,
-              op: "compare",
-              nodeIds:
-                state.selectedIds.length >= 2
-                  ? state.selectedIds
-                  : visibleNodes.slice(0, 2).map((n) => n.id),
-            });
-            setWhyOpen(true);
-          }}
-        >
-          {copy.globe.workspaceToolCompare}
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium"
-          onClick={() => {
-            const id = contextEventId?.trim();
-            if (!id) {
-              return;
-            }
-            applyWorkspaceTransition({
-              contextEventId: id,
-              op: "simulate",
-              simulateScenarioKo: "비 오면",
-            });
-            setWhyOpen(true);
-          }}
-        >
-          {copy.globe.workspaceToolSimulateRain}
-        </button>
-        <button
-          type="button"
-          className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium"
-          onClick={() => {
-            const id = contextEventId?.trim();
-            if (!id) {
-              return;
-            }
-            applyWorkspaceTransition({
-              contextEventId: id,
-              op: "optimize_route",
-            });
-            setWhyOpen(true);
-          }}
-        >
-          {copy.globe.workspaceToolOptimizeRoute}
-        </button>
-        {selectedId ? (
-          <>
-            {(() => {
-              const node = visibleNodes.find((n) => n.id === selectedId);
-              if (!node) {
-                return null;
-              }
-              return (
-                <>
-                  <a
-                    className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium"
-                    href={buildAppleMapsDeepLink({
-                      lat: node.lat,
-                      lng: node.lng,
-                      label: node.title,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Apple Maps
-                  </a>
-                  <a
-                    className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-medium"
-                    href={buildGoogleMapsDirectionsDeepLink({
-                      lat: node.lat,
-                      lng: node.lng,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    길찾기
-                  </a>
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-full px-3 py-1.5 text-[11px] text-muted-foreground"
-                    onClick={() => {
-                      const id = contextEventId?.trim();
-                      if (!id) {
-                        return;
-                      }
-                      applyWorkspaceTransition({
-                        contextEventId: id,
-                        op: "remove",
-                        nodeIds: [node.id],
-                      });
-                    }}
-                  >
-                    삭제
-                  </button>
-                </>
-              );
-            })()}
-          </>
-        ) : (
-          <p className="px-1 py-1.5 text-[12px] text-muted-foreground">
-            장소를 고르거나 말로 편집해 보세요
-          </p>
-        )}
-      </div>
+      {commitPreviewOpen && commitPreview ? (
+        <WorkspaceCommitPreviewSheet
+          preview={commitPreview}
+          busy={commitBusy}
+          onConfirm={runCommit}
+          onCancel={() => setCommitPreviewOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

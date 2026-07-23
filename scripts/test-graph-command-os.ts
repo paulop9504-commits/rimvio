@@ -73,7 +73,10 @@ clearSessionGraphs();
     applied!.graph.nodes.filter((n) => n.kind === "eatery").length,
     0,
   );
-  assert.ok(applied!.assistantReplyKo.includes("워크스페이스"));
+  assert.ok(
+    applied!.assistantReplyKo.includes("후보") ||
+      applied!.assistantReplyKo.includes("작업장"),
+  );
   clearContextWorkspace("evt-yuseong");
 }
 
@@ -148,7 +151,7 @@ clearSessionGraphs();
     contextLabelKo: "대전 서구 둔산동",
   });
   assert.ok(eatery);
-  assert.match(eatery!.assistantReplyKo, /워크스페이스에 \d+곳을 펼쳤어요/);
+  assert.match(eatery!.assistantReplyKo, /후보 \d+곳 준비했어요/);
   assert.equal(hasProvisionalContextWorkspace("evt-dunsan-eatery"), true);
   const eateryWs = readContextWorkspace("evt-dunsan-eatery");
   assert.equal(eateryWs?.domain, "eatery");
@@ -167,7 +170,7 @@ clearSessionGraphs();
     contextLabelKo: "대전 서구 둔산동",
   });
   assert.ok(pharmacy);
-  assert.match(pharmacy!.assistantReplyKo, /워크스페이스에 \d+곳을 펼쳤어요/);
+  assert.match(pharmacy!.assistantReplyKo, /후보 \d+곳 준비했어요/);
   assert.equal(hasProvisionalContextWorkspace("evt-dunsan-pharm"), true);
   const pharmWs = readContextWorkspace("evt-dunsan-pharm");
   assert.ok((pharmWs?.nodes.length ?? 0) >= 1);

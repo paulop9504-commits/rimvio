@@ -45,7 +45,6 @@ import {
 import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
 import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
-import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {
@@ -892,10 +891,6 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
             source: "scout_patch",
           });
           appendWorkspacePreviewComposeTurn(event.id);
-          dispatchContextWorkspaceExpand({
-            contextEventId: event.id,
-            source: "scout_patch_auto",
-          });
           setComposeThread(readContextAgentComposeThread(event.id));
         } else {
           // Non-map scout (or mixed) may still use Globe reveal.

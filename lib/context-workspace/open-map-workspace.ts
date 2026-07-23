@@ -6,6 +6,7 @@ import {
   dispatchContextWorkspaceOpen,
   writeContextWorkspace,
 } from "@/lib/context-workspace/workspace-store";
+import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
 import {
   domainLabelKo,
   type ContextWorkspaceDomain,
@@ -17,7 +18,11 @@ import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 import type { GraphEntityDomain } from "@/lib/graph-command/types";
 
-function inferTags(title: string, summary: string): string[] {
+function inferTags(
+  title: string,
+  summary: string,
+  flags?: { reservable?: boolean; localFavorite?: boolean },
+): string[] {
   const blob = `${title} ${summary}`.toLowerCase();
   const tags: string[] = [];
   if (/ocean|오션|바다|해안|씨뷰|sea\s*view|beach/i.test(blob)) {
@@ -28,6 +33,12 @@ function inferTags(title: string, summary: string): string[] {
   }
   if (/luxury|럭셔리|고급|5성|five\s*star/i.test(blob)) {
     tags.push("luxury");
+  }
+  if (flags?.reservable) {
+    tags.push("reservable");
+  }
+  if (flags?.localFavorite) {
+    tags.push("local_favorite");
   }
   return tags;
 }
@@ -73,7 +84,10 @@ export function placeHitToWorkspaceNode(
     priceBand: hit.priceBand ?? null,
     amountLabel: hit.amountLabel ?? null,
     thumbnailUrl: null,
-    tags: inferTags(hit.labelKo, summary),
+    tags: inferTags(hit.labelKo, summary, {
+      reservable: hit.reservable,
+      localFavorite: hit.localFavorite,
+    }),
     visible: true,
     selected: false,
     bookmarked: false,
@@ -110,7 +124,10 @@ export function candidateToWorkspaceNode(
     priceBand: candidate.priceBand ?? null,
     amountLabel: candidate.amountLabel ?? null,
     thumbnailUrl: null,
-    tags: inferTags(candidate.labelKo, summary),
+    tags: inferTags(candidate.labelKo, summary, {
+      reservable: candidate.reservable ?? undefined,
+      localFavorite: candidate.localFavorite ?? undefined,
+    }),
     visible: true,
     selected: false,
     bookmarked: false,
@@ -171,7 +188,7 @@ export function openMapContextWorkspace(input: {
     summaryKo:
       input.summaryKo?.trim() ||
       (nodes.length > 0
-        ? `${label} ${nodes.length}곳을 워크스페이스에 펼쳤어요`
+        ? `${label} 후보 ${nodes.length}곳 준비 · 펼치기로 작업장 열기`
         : `${label} 결과가 없어요`),
     nodes,
     filter: {},
@@ -194,8 +211,9 @@ export function openMapContextWorkspace(input: {
         : null,
     history: [],
     future: [],
+    relationshipEdges: [],
   };
-  writeContextWorkspace(state);
+  writeContextWorkspace(withWorkspaceRelationships(state));
   dispatchContextWorkspaceOpen({
     contextEventId,
     workspaceId,

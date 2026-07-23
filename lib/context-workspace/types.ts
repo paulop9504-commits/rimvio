@@ -82,6 +82,15 @@ export type ContextWorkspaceFilter = {
   readonly queryIncludes?: string | null;
 };
 
+export type ContextWorkspaceRelationshipEdge = {
+  readonly id: string;
+  readonly kind: "nearby" | "compare" | "route";
+  readonly fromId: string;
+  readonly toId: string;
+  readonly labelKo: string;
+  readonly meters: number | null;
+};
+
 export type ContextWorkspaceState = {
   readonly version: typeof CONTEXT_WORKSPACE_VERSION;
   readonly workspaceId: string;
@@ -91,6 +100,8 @@ export type ContextWorkspaceState = {
   readonly query: string;
   readonly summaryKo: string;
   readonly nodes: readonly ContextWorkspaceNode[];
+  /** Relationship edges — 검색 → 관계 (ADR-023). */
+  readonly relationshipEdges: readonly ContextWorkspaceRelationshipEdge[];
   readonly filter: ContextWorkspaceFilter;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];

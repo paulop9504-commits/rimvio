@@ -16,10 +16,12 @@ import type {
   ContextWorkspaceTransitionOp,
   WorkspaceWhyEntry,
 } from "@/lib/context-workspace/types";
+import { domainLabelKo } from "@/lib/context-workspace/types";
 import {
   readContextWorkspace,
   writeContextWorkspace,
 } from "@/lib/context-workspace/workspace-store";
+import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 import type { GraphFilterPredicate } from "@/lib/graph-command/types";
@@ -52,6 +54,7 @@ function withHistory(
     | "status"
     | "lastWhy"
     | "lastChangeKo"
+    | "relationshipEdges"
   > &
     Partial<
       Pick<
@@ -62,6 +65,7 @@ function withHistory(
         | "committedAtIso"
         | "lastWhy"
         | "lastChangeKo"
+        | "relationshipEdges"
       >
     >,
 ): ContextWorkspaceState {
@@ -79,6 +83,8 @@ function withHistory(
     lastChangeKo:
       next.lastChangeKo !== undefined ? next.lastChangeKo : prev.lastChangeKo,
     lastWhy: next.lastWhy !== undefined ? next.lastWhy : prev.lastWhy,
+    relationshipEdges:
+      next.relationshipEdges ?? prev.relationshipEdges ?? [],
     openedAtIso: prev.openedAtIso,
     updatedAtIso: new Date().toISOString(),
     history: [...prev.history, snapshotOf(prev)].slice(-20),
@@ -188,7 +194,7 @@ export function applyWorkspaceTransition(input: {
       history: prev.history.slice(0, -1),
       future: [snapshotOf(prev), ...prev.future].slice(0, 20),
     };
-    writeContextWorkspace(restored);
+    writeContextWorkspace(withWorkspaceRelationships(restored));
     return restored;
   }
 
@@ -205,7 +211,7 @@ export function applyWorkspaceTransition(input: {
       history: [...prev.history, snapshotOf(prev)].slice(-20),
       future: prev.future.slice(1),
     };
-    writeContextWorkspace(restored);
+    writeContextWorkspace(withWorkspaceRelationships(restored));
     return restored;
   }
 
@@ -219,7 +225,7 @@ export function applyWorkspaceTransition(input: {
       status: "closed",
       lastChangeKo: "워크스페이스를 닫았어요",
     });
-    writeContextWorkspace(closed);
+    writeContextWorkspace(withWorkspaceRelationships(closed));
     return closed;
   }
 
@@ -305,7 +311,7 @@ export function applyWorkspaceTransition(input: {
     nodes = applyFilterToNodes(nodes, filter);
     const visibleCount = nodes.filter((n) => n.visible).length;
     lastChangeKo = lastChangeKo ?? `${visibleCount}곳만 남겼어요`;
-    summaryKo = `숙소 ${visibleCount}곳`;
+    summaryKo = `${domainLabelKo(prev.domain)} ${visibleCount}곳`;
   }
 
   if (input.op === "sort") {
@@ -412,7 +418,7 @@ export function applyWorkspaceTransition(input: {
     status,
     lastWhy,
   });
-  writeContextWorkspace(next);
+  writeContextWorkspace(withWorkspaceRelationships(next));
   return next;
 }
 
@@ -432,10 +438,10 @@ export function parseWorkspaceUtteranceTransition(utterance: string): {
   if (/다시\s*적용|redo/i.test(text)) {
     return { op: "redo" };
   }
-  if (/동선|최적화|optimize|route\s*opt/i.test(text)) {
+  if (/동선|최적화|optimize|route\s*opt|가까운\s*순/i.test(text)) {
     return { op: "optimize_route" };
   }
-  if (/비슷|similar|관련/i.test(text)) {
+  if (/비슷|similar|관련|더\s*넣/i.test(text)) {
     return { op: "find_similar" };
   }
   if (/오션|ocean|바다\s*뷰|씨뷰|sea\s*view/i.test(text)) {
@@ -444,30 +450,42 @@ export function parseWorkspaceUtteranceTransition(utterance: string): {
       filter: { tagIncludes: ["ocean_view"] },
     };
   }
-  if (/평점|별점|rating/i.test(text)) {
+  if (/평점|별점|rating|별\s*\d/i.test(text)) {
     const m = text.match(/(\d+(?:\.\d+)?)/);
     return {
       op: "filter",
       filter: { minRating: m?.[1] ? Number(m[1]) : 4.5 },
     };
   }
-  if (/더\s*싸|저렴|싼\s*호텔|budget|cheap/i.test(text)) {
+  if (/더\s*싸|저렴|싼|가성비|budget|cheap|가격\s*낮은/i.test(text)) {
     return {
       op: "filter",
       filter: { maxPriceBand: 2 },
       sortBy: "price_asc",
     };
   }
-  if (/삭제|지워|빼|remove|delete/i.test(text)) {
+  if (/예약\s*가능|바로\s*예약|reservable/i.test(text)) {
+    return {
+      op: "filter",
+      filter: { tagIncludes: ["reservable"] },
+    };
+  }
+  if (/현지인|로컬|local\s*favorite/i.test(text)) {
+    return {
+      op: "filter",
+      filter: { tagIncludes: ["local_favorite"] },
+    };
+  }
+  if (/삭제|지워|빼|제외|없애|remove|delete/i.test(text)) {
     return { op: "remove" };
   }
-  if (/비교|compare/i.test(text)) {
+  if (/비교|compare|vs/i.test(text)) {
     return { op: "compare" };
   }
-  if (/만약|가정|if\s+it|비가|예산/i.test(text)) {
+  if (/만약|가정|if\s+it|비가|비\s*오면|예산\s*넘/i.test(text)) {
     return { op: "simulate", simulateScenarioKo: text };
   }
-  if (/이거|이\s*호텔|이걸로|commit|확정|남겨|지구에/i.test(text)) {
+  if (/이거|이걸로|commit|확정|남겨|지구에|커밋/i.test(text)) {
     return { op: "commit" };
   }
   return null;

@@ -14,6 +14,8 @@ Context Builder + Planner + Tools + Edit Engine + Approval
 
 Rimvio maps the same stack onto **Reality / Context Graph** instead of a codebase.
 
+**Parser doctrine (Context Compiler):** ADR-023 — NL → 현실 의도 → Context Graph → Reality Action → Commit (not NL→JSON).
+
 | Cursor | Rimvio |
 |--------|--------|
 | Project files / git / LSP | Session graph · pins · folders · Inbox |

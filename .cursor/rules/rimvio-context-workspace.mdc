@@ -29,7 +29,9 @@ Intent → Workspace → Auto Save Snapshot → Globe Capsule → Resume | Commi
 - AI는 장문 답변이 아니라 **Workspace Patch**
 - **Save 버튼 없음** — Snapshot = 함께 작업하던 순간의 상태
 - Globe = **진행 중 AI 프로젝트 지도** (Capsule) + Commit 후 Forest
+- Preview = 지도 티저만 · **펼치기**로만 full Workspace 오픈 (자동 펼침 금지)
 - Capsule 탭 → Restore Workspace (“지난 작업 이어갈까요?”)
+- Workspace 안에 **전용 프롬프트** (무엇이든 물어보세요)
 - 📁 폴더 UI 금지 · 🌍 장소 앵커 Capsule만
 - WHY = Action · Reason · Impact — on demand
 

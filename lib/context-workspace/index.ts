@@ -11,6 +11,7 @@ export type {
   ContextWorkspaceNodeKind,
   ContextWorkspaceOpenDetail,
   ContextWorkspaceOpenSource,
+  ContextWorkspaceRelationshipEdge,
   ContextWorkspaceState,
   ContextWorkspaceStatus,
   ContextWorkspaceTransitionOp,
@@ -68,7 +69,14 @@ export {
 export {
   tryApplyWorkspaceLodgingTurn,
   tryApplyWorkspaceLodgingTurnSync,
+  tryApplyWorkspacePromptTurn,
+  tryApplyWorkspacePromptTurnSync,
 } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
+
+export {
+  withWorkspaceRelationships,
+  buildWorkspaceRelationshipEdges,
+} from "@/lib/context-workspace/sync-workspace-relationships";
 
 export {
   CONTEXT_WORKSPACE_EXPAND,

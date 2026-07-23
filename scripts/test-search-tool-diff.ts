@@ -55,7 +55,8 @@ assert.equal(resolveLookupToolId("poi"), "maps.search");
   assert.ok(applied!.commands.some((c) => c.op === "search_project"));
   assert.equal(hasProvisionalLodgingWorkspace("evt-search-diff"), true);
   assert.ok(
-    applied!.assistantReplyKo.includes("워크스페이스") ||
+    applied!.assistantReplyKo.includes("후보") ||
+      applied!.assistantReplyKo.includes("작업장") ||
       (readContextWorkspace("evt-search-diff")?.nodes.length ?? 0) > 0,
   );
 

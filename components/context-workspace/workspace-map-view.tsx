@@ -14,8 +14,10 @@ import {
   isMapLibreWorkspaceEnabled,
   type WorkspaceMapPin,
 } from "@/lib/context-workspace/map/workspace-map-provider";
+import { applyTossWorkspaceMapCanvas } from "@/lib/context-workspace/map/apply-toss-workspace-map-canvas";
+import { buildTossWorkspaceMarkerEl } from "@/lib/context-workspace/map/build-toss-workspace-marker-el";
 import { GLOBE_VECTOR_MAP_STYLE_URL } from "@/lib/globe/globe-vector-map-view";
-import { applyRimvioVectorMapCanvas } from "@/lib/globe/apply-rimvio-vector-map-canvas";
+import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
   bindGlobeVectorMapResize,
   syncGlobeVectorMapSize,
@@ -81,7 +83,13 @@ function PlaceholderPinMap({
 
   if (!bounds || visible.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-sky-50 text-[12px] text-muted-foreground">
+      <div
+        className="flex h-full items-center justify-center text-[12px]"
+        style={{
+          background: GLOBE_TOSS_THEME.shellBg,
+          color: GLOBE_TOSS_THEME.inkMuted,
+        }}
+      >
         지도를 펼쳐 보세요
       </div>
     );
@@ -95,9 +103,10 @@ function PlaceholderPinMap({
     <Shell
       type={onBackgroundActivate ? "button" : undefined}
       className={cn(
-        "relative h-full w-full overflow-hidden bg-[radial-gradient(ellipse_at_30%_20%,#bfdbfe_0%,transparent_55%),radial-gradient(ellipse_at_70%_75%,#a7f3d0_0%,transparent_50%),linear-gradient(165deg,#e0f2fe,#ecfdf5)]",
+        "relative h-full w-full overflow-hidden",
         onBackgroundActivate && "cursor-pointer text-left",
       )}
+      style={{ background: GLOBE_TOSS_THEME.shellBg }}
       onClick={onBackgroundActivate}
     >
       {visible.map((node, index) => {
@@ -108,7 +117,7 @@ function PlaceholderPinMap({
           <button
             key={node.id}
             type="button"
-            className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+            className="absolute z-10 flex -translate-x-1/2 -translate-y-full flex-col items-center gap-1"
             style={{ left: `${x}%`, top: `${y}%` }}
             onClick={(event) => {
               event.stopPropagation();
@@ -116,27 +125,22 @@ function PlaceholderPinMap({
             }}
             aria-label={node.title}
           >
-            {compact ? (
-              <>
-                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold shadow-sm ring-1 ring-black/10">
-                  ★ {formatRating(node.rating)}
-                </span>
-                <span className="mt-0.5 max-w-[72px] truncate rounded bg-black/55 px-1 py-px text-[9px] text-white">
-                  {node.title}
-                </span>
-              </>
-            ) : (
-              <span
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold shadow-sm",
-                  active
-                    ? "bg-orange-500 text-white ring-2 ring-white"
-                    : "bg-white/95 text-foreground ring-1 ring-black/10",
-                )}
-              >
-                {index + 1}
-              </span>
-            )}
+            <span
+              className={cn(
+                "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[11px] font-bold shadow-[0_2px_8px_rgba(25,31,40,0.12)]",
+                active ? "text-white" : "bg-white",
+              )}
+              style={{
+                background: active ? GLOBE_TOSS_THEME.blue : "#fff",
+                color: active ? "#fff" : GLOBE_TOSS_THEME.ink,
+              }}
+            >
+              {compact
+                ? node.amountLabel?.trim() || `★${formatRating(node.rating)}`
+                : active
+                  ? node.title.trim().slice(0, 10)
+                  : index + 1}
+            </span>
           </button>
         );
       })}
@@ -198,7 +202,7 @@ function MapLibreWorkspaceMap({
         if (cancelled || !map) {
           return;
         }
-        applyRimvioVectorMapCanvas(map);
+        applyTossWorkspaceMapCanvas(map);
         syncGlobeVectorMapSize(map, containerRef.current!);
         if (bounds) {
           map.fitBounds(
@@ -206,7 +210,7 @@ function MapLibreWorkspaceMap({
               [bounds.minLng, bounds.minLat],
               [bounds.maxLng, bounds.maxLat],
             ],
-            { padding: compact ? 28 : 56, maxZoom: compact ? 14 : 16, duration: 0 },
+            { padding: compact ? 36 : 72, maxZoom: compact ? 14 : 15.5, duration: 0 },
           );
         }
         setReady(true);
@@ -251,23 +255,13 @@ function MapLibreWorkspaceMap({
         (n) => Number.isFinite(n.lat) && Number.isFinite(n.lng),
       );
       for (const [index, pin] of visible.entries()) {
-        const el = document.createElement("button");
-        el.type = "button";
-        el.className = cn(
-          "flex items-center justify-center rounded-full border-0 shadow-md",
-          compact ? "h-7 min-w-7 px-1.5 text-[10px]" : "h-8 min-w-8 px-2 text-[11px]",
-          "font-semibold",
-          pin.id === selectedId || pin.selected
-            ? "bg-orange-500 text-white ring-2 ring-white"
-            : "bg-white text-foreground ring-1 ring-black/10",
-        );
-        el.textContent = compact
-          ? `★${formatRating(pin.rating)}`
-          : String(index + 1);
-        el.title = pin.title;
-        el.addEventListener("click", (event) => {
-          event.stopPropagation();
-          onSelectRef.current?.(pin.id);
+        const selected = pin.id === selectedId || Boolean(pin.selected);
+        const el = buildTossWorkspaceMarkerEl({
+          pin,
+          index,
+          selected,
+          compact,
+          onSelect: (id) => onSelectRef.current?.(id),
         });
         const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([pin.lng, pin.lat])
@@ -282,8 +276,8 @@ function MapLibreWorkspaceMap({
             [nextBounds.maxLng, nextBounds.maxLat],
           ],
           {
-            padding: compact ? 28 : 56,
-            maxZoom: compact ? 14.5 : 16.5,
+            padding: compact ? 36 : 72,
+            maxZoom: compact ? 14.2 : 15.8,
             duration: 420,
           },
         );
@@ -293,8 +287,10 @@ function MapLibreWorkspaceMap({
 
   return (
     <div
-      className={cn("relative h-full w-full overflow-hidden bg-[#e8eef3]", className)}
+      className={cn("relative h-full w-full overflow-hidden", className)}
+      style={{ background: GLOBE_TOSS_THEME.shellBg }}
       data-workspace-maplibre
+      data-workspace-map-style="toss"
     >
       <div ref={containerRef} className="h-full w-full" />
       {!ready ? (
@@ -305,11 +301,6 @@ function MapLibreWorkspaceMap({
             compact={compact}
           />
         </div>
-      ) : null}
-      {!compact ? (
-        <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-white/92 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-black/5">
-          2D 작업장 · 선명 확대
-        </span>
       ) : null}
     </div>
   );
@@ -382,7 +373,10 @@ function AppleMapKitWorkspaceMap(props: WorkspaceMapViewProps) {
       const coord = new mapkit.Coordinate(pin.lat, pin.lng);
       const marker = new mapkit.MarkerAnnotation(coord, {
         title: pin.title,
-        color: pin.id === props.selectedId ? "#f97316" : "#0f172a",
+        color:
+          pin.id === props.selectedId
+            ? GLOBE_TOSS_THEME.blue
+            : GLOBE_TOSS_THEME.ink,
       }) as {
         addEventListener?: (type: string, fn: () => void) => void;
       };

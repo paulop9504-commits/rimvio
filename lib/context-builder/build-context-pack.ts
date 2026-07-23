@@ -13,6 +13,11 @@ import type {
   SessionGraphNode,
   SessionGraphV1,
 } from "@/lib/graph-command/types";
+import {
+  compileContextFromUtterance,
+  type ContextCompilerIrV1,
+} from "@/lib/context-compiler";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 
 export const CONTEXT_PACK_VERSION = 1 as const;
 
@@ -68,6 +73,11 @@ export type ContextPackV1 = {
    * Carried every turn so 「더 싸게」「하루 늘려」 hit the same project.
    */
   readonly lodgingDiff: ContextPackLodgingDiff | null;
+  /**
+   * Context Compiler IR (ADR-023) — Reality Parser output for this turn.
+   * Intent · Entity · Time · Preference · Relationship graph · actions.
+   */
+  readonly compilerIr: ContextCompilerIrV1;
   /** Stats for telemetry / debug — not full dump. */
   readonly stats: {
     readonly graphNodeTotal: number;
@@ -254,12 +264,24 @@ export function buildContextPack(input: {
   readonly discoveryPlaceIds?: readonly string[];
   /** Forced lodging Diff from slots / selection / lastBatch / previous pack. */
   readonly lodgingDiff?: ContextPackLodgingDiff | null;
+  /** Optional precompiled IR — otherwise built from utterance + graph + workspace. */
+  readonly compilerIr?: ContextCompilerIrV1 | null;
 }): ContextPackV1 {
   const utterance = input.utterance.trim();
   const intent = input.intent ?? classifyIntentFamily(utterance);
   const cap = input.maxNodes ?? DEFAULT_CAP;
   const graph = input.graph;
   const lodgingDiff = input.lodgingDiff ?? null;
+  const workspace = graph?.contextEventId
+    ? readContextWorkspace(graph.contextEventId)
+    : null;
+  const compilerIr =
+    input.compilerIr ??
+    compileContextFromUtterance({
+      utterance,
+      graph,
+      workspace,
+    });
   const discoveryPlaceIds = new Set(
     (input.discoveryPlaceIds ?? []).map((id) => id.trim()).filter(Boolean),
   );
@@ -277,6 +299,7 @@ export function buildContextPack(input: {
     edgeCount: 0,
     relevantEdgeIds: [],
     lodgingDiff,
+    compilerIr,
     stats: {
       graphNodeTotal: 0,
       packedNodeCount: 0,
@@ -362,6 +385,7 @@ export function buildContextPack(input: {
     edgeCount: graph.edges.length,
     relevantEdgeIds: edgeIds,
     lodgingDiff,
+    compilerIr,
     stats: {
       graphNodeTotal: graph.nodes.length,
       packedNodeCount: packedNodes.length,

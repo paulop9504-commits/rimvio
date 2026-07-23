@@ -445,12 +445,19 @@ export const copy = {
     globeComposeGlobeApplyPrefix: "지구에 반영 ·",
     workspacePreviewExpand: "펼치기",
     workspacePreviewEmptyMap: "지도를 펼쳐 보세요",
+    workspacePreviewReady: (count: number) =>
+      count > 0
+        ? `후보 ${count}곳 준비 · 펼치기로 작업장 열기`
+        : "후보 준비 중 · 펼치기로 작업장 열기",
     workspaceOpenTitle: "작업장",
     workspaceCommitCta: "지구에 남기기",
     workspaceCollapse: "접기",
     workspaceAutoSaveOn: "자동 저장됨",
     workspaceCommitDoneToast: "지구에 남겼어요",
     workspaceDraftHint: "말로 편집하면 바로 반영돼요 · 저장 버튼 없음",
+    workspacePromptPlaceholder: "무엇이든 물어보세요",
+    workspacePromptUnhandled:
+      "예: 더 싸게 · 2번 · 비교 · 동선 · 비슷한 곳 · ○○ 빼",
     workspaceSwipeHint: "밀어서 Commit",
     workspaceSwipeRelease: "놓으면 Commit",
     workspaceCommitCancel: "취소",

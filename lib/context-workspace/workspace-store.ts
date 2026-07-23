@@ -73,6 +73,9 @@ function normalizeState(
   return {
     ...parsed,
     lastWhy: parsed.lastWhy ?? null,
+    relationshipEdges: Array.isArray(parsed.relationshipEdges)
+      ? parsed.relationshipEdges
+      : [],
   };
 }
 

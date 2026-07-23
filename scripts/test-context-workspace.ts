@@ -181,7 +181,8 @@ assert.equal(
   "lodging nodes stay off Globe until Commit",
 );
 assert.ok(
-  applied!.assistantReplyKo.includes("워크스페이스") ||
+  applied!.assistantReplyKo.includes("후보") ||
+    applied!.assistantReplyKo.includes("작업장") ||
     (readContextWorkspace(EVENT_B)?.nodes.length ?? 0) > 0,
 );
 
@@ -231,5 +232,87 @@ assert.equal(
 );
 assert.equal(shouldProjectMapResultsToGlobe(EVENT_E), false);
 clearContextWorkspace(EVENT_E);
+
+// Workspace prompt realtime soft edits.
+{
+  const EVENT_P = "test-context-workspace-prompt";
+  clearContextWorkspace(EVENT_P);
+  openLodgingContextWorkspace({
+    contextEventId: EVENT_P,
+    query: "프롬프트",
+    hits: [
+      {
+        id: "maps:p1",
+        labelKo: "알파 호텔",
+        domain: "lodging",
+        lat: 33.5,
+        lng: 126.5,
+        rating: 4.8,
+        walkMinutes: 5,
+        priceBand: 4,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "20만원",
+      },
+      {
+        id: "maps:p2",
+        labelKo: "베타 호텔",
+        domain: "lodging",
+        lat: 33.51,
+        lng: 126.52,
+        rating: 4.1,
+        walkMinutes: 8,
+        priceBand: 1,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "8만원",
+      },
+      {
+        id: "maps:p3",
+        labelKo: "감마 호텔",
+        domain: "lodging",
+        lat: 33.49,
+        lng: 126.48,
+        rating: 4.6,
+        walkMinutes: 3,
+        priceBand: 2,
+        reservable: false,
+        localFavorite: true,
+        source: "maps",
+        amountLabel: "12만원",
+      },
+    ],
+  });
+  const pick = tryApplyWorkspaceLodgingTurnSync({
+    contextEventId: EVENT_P,
+    utterance: "2번",
+  });
+  assert.equal(pick.handled, true);
+  assert.ok(
+    readContextWorkspace(EVENT_P)?.nodes.some(
+      (n) => n.title.includes("베타") && n.selected,
+    ),
+  );
+  const cheap = tryApplyWorkspaceLodgingTurnSync({
+    contextEventId: EVENT_P,
+    utterance: "더 싼 곳만",
+  });
+  assert.equal(cheap.handled, true);
+  const visibleCheap =
+    readContextWorkspace(EVENT_P)?.nodes.filter((n) => n.visible) ?? [];
+  assert.ok(visibleCheap.every((n) => (n.priceBand ?? 99) <= 2));
+  const top = tryApplyWorkspaceLodgingTurnSync({
+    contextEventId: EVENT_P,
+    utterance: "상위 1곳만",
+  });
+  assert.equal(top.handled, true);
+  assert.equal(
+    readContextWorkspace(EVENT_P)?.nodes.filter((n) => n.visible).length,
+    1,
+  );
+  clearContextWorkspace(EVENT_P);
+}
 
 console.log("ok — context workspace lodging loop");

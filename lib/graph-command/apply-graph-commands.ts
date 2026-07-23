@@ -1364,7 +1364,7 @@ function replyFor(
       if (count === 0) {
         return "검색 결과가 없어요 · 조건을 바꿔 다시 찾아볼까요";
       }
-      return `워크스페이스에 ${count}곳을 펼쳤어요`;
+      return `후보 ${count}곳 준비했어요 · 펼치기로 작업장 열기`;
     }
     const count = graph.nodes.filter(
       (n) => n.visible && n.kind !== "compare" && n.kind !== "simulation",

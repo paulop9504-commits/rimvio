@@ -1,0 +1,38 @@
+---
+description: Context Compiler = Reality Parser (ADR-023) — not NL→JSON
+alwaysApply: true
+---
+
+# Context Compiler (locked)
+
+**Canonical:** `docs/adr/023-context-compiler-reality-parser.md`  
+**Stage SSOT:** `lib/context-run/natural-language-pipeline.ts` (`NL_PIPELINE_STAGES`)
+
+## One sentence
+
+> 자연어 → 현실 의도 → Context Graph → Reality Action → Reality Commit
+
+Cursor: NL → 코드 구조 → 수정 → Git.  
+Rimvio: NL → Intent/Entity/Time/Preference → **Relationship Graph** → prepare → **Reality Commit**.
+
+해자 = LLM이 아니라 **Parser + Context Graph + Commit**.
+
+## Do
+
+- Compile into Workspace Patch / Graph IR / Capsule — not chat essay SSOT  
+- Relationship edges (near · route · bookable) over flat place lists  
+- Preference + Reality State change the same utterance’s graph  
+- Keep existing pipeline stage order — extend in place
+
+## Don’t
+
+- Parallel “Ultimate Parser” stack bypassing `NL_PIPELINE_STAGES`  
+- One LLM call that Intent+Commit’s Reality  
+- Search result dump without graph / Workspace  
+- Silent Ghost truth-log / site egress patterns
+
+## PR reject
+
+- NL→JSON-only “parser” as the product story  
+- Second compiler next to Globe Ingress / NL pipeline  
+- Commit without human approval (Article 0)
