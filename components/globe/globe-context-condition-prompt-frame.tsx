@@ -878,9 +878,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
               domain:
                 row.kind === "lodging" || row.kind === "eatery"
                   ? row.kind
-                  : row.kind === "amenity"
-                    ? "amenity"
-                    : "poi",
+                  : ("poi" as const),
               lat: row.lat ?? anchorLat,
               lng: row.lng ?? anchorLng,
               rating: null,
