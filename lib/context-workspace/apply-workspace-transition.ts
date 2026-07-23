@@ -13,6 +13,7 @@ import {
   mergePreservePinnedNodes,
 } from "@/lib/context-workspace/merge-preserve-pinned";
 import type {
+  ContextWorkspaceDomain,
   ContextWorkspaceFilter,
   ContextWorkspaceNode,
   ContextWorkspaceState,
@@ -65,6 +66,7 @@ function withHistory(
       Pick<
         ContextWorkspaceState,
         | "query"
+        | "domain"
         | "surfacePrimary"
         | "status"
         | "committedAtIso"
@@ -81,7 +83,7 @@ function withHistory(
     version: prev.version,
     workspaceId: prev.workspaceId,
     contextEventId: prev.contextEventId,
-    domain: prev.domain,
+    domain: next.domain ?? prev.domain,
     query: next.query ?? prev.query,
     surfacePrimary: next.surfacePrimary ?? prev.surfacePrimary,
     status: next.status ?? prev.status,
@@ -183,6 +185,9 @@ export function applyWorkspaceTransition(input: {
   simulateScenarioKo?: string | null;
   /** Pin cart: true=pin, false=unpin, omit=toggle (bookmark op). */
   pin?: boolean | null;
+  /** Active search domain for this transition (multi-intent Workspace). */
+  domain?: ContextWorkspaceDomain | null;
+  query?: string | null;
 }): ContextWorkspaceState | null {
   const prev = readContextWorkspace(input.contextEventId);
   if (!prev || prev.status === "closed") {
@@ -247,13 +252,15 @@ export function applyWorkspaceTransition(input: {
   let lastWhy: WorkspaceWhyEntry | null = prev.lastWhy;
   let addedCount = 0;
   let removedCount = 0;
+  const activeDomain = input.domain ?? prev.domain;
+  const nextQuery = input.query?.trim() || null;
 
   if (input.op === "replace_candidates") {
     const fromHits = (input.replaceHits ?? []).map((h, i) =>
-      placeHitToWorkspaceNode(h, i, prev.domain),
+      placeHitToWorkspaceNode(h, i, activeDomain),
     );
     const fromCandidates = (input.replaceCandidates ?? []).map((c, i) =>
-      candidateToWorkspaceNode(c, i, prev.domain),
+      candidateToWorkspaceNode(c, i, activeDomain),
     );
     const incoming = new Map<string, ContextWorkspaceNode>();
     for (const node of [...fromCandidates, ...fromHits]) {
@@ -269,15 +276,15 @@ export function applyWorkspaceTransition(input: {
       (pinnedKept > 0
         ? `후보 갱신 · 고정 ${pinnedKept}곳 유지`
         : `후보 ${nodes.length}곳으로 바꿨어요`);
-    summaryKo = `${nodes.length}곳`;
+    summaryKo = `${domainLabelKo(activeDomain)} ${nodes.length}곳`;
   }
 
   if (input.op === "add_nodes" || input.op === "find_similar") {
     const fromHits = (input.addHits ?? []).map((h, i) =>
-      placeHitToWorkspaceNode(h, i, prev.domain),
+      placeHitToWorkspaceNode(h, i, activeDomain),
     );
     const fromCandidates = (input.addCandidates ?? []).map((c, i) =>
-      candidateToWorkspaceNode(c, i, prev.domain),
+      candidateToWorkspaceNode(c, i, activeDomain),
     );
     const existing = new Set(nodes.map((n) => n.placeId));
     const added: ContextWorkspaceNode[] = [];
@@ -299,7 +306,8 @@ export function applyWorkspaceTransition(input: {
           const placeId = `${base.placeId}-sim-${Date.now()}-${i}`;
           added.push({
             ...base,
-            id: `ws:lodging:${placeId}`,
+            id: `ws:${activeDomain}:${placeId}`,
+            kind: activeDomain,
             placeId,
             title: `${base.title} · 비슷한 ${i + 1}`,
             lat: base.lat + (i + 1) * 0.004,
@@ -316,7 +324,7 @@ export function applyWorkspaceTransition(input: {
     lastChangeKo =
       lastChangeKo ??
       (added.length > 0 ? `${added.length}곳 더 넣었어요` : "추가할 곳이 없어요");
-    summaryKo = `${prev.domain === "eatery" ? "맛집" : "숙소"} ${nodes.filter((n) => n.visible).length}곳`;
+    summaryKo = `${domainLabelKo(activeDomain)} ${nodes.filter((n) => n.visible).length}곳`;
   }
 
   if (input.op === "filter") {
@@ -447,8 +455,10 @@ export function applyWorkspaceTransition(input: {
     lastChangeKo,
     status,
     lastWhy,
+    domain: activeDomain,
+    query: nextQuery ?? undefined,
   });
-  writeContextWorkspace(withWorkspaceRelationships(next));
+  writeContextWorkspace(withWorkspaceRelationships(next, nextQuery));
   return next;
 }
 

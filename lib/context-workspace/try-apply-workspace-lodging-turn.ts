@@ -12,10 +12,15 @@ import {
   readContextWorkspace,
 } from "@/lib/context-workspace/workspace-store";
 import { domainLabelKo } from "@/lib/context-workspace/types";
+import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
+import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import {
+  resolveWorkspaceSearchDomain,
+  workspaceDomainToToolDomain,
+} from "@/lib/context-workspace/resolve-workspace-search-domain";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry/invoke-rimvio-tool";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
-import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -25,14 +30,8 @@ export type WorkspacePromptTurnResult = {
 
 function resolveToolDomain(
   domain: ContextWorkspaceDomain,
-): "lodging" | "eatery" | "poi" {
-  if (domain === "lodging") {
-    return "lodging";
-  }
-  if (domain === "eatery") {
-    return "eatery";
-  }
-  return "poi";
+): "lodging" | "eatery" | "poi" | "amenity" {
+  return workspaceDomainToToolDomain(domain);
 }
 
 function findNodesByTitleHint(
@@ -250,16 +249,21 @@ async function rescoutWorkspace(input: {
   if (!state) {
     return { handled: false, replyKo: null, committed: false };
   }
+  const activeDomain = resolveWorkspaceSearchDomain(
+    input.utterance,
+    state.domain,
+  );
   const seed =
     state.nodes.find((n) => n.selected) ??
+    state.nodes.find((n) => n.bookmarked && n.visible) ??
     state.nodes.find((n) => n.visible) ??
     null;
-  const toolDomain = resolveToolDomain(state.domain);
+  const toolDomain = resolveToolDomain(activeDomain);
   const toolId = resolveLookupToolId(toolDomain, input.utterance);
   const query =
     input.utterance.trim() ||
     state.query ||
-    `${domainLabelKo(state.domain)} 찾기`;
+    `${domainLabelKo(activeDomain)} 찾기`;
   try {
     const tool = await invokeRimvioToolAsync(toolId, {
       query,
@@ -269,18 +273,59 @@ async function rescoutWorkspace(input: {
       utterance: input.utterance,
       contextEventId: input.contextEventId,
     });
+    const candidates = tool.candidates ?? [];
     if (input.mode === "add") {
-      return applyParsedWorkspaceTurn({
+      const next = applyWorkspaceTransition({
         contextEventId: input.contextEventId,
-        parsed: { op: "find_similar" },
-        addCandidates: tool.candidates ?? [],
+        op: "find_similar",
+        addCandidates: candidates,
+        domain: activeDomain,
+        query,
+        changeKo:
+          candidates.length > 0
+            ? `${domainLabelKo(activeDomain)} ${candidates.length}곳 더 넣었어요`
+            : null,
+      });
+      return {
+        handled: true,
+        replyKo: next?.lastChangeKo ?? "비슷한 곳을 더 넣었어요",
+        committed: false,
+      };
+    }
+
+    // Replace search → switch active domain; pin cart preserved in openMap.
+    const opened = openMapContextWorkspace({
+      contextEventId: input.contextEventId,
+      domain: activeDomain,
+      query,
+      summaryKo:
+        tool.summaryKo?.trim() ||
+        `${domainLabelKo(activeDomain)} 후보 ${candidates.length}곳`,
+      candidates,
+      source: "scout_patch",
+    });
+    const focus =
+      opened.nodes.find((n) => !n.bookmarked && n.visible && n.kind === activeDomain) ??
+      opened.nodes.find((n) => !n.bookmarked && n.visible) ??
+      null;
+    if (focus) {
+      applyWorkspaceTransition({
+        contextEventId: input.contextEventId,
+        op: "select",
+        nodeIds: [focus.id],
       });
     }
-    return applyParsedWorkspaceTurn({
-      contextEventId: input.contextEventId,
-      parsed: { op: "replace_candidates" },
-      replaceCandidates: tool.candidates ?? [],
-    });
+    const pinned = opened.nodes.filter((n) => n.bookmarked).length;
+    const fresh = opened.nodes.filter((n) => !n.bookmarked).length;
+    return {
+      handled: true,
+      replyKo:
+        opened.lastChangeKo ??
+        (pinned > 0
+          ? `${domainLabelKo(activeDomain)} ${fresh}곳 · 고정 ${pinned}곳 유지`
+          : `${domainLabelKo(activeDomain)} 후보 ${fresh}곳으로 바꿨어요`),
+      committed: false,
+    };
   } catch {
     return {
       handled: true,

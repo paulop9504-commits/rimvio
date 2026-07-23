@@ -85,6 +85,11 @@ export {
 } from "@/lib/context-workspace/merge-preserve-pinned";
 
 export {
+  resolveWorkspaceSearchDomain,
+  workspaceDomainToToolDomain,
+} from "@/lib/context-workspace/resolve-workspace-search-domain";
+
+export {
   buildCapsuleProjection,
   listCapsuleProjections,
   readCapsuleCompilerIr,

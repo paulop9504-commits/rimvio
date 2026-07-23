@@ -13,6 +13,7 @@ import {
   openMapContextWorkspace,
   parseWorkspaceUtteranceTransition,
   readContextWorkspace,
+  resolveWorkspaceSearchDomain,
   tryApplyWorkspaceLodgingTurnSync,
 } from "../lib/context-workspace";
 import { readContextConditionLastBatch } from "../lib/globe/context-condition-ai/context-condition-last-batch-store";
@@ -417,6 +418,94 @@ clearContextWorkspace(EVENT_E);
     false,
   );
   clearContextWorkspace(EVENT_PIN);
+}
+
+// Multi-intent domain: hotel workspace → food/USJ cues must leave lodging.
+{
+  assert.equal(
+    resolveWorkspaceSearchDomain("맛집 찾아", "lodging"),
+    "eatery",
+  );
+  assert.equal(
+    resolveWorkspaceSearchDomain("놀거리 찾아", "lodging"),
+    "poi",
+  );
+  assert.equal(
+    resolveWorkspaceSearchDomain("유니버설 스튜디오 찾아", "lodging"),
+    "poi",
+  );
+  assert.equal(
+    resolveWorkspaceSearchDomain("다시 찾아", "lodging"),
+    "lodging",
+  );
+  assert.equal(
+    resolveWorkspaceSearchDomain("더 싼 호텔", "eatery"),
+    "lodging",
+  );
+
+  const EVENT_MULTI = "test-context-workspace-multi-intent";
+  clearContextWorkspace(EVENT_MULTI);
+  openLodgingContextWorkspace({
+    contextEventId: EVENT_MULTI,
+    query: "호텔",
+    hits: [
+      {
+        id: "maps:h-multi",
+        labelKo: "고정 호텔",
+        domain: "lodging",
+        lat: 34.66,
+        lng: 135.5,
+        rating: 4.5,
+        walkMinutes: 5,
+        priceBand: 2,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "10만원",
+      },
+    ],
+  });
+  const hotel = readContextWorkspace(EVENT_MULTI)!.nodes[0]!;
+  applyWorkspaceTransition({
+    contextEventId: EVENT_MULTI,
+    op: "bookmark",
+    nodeIds: [hotel.id],
+    pin: true,
+  });
+  applyWorkspaceTransition({
+    contextEventId: EVENT_MULTI,
+    op: "replace_candidates",
+    domain: "poi",
+    query: "유니버설 스튜디오 찾아",
+    replaceHits: [
+      {
+        id: "maps:usj",
+        labelKo: "유니버설 스튜디오 재팬",
+        domain: "poi",
+        lat: 34.665,
+        lng: 135.432,
+        rating: 4.6,
+        walkMinutes: 12,
+        priceBand: 3,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "입장권",
+      },
+    ],
+  });
+  const multi = readContextWorkspace(EVENT_MULTI);
+  assert.ok(multi);
+  assert.equal(multi!.domain, "poi");
+  assert.ok(
+    multi!.nodes.some((n) => n.bookmarked && n.title.includes("고정 호텔")),
+  );
+  assert.ok(
+    multi!.nodes.some(
+      (n) => n.kind === "poi" && n.title.includes("유니버설"),
+    ),
+  );
+  clearContextWorkspace(EVENT_MULTI);
 }
 
 console.log("ok — context workspace lodging loop");
