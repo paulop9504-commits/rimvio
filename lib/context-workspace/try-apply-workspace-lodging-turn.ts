@@ -258,21 +258,23 @@ async function rescoutWorkspace(input: {
     state.nodes.find((n) => n.bookmarked && n.visible) ??
     state.nodes.find((n) => n.visible) ??
     null;
-  const toolDomain = resolveToolDomain(activeDomain);
-  const toolId = resolveLookupToolId(toolDomain, input.utterance);
-  const query =
-    input.utterance.trim() ||
-    state.query ||
-    `${domainLabelKo(activeDomain)} 찾기`;
-  try {
-    const tool = await invokeRimvioToolAsync(toolId, {
-      query,
-      domain: toolDomain,
-      lat: seed?.lat,
-      lng: seed?.lng,
-      utterance: input.utterance,
-      contextEventId: input.contextEventId,
-    });
+    const toolDomain = resolveToolDomain(activeDomain);
+    const toolId = resolveLookupToolId(toolDomain, input.utterance);
+    const query =
+      input.utterance.trim() ||
+      state.query ||
+      `${domainLabelKo(activeDomain)} 찾기`;
+    try {
+      const invokeDomain =
+        toolDomain === "amenity" ? "poi" : toolDomain;
+      const tool = await invokeRimvioToolAsync(toolId, {
+        query,
+        domain: invokeDomain,
+        lat: seed?.lat,
+        lng: seed?.lng,
+        utterance: input.utterance,
+        contextEventId: input.contextEventId,
+      });
     const candidates = tool.candidates ?? [];
     if (input.mode === "add") {
       const next = applyWorkspaceTransition({
