@@ -25,7 +25,7 @@ export function isToolSearchLastBatch(
 
 /**
  * Field scout inventory owns lodging map markers — hide stale Graph APA lodging.
- * Tool-search Diff must NOT steal graph lodging markers (RO Diff path).
+ * Tool-search Diff and Workspace Commit must NOT steal graph lodging markers.
  */
 export function fieldScoutOwnsLodgingGraphMarkers(
   batch: ContextConditionLastBatchWire | null | undefined,
@@ -33,7 +33,13 @@ export function fieldScoutOwnsLodgingGraphMarkers(
   if (!batch?.recommendations?.some((row) => row.kind === "lodging")) {
     return false;
   }
-  return !isToolSearchLastBatch(batch);
+  if (isToolSearchLastBatch(batch)) {
+    return false;
+  }
+  if (batch.batchId?.startsWith("workspace-commit:")) {
+    return false;
+  }
+  return true;
 }
 
 function placeIdFromCandidate(candidate: SearchToolCandidate): string {

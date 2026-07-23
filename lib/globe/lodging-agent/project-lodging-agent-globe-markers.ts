@@ -1,7 +1,7 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GlobeEateryMapMarker } from "@/lib/globe/eatery/eatery-globe-marker-types";
 import { readEateryInventoryRows } from "@/lib/globe/eatery/read-eatery-resource-inventory";
-import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
+import { isTrustedVenueMediaUrl } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { buildProjectionNodeExplanation } from "@/lib/situation-projection/projection-node-explanation";
 import { resolveProjectionNodePresentation } from "@/lib/situation-projection/projection-node-presentation";
 import type { GhostProjectionNode, SituationProjectionManifest } from "@/lib/situation-projection/types";
@@ -55,10 +55,10 @@ export function projectLodgingAgentGlobeMarkers(input: {
       const row = byPlaceId.get(placeId);
       const resourceId = `${input.event.id}:eatery:${placeId}`;
       const presentation = resolveProjectionNodePresentation(node);
-      const thumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
-        family: "eatery",
-        thumbnailUrl: row?.images[0] ?? node.previewImageUrl ?? null,
-      });
+      const rawThumb = row?.images[0] ?? node.previewImageUrl ?? null;
+      const thumbnailUrl = isTrustedVenueMediaUrl(rawThumb)
+        ? rawThumb.trim()
+        : null;
       const explanation = buildProjectionNodeExplanation({
         node,
         manifest,

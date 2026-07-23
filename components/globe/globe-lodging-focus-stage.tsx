@@ -38,6 +38,7 @@ import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-sta
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
+import { selectTrustedLodgingMediaSlides } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
@@ -293,12 +294,7 @@ export function GlobeLodgingFocusStage({
     if (!payload) {
       return [];
     }
-    const slides: string[] = [];
-    if (payload.videoUrl) {
-      slides.push(payload.videoUrl);
-    }
-    slides.push(...payload.images);
-    return slides;
+    return selectTrustedLodgingMediaSlides(payload);
   }, [payload]);
 
   const totalMediaSlides =

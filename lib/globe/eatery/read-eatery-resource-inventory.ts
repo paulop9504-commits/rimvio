@@ -8,6 +8,21 @@ import {
   CONTEXT_EATERY_INVENTORY_META_KEY,
 } from "@/lib/globe/eatery/eatery-resource-types";
 import type { ContextResource } from "@/lib/globe/resource/types";
+import {
+  filterTrustedVenueMediaUrls,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
+import { isMockOrSeedPlaceId } from "@/lib/globe/venue-media-fidelity";
+
+function sanitizeEateryImages(
+  provider: ContextEateryInventoryRow["provider"] | EateryResourcePayload["provider"],
+  images: readonly string[],
+  placeId?: string | null,
+): string[] {
+  if (provider === "mock" || isMockOrSeedPlaceId(placeId)) {
+    return [];
+  }
+  return filterTrustedVenueMediaUrls(images);
+}
 
 function readInventoryRows(value: unknown): ContextEateryInventoryRow[] {
   if (!Array.isArray(value)) {
@@ -26,9 +41,18 @@ function readInventoryRows(value: unknown): ContextEateryInventoryRow[] {
     if (!placeId || !name || lat === null || lng === null) {
       continue;
     }
-    const images = Array.isArray(row.images)
-      ? row.images.filter((src): src is string => typeof src === "string" && src.trim().length > 0)
-      : [];
+    const images = sanitizeEateryImages(
+      row.provider === "google_places" ||
+        row.provider === "naver_local" ||
+        row.provider === "mock" ||
+        row.provider === "multi_provider"
+        ? row.provider
+        : null,
+      Array.isArray(row.images)
+        ? row.images.filter((src): src is string => typeof src === "string" && src.trim().length > 0)
+        : [],
+      placeId,
+    );
     rows.push({
       placeId,
       name,
@@ -73,9 +97,20 @@ export function readEateryPayloadFromResource(
   if (!placeId || !name) {
     return null;
   }
-  const images = Array.isArray(row.images)
-    ? row.images.filter((src): src is string => typeof src === "string" && src.trim().length > 0)
-    : [];
+  const provider =
+    row.provider === "google_places" ||
+    row.provider === "naver_local" ||
+    row.provider === "mock" ||
+    row.provider === "multi_provider"
+      ? row.provider
+      : null;
+  const images = sanitizeEateryImages(
+    provider,
+    Array.isArray(row.images)
+      ? row.images.filter((src): src is string => typeof src === "string" && src.trim().length > 0)
+      : [],
+    placeId,
+  );
   return {
     placeId,
     name,
@@ -86,13 +121,7 @@ export function readEateryPayloadFromResource(
     rating: typeof row.rating === "number" ? row.rating : null,
     openNow: typeof row.openNow === "boolean" ? row.openNow : null,
     mapsUrl: typeof row.mapsUrl === "string" ? row.mapsUrl : null,
-    provider:
-      row.provider === "google_places" ||
-      row.provider === "naver_local" ||
-      row.provider === "mock" ||
-      row.provider === "multi_provider"
-        ? row.provider
-        : null,
+    provider,
     providerLabel: typeof row.providerLabel === "string" ? row.providerLabel : null,
     categoryLabel: typeof row.categoryLabel === "string" ? row.categoryLabel : null,
     specialReasonKo:

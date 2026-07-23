@@ -43,6 +43,8 @@ import {
   isTripExperienceScoutBatchId,
 } from "@/lib/globe/trip-experience";
 import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
+import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {
@@ -797,12 +799,22 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     }
 
     if (globeRef) {
-      snapGlobeToContextConditionScout(globeRef, {
-        anchorLat,
-        anchorLng,
-        recommendations: outcome.recommendations,
-        radiusM: outcome.radiusM,
-      });
+      // Map place kinds paint Workspace, not Globe — strip from scout flyTo.
+      const nonMap = outcome.recommendations.filter(
+        (row) =>
+          row.kind !== "lodging" &&
+          row.kind !== "eatery" &&
+          row.kind !== "activity" &&
+          row.kind !== "amenity",
+      );
+      if (nonMap.length > 0) {
+        snapGlobeToContextConditionScout(globeRef, {
+          anchorLat,
+          anchorLng,
+          recommendations: nonMap,
+          radiusM: outcome.radiusM,
+        });
+      }
     }
   }, [event, anchorPlaceName, anchorLat, anchorLng, userLat, userLng, globeRef]);
 
@@ -837,33 +849,78 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
         setActiveSpec(lastBatch.spec ?? null);
         revealContextConditionScout(event.id);
         markScoutFeedGateOpened(event.id, input.turnId);
-        publishFocusGlobeProjection({
-          contextEventId: event.id,
-          visiblePlaceIds: (lastBatch.recommendations ?? [])
-            .map((row) => row.placeId?.trim() ?? "")
-            .filter(Boolean),
-        });
         setComposeThread(readContextAgentComposeThread(event.id));
-        dispatchIntelligentDiscoveryFeedOpen({
-          contextEventId: event.id,
-          source: "scout_complete",
-        });
-        if (globeRef && lastBatch.recommendations && lastBatch.recommendations.length > 0) {
-          snapGlobeToContextConditionScout(globeRef, {
-            anchorLat,
-            anchorLng,
-            recommendations: lastBatch.recommendations.map((row, index) => ({
-              kind: row.kind,
-              activitySubtype: row.activitySubtype ?? null,
-              title: row.title,
-              reasonKo: row.reasonKo,
-              rank: index + 1,
-              placeId: row.placeId ?? "",
+        const rows = lastBatch.recommendations ?? [];
+        const mapKindSet = new Set([
+          "lodging",
+          "eatery",
+          "activity",
+          "amenity",
+        ]);
+        const mapOnly =
+          rows.length > 0 && rows.every((row) => mapKindSet.has(row.kind));
+        if (mapOnly) {
+          // Map-needed scout → Workspace Preview only — do not paint 3D Globe.
+          const primaryKind = rows[0]!.kind;
+          const domain =
+            primaryKind === "lodging" || primaryKind === "eatery"
+              ? primaryKind
+              : primaryKind === "amenity"
+                ? "amenity"
+                : "poi";
+          openMapContextWorkspace({
+            contextEventId: event.id,
+            domain,
+            query: lastBatch.triggerMessage ?? "장소",
+            summaryKo: lastBatch.summaryKo,
+            hits: rows.map((row, index) => ({
+              id: row.placeId ?? `${row.kind}-${index}`,
+              labelKo: row.title,
+              domain:
+                row.kind === "lodging" || row.kind === "eatery"
+                  ? row.kind
+                  : "poi",
               lat: row.lat ?? anchorLat,
               lng: row.lng ?? anchorLng,
+              rating: null,
+              walkMinutes: null,
+              priceBand: null,
+              reservable: false,
+              localFavorite: false,
+              source: "maps" as const,
             })),
-            radiusM: lastBatch.radiusM,
+            source: "scout_patch",
           });
+          appendWorkspacePreviewComposeTurn(event.id);
+          setComposeThread(readContextAgentComposeThread(event.id));
+        } else {
+          publishFocusGlobeProjection({
+            contextEventId: event.id,
+            visiblePlaceIds: rows
+              .map((row) => row.placeId?.trim() ?? "")
+              .filter(Boolean),
+          });
+          dispatchIntelligentDiscoveryFeedOpen({
+            contextEventId: event.id,
+            source: "scout_complete",
+          });
+          if (globeRef && rows.length > 0) {
+            snapGlobeToContextConditionScout(globeRef, {
+              anchorLat,
+              anchorLng,
+              recommendations: rows.map((row, index) => ({
+                kind: row.kind,
+                activitySubtype: row.activitySubtype ?? null,
+                title: row.title,
+                reasonKo: row.reasonKo,
+                rank: index + 1,
+                placeId: row.placeId ?? "",
+                lat: row.lat ?? anchorLat,
+                lng: row.lng ?? anchorLng,
+              })),
+              radiusM: lastBatch.radiusM,
+            });
+          }
         }
         setContextAgentSessionPhase("awaiting_human");
       } finally {
@@ -1448,9 +1505,14 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-[#515154] active:scale-95"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onClose();
+            }}
+            className="relative z-[2] flex size-7 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-[#515154] active:scale-95"
             aria-label={copy.globe.contextConditionPanelCloseAria}
+            data-globe-context-condition-panel-close
           >
             <X className="size-3.5" aria-hidden />
           </button>

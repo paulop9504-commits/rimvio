@@ -9,11 +9,15 @@ import {
   clearSessionGraphs,
   parseGraphCommands,
   planContextRun,
-  projectSessionGraphToBrainCandidates,
   readSessionGraph,
   resetGraphCommandStoreForTests,
   tryRunGraphCommandOs,
 } from "../lib/graph-command";
+import {
+  hasProvisionalContextWorkspace,
+  readContextWorkspace,
+  clearContextWorkspace,
+} from "../lib/context-workspace";
 import { planContextRun as planRun } from "../lib/context-run/plan-context-run";
 import type { BoundSituation } from "../lib/context-run/ingress-types";
 import {
@@ -60,42 +64,17 @@ clearSessionGraphs();
     contextLabelKo: "유성온천",
   });
   assert.ok(applied);
-  assert.ok(applied!.graph.nodes.length >= 3);
-  const markers = projectSessionGraphToBrainCandidates(applied!.graph);
-  assert.ok(markers.length >= 3);
-  assert.ok(markers.every((m) => m.markerStyle === "dashed" || m.markerStyle === "solid"));
-
-  const filtered = tryRunGraphCommandOs({
-    utterance: "걸어서 10분 안쪽",
-    contextEventId: "evt-yuseong",
-  });
-  assert.ok(filtered);
-  assert.ok(
-    filtered!.graph.nodes
-      .filter((n) => n.visible && n.kind === "eatery")
-      .every((n) => (n.walkMinutes ?? 99) <= 10),
+  // Map search → Context Workspace (not Globe graph stamp).
+  assert.equal(hasProvisionalContextWorkspace("evt-yuseong"), true);
+  const ws = readContextWorkspace("evt-yuseong");
+  assert.ok((ws?.nodes.length ?? 0) >= 1);
+  assert.equal(ws?.domain, "eatery");
+  assert.equal(
+    applied!.graph.nodes.filter((n) => n.kind === "eatery").length,
+    0,
   );
-
-  const pin = tryRunGraphCommandOs({
-    utterance: "시골집생태전문 고정해",
-    contextEventId: "evt-yuseong",
-  });
-  assert.ok(pin);
-  assert.ok(pin!.graph.nodes.some((n) => n.labelKo.includes("시골집") && n.pinned));
-
-  const prep = tryRunGraphCommandOs({
-    utterance: "예약 준비해",
-    contextEventId: "evt-yuseong",
-  });
-  assert.ok(prep);
-  assert.ok(prep!.reservedOpIds.length >= 1);
-
-  const snap = buildRealityControlSnapshot({
-    events: [],
-    tradeSessions: [],
-    applyHolds: false,
-  });
-  assert.equal(snap.canCommit, false, "graph command must not auto-Commit");
+  assert.ok(applied!.assistantReplyKo.includes("워크스페이스"));
+  clearContextWorkspace("evt-yuseong");
 }
 
 {
@@ -154,6 +133,50 @@ clearSessionGraphs();
 {
   const cmds = parseGraphCommands("예약 가능한 곳만 남겨");
   assert.equal(cmds[0]?.op, "filter");
+}
+
+// Context chat: map search → Workspace Preview (no Globe graph stamp until Commit).
+{
+  resetGraphCommandStoreForTests();
+  clearPreparedRealityOperations();
+  clearSessionGraphs();
+  const eatery = tryRunGraphCommandOs({
+    utterance: "둔산동 맛집 찾아",
+    contextEventId: "evt-dunsan-eatery",
+    anchorLat: 36.35,
+    anchorLng: 127.38,
+    contextLabelKo: "대전 서구 둔산동",
+  });
+  assert.ok(eatery);
+  assert.match(eatery!.assistantReplyKo, /워크스페이스에 \d+곳을 펼쳤어요/);
+  assert.equal(hasProvisionalContextWorkspace("evt-dunsan-eatery"), true);
+  const eateryWs = readContextWorkspace("evt-dunsan-eatery");
+  assert.equal(eateryWs?.domain, "eatery");
+  assert.ok((eateryWs?.nodes.length ?? 0) >= 3);
+  assert.equal(
+    eatery!.graph.nodes.filter((n) => n.kind === "eatery").length,
+    0,
+  );
+  clearContextWorkspace("evt-dunsan-eatery");
+
+  const pharmacy = tryRunGraphCommandOs({
+    utterance: "약국찾아",
+    contextEventId: "evt-dunsan-pharm",
+    anchorLat: 36.35,
+    anchorLng: 127.38,
+    contextLabelKo: "대전 서구 둔산동",
+  });
+  assert.ok(pharmacy);
+  assert.match(pharmacy!.assistantReplyKo, /워크스페이스에 \d+곳을 펼쳤어요/);
+  assert.equal(hasProvisionalContextWorkspace("evt-dunsan-pharm"), true);
+  const pharmWs = readContextWorkspace("evt-dunsan-pharm");
+  assert.ok((pharmWs?.nodes.length ?? 0) >= 1);
+  assert.ok(
+    pharmWs!.nodes.every(
+      (n) => Number.isFinite(n.lat) && Number.isFinite(n.lng) && n.lat !== 0,
+    ),
+  );
+  clearContextWorkspace("evt-dunsan-pharm");
 }
 
 console.log("test-graph-command-os: ok");

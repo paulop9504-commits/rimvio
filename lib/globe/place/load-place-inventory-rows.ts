@@ -3,6 +3,7 @@ import type {
   ContextPlaceInventory,
   ContextPlaceInventoryRow,
 } from "@/lib/globe/place/place-resource-types";
+import { sanitizePlaceInventoryRows } from "@/lib/globe/venue-media-fidelity";
 
 export type PlaceInventoryDomain = "activity" | "amenity";
 
@@ -30,8 +31,11 @@ async function fetchPlaceInventoryFromApi(input: {
     inventory?: ContextPlaceInventoryRow[];
     source?: ContextPlaceInventory["source"];
   };
+  const rows = sanitizePlaceInventoryRows(
+    Array.isArray(body.inventory) ? body.inventory : [],
+  );
   return {
-    rows: Array.isArray(body.inventory) ? body.inventory : [],
+    rows,
     source:
       body.source === "google_places" ||
       body.source === "naver_local" ||
@@ -57,7 +61,7 @@ export async function loadPlaceInventoryRows(input: {
     !Number.isFinite(input.lat) ||
     !Number.isFinite(input.lng)
   ) {
-    return { rows: [], source: "mock" };
+    return { rows: [], source: "google_places" };
   }
 
   return fetchPlaceInventoryFromApi({

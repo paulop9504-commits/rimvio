@@ -79,6 +79,7 @@ import {
   isPendingContextCreateCancel,
 } from "@/lib/globe-ingress/detect-pending-context-create-reply";
 import { readPendingContextCreate } from "@/lib/globe-ingress/pending-context-create-store";
+import { tryPatchPendingContextCreate } from "@/lib/globe-ingress/try-patch-pending-context-create";
 import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
 import { parseTravelSlotsFromMessage } from "@/lib/experience-run/travel-context-slots";
 import {
@@ -186,6 +187,21 @@ export async function dispatchContextRun(
             globeIngress: committed.compiled,
           };
         }
+      }
+      const patched = tryPatchPendingContextCreate({
+        utterance: replyText,
+        contextEventId: replyGraphId,
+        ruleDecision: {
+          matched: false,
+        } as never,
+        pack: { version: 1 } as never,
+      });
+      if (patched) {
+        const draft = readPendingContextCreate(replyGraphId);
+        if (draft) {
+          offerPendingContextCreate({ draft, skipUserEcho: true });
+        }
+        return { graphId: replyGraphId, status: "done", planKind: "noop" };
       }
       appendGlobeChatTextMessage({
         graphId: replyGraphId,

@@ -18,6 +18,10 @@ import type { ContextResource } from "@/lib/globe/resource/types";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 import { resolveLodgingBookingProvider } from "@/lib/globe/context-hub/resolve-lodging-booking-provider";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  sanitizeLodgingInventoryRowMedia,
+  sanitizeLodgingInventoryRows,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 
 const LODGING_ANCHOR_TOLERANCE_KM = 30;
 
@@ -143,7 +147,7 @@ function readInventoryRows(value: unknown): ContextLodgingInventoryRow[] {
       roomOffers: readRoomOffers(row.roomOffers),
     });
   }
-  return rows;
+  return sanitizeLodgingInventoryRows(rows);
 }
 
 export function readLodgingPayloadFromResource(
@@ -162,7 +166,7 @@ export function readLodgingPayloadFromResource(
   const images = Array.isArray(row.images)
     ? row.images.filter((src): src is string => typeof src === "string" && src.trim().length > 0)
     : [];
-  return {
+  return sanitizeLodgingInventoryRowMedia({
     placeId,
     name,
     images,
@@ -195,7 +199,7 @@ export function readLodgingPayloadFromResource(
     roomOffers: readRoomOffers(row.roomOffers),
     liteapiHotelId:
       typeof row.liteapiHotelId === "string" ? row.liteapiHotelId : null,
-  };
+  });
 }
 
 export function isLodgingHubEnabled(event: EventCandidate): boolean {

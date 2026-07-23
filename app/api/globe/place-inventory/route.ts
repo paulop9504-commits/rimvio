@@ -5,6 +5,10 @@ import { queryNearbyPlaces } from "@/lib/context-resolver/places/query-nearby-pl
 import { resolvePlacePreference } from "@/lib/context-resolver/places/place-preference";
 import type { PlaceDiscoveryCriteria } from "@/lib/context-resolver/places/types";
 import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-types";
+import {
+  isMockOrSeedPlaceId,
+  sanitizePlaceInventoryRows,
+} from "@/lib/globe/venue-media-fidelity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,35 +87,44 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => a.travel_minutes - b.travel_minutes)
     .slice(0, maxResults);
 
-  const inventory: ContextPlaceInventoryRow[] = ranked.map((candidate) => ({
-    placeId: candidate.place_id,
-    name: candidate.name,
-    lat: candidate.lat,
-    lng: candidate.lng,
-    images: candidate.photo_urls ?? (candidate.thumbnail_url ? [candidate.thumbnail_url] : []),
-    address: candidate.address ?? null,
-    cuisineHint: null,
-    priceLevel: null,
-    rating: candidate.rating ?? null,
-    reviewCount: candidate.review_count ?? null,
-    openNow: candidate.open_now ?? null,
-    mapsUrl: candidate.maps_url ?? null,
-    provider: null,
-    providerLabel: null,
-    categoryLabel:
-      candidate.naver_category ??
-      candidate.google_types?.join(" ") ??
-      criteria.category,
-    specialReasonKo: candidate.reason,
-    specialScore: null,
-    searchScore: null,
-    virtualCandidate: true as const,
-  }));
+  const inventory: ContextPlaceInventoryRow[] = sanitizePlaceInventoryRows(
+    ranked.map((candidate) => {
+      const isMock = isMockOrSeedPlaceId(candidate.place_id);
+      const fromNaver = Boolean(candidate.naver_category);
+      return {
+        placeId: candidate.place_id,
+        name: candidate.name,
+        lat: candidate.lat,
+        lng: candidate.lng,
+        images: candidate.photo_urls ?? (candidate.thumbnail_url ? [candidate.thumbnail_url] : []),
+        address: candidate.address ?? null,
+        cuisineHint: null,
+        priceLevel: null,
+        rating: candidate.rating ?? null,
+        reviewCount: candidate.review_count ?? null,
+        openNow: candidate.open_now ?? null,
+        mapsUrl: candidate.maps_url ?? null,
+        provider: isMock ? "mock" : fromNaver ? "naver_local" : "google_places",
+        providerLabel: isMock ? null : fromNaver ? "Naver Local" : "Google Places",
+        categoryLabel:
+          candidate.naver_category ??
+          candidate.google_types?.join(" ") ??
+          criteria.category,
+        specialReasonKo: candidate.reason,
+        specialScore: null,
+        searchScore: null,
+        virtualCandidate: true as const,
+      };
+    }),
+  );
 
-  const usedMock = ranked.some((candidate) => candidate.place_id.startsWith("mock-"));
+  const usedMock = inventory.some(
+    (row) => row.provider === "mock" || isMockOrSeedPlaceId(row.placeId),
+  );
+  const usedNaver = inventory.some((row) => row.provider === "naver_local");
   return NextResponse.json({
     ok: true,
     inventory,
-    source: usedMock ? "mock" : "google_places",
+    source: usedMock ? "mock" : usedNaver ? "naver_local" : "google_places",
   });
 }

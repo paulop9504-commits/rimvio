@@ -2,7 +2,6 @@ import type { ExperienceVolume } from "@/lib/experience-graph/experience-volume-
 import { projectVolumeSpatialMedia } from "@/lib/experience-graph/project-volume-spatial-media";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readFeedCaptureFragments } from "@/lib/feed/feed-capture-metadata";
-import { stockPhotosForPlaceLabel } from "@/lib/globe/place-stock-photos";
 
 export type PlaceGalleryItem = {
   id: string;
@@ -68,27 +67,6 @@ export function projectPlaceGallery(input: {
     }
   }
 
-  const placeLabel =
-    input.event?.place?.trim() ||
-    input.volume?.space.label?.trim() ||
-    input.event?.title?.trim() ||
-    "장소";
-
-  for (const [index, url] of stockPhotosForPlaceLabel(placeLabel).entries()) {
-    if (items.length >= limit) {
-      break;
-    }
-    if (seen.has(url)) {
-      continue;
-    }
-    push({
-      id: `stock:${index}`,
-      label: placeLabel,
-      imageUrl: url,
-      mediaContextId: null,
-      capturedAtIso: null,
-    });
-  }
-
+  // No Unsplash / stock fill — only real captures or spatial media slots.
   return items;
 }

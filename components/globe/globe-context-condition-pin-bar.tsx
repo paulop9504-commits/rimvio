@@ -22,7 +22,12 @@ import { copy } from "@/lib/copy/human-ko";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
-import { flyGlobeToDiscoveryLenses } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
+import {
+  flyGlobeToDiscoveryLenses,
+  flyGlobeToSessionGraphDiff,
+} from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
+import { hasProvisionalContextWorkspace } from "@/lib/context-workspace/workspace-store";
+import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
 import {
   readContextConditionPinnedPlaceIds,
   pinContextConditionRecommendation,
@@ -1592,6 +1597,19 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               text: graphResult.assistantReplyKo,
             });
             if (
+              graphResult.via === "graph_command" &&
+              graphResult.commands.some((c) => c.op === "search_project") &&
+              hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              appendWorkspacePreviewComposeTurn(contextEventId);
+            }
+            if (
+              graphResult.via === "graph_command" &&
+              !hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              flyGlobeToSessionGraphDiff(globeRef, contextEventId);
+            }
+            if (
               graphResult.waitingCommit &&
               (graphResult.reservedOpIds?.length ?? 0) > 0
             ) {
@@ -2690,6 +2708,19 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               text: graphResult.assistantReplyKo,
             });
             if (
+              graphResult.via === "graph_command" &&
+              graphResult.commands.some((c) => c.op === "search_project") &&
+              hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              appendWorkspacePreviewComposeTurn(contextEventId);
+            }
+            if (
+              graphResult.via === "graph_command" &&
+              !hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              flyGlobeToSessionGraphDiff(globeRef, contextEventId);
+            }
+            if (
               graphResult.via === "soft_command" &&
               graphResult.mapsUrl &&
               typeof window !== "undefined"
@@ -2989,6 +3020,19 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               kind: "text",
               text: graphResult.assistantReplyKo,
             });
+            if (
+              graphResult.via === "graph_command" &&
+              graphResult.commands.some((c) => c.op === "search_project") &&
+              hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              appendWorkspacePreviewComposeTurn(contextEventId);
+            }
+            if (
+              graphResult.via === "graph_command" &&
+              !hasProvisionalContextWorkspace(contextEventId)
+            ) {
+              flyGlobeToSessionGraphDiff(globeRef, contextEventId);
+            }
             if (
               graphResult.via === "soft_command" &&
               graphResult.mapsUrl &&

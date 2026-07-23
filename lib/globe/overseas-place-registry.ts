@@ -18,10 +18,13 @@ function termToRegex(term: string): string {
   return escapeRegex(term).replace(/\s+/g, "\\s*");
 }
 
-/** Word-boundary match for Korean / Latin place tokens. */
+/** Word-boundary match for Korean / Latin place tokens (allows 로/으로 particles). */
 export function buildPlacePattern(...terms: string[]): RegExp {
   const alts = terms.map(termToRegex).join("|");
-  return new RegExp(`(?:^|[\\s,·])(?:${alts})(?:[\\s,·]|$)`, "iu");
+  return new RegExp(
+    `(?:^|[\\s,·])(?:${alts})(?:로|으로|에|에서|까지|발)?(?:[\\s,·]|$)`,
+    "iu",
+  );
 }
 
 function city(

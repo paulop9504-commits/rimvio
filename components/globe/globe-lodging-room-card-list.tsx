@@ -14,6 +14,7 @@ import {
   subscribeLodgingCheckoutState,
 } from "@/lib/globe/hub-checkout/lodging-checkout-controller";
 import type { LodgingResourcePayload } from "@/lib/globe/context-hub/lodging-resource-types";
+import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
 import { assessExpressCheckoutReadiness } from "@/lib/payment-vault/assess-express-checkout-readiness";
 import { readPaymentVaultBundleClient } from "@/lib/payment-vault/read-payment-vault-bundle-client";
@@ -92,7 +93,7 @@ export function GlobeLodgingRoomCardList({
   const offers = payload.roomOffers ?? [];
   const isLiveRate = payload.provider === "liteapi";
   const recommendedId = useMemo(() => pickRecommendedOfferId(offers), [offers]);
-  const heroImage = payload.images[0] ?? null;
+  const heroImage = selectPreferredLodgingImage(payload);
   const hintCopy = isLiveRate
     ? copy.globe.lodgingRoomCardHint
     : offers.length > 0

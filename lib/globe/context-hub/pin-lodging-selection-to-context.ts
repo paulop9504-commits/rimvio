@@ -7,6 +7,7 @@ import {
   CONTEXT_LODGING_PINNED_RESOURCE_ID_META_KEY,
 } from "@/lib/globe/context-pinned-item";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import { mapLodgingRowToContextResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
@@ -46,7 +47,9 @@ export function pinLodgingSelectionToContext(input: {
   });
   const stamp = new Date().toISOString();
   const coverImageUrl =
-    input.previewUrl ?? input.row.images[0] ?? input.row.videoUrl ?? null;
+    input.previewUrl?.trim() ||
+    selectPreferredLodgingImage(input.row) ||
+    null;
   const { metadata: withObject, object } = attachRealityObjectToPinMetadata({
     metadata: event.metadata,
     build: {

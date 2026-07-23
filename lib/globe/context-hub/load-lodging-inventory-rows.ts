@@ -15,6 +15,7 @@ import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging
 import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { buildLodgingStayWindow } from "@/lib/globe/context-hub/lodging-stay-window";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
+import { sanitizeLodgingInventoryRows } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { readPlanContextFromEvent } from "@/lib/plan-context/plan-context-metadata";
 
@@ -32,12 +33,14 @@ function withStayWindow(
   const plan = readPlanContextFromEvent(event);
   const checkInIso = plan?.windowStartIso ?? event.datetime ?? null;
   const checkOutIso = plan?.windowEndIso ?? null;
-  return rows.map((row) => ({
-    ...row,
-    checkInIso: row.checkInIso ?? checkInIso,
-    checkOutIso: row.checkOutIso ?? checkOutIso,
-    stayWindow: buildLodgingStayWindow({ event, row }),
-  }));
+  return sanitizeLodgingInventoryRows(
+    rows.map((row) => ({
+      ...row,
+      checkInIso: row.checkInIso ?? checkInIso,
+      checkOutIso: row.checkOutIso ?? checkOutIso,
+      stayWindow: buildLodgingStayWindow({ event, row }),
+    })),
+  );
 }
 
 async function fetchLodgingInventoryFromApi(input: {

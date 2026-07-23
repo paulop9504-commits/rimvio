@@ -12,7 +12,10 @@ import { computeEateryResourceRankWeight } from "@/lib/globe/eatery/compute-eate
 import { readEateryRankModeOverride } from "@/lib/globe/eatery/eatery-rank-mode-session-store";
 import { computeLodgingResourceRankWeight } from "@/lib/globe/lodging/compute-lodging-resource-rank-weight";
 import { readLodgingRankModeOverride } from "@/lib/globe/lodging/lodging-rank-mode-session-store";
-import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
+import {
+  isTrustedVenueMediaUrl,
+  selectPreferredLodgingImage,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { readLodgingRecommendReason } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { readEateryRecommendReason } from "@/lib/globe/eatery/eatery-recommendation-reason-store";
 import {
@@ -100,7 +103,7 @@ function pushLodgingItem(input: {
     score100: scoreFromRank(input.index, input.total),
     detailReasonLine: reason,
     accent: accentForItem("lodging", input.index),
-    thumbnailUrl: selectPreferredLodgingImage(row) ?? row.images[0] ?? null,
+    thumbnailUrl: selectPreferredLodgingImage(row),
     lat: row.lat,
     lng: row.lng,
     carouselIndex: input.index,
@@ -169,7 +172,7 @@ function pushEateryItem(input: {
     score100: scoreFromRank(input.index, input.total),
     detailReasonLine: reason,
     accent: accentForItem(kind, input.index),
-    thumbnailUrl: row.images[0] ?? null,
+    thumbnailUrl: isTrustedVenueMediaUrl(row.images[0]) ? row.images[0]! : null,
     lat: row.lat,
     lng: row.lng,
     carouselIndex: input.index,

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { RankedContextResource } from "@/lib/globe/resource/map-hub-service-to-resource";
 import { formatLodgingStayBadgeLabel } from "@/lib/globe/context-hub/lodging-stay-window";
 import { readLodgingPayloadFromResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
+import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import { copy } from "@/lib/copy/human-ko";
 
 export type GlobeLodgingMapStripProps = {
@@ -40,7 +41,7 @@ export function GlobeLodgingMapStrip({
     >
       {lodgingEntries.map(({ entry, index }) => {
         const payload = readLodgingPayloadFromResource(entry.resource);
-        const thumb = payload?.images[0] ?? null;
+        const thumb = payload ? selectPreferredLodgingImage(payload) : null;
         const stayBadgeLabel = formatLodgingStayBadgeLabel(payload?.stayWindow ?? null);
         const active = index === activeIndex;
         return (

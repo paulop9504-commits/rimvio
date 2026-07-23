@@ -2,6 +2,7 @@
 
 import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
 import { GlobeScoutFeedGateComposeCard } from "@/components/globe/globe-scout-feed-gate-compose-card";
+import { ContextWorkspacePreviewCard } from "@/components/context-workspace/context-workspace-preview-card";
 import { GlobeContextScoutResultCard } from "@/components/globe/globe-context-scout-result-card";
 import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
@@ -177,6 +178,17 @@ export function GlobeAssistantComposeThread({
                         })
                     : undefined
                 }
+              />
+            </div>
+          );
+        }
+
+        if (turn.kind === "workspace_preview" && contextEventId) {
+          return (
+            <div key={turn.id} className="flex justify-start max-w-[96%]">
+              <ContextWorkspacePreviewCard
+                contextEventId={contextEventId}
+                payload={turn.payload}
               />
             </div>
           );

@@ -47,6 +47,9 @@ import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hu
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
 import { resolveWorldGeoEntity } from "@/lib/reality-graph/resolve-world-geo";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
+import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { hasProvisionalContextWorkspace } from "@/lib/context-workspace/workspace-store";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 
 function slug(label: string): string {
   return (
@@ -372,6 +375,33 @@ function applySearchProject(
   if (hits.length === 0) {
     hits = worldGeoSeedHitsForQuery(command.query, command.domain);
   }
+  // Map Search → Context Workspace (Globe stamp deferred to Commit).
+  if (
+    command.domain === "lodging" ||
+    command.domain === "eatery" ||
+    command.domain === "poi"
+  ) {
+    openMapContextWorkspace({
+      contextEventId: seeded.contextEventId,
+      domain: command.domain,
+      query: command.query,
+      summaryKo: toolResult.summaryKo,
+      hits,
+      candidates: toolResult.candidates,
+      source: "map_search",
+    });
+    emitToolSearchHubAction({
+      contextEventId: seeded.contextEventId,
+      toolId,
+      domain: command.domain,
+      query: command.query,
+      candidateCount: Math.max(
+        toolResult.candidates?.length ?? 0,
+        hits.length,
+      ),
+    });
+    return ensureDestinationAnchor(seeded, command);
+  }
   const next = mergeSearchProjectIntoGraph(seeded, command, hits);
   stampSearchToolResultsToDiff({
     contextEventId: seeded.contextEventId,
@@ -434,6 +464,32 @@ async function applySearchProjectAsync(
   );
   if (hits.length === 0) {
     hits = worldGeoSeedHitsForQuery(command.query, command.domain);
+  }
+  if (
+    command.domain === "lodging" ||
+    command.domain === "eatery" ||
+    command.domain === "poi"
+  ) {
+    openMapContextWorkspace({
+      contextEventId: seeded.contextEventId,
+      domain: command.domain,
+      query: command.query,
+      summaryKo: toolResult.summaryKo,
+      hits,
+      candidates: toolResult.candidates,
+      source: "map_search",
+    });
+    emitToolSearchHubAction({
+      contextEventId: seeded.contextEventId,
+      toolId,
+      domain: command.domain,
+      query: command.query,
+      candidateCount: Math.max(
+        toolResult.candidates?.length ?? 0,
+        hits.length,
+      ),
+    });
+    return ensureDestinationAnchor(seeded, command);
   }
   const next = mergeSearchProjectIntoGraph(seeded, command, hits);
   stampSearchToolResultsToDiff({
@@ -1302,6 +1358,14 @@ function replyFor(
   const command = commands[0];
   const op = command?.op;
   if (op === "search_project") {
+    if (hasProvisionalContextWorkspace(graph.contextEventId)) {
+      const ws = readContextWorkspace(graph.contextEventId);
+      const count = ws?.nodes.filter((n) => n.visible).length ?? 0;
+      if (count === 0) {
+        return "검색 결과가 없어요 · 조건을 바꿔 다시 찾아볼까요";
+      }
+      return `워크스페이스에 ${count}곳을 펼쳤어요`;
+    }
     const count = graph.nodes.filter(
       (n) => n.visible && n.kind !== "compare" && n.kind !== "simulation",
     ).length;

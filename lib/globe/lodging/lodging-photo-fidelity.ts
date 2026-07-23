@@ -4,6 +4,15 @@ import type {
   LodgingPhotoConfidence,
   LodgingPhotoSource,
 } from "@/lib/globe/context-hub/lodging-resource-types";
+import {
+  filterTrustedVenueMediaUrls,
+  isTrustedVenueMediaUrl,
+} from "@/lib/globe/venue-media-fidelity";
+
+export {
+  filterTrustedVenueMediaUrls,
+  isTrustedVenueMediaUrl,
+} from "@/lib/globe/venue-media-fidelity";
 
 type GoogleLodgingPhotoSeed = {
   placeId: string;
@@ -130,7 +139,7 @@ export function resolveGoogleLodgingPhotoBundle(input: {
 
   if (detailVerified) {
     return {
-      images: cleanUrls([...detailImages, ...nearbyImages]),
+      images: filterTrustedVenueMediaUrls([...detailImages, ...nearbyImages]),
       address: details?.address?.trim() || input.nearby.address?.trim() || null,
       mapsUrl: details?.mapsUrl?.trim() || input.nearby.mapsUrl?.trim() || null,
       photoSource: "google_places_details",
@@ -140,7 +149,7 @@ export function resolveGoogleLodgingPhotoBundle(input: {
 
   if (nearbyImages.length > 0) {
     return {
-      images: nearbyImages,
+      images: filterTrustedVenueMediaUrls(nearbyImages),
       address: input.nearby.address?.trim() || details?.address?.trim() || null,
       mapsUrl: details?.mapsUrl?.trim() || input.nearby.mapsUrl?.trim() || null,
       photoSource: "google_places_nearby",
@@ -160,13 +169,14 @@ export function resolveGoogleLodgingPhotoBundle(input: {
 export function selectPreferredLodgingImage(
   row: Pick<ContextLodgingInventoryRow, "images" | "provider" | "photoConfidence">,
 ): string | null {
-  const images = cleanUrls(row.images);
-  if (images.length === 0) {
+  // Mock inventory is name/coord scaffolding only — never show stock heroes.
+  if (row.provider === "mock" || row.photoConfidence === "mock") {
     return null;
   }
 
-  if (row.provider === "mock" || row.photoConfidence === "mock") {
-    return images[0] ?? null;
+  const images = filterTrustedVenueMediaUrls(row.images);
+  if (images.length === 0) {
+    return null;
   }
 
   if (row.provider === "google_places") {
@@ -174,4 +184,87 @@ export function selectPreferredLodgingImage(
   }
 
   return images[0] ?? null;
+}
+
+/** Focus / hero slides — trusted photos only; drop demo tour clips. */
+export function selectTrustedLodgingMediaSlides(
+  payload: Pick<
+    ContextLodgingInventoryRow,
+    "images" | "videoUrl" | "provider" | "photoConfidence"
+  >,
+): readonly string[] {
+  if (payload.provider === "mock" || payload.photoConfidence === "mock") {
+    return [];
+  }
+  const slides: string[] = [];
+  const video = payload.videoUrl?.trim();
+  if (video && isTrustedVenueMediaUrl(video)) {
+    slides.push(video);
+  }
+  slides.push(...filterTrustedVenueMediaUrls(payload.images));
+  return slides;
+}
+
+function isMockLodgingMediaRow(
+  row: Pick<
+    ContextLodgingInventoryRow,
+    "provider" | "photoConfidence" | "photoSource"
+  >,
+): boolean {
+  return (
+    row.provider === "mock" ||
+    row.photoConfidence === "mock" ||
+    row.photoSource === "mock"
+  );
+}
+
+/**
+ * World-wide policy (KR · JP · SEA · HK · TW · rest):
+ * mock scaffolding never keeps Unsplash/demo media; live rows keep provider photos only.
+ */
+export function sanitizeLodgingInventoryRowMedia<
+  T extends Pick<
+    ContextLodgingInventoryRow,
+    | "images"
+    | "videoUrl"
+    | "provider"
+    | "photoConfidence"
+    | "photoSource"
+    | "roomOffers"
+  >,
+>(row: T): T {
+  if (isMockLodgingMediaRow(row)) {
+    return {
+      ...row,
+      images: [],
+      videoUrl: null,
+      roomOffers: row.roomOffers?.map((offer) => ({
+        ...offer,
+        imageUrls: [],
+      })),
+    };
+  }
+
+  const images = filterTrustedVenueMediaUrls(row.images);
+  const videoUrl =
+    row.videoUrl && isTrustedVenueMediaUrl(row.videoUrl)
+      ? row.videoUrl.trim()
+      : null;
+  const roomOffers = row.roomOffers?.map((offer) => ({
+    ...offer,
+    imageUrls: filterTrustedVenueMediaUrls(offer.imageUrls),
+  }));
+
+  return {
+    ...row,
+    images,
+    videoUrl,
+    roomOffers,
+  };
+}
+
+export function sanitizeLodgingInventoryRows(
+  rows: readonly ContextLodgingInventoryRow[],
+): ContextLodgingInventoryRow[] {
+  return rows.map(sanitizeLodgingInventoryRowMedia);
 }

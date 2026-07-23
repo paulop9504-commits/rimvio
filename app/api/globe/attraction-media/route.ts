@@ -5,7 +5,6 @@ import {
   PlaceInputType,
 } from "@googlemaps/google-maps-services-js";
 import { googlePlacesApiKey, isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
-import { fetchAttractionPhotoUrls } from "@/lib/places/fetch-attraction-photo-urls";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,17 +102,7 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch {
-      // fall through to Naver / CSE
-    }
-  }
-
-  if (images.length < 3) {
-    const extra = await fetchAttractionPhotoUrls({ name, anchor });
-    for (const url of extra) {
-      push(url);
-      if (images.length >= 8) {
-        break;
-      }
+      // fall through — empty images if Places miss (no web stock fill)
     }
   }
 

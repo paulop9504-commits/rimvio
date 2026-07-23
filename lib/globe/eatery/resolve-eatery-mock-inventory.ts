@@ -13,7 +13,7 @@ const KR_MOCK: readonly Omit<ContextEateryInventoryRow, "lat" | "lng">[] = [
   {
     placeId: "mock-kr-gopchang",
     name: "로컬 곱창집",
-    images: ["https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=640&q=80"],
+    images: [],
     cuisineHint: "곱창",
     priceLevel: 2,
     provider: "mock",
@@ -21,7 +21,7 @@ const KR_MOCK: readonly Omit<ContextEateryInventoryRow, "lat" | "lng">[] = [
   {
     placeId: "mock-kr-ramen",
     name: "동네 라멘집",
-    images: ["https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=640&q=80"],
+    images: [],
     cuisineHint: "라멘",
     priceLevel: 2,
     provider: "mock",
@@ -29,7 +29,7 @@ const KR_MOCK: readonly Omit<ContextEateryInventoryRow, "lat" | "lng">[] = [
   {
     placeId: "mock-kr-brunch",
     name: "브런치 카페",
-    images: ["https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=640&q=80"],
+    images: [],
     cuisineHint: "브런치",
     priceLevel: 3,
     provider: "mock",
@@ -37,7 +37,7 @@ const KR_MOCK: readonly Omit<ContextEateryInventoryRow, "lat" | "lng">[] = [
   {
     placeId: "mock-kr-kbbq",
     name: "골목 한식당",
-    images: ["https://images.unsplash.com/photo-1544025162-d76694265947?w=640&q=80"],
+    images: [],
     cuisineHint: "한식",
     priceLevel: 2,
     provider: "mock",

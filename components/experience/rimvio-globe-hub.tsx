@@ -1384,6 +1384,12 @@ export const RimvioGlobeHub = memo(function RimvioGlobeHub({
   }, [displayClusters]);
 
   useEffect(() => {
+    if (!initialRecallEventId?.trim()) {
+      recallOpenedRef.current = false;
+    }
+  }, [initialRecallEventId]);
+
+  useEffect(() => {
     if (!ready || recallOpenedRef.current) {
       return;
     }

@@ -3,6 +3,7 @@ import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { GLOBE_ALTITUDE } from "@/lib/globe/globe-zoom-levels";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
+import { readSessionGraph } from "@/lib/graph-command/session-graph-store";
 
 /** 1:1 context assistant — street-scale, pin biased for chat frame. */
 export const CONTEXT_AGENT_GLOBE_DETAIL_LEVEL = "street" as const;
@@ -51,6 +52,39 @@ export function flyGlobeToDiscoveryLenses(
     centerLng: bounds.centerLng,
     altitude: bounds.altitude,
     pinViewportY: MAP_FOCUS_PIN_VIEWPORT_Y,
+  });
+}
+
+/**
+ * After Graph Command search_project — frame Diff place pins so chat copy
+ * ("지도에 N곳을 펼쳤어요") matches the map while the assistant panel is open.
+ */
+export function flyGlobeToSessionGraphDiff(
+  globeRef: RefObject<RimvioGlobeHubHandle | null> | null | undefined,
+  contextEventId: string,
+): void {
+  if (!globeRef) {
+    return;
+  }
+  const graph = readSessionGraph(contextEventId);
+  if (!graph) {
+    return;
+  }
+  const places = graph.nodes.filter(
+    (node) =>
+      node.visible &&
+      node.kind !== "compare" &&
+      node.kind !== "simulation" &&
+      Number.isFinite(node.lat) &&
+      Number.isFinite(node.lng),
+  );
+  if (places.length === 0) {
+    return;
+  }
+  snapGlobeToContextConditionScout(globeRef, {
+    anchorLat: graph.anchorLat ?? places[0]!.lat,
+    anchorLng: graph.anchorLng ?? places[0]!.lng,
+    recommendations: places.map((node) => ({ lat: node.lat, lng: node.lng })),
   });
 }
 

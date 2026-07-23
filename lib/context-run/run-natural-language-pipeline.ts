@@ -34,6 +34,10 @@ import { tryRunMoveContextCommand } from "@/lib/context-engine/project-context";
 import { tryRunReviseCommand } from "@/lib/globe/context-hub/try-run-revise-command";
 import { tryRunSoftConfirmCommand } from "@/lib/globe/soft-confirm/try-run-soft-confirm-command";
 import {
+  tryApplyWorkspaceLodgingTurn,
+  tryApplyWorkspaceLodgingTurnSync,
+} from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
+import {
   applySoftConfirmPending,
   cancelSoftConfirmPending,
 } from "@/lib/globe/soft-confirm/apply-soft-confirm-pending";
@@ -84,6 +88,7 @@ import {
   clearPendingContextCreate,
   readPendingContextCreate,
 } from "@/lib/globe-ingress/pending-context-create-store";
+import { tryPatchPendingContextCreate } from "@/lib/globe-ingress/try-patch-pending-context-create";
 import { writeActionPlanUi } from "@/lib/action-planner/action-plan-ui-store";
 import { publishShortToolPlanPreview } from "@/lib/action-planner/publish-short-tool-plan";
 import {
@@ -441,6 +446,19 @@ export function runNaturalLanguagePipeline(
           trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
         };
       }
+      const patchedCreate = tryPatchPendingContextCreate({
+        utterance: input.utterance,
+        contextEventId,
+        ruleDecision,
+        pack,
+      });
+      if (patchedCreate) {
+        pushStage(visited, "intent_parser");
+        return {
+          result: patchedCreate,
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        };
+      }
     }
   }
 
@@ -744,6 +762,31 @@ export function runNaturalLanguagePipeline(
     };
   }
 
+  // Provisional lodging Workspace — NL mutates Workspace before Globe soft/graph.
+  {
+    const workspaceTurn = tryApplyWorkspaceLodgingTurnSync({
+      utterance: input.utterance,
+      contextEventId,
+    });
+    if (workspaceTurn.handled) {
+      pushStage(visited, "graph_engine");
+      return {
+        result: {
+          ok: true,
+          via: "workspace",
+          contextEventId,
+          assistantReplyKo: workspaceTurn.replyKo ?? "워크스페이스를 바꿨어요",
+          reservedOpIds: [],
+          waitingCommit: false,
+          workspaceCommitted: workspaceTurn.committed,
+          ruleDecision,
+          contextPack: pack,
+        },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
+  }
+
   // Filter / Pin / Delete — soft confirm chips (not Field).
   {
     const softConfirm = tryRunSoftConfirmCommand({
@@ -953,6 +996,19 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        };
+      }
+      const patchedCreate = tryPatchPendingContextCreate({
+        utterance: input.utterance,
+        contextEventId,
+        ruleDecision,
+        pack,
+      });
+      if (patchedCreate) {
+        pushStage(visited, "intent_parser");
+        return {
+          result: patchedCreate,
           trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
         };
       }
@@ -1253,6 +1309,31 @@ export async function runNaturalLanguagePipelineAsync(
         contextPack: nextPack,
       },
     };
+  }
+
+  // Provisional lodging Workspace — NL mutates Workspace before Globe soft/graph.
+  {
+    const workspaceTurn = await tryApplyWorkspaceLodgingTurn({
+      utterance: input.utterance,
+      contextEventId,
+    });
+    if (workspaceTurn.handled) {
+      pushStage(visited, "graph_engine");
+      return {
+        result: {
+          ok: true,
+          via: "workspace",
+          contextEventId,
+          assistantReplyKo: workspaceTurn.replyKo ?? "워크스페이스를 바꿨어요",
+          reservedOpIds: [],
+          waitingCommit: false,
+          workspaceCommitted: workspaceTurn.committed,
+          ruleDecision,
+          contextPack: pack,
+        },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
   }
 
   // Filter / Pin / Delete — soft confirm chips (not Field).

@@ -3,10 +3,18 @@
 import assert from "node:assert/strict";
 import { projectLodgingDiscoverySession } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import {
+  isTrustedVenueMediaUrl,
   resolveGoogleLodgingPhotoBundle,
+  sanitizeLodgingInventoryRowMedia,
   scoreGoogleLodgingIdentityMatch,
   selectPreferredLodgingImage,
+  selectTrustedLodgingMediaSlides,
 } from "@/lib/globe/lodging/lodging-photo-fidelity";
+import {
+  DAEJEON_LODGING_MOCK,
+  resolveLodgingMockForPlace,
+  resolveLodgingMockNearUser,
+} from "@/lib/globe/context-hub/lodging-mock-inventory";
 
 function run() {
   const nearby = {
@@ -90,6 +98,42 @@ function run() {
     null,
   );
 
+  assert.equal(
+    selectPreferredLodgingImage({
+      images: ["https://images.unsplash.com/photo-1566073771259-6a8506099925?w=960&q=80"],
+      provider: "mock",
+      photoConfidence: "mock",
+    }),
+    null,
+  );
+  assert.equal(
+    selectPreferredLodgingImage({
+      images: ["https://img.example/hotel-real.jpg"],
+      provider: "liteapi",
+      photoConfidence: "strong_identity",
+    }),
+    "https://img.example/hotel-real.jpg",
+  );
+  assert.equal(
+    isTrustedVenueMediaUrl(
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    ),
+    false,
+  );
+  assert.deepEqual(
+    selectTrustedLodgingMediaSlides({
+      images: [
+        "https://images.unsplash.com/photo-fake",
+        "https://cdn.liteapi.travel/hotel.jpg",
+      ],
+      videoUrl:
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      provider: "liteapi",
+      photoConfidence: "strong_identity",
+    }),
+    ["https://cdn.liteapi.travel/hotel.jpg"],
+  );
+
   const session = projectLodgingDiscoverySession({
     eventId: "evt-lodging-photo",
     scored: [
@@ -151,9 +195,58 @@ function run() {
   assert.equal(session?.items[0]?.title, "Verified Hotel");
   assert.equal(session?.items[0]?.addressLine, "1-2-3 Namba, Chuo Ward, Osaka");
   assert.equal(session?.items[0]?.navigationHref, "https://maps.google.com/?cid=detail");
-  assert.equal(
-    session?.items[1]?.navigationHref,
-    "https://maps.google.com/?cid=unverified",
+  assert.equal(session?.items[1]?.navigationHref, "https://maps.google.com/?cid=unverified");
+
+  assert.ok(DAEJEON_LODGING_MOCK.length >= 2);
+  for (const row of DAEJEON_LODGING_MOCK) {
+    assert.equal(row.images.length, 0, `${row.name} must not carry stock photos`);
+    assert.equal(row.videoUrl, null, `${row.name} must not carry demo tour video`);
+    assert.equal(selectPreferredLodgingImage(row), null);
+  }
+
+  // KR · JP · SEA · HK · TW · worldwide mock scaffolding — media always empty.
+  const worldMocks = [
+    ...resolveLodgingMockForPlace("부산 해운대", { lat: 35.1587, lng: 129.1604 }),
+    ...resolveLodgingMockForPlace("오사카", { lat: 34.6937, lng: 135.5023 }),
+    ...resolveLodgingMockForPlace("방콕", { lat: 13.7563, lng: 100.5018 }),
+    ...resolveLodgingMockForPlace("홍콩", { lat: 22.3193, lng: 114.1694 }),
+    ...resolveLodgingMockForPlace("타이베이", { lat: 25.033, lng: 121.5654 }),
+    ...resolveLodgingMockForPlace("파리", { lat: 48.8566, lng: 2.3522 }),
+    ...resolveLodgingMockNearUser({ lat: 37.5563, lng: 126.922 }),
+  ];
+  assert.ok(worldMocks.length >= 10);
+  for (const row of worldMocks) {
+    assert.equal(row.provider, "mock");
+    assert.equal(row.images.length, 0, `${row.name} mock must be media-empty`);
+    assert.equal(row.videoUrl, null);
+    assert.equal(selectPreferredLodgingImage(row), null);
+    assert.deepEqual(
+      sanitizeLodgingInventoryRowMedia({
+        ...row,
+        images: ["https://images.unsplash.com/photo-fake", "https://cdn.liteapi.travel/x.jpg"],
+        videoUrl:
+          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      }).images,
+      [],
+    );
+  }
+
+  assert.deepEqual(
+    sanitizeLodgingInventoryRowMedia({
+      placeId: "live-1",
+      name: "Live Hotel",
+      lat: 1,
+      lng: 1,
+      images: [
+        "https://images.unsplash.com/photo-fake",
+        "https://cdn.liteapi.travel/hotel.jpg",
+      ],
+      videoUrl: null,
+      provider: "liteapi",
+      photoSource: "liteapi",
+      photoConfidence: "strong_identity",
+    }).images,
+    ["https://cdn.liteapi.travel/hotel.jpg"],
   );
 
   console.log("test-lodging-photo-fidelity: ok");

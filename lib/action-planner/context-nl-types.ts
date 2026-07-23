@@ -72,6 +72,17 @@ export type ContextNlActionResult =
     }
   | {
       readonly ok: true;
+      readonly via: "workspace";
+      readonly contextEventId: string;
+      readonly assistantReplyKo: string;
+      readonly reservedOpIds: readonly [];
+      readonly waitingCommit: false;
+      readonly workspaceCommitted: boolean;
+      readonly ruleDecision?: RuleEngineDecision;
+      readonly contextPack?: ContextPackV1;
+    }
+  | {
+      readonly ok: true;
       readonly via: "soft_confirm";
       readonly contextEventId: string;
       readonly assistantReplyKo: string;

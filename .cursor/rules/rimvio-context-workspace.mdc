@@ -1,0 +1,65 @@
+---
+description: Context Workspace = Cursor IDE of Context (ADR-022)
+alwaysApply: true
+---
+
+# Context Workspace (locked)
+
+**Canonical:** `docs/adr/022-context-workspace-first.md`
+
+## One sentence
+
+> **Chat mutates the Workspace; Commit roots the Globe.**
+
+Context Workspace = Cursor IDE. Globe = Context Forest (not the editor).
+
+## Cursor ↔ Rimvio
+
+```
+Context AI → 2D Workspace → Auto Save Draft → Reality Commit → 3D Globe Forest
+(≈ Chat → IDE → Auto Save → Git Commit → Repository)
+```
+
+## Core UX
+
+```
+대화 → 자연어로 작업 → 자동 저장(Draft) → Commit → Globe 반영
+```
+
+- AI는 장문 답변이 아니라 **Workspace Patch** (생성·삭제·연결·필터·시뮬·예약·비교)
+- **Save 버튼 없음** — 항상 Draft Auto Save
+- **Commit** 후에만 Globe / Ontology / Timeline / Memory / History
+- WHY = Action · Reason · Impact — 노드/엣지 말풍선, on demand
+- Current Context bar = 지금 작업 중인 프로젝트 (OS 현재 앱)
+
+## Preview → Open Workspace
+
+```
+Assistant Preview (chat embed)
+  → 펼치기 → full 2D Workspace
+```
+
+User copy: **펼치기**. Internal: `workspace_preview` → `workspace_expand`.
+
+## Map-needed work
+
+`호텔 · 맛집 · POI · 편의` → Workspace-first → Commit → Globe  
+Scout stays; output = Patch only. No early 3D paint.
+
+## Maps
+
+- Workspace 2D default = **MapLibre** (sharp street zoom)
+- Optional Apple MapKit via env — not required
+- **No 3D↔2D hybrid on Globe** — Workspace is a separate surface only
+
+## Always One New Concept
+
+한 화면에 Workspace + WHY + Agent + Draft + Forest를 동시에 가르치지 않는다.
+
+## PR reject
+
+- Search results only in assistant text  
+- Globe stamp before Commit  
+- Manual Save as primary  
+- Globe used as live editor  
+- Agent / Simulation as first-paint product nouns

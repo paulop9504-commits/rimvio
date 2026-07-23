@@ -9,6 +9,10 @@ import {
 import { upsertMirrorProvenanceMetadata } from "@/lib/globe/mirror-provenance";
 import type { ContextPlaceInventoryRow } from "@/lib/globe/place/place-resource-types";
 import { mapPlaceRowToContextResource } from "@/lib/globe/place/map-place-row-to-context-resource";
+import {
+  isTrustedVenueMediaUrl,
+  sanitizePlaceInventoryRow,
+} from "@/lib/globe/venue-media-fidelity";
 import { emitCommittedContextResource } from "@/lib/globe/resource/emit-committed-context-resource";
 import { attachRealityObjectToPinMetadata } from "@/lib/reality-object/attach-on-pin";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
@@ -33,36 +37,40 @@ export function pinPlaceSelectionToContext(input: {
   if (!event) {
     throw new Error("event_not_found");
   }
-  const resourceId = buildPlaceResourceId(event.id, input.kind, input.row.placeId);
+  const row = sanitizePlaceInventoryRow(input.row);
+  const resourceId = buildPlaceResourceId(event.id, input.kind, row.placeId);
   const stamp = new Date().toISOString();
+  const preview = input.previewUrl?.trim() || null;
   const coverImageUrl =
-    input.previewUrl ?? input.row.images[0] ?? null;
+    (preview && isTrustedVenueMediaUrl(preview) ? preview : null) ||
+    row.images[0] ||
+    null;
   const { metadata: withObject, object } = attachRealityObjectToPinMetadata({
     metadata: event.metadata,
     build: {
       contextEventId: event.id,
-      title: input.row.name,
-      placeId: input.row.placeId,
+      title: row.name,
+      placeId: row.placeId,
       resourceId,
       pinKind: input.kind,
-      categoryLabel: input.row.categoryLabel ?? null,
-      cuisineHint: input.row.cuisineHint ?? null,
+      categoryLabel: row.categoryLabel ?? null,
+      cuisineHint: row.cuisineHint ?? null,
       coverImageUrl,
-      images: input.row.images,
-      lat: input.row.lat,
-      lng: input.row.lng,
-      rating: input.row.rating ?? null,
+      images: row.images,
+      lat: row.lat,
+      lng: row.lng,
+      rating: row.rating ?? null,
       pinnedAtIso: stamp,
     },
   });
   const pinnedItem = buildContextPinnedItem({
     kind: input.kind,
     resourceId,
-    placeId: input.row.placeId,
-    label: input.row.name,
-    lat: input.row.lat,
-    lng: input.row.lng,
-    mapsUrl: input.row.mapsUrl ?? null,
+    placeId: row.placeId,
+    label: row.name,
+    lat: row.lat,
+    lng: row.lng,
+    mapsUrl: row.mapsUrl ?? null,
     previewUrl: object.coverImageUrl ?? coverImageUrl,
     pinnedAtIso: stamp,
   });
@@ -105,6 +113,6 @@ export function pinPlaceSelectionToContext(input: {
 
   return emitCommittedContextResource({
     contextEventId: pinned.id,
-    resource: mapPlaceRowToContextResource(pinned, input.row, input.kind),
+    resource: mapPlaceRowToContextResource(pinned, row, input.kind),
   });
 }

@@ -7,16 +7,18 @@ alwaysApply: true
 
 **Canonical:** `docs/adr/021-cursor-os-spine-ssot.md` · `lib/context-run/cursor-os-spine.ts`
 
-> Intent routes Tools; Tools stamp Graph Diff; stages stay ordered; only dangerous Actions Field-Commit.
+> Intent routes Tools; map Search → **Context Workspace (IDE)** until Reality Commit; Globe = Context Forest; stages stay ordered; only dangerous Actions Field-Commit.
 
 | Axis | SSOT |
 |------|------|
 | Intent → ToolId | `lib/rule-engine/resolve-tool-id.ts` |
-| Tool → Diff | `stamp-search-tool-results-to-diff` · RO · brain markers |
-| Stage order | Search: `tool_router` → `graph_command_ir` → `graph_engine` |
-| Approval | Field = Reserve/Purchase + ops · soft chip = Filter/Pin/Delete/Revise |
+| Tool → Diff | map places → `lib/context-workspace/` Draft until Commit · else stamp Diff · RO · brain markers |
+| Stage order | Search: `tool_router` → `graph_command_ir` → Workspace Preview · Auto Save Draft · Commit → Globe |
+| Approval | Field = Reserve/Purchase + ops · soft chip = Filter/Pin/Delete/Revise · **Reality Commit** = user swipe |
 
 `booking.prepare` = prepare only (Commit 전). No chat dump of Search inventory.
+
+**ADR-022:** Chat mutates Workspace (not essay) → Auto Save Draft → Commit Preview → Reality Commit → Globe Forest. Map-needed work never paints 3D Globe before Commit.
 
 Compound plan: soft IR (`pin`×N + `compare`) = **one Diff bundle**; Field once for reserve.
 
@@ -28,3 +30,5 @@ Search Diff order: `rankByValueConsensus` (가성비 · 표본 중앙 · bland/�
 - Search results only in assistant text
 - Inverted Search stages
 - Soft condition edits opening Field Commit
+- Globe stamp before Commit for lodging / eatery / poi / amenity / activity
+- Treating Globe as the live Context editor

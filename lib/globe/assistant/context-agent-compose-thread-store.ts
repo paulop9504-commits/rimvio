@@ -94,6 +94,28 @@ export type OperatorAskChipsComposePayload = {
   readonly selectedSummaryKo?: string;
 };
 
+/** Chat-embedded Workspace Preview — 펼치기 → full Context Workspace. */
+export type WorkspacePreviewComposeNode = {
+  readonly id: string;
+  readonly placeId: string;
+  readonly title: string;
+  readonly lat: number;
+  readonly lng: number;
+  readonly rating: number | null;
+  readonly amountLabel: string | null;
+  readonly priceBand: number | null;
+  readonly summaryKo: string;
+  readonly kind?: "lodging" | "eatery" | "poi" | "amenity";
+};
+
+export type WorkspacePreviewComposePayload = {
+  readonly workspaceId: string;
+  readonly summaryKo: string;
+  readonly query: string;
+  readonly domain?: "lodging" | "eatery" | "poi" | "amenity";
+  readonly nodes: readonly WorkspacePreviewComposeNode[];
+};
+
 export type IntentExecutionTimelineLaneWire = {
   readonly id: string;
   readonly titleKo: string;
@@ -160,6 +182,12 @@ export type ContextAgentComposeTurnInput =
       kind: "ask_chips";
       text: string;
       payload: OperatorAskChipsComposePayload;
+    }
+  | {
+      role: "assistant";
+      kind: "workspace_preview";
+      text: string;
+      payload: WorkspacePreviewComposePayload;
     };
 
 export type ContextAgentComposeTurn =
@@ -230,6 +258,14 @@ export type ContextAgentComposeTurn =
       kind: "ask_chips";
       text: string;
       payload: OperatorAskChipsComposePayload;
+      atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "workspace_preview";
+      text: string;
+      payload: WorkspacePreviewComposePayload;
       atIso: string;
     };
 

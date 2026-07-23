@@ -1,9 +1,11 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { copy } from "@/lib/copy/human-ko";
-import { resolveBrainSurfaceMarkerThumbnail } from "@/lib/globe/brain-surface-marker-media";
 import type { GlobeLodgingMapMarker } from "@/lib/globe/context-hub/lodging-globe-marker-types";
 import { readLodgingInventoryRows } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
-import { selectPreferredLodgingImage } from "@/lib/globe/lodging/lodging-photo-fidelity";
+import {
+  isTrustedVenueMediaUrl,
+  selectPreferredLodgingImage,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 import {
   findContextConditionPinBatch,
   readContextConditionPinBatches,
@@ -62,12 +64,7 @@ export function projectContextConditionLodgingGlobeMarkers(input: {
   const anchorLat = anchor.lat;
   const anchorLng = anchor.lng;
   return rows.map((row, index) => {
-    const thumbnailUrl =
-      selectPreferredLodgingImage(row) ??
-      resolveBrainSurfaceMarkerThumbnail({
-        family: "lodging",
-        thumbnailUrl: row.images[0] ?? null,
-      });
+    const thumbnailUrl = selectPreferredLodgingImage(row);
     const batchReason = readContextConditionLastBatch(input.event.id)?.recommendations?.find(
       (rec) => rec.kind === "lodging" && rec.placeId === row.placeId,
     );
@@ -123,10 +120,8 @@ export function projectContextConditionEateryGlobeMarkers(input: {
   const discoveryKind = batch.eateryKind ?? "eatery";
   const activitySubtype = discoveryKind === "activity" ? (batch.activitySubtype ?? null) : null;
   return rows.map((row, index) => {
-    const thumbnailUrl = resolveBrainSurfaceMarkerThumbnail({
-      family: discoveryKind === "activity" ? "info" : "eatery",
-      thumbnailUrl: row.images[0] ?? null,
-    });
+    const rawThumb = row.images[0]?.trim() || null;
+    const thumbnailUrl = isTrustedVenueMediaUrl(rawThumb) ? rawThumb : null;
     return {
       markerKind: "eatery" as const,
       id: `ctxcond:${discoveryKind}:${batch.batchId}:${row.placeId}`,

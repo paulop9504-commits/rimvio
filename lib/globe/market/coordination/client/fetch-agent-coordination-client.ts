@@ -1,5 +1,9 @@
 import type { CalendarBusyIntervalWire } from "@/lib/globe/market/coordination/coordination-calendar-busy";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
+import {
+  isClientAuthCircuitOpen,
+  noteClientAuthFailure,
+} from "@/lib/http/client-auth-circuit";
 import type {
   AgentNegotiationRoomRecord,
   AgentNegotiationSlotKey,
@@ -14,6 +18,10 @@ export type AgentCoordinationPatchAction =
   | "focus_sync";
 
 async function parseJsonResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    noteClientAuthFailure();
+    throw new Error("unauthorized");
+  }
   const body = (await response.json()) as T & { error?: string; message?: string };
   if (!response.ok) {
     throw new Error(body.error ?? body.message ?? "coordination_request_failed");
@@ -21,10 +29,17 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   return body;
 }
 
+function assertAuthCircuitAllowsFetch(): void {
+  if (isClientAuthCircuitOpen()) {
+    throw new Error("auth_circuit_open");
+  }
+}
+
 export async function fetchActiveAgentCoordinationRoomsRemote(): Promise<{
   rooms: AgentNegotiationRoomRecord[];
   migrationPending?: boolean;
 }> {
+  assertAuthCircuitAllowsFetch();
   const response = await fetch(`${resolveAppOrigin()}/api/globe/market-coordination/active`, {
     credentials: "include",
   });
@@ -42,10 +57,15 @@ export async function fetchActiveAgentCoordinationRoomsRemote(): Promise<{
 export async function fetchAgentCoordinationRoomRemote(
   handshakeId: string,
 ): Promise<AgentNegotiationRoomRecord | null> {
+  assertAuthCircuitAllowsFetch();
   const response = await fetch(
     `${resolveAppOrigin()}/api/globe/market-coordination/${encodeURIComponent(handshakeId)}`,
     { credentials: "include" },
   );
+  if (response.status === 401) {
+    noteClientAuthFailure();
+    throw new Error("unauthorized");
+  }
   if (response.status === 404) {
     return null;
   }
@@ -66,6 +86,7 @@ export async function patchAgentCoordinationRoomRemote(input: {
   focusActive?: boolean;
   focusDeferMessageKo?: string;
 }): Promise<AgentNegotiationRoomRecord> {
+  assertAuthCircuitAllowsFetch();
   const response = await fetch(
     `${resolveAppOrigin()}/api/globe/market-coordination/${encodeURIComponent(input.handshakeId)}`,
     {

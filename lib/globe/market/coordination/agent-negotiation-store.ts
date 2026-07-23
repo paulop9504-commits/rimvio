@@ -32,6 +32,8 @@ import {
   fetchAgentCoordinationRoomRemote,
   patchAgentCoordinationRoomRemote,
 } from "@/lib/globe/market/coordination/client/fetch-agent-coordination-client";
+import { shouldSkipGlobeFetch } from "@/lib/globe/globe-fetch-min-interval";
+import { isClientAuthCircuitOpen } from "@/lib/http/client-auth-circuit";
 import type {
   AgentNegotiationRoomRecord,
   AgentNegotiationSlotKey,
@@ -419,6 +421,12 @@ export async function runAgentNegotiationTurn(
 }
 
 export async function syncAgentCoordinationFocusState(): Promise<void> {
+  if (shouldSkipGlobeFetch("coordination:focus-sync", 15_000)) {
+    return;
+  }
+  if (isClientAuthCircuitOpen()) {
+    return;
+  }
   const patchContext = await readCoordinationPatchContext();
   setCoordinationContextSnapshot(patchContext);
   const rooms = listAgentNegotiationRooms().filter(

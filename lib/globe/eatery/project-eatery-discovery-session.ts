@@ -9,6 +9,7 @@ import {
 import type { ScoredEateryRecommendation } from "@/lib/globe/eatery/score-eatery-recommendations";
 import { resolveLodgingDiscoveryAreaLabel } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { buildAreaCuriosityHook } from "@/lib/globe/infer-area-curiosity-hook";
+import { isTrustedVenueMediaUrl } from "@/lib/globe/lodging/lodging-photo-fidelity";
 
 export type GlobeEateryDiscoveryCard = {
   resourceId: string;
@@ -171,7 +172,7 @@ export function projectEateryDiscoverySession(input: {
       accent: LODGING_DISCOVERY_ACCENT_COLORS[index % LODGING_DISCOVERY_ACCENT_COLORS.length]!,
       lat: row.lat,
       lng: row.lng,
-      thumbnailUrl: row.images[0] ?? null,
+      thumbnailUrl: isTrustedVenueMediaUrl(row.images[0]) ? row.images[0]! : null,
     };
   });
 

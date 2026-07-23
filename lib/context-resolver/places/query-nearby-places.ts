@@ -30,57 +30,6 @@ function buildPlacePhotoUrl(photoReference: string, key: string): string {
   return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
 }
 
-/** Korea-only demo activities — overseas must stay empty (Google is SSOT abroad). */
-function mockActivityCandidates(input: {
-  lat: number;
-  lng: number;
-}): PlaceCandidate[] {
-  if (!isCoordInKorea(input.lat, input.lng)) {
-    return [];
-  }
-  return [
-    {
-      place_id: "mock-park",
-      name: "근처 공원 산책로",
-      address: "현재 위치 도보 10분",
-      lat: input.lat + 0.002,
-      lng: input.lng + 0.001,
-      rating: 4.5,
-      open_now: true,
-      vibes: ["unknown"],
-      phone: null,
-      maps_url: null,
-      google_types: ["park", "tourist_attraction"],
-    },
-    {
-      place_id: "mock-attraction",
-      name: "근처 관광명소",
-      address: "현재 위치 도보 15분",
-      lat: input.lat + 0.003,
-      lng: input.lng - 0.0015,
-      rating: 4.4,
-      open_now: true,
-      vibes: ["unknown"],
-      phone: null,
-      maps_url: null,
-      google_types: ["tourist_attraction", "point_of_interest"],
-    },
-    {
-      place_id: "mock-museum",
-      name: "지역 박물관",
-      address: "현재 위치 도보 20분",
-      lat: input.lat - 0.002,
-      lng: input.lng + 0.002,
-      rating: 4.2,
-      open_now: true,
-      vibes: ["unknown"],
-      phone: null,
-      maps_url: null,
-      google_types: ["museum", "point_of_interest"],
-    },
-  ];
-}
-
 function resolveGooglePlacesKeyword(criteria: PlaceDiscoveryCriteria): string | undefined {
   const query = criteria.query.trim();
   if (!query) {
@@ -94,69 +43,6 @@ function resolveGooglePlacesKeyword(criteria: PlaceDiscoveryCriteria): string | 
     return stripped || "관광명소";
   }
   return query;
-}
-
-function mockCandidates(input: {
-  lat: number;
-  lng: number;
-  criteria: PlaceDiscoveryCriteria;
-}): PlaceCandidate[] {
-  if (!isCoordInKorea(input.lat, input.lng)) {
-    return [];
-  }
-  const quiet = input.criteria.vibe === "quiet";
-  const base: PlaceCandidate[] = [
-    {
-      place_id: "mock-cafe-a",
-      name: quiet ? "카페 무드 (조용함)" : "카페 무드",
-      address: "현재 위치 도보 5분",
-      lat: input.lat + 0.0012,
-      lng: input.lng + 0.0008,
-      rating: 4.6,
-      open_now: true,
-      vibes: ["quiet", "work"],
-      phone: "050-1111-2222",
-      maps_url: null,
-    },
-    {
-      place_id: "mock-cafe-b",
-      name: "브루잉 라운지",
-      address: "현재 위치 도보 8분",
-      lat: input.lat + 0.002,
-      lng: input.lng - 0.001,
-      rating: 4.3,
-      open_now: true,
-      vibes: quiet ? ["work"] : ["lively"],
-      phone: null,
-      maps_url: null,
-    },
-    {
-      place_id: "mock-cafe-c",
-      name: "테라스 커피",
-      address: "현재 위치 도보 12분",
-      lat: input.lat - 0.0015,
-      lng: input.lng + 0.0015,
-      rating: 4.1,
-      open_now: true,
-      vibes: ["quiet"],
-      phone: "050-3333-4444",
-      maps_url: null,
-    },
-    {
-      place_id: "mock-cafe-d",
-      name: "스터디 카페 247",
-      address: "현재 위치 도보 15분",
-      lat: input.lat + 0.003,
-      lng: input.lng + 0.002,
-      rating: 3.8,
-      open_now: false,
-      vibes: ["quiet", "work"],
-      phone: null,
-      maps_url: null,
-    },
-  ];
-
-  return base;
 }
 
 export async function queryNearbyPlaces(input: {
@@ -187,10 +73,8 @@ export async function queryNearbyPlaces(input: {
   }
 
   if (candidates.length === 0) {
-    candidates =
-      input.criteria.category === "activity" || input.criteria.category === "amenity"
-        ? mockActivityCandidates(input)
-        : mockCandidates(input);
+    // Honest empty — never invent mock pharmacy / cafe / amenity rows with fake media.
+    return [];
   }
 
   return filterPlaceCandidates(candidates, input.criteria);

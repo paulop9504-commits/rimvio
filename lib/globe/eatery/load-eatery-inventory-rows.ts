@@ -4,14 +4,13 @@ import {
   serializeCanonicalPlaceProfile,
 } from "@/lib/globe/canonical-place-profile";
 import { resolveInventorySearchOrigin } from "@/lib/globe/context-hub/resolve-inventory-search-origin";
-import { resolveEateryMockNearOrigin } from "@/lib/globe/eatery/resolve-eatery-mock-inventory";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import {
   inferMapRegionBias,
-  isCoordInKorea,
 } from "@/lib/globe/infer-area-curiosity-hook";
 import { filterLodgingRowsWithinRadius } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
+import { filterTrustedVenueMediaUrls } from "@/lib/globe/lodging/lodging-photo-fidelity";
 
 export type EateryInventorySource =
   | "google_places"
@@ -178,7 +177,10 @@ export async function loadEateryInventoryRows(input: {
         name: candidate.name,
         lat: candidate.lat,
         lng: candidate.lng,
-        images: [...candidate.images],
+        images:
+          candidate.source === "mock"
+            ? []
+            : filterTrustedVenueMediaUrls(candidate.images),
         address: candidate.address ?? null,
         cuisineHint: candidate.cuisineHint ?? null,
         priceLevel: candidate.priceLevel ?? null,
@@ -225,27 +227,9 @@ export async function loadEateryInventoryRows(input: {
   }
 
   if (originLat == null || originLng == null) {
-    return { rows: [], source: "mock" };
+    return { rows: [], source: "google_places" };
   }
 
-  if (!isCoordInKorea(originLat, originLng)) {
-    return { rows: [], source: "mock" };
-  }
-
-  const mockRows = resolveEateryMockNearOrigin({
-    lat: originLat,
-    lng: originLng,
-    anchorLabel,
-  });
-  const filteredMock = filterLodgingRowsWithinRadius({
-    rows: mockRows,
-    lat: originLat,
-    lng: originLng,
-    radiusM: radiusM * 4,
-  });
-
-  return {
-    rows: filteredMock.length > 0 ? filteredMock : [...mockRows],
-    source: "mock",
-  };
+  // No fabricated KR mock eateries — empty until Google Places / Naver Local return.
+  return { rows: [], source: "google_places" };
 }

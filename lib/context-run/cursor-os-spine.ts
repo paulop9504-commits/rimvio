@@ -14,7 +14,7 @@ import { NL_PIPELINE_STAGES } from "@/lib/context-run/natural-language-pipeline"
 
 /** Product law — one line. */
 export const CURSOR_OS_SPINE_LAW =
-  "Intent routes Tools; Tools stamp Graph Diff; stages stay ordered; only dangerous Actions Field-Commit." as const;
+  "Intent routes Tools; lodging Search opens Context Workspace until Commit; other Tools stamp Graph Diff; stages stay ordered; only dangerous Actions Field-Commit." as const;
 
 export const CURSOR_OS_SPINE_VERSION = 1 as const;
 
@@ -62,8 +62,9 @@ export const CURSOR_OS_SPINE_AXES: readonly CursorOsSpineAxis[] = [
     id: "tool_to_graph_diff",
     titleEn: "Tool result → Graph / Diff",
     summaryKo:
-      "채팅 dump 금지 · lastBatch + session graph + Reality Object · Planner Diff 묶음",
+      "채팅 dump 금지 · lodging은 Workspace 우선 · Commit 후 lastBatch/session graph · Planner Diff 묶음",
     wires: [
+      "lib/context-workspace/",
       "lib/graph-command/stamp-search-tool-results-to-diff.ts",
       "lib/graph-command/apply-graph-commands.ts",
       "lib/action-planner/run-action-plan.ts",

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
@@ -50,7 +50,10 @@ import { GlobeContextAgentConnector } from "@/components/globe/globe-context-age
 import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-stage";
 import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelligent-discovery-stage";
 import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
+import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
+import { shouldProjectMapResultsToGlobe } from "@/lib/context-workspace/should-project-lodging-to-globe";
+import { globeFamiliesHiddenByWorkspace } from "@/lib/context-workspace/should-project-lodging-to-globe";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
 import { subscribeGlobePlaceOntologyFocus } from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
 import {
@@ -431,9 +434,13 @@ const GLOBE_PIN_PRESS_SUPPRESS_MS = 120;
 
 function GlobeHomeBody() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
   const rimvioHonorific = resolveRimvioHonorific(user);
   const recallEventId = searchParams.get("recallEvent");
+  /** Blocks deep-link re-open after the user closes the PromptFrame with X. */
+  const dismissedAssistantRecallRef = useRef<string | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<RimvioGlobeHubHandle>(null);
   const ingestBarRef = useRef<GlobeContextIngestBarHandle>(null);
@@ -1046,7 +1053,8 @@ function GlobeHomeBody() {
     }
     if (!shouldOpenGlobeBridgeSheet()) {
       dismissCompetingGlobeSurfaces();
-      openGlobeContextConditionPanel(eventId);
+      // Bind (not bare open) so dismiss-guard clears and PromptFrame stays coherent.
+      void bindContextAgentToEventIdRef.current(eventId);
       return;
     }
 
@@ -1551,8 +1559,22 @@ function GlobeHomeBody() {
       return [];
     }
     const markers = [...projectSessionGraphToBrainCandidates(graph)];
+    // Map-needed work stays off Globe until Workspace Commit.
+    const hidden = globeFamiliesHiddenByWorkspace(eventId);
+    if (hidden.size > 0) {
+      return markers.filter((marker) => !hidden.has(marker.family));
+    }
+    if (!shouldProjectMapResultsToGlobe(eventId)) {
+      return markers.filter(
+        (marker) =>
+          marker.family !== "lodging" &&
+          marker.family !== "eatery" &&
+          marker.family !== "poi" &&
+          marker.family !== "amenity" &&
+          marker.family !== "activity",
+      );
+    }
     // Field scout inventory owns lodging map — hide stale APA graph lodging.
-    // Tool-search Diff keeps graph lodging markers (Reality Object Diff path).
     const lastBatch = readContextConditionLastBatch(eventId);
     if (!fieldScoutOwnsLodgingGraphMarkers(lastBatch)) {
       return markers;
@@ -2396,10 +2418,9 @@ function GlobeHomeBody() {
     let frame = 0;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsub = subscribeSessionGraph(() => {
-      if (contextConditionPanelOpenRef.current) {
-        return;
-      }
-      // Coalesce write+bump storms so Globe home doesn't double-commit mid-touch.
+      // Always refresh Diff → map markers, including while Context chat is open.
+      // Clusters/overlays still skip for IME; freezing graphCommandRevision here
+      // left "지도에 N곳을 펼쳤어요" with no pins until the panel closed.
       if (frame) {
         cancelAnimationFrame(frame);
       }
@@ -2411,9 +2432,6 @@ function GlobeHomeBody() {
         frame = 0;
         timer = setTimeout(() => {
           timer = null;
-          if (contextConditionPanelOpenRef.current) {
-            return;
-          }
           setGraphCommandRevision((value) => value + 1);
         }, 48);
       });
@@ -3540,6 +3558,7 @@ function GlobeHomeBody() {
       if (!key) {
         return;
       }
+      dismissedAssistantRecallRef.current = null;
       dismissCompetingGlobeSurfaces();
       bindGlobeContextAgent(key);
       setStackClusters(null);
@@ -3829,6 +3848,9 @@ function GlobeHomeBody() {
       if (!key) {
         return;
       }
+      if (dismissedAssistantRecallRef.current === key) {
+        return;
+      }
       setListOpen(false);
       setManageOpen(false);
       setBrainProjectionEventId(null);
@@ -4040,15 +4062,40 @@ function GlobeHomeBody() {
     [bindContextAgentToEventId],
   );
 
+  const clearRecallEventFromUrl = useCallback(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("recallEvent")) {
+      return;
+    }
+    params.delete("recallEvent");
+    const next = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    router.replace(next, { scroll: false });
+  }, [pathname, router]);
+
   const dismissContextAgentPanel = useCallback(() => {
+    const closingId =
+      contextConditionPanelEventId?.trim() ||
+      contextAgentSession.boundEventId?.trim() ||
+      recallEventId?.trim() ||
+      null;
+    if (closingId) {
+      dismissedAssistantRecallRef.current = closingId;
+    }
     closeGlobeContextConditionPanel();
     clearGlobeContextAgent();
     resetContextAgentRuntime();
-    // Panel-only dismiss keeps Solo Stage when a context pin is still selected.
-    if (!activeClusterRef.current?.eventId?.trim()) {
-      exitContextSoloStage();
-    }
-  }, []);
+    exitContextSoloStage();
+    // Must use Next router — history.replaceState alone leaves useSearchParams stale,
+    // and RimvioGlobeHub re-binds PromptFrame from initialRecallEventId.
+    clearRecallEventFromUrl();
+  }, [
+    clearRecallEventFromUrl,
+    contextAgentSession.boundEventId,
+    contextConditionPanelEventId,
+    recallEventId,
+  ]);
 
   const openGlobeChat = useCallback(() => {
     // Hard exclusion — 맞춤 대화 and 맥락 어시스턴트 must not stack.
@@ -5224,6 +5271,14 @@ function GlobeHomeBody() {
       <GlobeIntelligentDiscoveryStage
         globeRef={globeRef}
         contextEventId={hubEventId}
+      />
+      <ContextWorkspaceShell
+        contextEventId={hubEventId}
+        projectTitleKo={
+          activeCluster?.placeLabel?.trim() ||
+          activeCluster?.title?.trim() ||
+          null
+        }
       />
       <GlobePlaceMapYoutubeStage globeRef={globeRef} />
       <GlobeTrendBridgeLayer

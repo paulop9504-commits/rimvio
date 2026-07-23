@@ -3,6 +3,10 @@
 import { cn } from "@/lib/utils";
 import type { LodgingResourcePayload } from "@/lib/globe/context-hub/lodging-resource-types";
 import { copy } from "@/lib/copy/human-ko";
+import {
+  isTrustedVenueMediaUrl,
+  selectPreferredLodgingImage,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 
 export function GlobeLodgingMediaHero({
   payload,
@@ -15,7 +19,13 @@ export function GlobeLodgingMediaHero({
   priceLabel?: string | null;
   heroLayout?: boolean;
 }) {
-  const image = payload.images[0] ?? null;
+  const image = selectPreferredLodgingImage(payload);
+  const video =
+    payload.provider !== "mock" &&
+    payload.photoConfidence !== "mock" &&
+    isTrustedVenueMediaUrl(payload.videoUrl)
+      ? payload.videoUrl!.trim()
+      : null;
 
   return (
     <div
@@ -25,9 +35,9 @@ export function GlobeLodgingMediaHero({
       )}
       data-globe-lodging-media-hero
     >
-      {payload.videoUrl ? (
+      {video ? (
         <video
-          src={payload.videoUrl}
+          src={video}
           className="aspect-[16/10] w-full object-cover"
           autoPlay
           loop

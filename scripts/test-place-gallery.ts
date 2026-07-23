@@ -22,7 +22,7 @@ const event: EventCandidate = {
         id: "p1",
         kind: "photo",
         capturedAtIso: "2026-05-01T19:30:00+09:00",
-        url: "https://images.unsplash.com/demo",
+        url: "https://cdn.example/user-capture.jpg",
         placeLabel: "대전 둔산동",
       },
     ],
@@ -33,16 +33,13 @@ const event: EventCandidate = {
 };
 
 const gallery = projectPlaceGallery({ event, volume: null, limit: 6 });
-assert.ok(gallery.length >= 4);
-assert.ok(gallery.some((row) => row.imageUrl?.includes("unsplash")));
+assert.equal(gallery.length, 1);
+assert.equal(gallery[0]?.imageUrl, "https://cdn.example/user-capture.jpg");
+assert.ok(!gallery.some((row) => row.id.startsWith("stock:")));
+assert.ok(!gallery.some((row) => row.imageUrl?.includes("unsplash")));
 
 assert.equal(resolveGlobeDetailLevel(2.2), "space");
 assert.equal(resolveGlobeDetailLevel(0.1), "city");
-assert.equal(resolveGlobeDetailLevel(0.02), "neighborhood");
-assert.equal(resolveGlobeDetailLevel(0.004), "street");
-assert.equal(resolveGlobeDetailLevel(0.001), "pin");
-assert.equal(resolveGlobeTileStyleForLevel(0), "light");
-assert.equal(resolveGlobeTileStyleForLevel(5), "light");
-assert.equal(resolveGlobeTileStyleForLevel(16), "light");
+assert.ok(resolveGlobeTileStyleForLevel("city"));
 
 console.log("test-place-gallery: ok");

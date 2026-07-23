@@ -2,6 +2,7 @@ import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resource-types";
 import { loadEateryInventoryRows } from "@/lib/globe/eatery/load-eatery-inventory-rows";
+import { isTrustedVenueMediaUrl } from "@/lib/globe/lodging/lodging-photo-fidelity";
 import type {
   LodgingAgentContainer,
   LodgingAgentMapPinType,
@@ -185,7 +186,7 @@ export async function executeLodgingAgentTool(input: {
     lng: row.lng,
     type: pinType,
     placeId: row.placeId,
-    previewImageUrl: row.images[0] ?? null,
+    previewImageUrl: isTrustedVenueMediaUrl(row.images[0]) ? row.images[0]! : null,
   }));
 
   const label =

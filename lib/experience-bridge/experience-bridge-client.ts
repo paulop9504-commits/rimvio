@@ -2,6 +2,10 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import { resolveAppOrigin } from "@/lib/auth/redirect-url";
 import { cachedFetchJson } from "@/lib/http/client-fetch-cache";
 import {
+  isClientAuthCircuitOpen,
+  noteClientAuthFailure,
+} from "@/lib/http/client-auth-circuit";
+import {
   maxIsoTimestamp,
   readBridgeSyncCursor,
   writeBridgeSyncCursor,
@@ -23,6 +27,10 @@ import type {
 import type { ExperienceWindow } from "@/lib/experience-window/experience-window-types";
 
 async function parseJson<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    noteClientAuthFailure();
+    throw new Error("authentication required");
+  }
   const body = (await response.json()) as T & { error?: string };
   if (!response.ok) {
     throw new Error(typeof body.error === "string" ? body.error : response.statusText);
@@ -34,6 +42,9 @@ async function fetchJsonUncached<T>(
   endpoint: string,
   init?: RequestInit,
 ): Promise<T> {
+  if (isClientAuthCircuitOpen()) {
+    throw new Error("auth_circuit_open");
+  }
   return parseJson<T>(await fetch(endpoint, { credentials: "include", ...init }));
 }
 

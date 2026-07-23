@@ -13,6 +13,8 @@ export { resolveExperienceRunTurn } from "@/lib/experience-run/resolve-experienc
 export { runBusinessTripExperienceRun } from "@/lib/experience-run/run-business-trip-experience-run";
 export {
   parseTravelSlotsFromMessage,
+  parseTravelDateRangeFromText,
+  parseDurationDaysFromText,
   nextTravelSlot,
   travelProfileForMessage,
 } from "@/lib/experience-run/travel-context-slots";

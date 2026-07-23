@@ -33,6 +33,7 @@ export {
   type IntakeSlotsComposePayload,
   type OperatorAskChipsComposePayload,
   type IntentExecutionTimelinePayload,
+  type WorkspacePreviewComposePayload,
 } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 export { CONTEXT_AGENT_ASK_FIRST } from "@/lib/globe/assistant/context-agent-ask-first";
 export {

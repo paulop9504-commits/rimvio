@@ -9,7 +9,14 @@ const FOCUS_SESSION_UPDATED_EVENT = "rimvio-focus-session-updated";
 export type CoordinationContextSignalOptions = {
   /** Include focus-session changes (default true). */
   includeFocusSession?: boolean;
-  /** Debounce rapid calendar/knowledge bursts (default 150ms). */
+  /**
+   * Life-event candidate churn (default false).
+   * Candidate updates are too hot for coordination focus_sync — they caused 401 storms.
+   */
+  includeEventCandidates?: boolean;
+  /** Include knowledge entity updates (default true). */
+  includeKnowledge?: boolean;
+  /** Debounce rapid bursts (default 150ms). */
   debounceMs?: number;
 };
 
@@ -23,6 +30,8 @@ export function subscribeCoordinationContextSignals(
   }
 
   const includeFocusSession = options?.includeFocusSession !== false;
+  const includeEventCandidates = options?.includeEventCandidates === true;
+  const includeKnowledge = options?.includeKnowledge !== false;
   const debounceMs = options?.debounceMs ?? 150;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -40,8 +49,12 @@ export function subscribeCoordinationContextSignals(
     }, debounceMs);
   };
 
-  window.addEventListener(KNOWLEDGE_ENTITY_UPDATED, emit);
-  window.addEventListener(EVENT_CANDIDATES_UPDATED, emit);
+  if (includeKnowledge) {
+    window.addEventListener(KNOWLEDGE_ENTITY_UPDATED, emit);
+  }
+  if (includeEventCandidates) {
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, emit);
+  }
   if (includeFocusSession) {
     window.addEventListener(FOCUS_SESSION_UPDATED_EVENT, emit);
   }
@@ -50,8 +63,12 @@ export function subscribeCoordinationContextSignals(
     if (timer) {
       clearTimeout(timer);
     }
-    window.removeEventListener(KNOWLEDGE_ENTITY_UPDATED, emit);
-    window.removeEventListener(EVENT_CANDIDATES_UPDATED, emit);
+    if (includeKnowledge) {
+      window.removeEventListener(KNOWLEDGE_ENTITY_UPDATED, emit);
+    }
+    if (includeEventCandidates) {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, emit);
+    }
     if (includeFocusSession) {
       window.removeEventListener(FOCUS_SESSION_UPDATED_EVENT, emit);
     }

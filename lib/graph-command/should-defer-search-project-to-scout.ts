@@ -73,18 +73,21 @@ export function shouldDeferSearchProjectToDiscoveryScout(
       return false;
     }
   }
-  // Lodging Field discovery (capsule · price · hostel) → scout inventory.
-  if (isInstantLodgingSearch(text)) {
-    return true;
-  }
+  // Field-heavy lodging (price ceiling · specialty stay) → scout inventory still.
+  // Bare 「호텔 찾아」→ Graph → Workspace Preview (Phase 1).
+  const stayType = parseLodgingStayTypeFromText(text);
   if (
-    parseLodgingStayTypeFromText(text) &&
+    stayType &&
+    stayType !== "hotel" &&
     /찾|주변|근처|추천|보여|search|find/iu.test(text)
   ) {
     return true;
   }
   if (parseMaxNightlyPriceKrw(text) && hasLodgingDomainCue(text)) {
     return true;
+  }
+  if (isInstantLodgingSearch(text)) {
+    return false;
   }
   const pack = parseContextFields(text);
   const fieldHeavy = Boolean(

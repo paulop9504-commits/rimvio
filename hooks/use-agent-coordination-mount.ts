@@ -60,9 +60,13 @@ export function useAgentCoordinationMount(): void {
 
   useEffect(() => {
     void syncAgentCoordinationFocusState();
-    const unsubSignals = subscribeCoordinationContextSignals(() => {
-      void syncAgentCoordinationFocusState();
-    });
+    // Focus/calendar only — never EVENT_CANDIDATES_UPDATED (too hot → 401 storms).
+    const unsubSignals = subscribeCoordinationContextSignals(
+      () => {
+        void syncAgentCoordinationFocusState();
+      },
+      { includeEventCandidates: false, debounceMs: 2_000 },
+    );
     const timer = window.setInterval(() => {
       void syncAgentCoordinationFocusState();
     }, 60_000);

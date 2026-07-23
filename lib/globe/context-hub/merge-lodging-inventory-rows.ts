@@ -1,5 +1,9 @@
 import { haversineKm } from "@/lib/feed/spacetime-fit";
 import type { ContextLodgingInventoryRow } from "@/lib/globe/context-hub/lodging-resource-types";
+import {
+  sanitizeLodgingInventoryRowMedia,
+  sanitizeLodgingInventoryRows,
+} from "@/lib/globe/lodging/lodging-photo-fidelity";
 
 const NEAR_MATCH_KM = 0.18;
 
@@ -59,8 +63,17 @@ export function fuseLodgingInventoryRows(
   primary: ContextLodgingInventoryRow,
   secondary: ContextLodgingInventoryRow,
 ): ContextLodgingInventoryRow {
-  const primaryImages = primary.images ?? [];
-  const secondaryImages = secondary.images ?? [];
+  const primaryIsMock =
+    primary.provider === "mock" ||
+    primary.photoConfidence === "mock" ||
+    primary.photoSource === "mock";
+  const secondaryIsMock =
+    secondary.provider === "mock" ||
+    secondary.photoConfidence === "mock" ||
+    secondary.photoSource === "mock";
+
+  const primaryImages = primaryIsMock ? [] : (primary.images ?? []);
+  const secondaryImages = secondaryIsMock ? [] : (secondary.images ?? []);
   const useSecondaryPhotos =
     secondaryImages.length > primaryImages.length ||
     (primaryImages.length === 0 && secondaryImages.length > 0);
@@ -78,7 +91,7 @@ export function fuseLodgingInventoryRows(
       ? primary.roomOffers
       : secondary.roomOffers;
 
-  return {
+  return sanitizeLodgingInventoryRowMedia({
     ...secondary,
     ...primary,
     name: primary.name.trim() || secondary.name,
@@ -105,7 +118,7 @@ export function fuseLodgingInventoryRows(
     stayWindow: primary.stayWindow ?? secondary.stayWindow,
     rating: primary.rating ?? secondary.rating,
     reviewCount: primary.reviewCount ?? secondary.reviewCount,
-  };
+  });
 }
 
 function findFuzzyMatch(
@@ -159,14 +172,16 @@ export function mergeLodgingInventoryRows(input: {
       );
       continue;
     }
-    mergedPrimary.push(row);
+    mergedPrimary.push(sanitizeLodgingInventoryRowMedia(row));
   }
 
   const extras = secondaryLeft.sort(
     (left, right) => lodgingPhotoScore(right) - lodgingPhotoScore(left),
   );
 
-  return [...mergedPrimary, ...extras].slice(0, Math.max(1, input.maxResults));
+  return sanitizeLodgingInventoryRows(
+    [...mergedPrimary, ...extras].slice(0, Math.max(1, input.maxResults)),
+  );
 }
 
 export function lodgingInventoryHasLivePhotos(
