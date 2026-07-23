@@ -104,9 +104,9 @@ Assistant 장문은 부산물 — SSOT 아님.
 1. **Keep** `NL_PIPELINE_STAGES` order — no second compiler  
 2. **Harden** Intent + Entity + Temporal into one Context Pack IR ← **`lib/context-compiler/` · `ContextPackV1.compilerIr`**  
 3. **Relationship edges** in Workspace / Session graph ← **`relationshipEdges` · `deriveWorkspaceRelationshipEdges`**  
-4. **Preference vector** from archive rollup → MAIN / Workspace rank  
-5. **Reality State** slice (weather · stay inventory) at plan time  
-6. Capsule Resume consumes same IR
+4. **Preference vector** from archive rollup → MAIN / Workspace rank ← **`mergePreferenceFromArchiveRollup` · pack `scoreNode`**  
+5. **Reality State** slice (weather · stay inventory) at plan time ← **`buildCompilerRealityState` · `inventoryHints`**  
+6. Capsule Resume consumes same IR ← **`workspace.compilerIr` · `resumeCapsuleWorkspace`**
 
 ## Test
 

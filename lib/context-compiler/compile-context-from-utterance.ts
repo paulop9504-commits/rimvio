@@ -14,6 +14,8 @@ import {
   deriveWorkspaceRelationshipEdges,
   sessionGraphToCompilerGraph,
 } from "@/lib/context-compiler/derive-relationship-edges";
+import { mergePreferenceFromArchiveRollup } from "@/lib/context-compiler/merge-preference-from-rollup";
+import { buildCompilerRealityState } from "@/lib/context-compiler/build-compiler-reality-state";
 import type {
   CompilerActionId,
   CompilerEntity,
@@ -250,7 +252,28 @@ export type CompileContextInput = {
   readonly graph?: SessionGraphV1 | null;
   readonly workspace?: ContextWorkspaceState | null;
   readonly contextLabelKo?: string | null;
+  /** Capsule Resume — preserve preference · weather lineage. */
+  readonly priorIr?: ContextCompilerIrV1 | null;
 };
+
+function mergePreferenceVectors(
+  base: CompilerPreferenceVector,
+  prior: CompilerPreferenceVector | null | undefined,
+): CompilerPreferenceVector {
+  if (!prior) {
+    return base;
+  }
+  /** Capsule lineage: keep stronger signal (utterance spike or stored affinity). */
+  const pick = (a: number, b: number) => Math.max(a, b);
+  return {
+    food: pick(base.food, prior.food),
+    nature: pick(base.nature, prior.nature),
+    luxury: pick(base.luxury, prior.luxury),
+    crowdAvoidance: pick(base.crowdAvoidance, prior.crowdAvoidance),
+    romantic: pick(base.romantic, prior.romantic),
+    budgetSensitive: pick(base.budgetSensitive, prior.budgetSensitive),
+  };
+}
 
 export function compileContextFromUtterance(
   input: CompileContextInput | string,
@@ -267,6 +290,7 @@ export function compileContextFromUtterance(
     typeof input === "string" ? null : (input.workspace ?? null);
   const overrideLabel =
     typeof input === "string" ? null : (input.contextLabelKo ?? null);
+  const priorIr = typeof input === "string" ? null : (input.priorIr ?? null);
 
   const family = classifyIntentFamily(utterance);
   const fields = parseContextFields(utterance);
@@ -306,7 +330,12 @@ export function compileContextFromUtterance(
     });
   }
 
-  const preference = preferenceFromUtterance(utterance, fields);
+  const preference = mergePreferenceFromArchiveRollup(
+    mergePreferenceVectors(
+      preferenceFromUtterance(utterance, fields),
+      priorIr?.preference,
+    ),
+  );
   const time: CompilerTimeContext = {
     dateIso: range?.startIso ?? null,
     endDateIso: range?.endIso ?? null,
@@ -377,11 +406,12 @@ export function compileContextFromUtterance(
       nodes: mergedNodes,
       edges: mergedEdges,
     },
-    reality: {
+    reality: buildCompilerRealityState({
+      weatherCue: fields.weather?.value ?? null,
+      priorWeather: priorIr?.reality.weather ?? null,
+      workspace,
       asOfIso: compiledAtIso,
-      weather: fields.weather?.value === "rain" ? "rain" : null,
-      inventoryHints: [],
-    },
+    }),
     compiledAtIso,
   };
 }

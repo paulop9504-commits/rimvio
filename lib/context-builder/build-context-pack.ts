@@ -141,6 +141,7 @@ function scoreNode(
     intent: IntentFamily;
     utterance: string;
     discoveryPlaceIds?: ReadonlySet<string>;
+    preference?: ContextCompilerIrV1["preference"] | null;
   },
 ): number {
   let score = 0;
@@ -216,6 +217,28 @@ function scoreNode(
       break;
   }
 
+  const pref = input.preference;
+  if (pref) {
+    if (node.kind === "eatery") {
+      score += Math.round(pref.food * 18);
+    }
+    if (node.kind === "lodging") {
+      score += Math.round(pref.luxury * 8);
+      if (pref.budgetSensitive >= 0.65) {
+        score += 6;
+      }
+    }
+    if (pref.romantic >= 0.7 && /분위기|뷰|로맨|한강|야경/i.test(node.labelKo)) {
+      score += Math.round(pref.romantic * 10);
+    }
+    if (
+      pref.crowdAvoidance >= 0.7 &&
+      /한적|조용|로컬|local/i.test(node.labelKo)
+    ) {
+      score += Math.round(pref.crowdAvoidance * 8);
+    }
+  }
+
   return score;
 }
 
@@ -277,11 +300,19 @@ export function buildContextPack(input: {
     : null;
   const compilerIr =
     input.compilerIr ??
-    compileContextFromUtterance({
-      utterance,
-      graph,
-      workspace,
-    });
+    (workspace?.compilerIr
+      ? compileContextFromUtterance({
+          utterance,
+          graph,
+          workspace,
+          priorIr: workspace.compilerIr,
+          contextLabelKo: workspace.compilerIr.contextLabelKo,
+        })
+      : compileContextFromUtterance({
+          utterance,
+          graph,
+          workspace,
+        }));
   const discoveryPlaceIds = new Set(
     (input.discoveryPlaceIds ?? []).map((id) => id.trim()).filter(Boolean),
   );
@@ -321,6 +352,7 @@ export function buildContextPack(input: {
         intent,
         utterance,
         discoveryPlaceIds,
+        preference: compilerIr.preference,
       }),
     }))
     .filter(

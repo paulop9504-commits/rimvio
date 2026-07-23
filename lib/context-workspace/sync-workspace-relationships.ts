@@ -1,8 +1,10 @@
 /**
- * Sync Workspace relationshipEdges from live nodes (ADR-023).
+ * Sync Workspace relationshipEdges + Capsule compilerIr (ADR-023).
  */
 
 import { deriveWorkspaceRelationshipEdges } from "@/lib/context-compiler/derive-relationship-edges";
+import { compileContextFromUtterance } from "@/lib/context-compiler/compile-context-from-utterance";
+import { refreshCompilerIrForWorkspace } from "@/lib/context-compiler/refresh-compiler-ir";
 import type {
   ContextWorkspaceRelationshipEdge,
   ContextWorkspaceState,
@@ -48,11 +50,35 @@ export function buildWorkspaceRelationshipEdges(
   return edges.slice(0, 48);
 }
 
+function attachCompilerIr(
+  state: ContextWorkspaceState,
+  utterance?: string | null,
+): ContextWorkspaceState {
+  const prior = state.compilerIr;
+  const utter = utterance?.trim() || state.query.trim() || "";
+  const compilerIr = prior
+    ? refreshCompilerIrForWorkspace({
+        priorIr: prior,
+        utterance: utter,
+        workspace: { ...state, compilerIr: prior },
+      })
+    : utter
+      ? compileContextFromUtterance({
+          utterance: utter,
+          workspace: state,
+        })
+      : null;
+  return { ...state, compilerIr };
+}
+
 export function withWorkspaceRelationships(
   state: ContextWorkspaceState,
+  utterance?: string | null,
 ): ContextWorkspaceState {
-  return {
+  const withEdges: ContextWorkspaceState = {
     ...state,
     relationshipEdges: buildWorkspaceRelationshipEdges(state),
+    compilerIr: state.compilerIr ?? null,
   };
+  return attachCompilerIr(withEdges, utterance);
 }

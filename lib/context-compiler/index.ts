@@ -28,3 +28,10 @@ export {
   sessionGraphToCompilerGraph,
   type WorkspaceRelNode,
 } from "@/lib/context-compiler/derive-relationship-edges";
+
+export { mergePreferenceFromArchiveRollup } from "@/lib/context-compiler/merge-preference-from-rollup";
+export {
+  buildCompilerRealityState,
+  inventoryHintsFromWorkspace,
+} from "@/lib/context-compiler/build-compiler-reality-state";
+export { refreshCompilerIrForWorkspace } from "@/lib/context-compiler/refresh-compiler-ir";

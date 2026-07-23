@@ -79,6 +79,14 @@ export {
 } from "@/lib/context-workspace/sync-workspace-relationships";
 
 export {
+  buildCapsuleProjection,
+  listCapsuleProjections,
+  readCapsuleCompilerIr,
+  resumeCapsuleWorkspace,
+  type CapsuleProjection,
+} from "@/lib/context-workspace/resume-capsule-workspace";
+
+export {
   CONTEXT_WORKSPACE_EXPAND,
   dispatchContextWorkspaceExpand,
   subscribeContextWorkspaceExpand,

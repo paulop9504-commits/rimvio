@@ -212,8 +212,9 @@ export function openMapContextWorkspace(input: {
     history: [],
     future: [],
     relationshipEdges: [],
+    compilerIr: null,
   };
-  writeContextWorkspace(withWorkspaceRelationships(state));
+  writeContextWorkspace(withWorkspaceRelationships(state, input.query));
   dispatchContextWorkspaceOpen({
     contextEventId,
     workspaceId,

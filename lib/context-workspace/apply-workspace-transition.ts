@@ -55,6 +55,7 @@ function withHistory(
     | "lastWhy"
     | "lastChangeKo"
     | "relationshipEdges"
+    | "compilerIr"
   > &
     Partial<
       Pick<
@@ -66,6 +67,7 @@ function withHistory(
         | "lastWhy"
         | "lastChangeKo"
         | "relationshipEdges"
+        | "compilerIr"
       >
     >,
 ): ContextWorkspaceState {

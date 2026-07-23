@@ -76,6 +76,7 @@ function normalizeState(
     relationshipEdges: Array.isArray(parsed.relationshipEdges)
       ? parsed.relationshipEdges
       : [],
+    compilerIr: parsed.compilerIr ?? null,
   };
 }
 

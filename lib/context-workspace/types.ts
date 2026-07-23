@@ -91,6 +91,9 @@ export type ContextWorkspaceRelationshipEdge = {
   readonly meters: number | null;
 };
 
+/** Capsule Snapshot IR — same object Resume / pack / rank consume (ADR-023). */
+export type ContextWorkspaceCompilerIr = import("@/lib/context-compiler/types").ContextCompilerIrV1;
+
 export type ContextWorkspaceState = {
   readonly version: typeof CONTEXT_WORKSPACE_VERSION;
   readonly workspaceId: string;
@@ -102,6 +105,11 @@ export type ContextWorkspaceState = {
   readonly nodes: readonly ContextWorkspaceNode[];
   /** Relationship edges — 검색 → 관계 (ADR-023). */
   readonly relationshipEdges: readonly ContextWorkspaceRelationshipEdge[];
+  /**
+   * Context Compiler IR snapshot for Capsule Resume.
+   * Preference · Reality State · graph — not re-parsed from chat dump.
+   */
+  readonly compilerIr: ContextWorkspaceCompilerIr | null;
   readonly filter: ContextWorkspaceFilter;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];
