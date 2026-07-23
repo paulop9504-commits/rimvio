@@ -38,6 +38,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/health",
   "/api/auth/",
   "/api/globe/tile",
+  "/api/analytics/",
   // Anonymous community seed stats (token counts only — no utterance / user id)
   "/api/seed-learning/",
 ] as const;

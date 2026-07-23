@@ -25,6 +25,7 @@ import { ExperienceGravityBootstrap } from "@/components/experience-gravity-boot
 import { AlbumSyncBootstrap } from "@/components/album-sync-bootstrap";
 import { AlbumSyncProgressChip } from "@/components/album-sync-progress-chip";
 import { MobileErudaBootstrap } from "@/components/mobile-eruda-bootstrap";
+import { PresenceHeartbeatBootstrap } from "@/components/presence-heartbeat-bootstrap";
 import { Toaster } from "@/components/ui/sonner";
 
 type ProvidersProps = {
@@ -46,6 +47,7 @@ export function Providers({ children, initialLocale }: ProvidersProps) {
           {!isAuthRequired() ? <DevDemoSeed /> : null}
           <IosShareBanner />
           <GpsPingBootstrap />
+          <PresenceHeartbeatBootstrap />
           <GoogleCalendarSyncBootstrap />
           <ExperienceGravityBootstrap />
           <AlbumSyncBootstrap />

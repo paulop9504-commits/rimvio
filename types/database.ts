@@ -85,6 +85,18 @@ export type AnalyticsEventRow = {
   created_at: string;
 };
 
+/** Guest-first presence — device + session, no user_id. */
+export type AnalyticsPresenceRow = {
+  device_id: string;
+  session_id: string;
+  last_seen_at: string;
+  surface: string | null;
+  working: boolean;
+  path: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UserActionEventRow = {
   id: string;
   user_id: string | null;
@@ -297,6 +309,30 @@ export type Database = {
           enricher_id?: string | null;
           payload?: Json;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      analytics_presence: {
+        Row: AnalyticsPresenceRow;
+        Insert: {
+          device_id: string;
+          session_id: string;
+          last_seen_at?: string;
+          surface?: string | null;
+          working?: boolean;
+          path?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          device_id?: string;
+          session_id?: string;
+          last_seen_at?: string;
+          surface?: string | null;
+          working?: boolean;
+          path?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

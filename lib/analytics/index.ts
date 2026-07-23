@@ -21,3 +21,22 @@ export {
   readAnalyticsFlowId,
   startAnalyticsFlow,
 } from "@/lib/analytics/flow";
+export {
+  PRESENCE_ACTIVE_WINDOW_MS,
+  PRESENCE_HEARTBEAT_MS,
+  countPresenceRows,
+  normalizePresenceIds,
+  type PresenceActiveCounts,
+  type PresenceHeartbeatInput,
+} from "@/lib/analytics/presence-types";
+export {
+  fetchActivePresenceCounts,
+  resetPresenceMemoryForTests,
+  upsertPresenceHeartbeat,
+} from "@/lib/analytics/presence-server";
+export { getAnalyticsDeviceId, readPresenceIdentity } from "@/lib/analytics/presence-ids";
+export {
+  sendPresenceHeartbeat,
+  startPresenceHeartbeatLoop,
+} from "@/lib/analytics/presence-client";
+export { getAnalyticsSessionId } from "@/lib/analytics/store";

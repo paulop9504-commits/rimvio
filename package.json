@@ -136,6 +136,7 @@
     "test:trip-day-poi-globe-wire": "npx tsx scripts/test-trip-day-poi-globe-wire.ts",
     "test:browse-extract-tool": "npx tsx scripts/test-browse-extract-tool.ts",
     "test:guest-first-auth": "npx tsx scripts/test-guest-first-auth.ts",
+    "test:analytics-presence": "npx tsx scripts/test-analytics-presence.ts",
     "test:solo-stage": "npx tsx scripts/test-enter-context-solo-stage.ts",
     "test:scout-chip-stage-refine": "npx tsx scripts/test-scout-chip-stage-refine.ts",
     "test:compose-focus-storm-guards": "npx tsx scripts/test-compose-focus-storm-guards.ts",
