@@ -878,7 +878,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
               domain:
                 row.kind === "lodging" || row.kind === "eatery"
                   ? row.kind
-                  : "poi",
+                  : row.kind === "amenity"
+                    ? "amenity"
+                    : "poi",
               lat: row.lat ?? anchorLat,
               lng: row.lng ?? anchorLng,
               rating: null,
@@ -887,6 +889,9 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
               reservable: false,
               localFavorite: false,
               source: "maps" as const,
+              reasonKo: row.reasonKo,
+              thumbnailUrl: row.imageUrl ?? null,
+              activitySubtype: row.activitySubtype ?? null,
             })),
             source: "scout_patch",
           });

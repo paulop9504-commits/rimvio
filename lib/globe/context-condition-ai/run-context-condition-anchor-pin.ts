@@ -335,6 +335,7 @@ function buildRecommendations(input: {
       placeId: row.row.placeId,
       lat: row.row.lat,
       lng: row.row.lng,
+      imageUrl: row.row.images[0] ?? null,
     });
   }
   const eateryKind = input.activityKind ?? "eatery";
@@ -351,6 +352,7 @@ function buildRecommendations(input: {
       placeId: row.row.placeId,
       lat: row.row.lat,
       lng: row.row.lng,
+      imageUrl: row.row.images[0] ?? null,
     });
   }
   const placeKind = input.placeKind ?? null;
@@ -368,6 +370,7 @@ function buildRecommendations(input: {
         placeId: row.row.placeId,
         lat: row.row.lat,
         lng: row.row.lng,
+        imageUrl: row.row.images[0] ?? null,
       });
     }
   }
@@ -1223,6 +1226,7 @@ export async function runContextConditionAnchorPin(
       placeId: row.placeId,
       lat: row.lat,
       lng: row.lng,
+      imageUrl: row.imageUrl ?? null,
     })),
     radiusM,
     spec,

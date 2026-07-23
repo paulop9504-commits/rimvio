@@ -33,6 +33,10 @@ export type PlaceSearchHit = {
   readonly reviewCount?: number | null;
   /** Absolute price KRW when known (LiteAPI). */
   readonly priceKrw?: number | null;
+  /** Scout / inventory — why this place (photo spot etc.). */
+  readonly reasonKo?: string | null;
+  readonly thumbnailUrl?: string | null;
+  readonly activitySubtype?: string | null;
 };
 
 export type PlaceSearchInput = {

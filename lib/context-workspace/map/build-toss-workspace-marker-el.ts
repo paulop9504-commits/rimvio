@@ -40,17 +40,22 @@ export function buildTossWorkspaceMarkerEl(input: {
   const chip = document.createElement("span");
   const price = pin.amountLabel?.trim() || null;
   const pinned = Boolean(pin.bookmarked);
+  const photoSpot = Boolean(pin.photoSpot);
   const rating =
     pin.rating != null && Number.isFinite(pin.rating)
       ? pin.rating.toFixed(1)
       : null;
   const label = compact
-    ? `★${rating ?? "—"}`
+    ? photoSpot
+      ? "포토"
+      : `★${rating ?? "—"}`
     : selected
       ? shortTitle(pin.title, 11)
       : pinned
         ? shortTitle(pin.title, 9)
-        : `★${rating ?? String(index + 1)}`;
+        : photoSpot
+          ? "포토스팟"
+          : `★${rating ?? String(index + 1)}`;
 
   chip.textContent = label;
   chip.style.cssText = [
@@ -75,7 +80,9 @@ export function buildTossWorkspaceMarkerEl(input: {
       ? `background:${GLOBE_TOSS_THEME.blue};color:#fff;box-shadow:0 2px 8px rgba(49,130,246,0.35)`
       : pinned
         ? "background:#191f28;color:#fff"
-        : "background:#fff;color:#191f28",
+        : photoSpot
+          ? `background:${GLOBE_TOSS_THEME.blue};color:#fff`
+          : "background:#fff;color:#191f28",
     "transition:transform 120ms ease, box-shadow 120ms ease",
     selected || pinned ? "transform:scale(1.04)" : "",
   ]

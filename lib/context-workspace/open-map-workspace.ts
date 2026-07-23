@@ -23,7 +23,11 @@ import type { GraphEntityDomain } from "@/lib/graph-command/types";
 function inferTags(
   title: string,
   summary: string,
-  flags?: { reservable?: boolean; localFavorite?: boolean },
+  flags?: {
+    reservable?: boolean;
+    localFavorite?: boolean;
+    activitySubtype?: string | null;
+  },
 ): string[] {
   const blob = `${title} ${summary}`.toLowerCase();
   const tags: string[] = [];
@@ -42,7 +46,17 @@ function inferTags(
   if (flags?.localFavorite) {
     tags.push("local_favorite");
   }
-  return tags;
+  const subtype = flags?.activitySubtype?.trim();
+  if (subtype) {
+    tags.push(subtype);
+  }
+  if (
+    /포토|사진|photo\s*spot|전망|야경|인생샷/i.test(blob) ||
+    subtype === "photo_spot"
+  ) {
+    tags.push("photo_spot");
+  }
+  return [...new Set(tags)];
 }
 
 function placeIdOf(raw: string): string {
@@ -71,7 +85,9 @@ export function placeHitToWorkspaceNode(
   domain: ContextWorkspaceDomain,
 ): ContextWorkspaceNode {
   const placeId = placeIdOf(hit.id) || `${domain}-${index}`;
+  const reason = hit.reasonKo?.trim() || null;
   const summary =
+    reason ||
     hit.amountLabel?.trim() ||
     (hit.priceBand != null ? `가격대 ${hit.priceBand}` : domainLabelKo(domain));
   return {
@@ -85,10 +101,11 @@ export function placeHitToWorkspaceNode(
     rating: hit.rating ?? null,
     priceBand: hit.priceBand ?? null,
     amountLabel: hit.amountLabel ?? null,
-    thumbnailUrl: null,
+    thumbnailUrl: hit.thumbnailUrl?.trim() || null,
     tags: inferTags(hit.labelKo, summary, {
       reservable: hit.reservable,
       localFavorite: hit.localFavorite,
+      activitySubtype: hit.activitySubtype,
     }),
     visible: true,
     selected: false,

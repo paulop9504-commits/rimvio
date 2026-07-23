@@ -26,6 +26,7 @@ export type ContextConditionLastBatchWire = {
     placeId?: string;
     lat?: number;
     lng?: number;
+    imageUrl?: string | null;
   }[];
 };
 

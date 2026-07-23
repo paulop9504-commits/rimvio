@@ -23,11 +23,15 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
-import { clearWorkspaceChat } from "@/lib/context-workspace/workspace-chat-store";
+import {
+  appendWorkspaceChatTurn,
+  clearWorkspaceChat,
+} from "@/lib/context-workspace/workspace-chat-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
+import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
 import { WorkspacePinCart } from "@/components/context-workspace/workspace-pin-cart";
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
 import { copy } from "@/lib/copy/human-ko";
@@ -67,6 +71,7 @@ export function ContextWorkspaceShell({
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -148,6 +153,26 @@ export function ContextWorkspaceShell({
         nodeIds: [nodeId],
       });
       setListOpen(false);
+      setPeekDismissedId(null);
+      setChatOpen(true);
+      const node = readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId);
+      if (node) {
+        const photo =
+          node.tags.includes("photo_spot") ||
+          /포토|사진|photo|전망|야경/i.test(`${node.title} ${node.summaryKo}`);
+        const why =
+          node.summaryKo.trim() ||
+          (photo
+            ? "사진 찍기 좋은 명소로 잡힌 곳이에요"
+            : `${domainLabelKo(node.kind)} 후보`);
+        appendWorkspaceChatTurn({
+          contextEventId: id,
+          role: "assistant",
+          text: photo
+            ? `📸 ${node.title}\n왜 포토스팟: ${why}`
+            : `${node.title}\n${why}`,
+        });
+      }
     },
     [contextEventId],
   );
@@ -204,6 +229,8 @@ export function ContextWorkspaceShell({
   const eventId = contextEventId?.trim() ?? "";
   const selectedNode =
     visibleNodes.find((n) => n.id === selectedId) ?? null;
+  const showPeek =
+    selectedNode != null && peekDismissedId !== selectedNode.id;
 
   return (
     <div
@@ -226,6 +253,9 @@ export function ContextWorkspaceShell({
             amountLabel: n.amountLabel,
             selected: n.id === selectedId,
             bookmarked: n.bookmarked,
+            photoSpot:
+              n.tags.includes("photo_spot") ||
+              /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
           }))}
           selectedId={selectedId}
           onSelectPin={onSelect}
@@ -356,6 +386,14 @@ export function ContextWorkspaceShell({
           selectedId={selectedId}
           onSelect={onSelect}
         />
+
+        {showPeek && selectedNode ? (
+          <WorkspaceNodePeek
+            contextEventId={eventId}
+            node={selectedNode}
+            onClose={() => setPeekDismissedId(selectedNode.id)}
+          />
+        ) : null}
 
         <WorkspaceChatPanel
           contextEventId={eventId}

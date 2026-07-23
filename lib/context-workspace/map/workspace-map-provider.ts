@@ -18,6 +18,8 @@ export type WorkspaceMapPin = {
   readonly selected?: boolean;
   /** Pin cart — stays across domain search. */
   readonly bookmarked?: boolean;
+  /** Photo-spot / activity cue for marker label. */
+  readonly photoSpot?: boolean;
 };
 
 export type WorkspaceMapCamera = {

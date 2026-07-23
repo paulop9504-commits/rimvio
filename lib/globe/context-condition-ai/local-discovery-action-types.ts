@@ -143,6 +143,8 @@ export type ContextConditionRecommendation = {
   readonly placeId: string;
   readonly lat: number;
   readonly lng: number;
+  /** First inventory image — Workspace peek / chat node. */
+  readonly imageUrl?: string | null;
 };
 
 export type ContextConditionAnchorPinOutcome = {
