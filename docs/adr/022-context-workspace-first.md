@@ -6,8 +6,8 @@
 
 ## One sentence
 
-**Chat mutates the Workspace; Commit roots the Globe.**  
-Context Workspace = Cursor의 IDE. 3D Globe = Commit된 Context Forest (편집기 아님).
+**Chat mutates the Workspace; Capsules live on the Globe; Commit roots Reality.**  
+Context Workspace = Cursor IDE. Globe = 개인 현실 OS 위의 **살아있는 Context 객체** 지도 (폴더/파일 UI 아님).
 
 ## Cursor ↔ Rimvio (locked analogy)
 
@@ -15,31 +15,90 @@ Context Workspace = Cursor의 IDE. 3D Globe = Commit된 Context Forest (편집�
 |--------|--------|
 | AI Chat | Context AI Assistant |
 | Code Workspace (IDE) | **2D Context Workspace** |
-| Auto Save | Auto Save **Draft** (Save 버튼 없음) |
-| Git Commit | **Reality Commit** (Swipe to Commit) |
+| Auto Save | Auto Save **Draft** + **Context Snapshot** (중단해도 상태 유지) |
+| Open recent file | Globe Capsule 탭 → **Resume Workspace** |
+| Git Commit | **Reality Commit** (Swipe) → Forest에 뿌리 |
 | Git Repository | **3D Globe · Context Forest** |
 
 ```
-대화 → 자연어로 Workspace 편집 → Auto Save (Draft) → Commit → Globe 반영
+Intent → Context 생성 → Workspace 작업 → Auto Save
+       → Globe Projection (Capsule / Snapshot)
+       → Resume | Reality Commit
 ```
+
+## Context Capsule (Globe 위 객체 — 파일 아님)
+
+사용자 카피: **맥락** / 여행 이름 (예: Osaka Trip).  
+제품 명사: **Context Capsule**.  
+일시정지 상태의 별칭: **Context Snapshot** (「저장」보다 「함께 작업하던 순간의 상태」).
+
+📁 Dropbox 폴더 ❌ · 🌍 장소에 앵커된 살아있는 카드 ✅
+
+```
+        🌎 Osaka
+        ┌─────────────────┐
+        │ Osaka Trip      │
+        │ 72% · Snapshot  │
+        │ 🏨 ✈ 🍣 🚶      │
+        │ 계속 작업하기    │
+        └─────────────────┘
+              ↓ tap
+        Context Restore → 2D Workspace Open
+```
+
+### Two projections (do not collapse)
+
+| Kind | When | Globe shows | Open does |
+|------|------|-------------|-----------|
+| **Snapshot** (paused Draft) | 작업 중단 · Auto Save | Capsule card · progress · domain chips | Restore Workspace + AI “이어서?” |
+| **Committed** (Reality) | Swipe Commit | Forest node · rooted | Explore / recall / execute — not raw chat dump |
+
+Place **search pins** still must not paint 3D before Commit.  
+**Capsule cards** (project objects) may project while Draft/paused — that is Resume UX, not lodging Diff stamp.
+
+### Resume loop
+
+```
+"오사카 3박 4일 여행 만들어줘"
+  → Context AI / Workspace (항공·호텔·맛집·동선·예약·일정)
+  → 사용자 중단 → Auto Save Snapshot
+  → Globe Capsule
+  → 탭 → Restore → Workspace (72% · checklist · “지난 작업 이어갈까요?”)
+```
+
+사용자는 “뭘 하다 말았지?”를 기억할 필요 없음. Globe가 **진행 중 AI 프로젝트 지도**.
+
+### Capsule wire shape (L3 sketch)
+
+```json
+{
+  "id": "osaka_trip_001",
+  "state": "paused",
+  "progress": 0.72,
+  "workspace": { "lastCursor": "hotel_selection", "openTabs": ["flight","hotel","restaurant"] },
+  "aiMemory": { "decisions": ["5성 제외", "도톤보리 접근성 우선"] },
+  "projection": { "lat": 34.69, "lng": 135.50, "thumbnail": "…" }
+}
+```
+
+Domains beyond travel (집·사업·공부…) reuse the same Capsule / Snapshot / Commit grammar.
 
 ## Loop (canonical)
 
 ```
 🧠 Context AI Assistant     의도 이해 (자연어)
         ↓
-🗺️ 2D Context Workspace     AI가 답을 쓰는 게 아니라 Workspace를 수정
-        ↓                     (생성 · 삭제 · 연결 · 필터 · 시뮬 · 예약 · 비교)
-💬 WHY Layer (on demand)    Action · Reason · Impact
+🗺️ 2D Context Workspace     Workspace Patch (생성·삭제·연결·필터·시뮬·예약·비교)
         ↓
-🟢 Current Context (bar)    지금 어떤 프로젝트인지 (OS의 현재 앱)
+💬 WHY (on demand)          Action · Reason · Impact
         ↓
-💾 Auto Save Draft          항상 Draft — Save 버튼 없음
+🟢 Current Context bar      지금 프로젝트 (OS 현재 앱)
         ↓
-✅ Commit Preview           변경 요약 → Swipe to Commit
+💾 Auto Save                Draft + Context Snapshot
         ↓
-🌍 Globe Projection         Commit된 Context만
-                            Ontology → Knowledge → Timeline → Memory → History → Forest
+🌍 Globe Capsule            Snapshot 카드 (Resume) 또는 Commit 후 Forest
+        ↓
+✅ Reality Commit           Swipe — Ontology · Timeline · Memory · History
 ```
 
 ## Philosophy (each layer owns one job)
@@ -75,12 +134,13 @@ AI는 장문 답변을 쓰지 않는다. NL → **Workspace Patch**.
 
 | Moment | User learns |
 |--------|-------------|
-| First search | NL이 지도를 / Workspace를 바꾼다 |
+| First search | NL이 Workspace를 바꾼다 |
 | Node select | 노드가 조작 가능 (WHY on demand) |
-| Auto edit loop | Save를 안 눌러도 Draft다 |
+| Auto edit loop | Save를 안 눌러도 Snapshot이다 |
+| Leave & return | Globe Capsule = “아 맞다, 그거” → Resume |
 | Commit Preview | 승인 전에 요약이 있다 |
-| Swipe Commit | 내 승인만 Globe에 간다 |
-| Open Globe | Forest — 편집이 아니라 탐색 |
+| Swipe Commit | 내 승인만 Reality에 뿌리내린다 |
+| Open Globe | Capsule 지도 + Forest — 편집기가 아님 |
 
 ## Progressive disclosure (On Demand UI)
 
@@ -110,19 +170,31 @@ Commit        Preview → Swipe
   → Globe
 ```
 
-Scout = **search engine only**. Output = Workspace Patch. No chat essay dump. No 3D Globe stamp before Commit.
+Scout = **search engine only**. Output = Workspace Patch. No chat essay dump. No lodging/eatery **search pins** on 3D before Commit (Capsule Snapshot cards are separate).
 
 ## Draft / Commit / Globe
 
 | | Law |
 |---|-----|
-| **Draft** | Workspace 변경 = Auto Save → `localStorage` (새로고침 복원). Save 버튼 없음 |
+| **Draft / Snapshot** | Auto Save — 데이터뿐 아니라 **AI와 함께 하던 순간의 상태**. Save 버튼 없음 |
+| **Capsule on Globe** | Snapshot 카드로 Resume 가능 (폴더 UI 금지) |
 | **Commit Preview** | 변경 요약 → **Swipe to Commit** |
-| **Commit** | Reality Commit만 Globe / Ontology / Timeline / Memory / History에 반영 |
-| **Globe** | Context Forest 탐색 — live map edit 금지 |
-| **WHY** | Action · Reason · Impact 말풍선 (선택/변경 시 on demand) |
-| **Tools** | 비교 · 비 오면(시뮬) · 동선 최적화 (thin) |
-| **MapKit** | `GET /api/apple-mapkit-token` JWT · `NEXT_PUBLIC_APPLE_MAPKIT_ENABLED` |
+| **Commit** | Reality root — Ontology / Timeline / Memory / History / Forest |
+| **Globe** | 개인 현실 OS · Capsule 지도 — live map **place-pin edit** 금지 |
+| **WHY** | Action · Reason · Impact 말풍선 (on demand) |
+| **Tools** | 비교 · 시뮬 · 동선 (thin) |
+| **Map** | Workspace default MapLibre; optional MapKit |
+
+## Reject in review
+
+- Chat essay of search results without Workspace patch  
+- Lodging/eatery/poi **search pins** on 3D before Commit  
+- Dropbox-style 📁 폴더 트리 as primary Globe UX  
+- Teaching “파일 저장” as the product verb (use Snapshot / Capsule / 이어하기)  
+- Manual Save button as primary path  
+- Treating Globe as the street-zoom editor  
+- Teaching Agent / Simulation / WHY Layer as chrome on first paint  
+- Always One New Concept violated
 
 ## Maps
 
@@ -132,15 +204,6 @@ Scout = **search engine only**. Output = Workspace Patch. No chat essay dump. No
 - Apple/Google **apps** = deep links only  
 - Gate: `shouldProjectMapResultsToGlobe` — provisional Workspace면 place family 숨김  
 - **No 3D↔2D hybrid on the Globe** — Workspace is a separate 2D surface only
-
-## Reject in review
-
-- Chat essay of search results without Workspace patch  
-- Globe stamp before Commit (any map place family)  
-- Teaching Agent / Simulation / WHY Layer as chrome on first paint  
-- Manual Save button as primary path  
-- Treating Globe as the editor for live search results  
-- Always One New Concept violated (여러 새 명사 동시 도입)
 
 ## Test
 

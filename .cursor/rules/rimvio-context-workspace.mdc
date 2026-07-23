@@ -9,28 +9,29 @@ alwaysApply: true
 
 ## One sentence
 
-> **Chat mutates the Workspace; Commit roots the Globe.**
+> **Chat mutates the Workspace; Capsules live on the Globe; Commit roots Reality.**
 
-Context Workspace = Cursor IDE. Globe = Context Forest (not the editor).
+Context Workspace = Cursor IDE. Globe = Capsule 지도 + Forest (not the street editor).
 
 ## Cursor ↔ Rimvio
 
 ```
-Context AI → 2D Workspace → Auto Save Draft → Reality Commit → 3D Globe Forest
-(≈ Chat → IDE → Auto Save → Git Commit → Repository)
+Context AI → 2D Workspace → Auto Save Snapshot → Globe Capsule → Resume | Reality Commit
+(≈ Chat → IDE → Auto Save → Open recent → Git Commit)
 ```
 
 ## Core UX
 
 ```
-대화 → 자연어로 작업 → 자동 저장(Draft) → Commit → Globe 반영
+Intent → Workspace → Auto Save Snapshot → Globe Capsule → Resume | Commit
 ```
 
-- AI는 장문 답변이 아니라 **Workspace Patch** (생성·삭제·연결·필터·시뮬·예약·비교)
-- **Save 버튼 없음** — 항상 Draft Auto Save
-- **Commit** 후에만 Globe / Ontology / Timeline / Memory / History
-- WHY = Action · Reason · Impact — 노드/엣지 말풍선, on demand
-- Current Context bar = 지금 작업 중인 프로젝트 (OS 현재 앱)
+- AI는 장문 답변이 아니라 **Workspace Patch**
+- **Save 버튼 없음** — Snapshot = 함께 작업하던 순간의 상태
+- Globe = **진행 중 AI 프로젝트 지도** (Capsule) + Commit 후 Forest
+- Capsule 탭 → Restore Workspace (“지난 작업 이어갈까요?”)
+- 📁 폴더 UI 금지 · 🌍 장소 앵커 Capsule만
+- WHY = Action · Reason · Impact — on demand
 
 ## Preview → Open Workspace
 
@@ -43,8 +44,8 @@ User copy: **펼치기**. Internal: `workspace_preview` → `workspace_expand`.
 
 ## Map-needed work
 
-`호텔 · 맛집 · POI · 편의` → Workspace-first → Commit → Globe  
-Scout stays; output = Patch only. No early 3D paint.
+`호텔 · 맛집 · POI · 편의` → Workspace-first → Snapshot Capsule / Commit Forest  
+Scout stays; output = Patch only. No early lodging **search pins** on 3D.
 
 ## Maps
 
@@ -59,7 +60,8 @@ Scout stays; output = Patch only. No early 3D paint.
 ## PR reject
 
 - Search results only in assistant text  
-- Globe stamp before Commit  
+- Lodging/eatery **search pins** on 3D before Commit (Capsule Snapshot ≠ pin stamp)  
+- 📁 폴더 트리 as Globe UX · “파일 저장” as product verb  
 - Manual Save as primary  
-- Globe used as live editor  
+- Globe used as live street editor  
 - Agent / Simulation as first-paint product nouns

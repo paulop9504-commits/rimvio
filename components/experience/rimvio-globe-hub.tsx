@@ -96,6 +96,7 @@ import {
   shouldProjectContextConditionMarkers,
   shouldShowContextConditionDiscoveryOverlay,
 } from "@/lib/globe/spatial-semantic/resolve-context-condition-marker-visibility";
+import { shouldProjectMapResultsToGlobe } from "@/lib/context-workspace/should-project-lodging-to-globe";
 import {
   clearContextBloom,
   decorateEateryMarkersWithBloom,
@@ -554,6 +555,10 @@ const RimvioGlobeHubBody = memo(
       if (!eventId) {
         return [];
       }
+      // Context Workspace owns map-needed inventory until Reality Commit.
+      if (!shouldProjectMapResultsToGlobe(eventId)) {
+        return [];
+      }
       const event = eventsById.get(eventId);
       if (!event) {
         return [];
@@ -690,6 +695,9 @@ const RimvioGlobeHubBody = memo(
       void projectionRevision;
       const eventId = focusedContextEventId?.trim();
       if (!eventId) {
+        return [];
+      }
+      if (!shouldProjectMapResultsToGlobe(eventId)) {
         return [];
       }
       const event = eventsById.get(eventId);

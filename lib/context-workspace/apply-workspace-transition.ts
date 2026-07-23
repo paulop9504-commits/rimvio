@@ -38,7 +38,20 @@ function withHistory(
   prev: ContextWorkspaceState,
   next: Omit<
     ContextWorkspaceState,
-    "history" | "future" | "updatedAtIso" | "version" | "workspaceId" | "contextEventId" | "domain" | "openedAtIso" | "committedAtIso" | "query" | "surfacePrimary"
+    | "history"
+    | "future"
+    | "updatedAtIso"
+    | "version"
+    | "workspaceId"
+    | "contextEventId"
+    | "domain"
+    | "openedAtIso"
+    | "committedAtIso"
+    | "query"
+    | "surfacePrimary"
+    | "status"
+    | "lastWhy"
+    | "lastChangeKo"
   > &
     Partial<
       Pick<
@@ -48,6 +61,7 @@ function withHistory(
         | "status"
         | "committedAtIso"
         | "lastWhy"
+        | "lastChangeKo"
       >
     >,
 ): ContextWorkspaceState {
@@ -62,6 +76,8 @@ function withHistory(
     surfacePrimary: next.surfacePrimary ?? prev.surfacePrimary,
     status: next.status ?? prev.status,
     committedAtIso: next.committedAtIso ?? prev.committedAtIso,
+    lastChangeKo:
+      next.lastChangeKo !== undefined ? next.lastChangeKo : prev.lastChangeKo,
     lastWhy: next.lastWhy !== undefined ? next.lastWhy : prev.lastWhy,
     openedAtIso: prev.openedAtIso,
     updatedAtIso: new Date().toISOString(),
@@ -371,12 +387,7 @@ export function applyWorkspaceTransition(input: {
   }
 
   const nextVisibleCount = nodes.filter((n) => n.visible).length;
-  if (
-    input.op !== "undo" &&
-    input.op !== "redo" &&
-    input.op !== "close" &&
-    input.op !== "deselect"
-  ) {
+  if (input.op !== "deselect") {
     lastWhy = buildWorkspaceWhy({
       op: input.op,
       prev,

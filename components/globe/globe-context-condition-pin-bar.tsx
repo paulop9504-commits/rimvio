@@ -28,6 +28,7 @@ import {
 } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import { hasProvisionalContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import {
   readContextConditionPinnedPlaceIds,
   pinContextConditionRecommendation,
@@ -1602,6 +1603,10 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               hasProvisionalContextWorkspace(contextEventId)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
+              dispatchContextWorkspaceExpand({
+                contextEventId,
+                source: "map_search_auto",
+              });
             }
             if (
               graphResult.via === "graph_command" &&
@@ -2713,6 +2718,10 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               hasProvisionalContextWorkspace(contextEventId)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
+              dispatchContextWorkspaceExpand({
+                contextEventId,
+                source: "map_search_auto",
+              });
             }
             if (
               graphResult.via === "graph_command" &&
@@ -3026,6 +3035,10 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               hasProvisionalContextWorkspace(contextEventId)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
+              dispatchContextWorkspaceExpand({
+                contextEventId,
+                source: "map_search_auto",
+              });
             }
             if (
               graphResult.via === "graph_command" &&

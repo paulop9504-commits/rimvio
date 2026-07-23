@@ -71,10 +71,12 @@ export function flyGlobeToSessionGraphDiff(
     return;
   }
   const places = graph.nodes.filter(
-    (node) =>
+    (node): node is typeof node & { lat: number; lng: number } =>
       node.visible &&
       node.kind !== "compare" &&
       node.kind !== "simulation" &&
+      typeof node.lat === "number" &&
+      typeof node.lng === "number" &&
       Number.isFinite(node.lat) &&
       Number.isFinite(node.lng),
   );

@@ -26,6 +26,7 @@ import { clearPreparedRealityOperations } from "../lib/reality-queue";
 import {
   appendWorkspacePreviewComposeTurn,
 } from "../lib/context-workspace/append-workspace-preview-turn";
+import { shouldProjectMapResultsToGlobe } from "../lib/context-workspace/should-project-lodging-to-globe";
 import {
   clearContextAgentComposeThread,
   readContextAgentComposeThread,
@@ -228,6 +229,7 @@ assert.equal(
     0,
   0,
 );
+assert.equal(shouldProjectMapResultsToGlobe(EVENT_E), false);
 clearContextWorkspace(EVENT_E);
 
 console.log("ok — context workspace lodging loop");

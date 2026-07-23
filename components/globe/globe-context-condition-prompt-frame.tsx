@@ -45,6 +45,7 @@ import {
 import { dispatchIntelligentDiscoveryFeedOpen } from "@/lib/globe/intelligent-pin";
 import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { isAlternatePlaceSearch } from "@/lib/globe/context-condition-ai/is-alternate-place-search";
 import {
@@ -847,7 +848,6 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
           })),
         );
         setActiveSpec(lastBatch.spec ?? null);
-        revealContextConditionScout(event.id);
         markScoutFeedGateOpened(event.id, input.turnId);
         setComposeThread(readContextAgentComposeThread(event.id));
         const rows = lastBatch.recommendations ?? [];
@@ -860,7 +860,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
         const mapOnly =
           rows.length > 0 && rows.every((row) => mapKindSet.has(row.kind));
         if (mapOnly) {
-          // Map-needed scout → Workspace Preview only — do not paint 3D Globe.
+          // Map-needed scout → 2D Workspace only. Never reveal/paint 3D Globe pins.
           const primaryKind = rows[0]!.kind;
           const domain =
             primaryKind === "lodging" || primaryKind === "eatery"
@@ -892,8 +892,14 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
             source: "scout_patch",
           });
           appendWorkspacePreviewComposeTurn(event.id);
+          dispatchContextWorkspaceExpand({
+            contextEventId: event.id,
+            source: "scout_patch_auto",
+          });
           setComposeThread(readContextAgentComposeThread(event.id));
         } else {
+          // Non-map scout (or mixed) may still use Globe reveal.
+          revealContextConditionScout(event.id);
           publishFocusGlobeProjection({
             contextEventId: event.id,
             visiblePlaceIds: rows

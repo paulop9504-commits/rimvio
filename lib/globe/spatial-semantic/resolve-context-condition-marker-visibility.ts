@@ -1,4 +1,5 @@
 import type { GlobeProjectionLayerPolicy } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
+import { shouldProjectMapResultsToGlobe } from "@/lib/context-workspace/should-project-lodging-to-globe";
 
 function placeIdFromContextConditionMarkerId(markerId: string): string | null {
   const parts = markerId.trim().split(":");
@@ -72,6 +73,10 @@ export function shouldProjectContextConditionMarkers(
 ): boolean {
   const activeId = policy.activeContextEventId?.trim();
   if (!activeId || activeId !== contextEventId.trim()) {
+    return false;
+  }
+  // Provisional Context Workspace owns map edit — hide Globe scout pills.
+  if (!shouldProjectMapResultsToGlobe(contextEventId)) {
     return false;
   }
   return policy.mode === "focus";

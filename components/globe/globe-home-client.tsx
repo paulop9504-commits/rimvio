@@ -52,7 +52,6 @@ import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelli
 import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
 import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
-import { shouldProjectMapResultsToGlobe } from "@/lib/context-workspace/should-project-lodging-to-globe";
 import { globeFamiliesHiddenByWorkspace } from "@/lib/context-workspace/should-project-lodging-to-globe";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
 import { subscribeGlobePlaceOntologyFocus } from "@/lib/globe/place-ontology/globe-place-ontology-focus-bridge";
@@ -1563,16 +1562,6 @@ function GlobeHomeBody() {
     const hidden = globeFamiliesHiddenByWorkspace(eventId);
     if (hidden.size > 0) {
       return markers.filter((marker) => !hidden.has(marker.family));
-    }
-    if (!shouldProjectMapResultsToGlobe(eventId)) {
-      return markers.filter(
-        (marker) =>
-          marker.family !== "lodging" &&
-          marker.family !== "eatery" &&
-          marker.family !== "poi" &&
-          marker.family !== "amenity" &&
-          marker.family !== "activity",
-      );
     }
     // Field scout inventory owns lodging map — hide stale APA graph lodging.
     const lastBatch = readContextConditionLastBatch(eventId);

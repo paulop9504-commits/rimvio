@@ -56,9 +56,10 @@ export function projectLodgingAgentGlobeMarkers(input: {
       const resourceId = `${input.event.id}:eatery:${placeId}`;
       const presentation = resolveProjectionNodePresentation(node);
       const rawThumb = row?.images[0] ?? node.previewImageUrl ?? null;
-      const thumbnailUrl = isTrustedVenueMediaUrl(rawThumb)
-        ? rawThumb.trim()
-        : null;
+      const thumbnailUrl =
+        rawThumb != null && isTrustedVenueMediaUrl(rawThumb)
+          ? rawThumb.trim()
+          : null;
       const explanation = buildProjectionNodeExplanation({
         node,
         manifest,
