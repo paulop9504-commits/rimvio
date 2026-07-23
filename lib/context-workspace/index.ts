@@ -90,6 +90,15 @@ export {
 } from "@/lib/context-workspace/resolve-workspace-search-domain";
 
 export {
+  appendWorkspaceChatTurn,
+  clearWorkspaceChat,
+  readWorkspaceChat,
+  subscribeWorkspaceChatUpdated,
+  type WorkspaceChatRole,
+  type WorkspaceChatTurn,
+} from "@/lib/context-workspace/workspace-chat-store";
+
+export {
   buildCapsuleProjection,
   listCapsuleProjections,
   readCapsuleCompilerIr,

@@ -1,17 +1,15 @@
 "use client";
 
 /**
- * Context Workspace shell — GPT Maps-style mobile surface.
- * Full-bleed map · selected card · bottom prompt. Dense chrome off.
+ * Context Workspace shell — GPT chat over map.
+ * Full-bleed map · collapsible chat · bottom prompt. No place card.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { List, Pin, X } from "lucide-react";
+import { List, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   applyWorkspaceTransition,
-  buildAppleMapsDeepLink,
-  buildGoogleMapsDirectionsDeepLink,
   clearContextWorkspace,
   commitContextWorkspaceToGlobe,
   domainLabelKo,
@@ -25,8 +23,10 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
+import { clearWorkspaceChat } from "@/lib/context-workspace/workspace-chat-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
+import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspacePinCart } from "@/components/context-workspace/workspace-pin-cart";
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
@@ -66,6 +66,7 @@ export function ContextWorkspaceShell({
   const [commitPreviewOpen, setCommitPreviewOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -108,6 +109,7 @@ export function ContextWorkspaceShell({
       if (detail.contextEventId === contextEventId?.trim()) {
         refresh();
         setExpanded(true);
+        setChatOpen(true);
         writeContextWorkspaceExpanded(detail.contextEventId, true);
       }
     });
@@ -125,10 +127,9 @@ export function ContextWorkspaceShell({
   const selectedId =
     state?.selectedIds[0] ??
     visibleNodes.find((n) => n.selected)?.id ??
+    visibleNodes.find((n) => !n.bookmarked)?.id ??
     visibleNodes[0]?.id ??
     null;
-  const selectedNode =
-    visibleNodes.find((n) => n.id === selectedId) ?? null;
 
   const commitPreview = useMemo(
     () => (state ? buildWorkspaceCommitPreview(state) : null),
@@ -172,7 +173,6 @@ export function ContextWorkspaceShell({
     if (!id) {
       return;
     }
-    // Collapse keeps draft; X closes chrome but keeps draft via collapse default.
     setExpanded(false);
     setCommitPreviewOpen(false);
     writeContextWorkspaceExpanded(id, false);
@@ -185,6 +185,7 @@ export function ContextWorkspaceShell({
     }
     applyWorkspaceTransition({ contextEventId: id, op: "close" });
     clearContextWorkspace(id);
+    clearWorkspaceChat(id);
     setExpanded(false);
     setCommitPreviewOpen(false);
   }, [contextEventId]);
@@ -201,6 +202,8 @@ export function ContextWorkspaceShell({
     copy.globe.workspaceOpenTitle;
   const progress = estimateWorkspaceProgressPercent(state);
   const eventId = contextEventId?.trim() ?? "";
+  const selectedNode =
+    visibleNodes.find((n) => n.id === selectedId) ?? null;
 
   return (
     <div
@@ -212,7 +215,6 @@ export function ContextWorkspaceShell({
       aria-label={copy.globe.workspaceOpenTitle}
       data-context-workspace-open
     >
-      {/* Full-bleed map */}
       <div className="absolute inset-0">
         <WorkspaceMapView
           pins={visibleNodes.map((n) => ({
@@ -230,39 +232,36 @@ export function ContextWorkspaceShell({
         />
       </div>
 
-      {/* Top chrome — GPT Maps sparse */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
           onClick={onClose}
           aria-label={copy.globe.workspaceCollapse}
         >
-          <X className="h-5 w-5" strokeWidth={2.25} />
+          <X className="h-4 w-4" strokeWidth={2.25} />
         </button>
-        <div className="pointer-events-auto flex max-w-[55%] flex-col items-center gap-1">
-          <div className="rounded-full bg-white/95 px-3 py-1.5 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
-            <p className="truncate text-center text-[12px] font-bold tracking-tight text-[#191f28]">
-              {title}
-            </p>
-            <p className="text-center text-[10px] tabular-nums text-[#8b95a1]">
-              {visibleNodes.length}곳 · {progress}%
-            </p>
-          </div>
+        <div className="pointer-events-auto max-w-[55%] rounded-full bg-white/95 px-3 py-1 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
+          <p className="truncate text-center text-[11px] font-bold tracking-tight text-[#191f28]">
+            {title}
+          </p>
+          <p className="text-center text-[9px] tabular-nums text-[#8b95a1]">
+            {domainLabelKo(state.domain)} · {visibleNodes.length}곳 · {progress}%
+          </p>
         </div>
-        <div className="pointer-events-auto flex flex-col items-end gap-2">
+        <div className="pointer-events-auto flex flex-col items-end gap-1.5">
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
             onClick={() => setListOpen((v) => !v)}
             aria-label="목록"
             aria-pressed={listOpen}
           >
-            <List className="h-5 w-5" strokeWidth={2.25} />
+            <List className="h-4 w-4" strokeWidth={2.25} />
           </button>
           <button
             type="button"
-            className="rounded-full bg-[#3182f6] px-3 py-2 text-[11px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
+            className="rounded-full bg-[#3182f6] px-2.5 py-1.5 text-[10px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
             onClick={() => setCommitPreviewOpen(true)}
             disabled={visibleNodes.length === 0}
             data-workspace-commit
@@ -272,35 +271,34 @@ export function ContextWorkspaceShell({
         </div>
       </div>
 
-      {/* Optional list sheet — not a permanent right rail */}
       {listOpen ? (
-        <div className="pointer-events-auto absolute inset-x-3 top-[5.5rem] z-[3] max-h-[42%] overflow-hidden rounded-[20px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
-          <div className="flex items-center justify-between border-b border-black/[0.04] px-4 py-2.5">
-            <p className="text-[13px] font-bold text-[#191f28]">
+        <div className="pointer-events-auto absolute inset-x-3 top-[5.25rem] z-[3] max-h-[42%] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
+          <div className="flex items-center justify-between border-b border-black/[0.04] px-3 py-2">
+            <p className="text-[12px] font-bold text-[#191f28]">
               {visibleNodes.length}개의 {kindLabel}
             </p>
             <button
               type="button"
-              className="text-[12px] font-semibold text-[#8b95a1]"
+              className="text-[11px] font-semibold text-[#8b95a1]"
               onClick={() => setListOpen(false)}
             >
               닫기
             </button>
           </div>
-          <div className="max-h-[min(40vh,320px)] space-y-1 overflow-y-auto p-2">
+          <div className="max-h-[min(40vh,300px)] space-y-0.5 overflow-y-auto p-1.5">
             {visibleNodes.map((node, index) => (
               <button
                 key={node.id}
                 type="button"
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-2xl px-2.5 py-2 text-left",
+                  "flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left",
                   selectedId === node.id ? "bg-[#e8f3ff]" : "hover:bg-[#f9fafb]",
                 )}
                 onClick={() => onSelect(node.id)}
               >
                 <span
                   className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
                     selectedId === node.id
                       ? "bg-[#3182f6] text-white"
                       : "bg-[#f2f4f6] text-[#191f28]",
@@ -309,21 +307,49 @@ export function ContextWorkspaceShell({
                   {index + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-bold text-[#191f28]">
+                  <span className="block truncate text-[12px] font-bold text-[#191f28]">
+                    {node.bookmarked ? "📌 " : ""}
                     {node.title}
                   </span>
-                  <span className="block text-[11px] text-[#8b95a1]">
+                  <span className="block text-[10px] text-[#8b95a1]">
                     ★ {formatRating(node.rating)} · {formatPrice(node)}
                   </span>
                 </span>
+                {selectedId === node.id ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold",
+                      node.bookmarked
+                        ? "bg-[#191f28] text-white"
+                        : "bg-[#3182f6] text-white",
+                    )}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      applyWorkspaceTransition({
+                        contextEventId: eventId,
+                        op: "bookmark",
+                        nodeIds: [node.id],
+                        pin: !node.bookmarked,
+                      });
+                      if (!node.bookmarked) {
+                        toast.success(copy.globe.workspacePinToast(node.title));
+                      }
+                    }}
+                  >
+                    {node.bookmarked
+                      ? copy.globe.workspacePinDone
+                      : copy.globe.workspacePinCta}
+                  </button>
+                ) : null}
               </button>
             ))}
           </div>
         </div>
       ) : null}
 
-      {/* Bottom stack: pin cart · tools · place card · prompt */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-16">
+      {/* Bottom: pin · chat · slim tools · prompt */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-1.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-20">
         <WorkspacePinCart
           contextEventId={eventId}
           nodes={state.nodes}
@@ -331,7 +357,13 @@ export function ContextWorkspaceShell({
           onSelect={onSelect}
         />
 
-        <div className="pointer-events-auto mx-auto flex max-w-xl gap-1.5 overflow-x-auto">
+        <WorkspaceChatPanel
+          contextEventId={eventId}
+          open={chatOpen}
+          onToggle={() => setChatOpen((v) => !v)}
+        />
+
+        <div className="pointer-events-auto mx-auto flex max-w-xl gap-1 overflow-x-auto">
           {(
             [
               {
@@ -347,15 +379,6 @@ export function ContextWorkspaceShell({
                   }),
               },
               {
-                label: copy.globe.workspaceToolSimulateRain,
-                run: () =>
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "simulate",
-                    simulateScenarioKo: "비 오면",
-                  }),
-              },
-              {
                 label: copy.globe.workspaceToolOptimizeRoute,
                 run: () =>
                   applyWorkspaceTransition({
@@ -368,7 +391,7 @@ export function ContextWorkspaceShell({
             <button
               key={tool.label}
               type="button"
-              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+              className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#191f28] shadow-[0_2px_8px_rgba(25,31,40,0.08)]"
               onClick={tool.run}
             >
               {tool.label}
@@ -379,7 +402,7 @@ export function ContextWorkspaceShell({
               <button
                 type="button"
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-[0_2px_10px_rgba(25,31,40,0.1)]",
+                  "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-[0_2px_8px_rgba(25,31,40,0.08)]",
                   selectedNode.bookmarked
                     ? "bg-[#191f28] text-white"
                     : "bg-[#3182f6] text-white",
@@ -404,7 +427,7 @@ export function ContextWorkspaceShell({
               </button>
               <button
                 type="button"
-                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#f04452] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
+                className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#f04452] shadow-[0_2px_8px_rgba(25,31,40,0.08)]"
                 onClick={() =>
                   applyWorkspaceTransition({
                     contextEventId: eventId,
@@ -419,81 +442,19 @@ export function ContextWorkspaceShell({
           ) : null}
           <button
             type="button"
-            className="shrink-0 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-medium text-[#8b95a1] shadow-sm"
+            className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-medium text-[#8b95a1]"
             onClick={onDiscard}
           >
             닫기
           </button>
         </div>
 
-        {selectedNode ? (
-          <div className="pointer-events-auto mx-auto w-full max-w-xl rounded-[20px] bg-white p-3 shadow-[0_8px_28px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.04]">
-            <div className="flex gap-3">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#f2f4f6] text-[18px] font-bold text-[#3182f6]">
-                ★{formatRating(selectedNode.rating)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-[15px] font-bold tracking-tight text-[#191f28]">
-                    {selectedNode.title}
-                  </p>
-                  {selectedNode.bookmarked ? (
-                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#191f28] px-2 py-0.5 text-[10px] font-bold text-white">
-                      <Pin className="h-3 w-3" strokeWidth={2.5} />
-                      {copy.globe.workspacePinDone}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-0.5 text-[12px] text-[#8b95a1]">
-                  ★ {formatRating(selectedNode.rating)} ·{" "}
-                  {domainLabelKo(selectedNode.kind)}
-                </p>
-                <p className="mt-1 text-[14px] font-semibold text-[#191f28]">
-                  {formatPrice(selectedNode)}
-                </p>
-                {selectedNode.selected ||
-                state.selectedIds.includes(selectedNode.id) ? (
-                  <p className="mt-1 text-[11px] font-medium text-[#3182f6]">
-                    선택했어요
-                  </p>
-                ) : null}
-                <div className="mt-2 flex gap-2">
-                  <a
-                    className="text-[11px] font-semibold text-[#3182f6]"
-                    href={buildGoogleMapsDirectionsDeepLink({
-                      lat: selectedNode.lat,
-                      lng: selectedNode.lng,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    길찾기
-                  </a>
-                  <a
-                    className="text-[11px] font-semibold text-[#3182f6]"
-                    href={buildAppleMapsDeepLink({
-                      lat: selectedNode.lat,
-                      lng: selectedNode.lng,
-                      label: selectedNode.title,
-                    })}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Maps
-                  </a>
-                </div>
-              </div>
-            </div>
-            {state.lastChangeKo ? (
-              <p className="mt-2 truncate text-[11px] text-[#8b95a1]">
-                {state.lastChangeKo}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
         <div className="pointer-events-auto mx-auto w-full max-w-xl">
-          <WorkspacePromptBar contextEventId={eventId} compact />
+          <WorkspacePromptBar
+            contextEventId={eventId}
+            compact
+            onTurn={() => setChatOpen(true)}
+          />
         </div>
       </div>
 
