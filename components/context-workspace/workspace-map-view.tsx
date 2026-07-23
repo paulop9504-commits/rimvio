@@ -107,7 +107,7 @@ function PlaceholderPinMap({
         "relative h-full w-full overflow-hidden",
         onBackgroundActivate && "cursor-pointer text-left",
       )}
-      style={{ background: GLOBE_TOSS_THEME.shellBg }}
+      style={{ background: TOSS_WORKSPACE_MAP_CANVAS.background }}
       onClick={onBackgroundActivate}
     >
       {visible.map((node, index) => {
@@ -289,7 +289,7 @@ function MapLibreWorkspaceMap({
   return (
     <div
       className={cn("relative h-full w-full overflow-hidden", className)}
-      style={{ background: GLOBE_TOSS_THEME.shellBg }}
+      style={{ background: TOSS_WORKSPACE_MAP_CANVAS.background }}
       data-workspace-maplibre
       data-workspace-map-style="toss"
     >
