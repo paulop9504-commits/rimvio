@@ -8,6 +8,10 @@ import {
 } from "@/lib/context-workspace/open-map-workspace";
 import { buildWorkspaceWhy } from "@/lib/context-workspace/build-workspace-why";
 import { optimizeWorkspaceNodeRoute } from "@/lib/context-workspace/optimize-workspace-route";
+import {
+  forcePinnedVisible,
+  mergePreservePinnedNodes,
+} from "@/lib/context-workspace/merge-preserve-pinned";
 import type {
   ContextWorkspaceFilter,
   ContextWorkspaceNode,
@@ -177,6 +181,8 @@ export function applyWorkspaceTransition(input: {
   replaceCandidates?: readonly SearchToolCandidate[] | null;
   changeKo?: string | null;
   simulateScenarioKo?: string | null;
+  /** Pin cart: true=pin, false=unpin, omit=toggle (bookmark op). */
+  pin?: boolean | null;
 }): ContextWorkspaceState | null {
   const prev = readContextWorkspace(input.contextEventId);
   if (!prev || prev.status === "closed") {
@@ -249,15 +255,20 @@ export function applyWorkspaceTransition(input: {
     const fromCandidates = (input.replaceCandidates ?? []).map((c, i) =>
       candidateToWorkspaceNode(c, i, prev.domain),
     );
-    const merged = new Map<string, ContextWorkspaceNode>();
+    const incoming = new Map<string, ContextWorkspaceNode>();
     for (const node of [...fromCandidates, ...fromHits]) {
-      merged.set(node.placeId, node);
+      incoming.set(node.placeId, node);
     }
-    nodes = [...merged.values()].slice(0, 24);
-    selectedIds = [];
-    compareIds = [];
+    const pinnedKept = prev.nodes.filter((n) => n.bookmarked).length;
+    nodes = mergePreservePinnedNodes(prev.nodes, [...incoming.values()], 36);
+    selectedIds = selectedIds.filter((id) => nodes.some((n) => n.id === id));
+    compareIds = compareIds.filter((id) => nodes.some((n) => n.id === id));
     filter = {};
-    lastChangeKo = lastChangeKo ?? `후보 ${nodes.length}곳으로 바꿨어요`;
+    lastChangeKo =
+      lastChangeKo ??
+      (pinnedKept > 0
+        ? `후보 갱신 · 고정 ${pinnedKept}곳 유지`
+        : `후보 ${nodes.length}곳으로 바꿨어요`);
     summaryKo = `${nodes.length}곳`;
   }
 
@@ -310,7 +321,7 @@ export function applyWorkspaceTransition(input: {
 
   if (input.op === "filter") {
     filter = { ...filter, ...(input.filter ?? {}) };
-    nodes = applyFilterToNodes(nodes, filter);
+    nodes = forcePinnedVisible(applyFilterToNodes(nodes, filter));
     const visibleCount = nodes.filter((n) => n.visible).length;
     lastChangeKo = lastChangeKo ?? `${visibleCount}곳만 남겼어요`;
     summaryKo = `${domainLabelKo(prev.domain)} ${visibleCount}곳`;
@@ -355,12 +366,29 @@ export function applyWorkspaceTransition(input: {
 
   if (input.op === "bookmark") {
     const ids = new Set(input.nodeIds ?? []);
-    nodes = nodes.map((n) =>
-      ids.has(n.id) || ids.has(n.placeId)
-        ? { ...n, bookmarked: !n.bookmarked }
-        : n,
+    const pinMode = input.pin;
+    nodes = nodes.map((n) => {
+      if (!ids.has(n.id) && !ids.has(n.placeId)) {
+        return n;
+      }
+      const nextPinned =
+        pinMode === true
+          ? true
+          : pinMode === false
+            ? false
+            : !n.bookmarked;
+      return { ...n, bookmarked: nextPinned, visible: nextPinned ? true : n.visible };
+    });
+    const pinnedCount = nodes.filter((n) => n.bookmarked).length;
+    const justPinned = nodes.some(
+      (n) =>
+        (ids.has(n.id) || ids.has(n.placeId)) && n.bookmarked,
     );
-    lastChangeKo = lastChangeKo ?? "북마크를 바꿨어요";
+    lastChangeKo =
+      lastChangeKo ??
+      (pinMode === false || !justPinned
+        ? `고정 해제 · 장바구니 ${pinnedCount}`
+        : `고정했어요 · 장바구니 ${pinnedCount}`);
   }
 
   if (input.op === "compare") {
@@ -375,7 +403,7 @@ export function applyWorkspaceTransition(input: {
       nodes = sortNodes(nodes, "rating_desc");
     } else if (/100|예산|budget|달러|달러/i.test(scenario)) {
       filter = { ...filter, maxPriceBand: 2 };
-      nodes = applyFilterToNodes(nodes, filter);
+      nodes = forcePinnedVisible(applyFilterToNodes(nodes, filter));
       lastChangeKo = "예산 가정 · 저가 숙소만 남겼어요";
     } else {
       lastChangeKo = `가정: ${scenario}`;
@@ -429,6 +457,7 @@ export function parseWorkspaceUtteranceTransition(utterance: string): {
   filter?: ContextWorkspaceFilter;
   sortBy?: GraphFilterPredicate["sortBy"];
   simulateScenarioKo?: string;
+  pin?: boolean;
 } | null {
   const text = utterance.trim();
   if (!text) {
@@ -477,6 +506,12 @@ export function parseWorkspaceUtteranceTransition(utterance: string): {
       op: "filter",
       filter: { tagIncludes: ["local_favorite"] },
     };
+  }
+  if (/고정\s*해제|핀\s*해제|언핀|unpin|장바구니\s*빼/i.test(text)) {
+    return { op: "bookmark", pin: false };
+  }
+  if (/고정|핀\s*하|장바구니|pin\s*(this|it)?|bookmark/i.test(text)) {
+    return { op: "bookmark", pin: true };
   }
   if (/삭제|지워|빼|제외|없애|remove|delete/i.test(text)) {
     return { op: "remove" };

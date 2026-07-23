@@ -165,6 +165,42 @@ function applyParsedWorkspaceTurn(input: {
     };
   }
 
+  if (parsed.op === "bookmark") {
+    const state = readContextWorkspace(contextEventId);
+    const pin = parsed.pin ?? true;
+    let targets =
+      state?.nodes.filter((n) => n.selected).map((n) => n.id) ?? [];
+    if (targets.length === 0) {
+      const selectedId = state?.selectedIds[0];
+      if (selectedId) {
+        targets = [selectedId];
+      } else {
+        const visible = state?.nodes.filter((n) => n.visible) ?? [];
+        if (visible[0]) {
+          targets = [visible[0].id];
+        }
+      }
+    }
+    if (targets.length === 0) {
+      return {
+        handled: true,
+        replyKo: "고정할 곳을 먼저 골라 주세요",
+        committed: false,
+      };
+    }
+    const next = applyWorkspaceTransition({
+      contextEventId,
+      op: "bookmark",
+      nodeIds: targets,
+      pin,
+    });
+    return {
+      handled: true,
+      replyKo: next?.lastChangeKo ?? (pin ? "고정했어요" : "고정 해제했어요"),
+      committed: false,
+    };
+  }
+
   if (parsed.op === "compare") {
     const state = readContextWorkspace(contextEventId);
     const ids =
@@ -292,7 +328,9 @@ export function tryApplyWorkspaceLodgingTurnSync(input: {
     const state = readContextWorkspace(contextEventId);
     const visible = state?.nodes.filter((n) => n.visible) ?? [];
     const keepIds = new Set(visible.slice(0, keepN).map((n) => n.id));
-    const removeIds = visible.filter((n) => !keepIds.has(n.id)).map((n) => n.id);
+    const removeIds = visible
+      .filter((n) => !keepIds.has(n.id) && !n.bookmarked)
+      .map((n) => n.id);
     if (removeIds.length > 0) {
       applyWorkspaceTransition({
         contextEventId,

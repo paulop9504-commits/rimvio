@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { List, X } from "lucide-react";
+import { List, Pin, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   applyWorkspaceTransition,
@@ -28,6 +28,7 @@ import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commi
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
+import { WorkspacePinCart } from "@/components/context-workspace/workspace-pin-cart";
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -222,6 +223,7 @@ export function ContextWorkspaceShell({
             rating: n.rating,
             amountLabel: n.amountLabel,
             selected: n.id === selectedId,
+            bookmarked: n.bookmarked,
           }))}
           selectedId={selectedId}
           onSelectPin={onSelect}
@@ -320,8 +322,15 @@ export function ContextWorkspaceShell({
         </div>
       ) : null}
 
-      {/* Bottom stack: tools · place card · prompt */}
+      {/* Bottom stack: pin cart · tools · place card · prompt */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-16">
+        <WorkspacePinCart
+          contextEventId={eventId}
+          nodes={state.nodes}
+          selectedId={selectedId}
+          onSelect={onSelect}
+        />
+
         <div className="pointer-events-auto mx-auto flex max-w-xl gap-1.5 overflow-x-auto">
           {(
             [
@@ -367,29 +376,32 @@ export function ContextWorkspaceShell({
           ))}
           {selectedNode ? (
             <>
-              <a
-                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
-                href={buildGoogleMapsDirectionsDeepLink({
-                  lat: selectedNode.lat,
-                  lng: selectedNode.lng,
-                })}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold shadow-[0_2px_10px_rgba(25,31,40,0.1)]",
+                  selectedNode.bookmarked
+                    ? "bg-[#191f28] text-white"
+                    : "bg-[#3182f6] text-white",
+                )}
+                onClick={() => {
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "bookmark",
+                    nodeIds: [selectedNode.id],
+                    pin: !selectedNode.bookmarked,
+                  });
+                  if (!selectedNode.bookmarked) {
+                    toast.success(
+                      copy.globe.workspacePinToast(selectedNode.title),
+                    );
+                  }
+                }}
               >
-                길찾기
-              </a>
-              <a
-                className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
-                href={buildAppleMapsDeepLink({
-                  lat: selectedNode.lat,
-                  lng: selectedNode.lng,
-                  label: selectedNode.title,
-                })}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Maps
-              </a>
+                {selectedNode.bookmarked
+                  ? copy.globe.workspacePinDone
+                  : copy.globe.workspacePinCta}
+              </button>
               <button
                 type="button"
                 className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#f04452] shadow-[0_2px_10px_rgba(25,31,40,0.1)]"
@@ -421,9 +433,17 @@ export function ContextWorkspaceShell({
                 ★{formatRating(selectedNode.rating)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-bold tracking-tight text-[#191f28]">
-                  {selectedNode.title}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="truncate text-[15px] font-bold tracking-tight text-[#191f28]">
+                    {selectedNode.title}
+                  </p>
+                  {selectedNode.bookmarked ? (
+                    <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#191f28] px-2 py-0.5 text-[10px] font-bold text-white">
+                      <Pin className="h-3 w-3" strokeWidth={2.5} />
+                      {copy.globe.workspacePinDone}
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-0.5 text-[12px] text-[#8b95a1]">
                   ★ {formatRating(selectedNode.rating)} ·{" "}
                   {domainLabelKo(selectedNode.kind)}
@@ -431,6 +451,37 @@ export function ContextWorkspaceShell({
                 <p className="mt-1 text-[14px] font-semibold text-[#191f28]">
                   {formatPrice(selectedNode)}
                 </p>
+                {selectedNode.selected ||
+                state.selectedIds.includes(selectedNode.id) ? (
+                  <p className="mt-1 text-[11px] font-medium text-[#3182f6]">
+                    선택했어요
+                  </p>
+                ) : null}
+                <div className="mt-2 flex gap-2">
+                  <a
+                    className="text-[11px] font-semibold text-[#3182f6]"
+                    href={buildGoogleMapsDirectionsDeepLink({
+                      lat: selectedNode.lat,
+                      lng: selectedNode.lng,
+                    })}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    길찾기
+                  </a>
+                  <a
+                    className="text-[11px] font-semibold text-[#3182f6]"
+                    href={buildAppleMapsDeepLink({
+                      lat: selectedNode.lat,
+                      lng: selectedNode.lng,
+                      label: selectedNode.title,
+                    })}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Maps
+                  </a>
+                </div>
               </div>
             </div>
             {state.lastChangeKo ? (

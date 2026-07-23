@@ -104,6 +104,14 @@ export function buildWorkspaceWhy(input: {
         nodeIds,
         atIso,
       };
+    case "bookmark":
+      return {
+        actionKo: "작업장 고정",
+        reasonsKo: ["장바구니 핀 · X 전까지 유지", "다른 검색에도 남김"],
+        impactsKo: [input.changeKo?.trim() || "고정 목록 갱신"],
+        nodeIds,
+        atIso,
+      };
     case "commit":
       return {
         actionKo: "Reality Commit 준비",

@@ -4,9 +4,11 @@
 
 import {
   dispatchContextWorkspaceOpen,
+  readContextWorkspace,
   writeContextWorkspace,
 } from "@/lib/context-workspace/workspace-store";
 import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
+import { mergePreservePinnedNodes } from "@/lib/context-workspace/merge-preserve-pinned";
 import {
   domainLabelKo,
   type ContextWorkspaceDomain,
@@ -174,9 +176,21 @@ export function openMapContextWorkspace(input: {
       merged.set(node.placeId, node);
     }
   }
-  const nodes = [...merged.values()].slice(0, 24);
+  const nodesIncoming = [...merged.values()].slice(0, 24);
+  const prev = readContextWorkspace(contextEventId);
+  const pinnedCount =
+    prev?.status === "editing" || prev?.status === "committing"
+      ? prev.nodes.filter((n) => n.bookmarked).length
+      : 0;
+  const nodes =
+    prev && (prev.status === "editing" || prev.status === "committing")
+      ? mergePreservePinnedNodes(prev.nodes, nodesIncoming, 36)
+      : nodesIncoming;
   const now = new Date().toISOString();
-  const workspaceId = `ws:${contextEventId}:${Date.now()}`;
+  const workspaceId =
+    prev && (prev.status === "editing" || prev.status === "committing")
+      ? prev.workspaceId
+      : `ws:${contextEventId}:${Date.now()}`;
   const label = domainLabelKo(domain);
   const state: ContextWorkspaceState = {
     version: 1,
@@ -188,31 +202,41 @@ export function openMapContextWorkspace(input: {
     summaryKo:
       input.summaryKo?.trim() ||
       (nodes.length > 0
-        ? `${label} 후보 ${nodes.length}곳 준비 · 펼치기로 작업장 열기`
+        ? pinnedCount > 0
+          ? `${label} ${nodesIncoming.length}곳 + 고정 ${pinnedCount}`
+          : `${label} 후보 ${nodes.length}곳 준비 · 펼치기로 작업장 열기`
         : `${label} 결과가 없어요`),
     nodes,
     filter: {},
     selectedIds: [],
     compareIds: [],
     surfacePrimary: "embedded_preview",
-    openedAtIso: now,
+    openedAtIso: prev?.openedAtIso ?? now,
     updatedAtIso: now,
     committedAtIso: null,
-    lastChangeKo: nodes.length > 0 ? `${nodes.length}곳 추가` : null,
+    lastChangeKo:
+      nodes.length > 0
+        ? pinnedCount > 0
+          ? `${label} 갱신 · 고정 ${pinnedCount}곳 유지`
+          : `${nodesIncoming.length}곳 추가`
+        : null,
     lastWhy:
       nodes.length > 0
         ? {
-            actionKo: `${label} ${nodes.length}곳 생성`,
-            reasonsKo: ["검색 의도 일치", "지도 후보군"],
-            impactsKo: [`${nodes.length}곳 Workspace에 추가`],
+            actionKo: `${label} ${nodesIncoming.length}곳 생성`,
+            reasonsKo:
+              pinnedCount > 0
+                ? ["검색 의도 일치", `고정 ${pinnedCount}곳 장바구니 유지`]
+                : ["검색 의도 일치", "지도 후보군"],
+            impactsKo: [`${nodes.length}곳 Workspace에 반영`],
             nodeIds: nodes.slice(0, 3).map((n) => n.id),
             atIso: now,
           }
         : null,
-    history: [],
+    history: prev?.history ?? [],
     future: [],
     relationshipEdges: [],
-    compilerIr: null,
+    compilerIr: prev?.compilerIr ?? null,
   };
   writeContextWorkspace(withWorkspaceRelationships(state, input.query));
   dispatchContextWorkspaceOpen({

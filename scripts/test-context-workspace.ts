@@ -10,6 +10,7 @@ import {
   estimateWorkspaceProgressPercent,
   hasProvisionalLodgingWorkspace,
   openLodgingContextWorkspace,
+  openMapContextWorkspace,
   parseWorkspaceUtteranceTransition,
   readContextWorkspace,
   tryApplyWorkspaceLodgingTurnSync,
@@ -313,6 +314,109 @@ clearContextWorkspace(EVENT_E);
     1,
   );
   clearContextWorkspace(EVENT_P);
+}
+
+// Pin cart — hotel A stays when eatery search replaces candidates.
+{
+  const EVENT_PIN = "test-context-workspace-pin-cart";
+  clearContextWorkspace(EVENT_PIN);
+  openLodgingContextWorkspace({
+    contextEventId: EVENT_PIN,
+    query: "호텔",
+    hits: [
+      {
+        id: "maps:hotel-a",
+        labelKo: "호텔 A",
+        domain: "lodging",
+        lat: 34.66,
+        lng: 135.5,
+        rating: 4.7,
+        walkMinutes: 5,
+        priceBand: 2,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "11만원",
+      },
+      {
+        id: "maps:hotel-b",
+        labelKo: "호텔 B",
+        domain: "lodging",
+        lat: 34.661,
+        lng: 135.501,
+        rating: 4.2,
+        walkMinutes: 8,
+        priceBand: 1,
+        reservable: true,
+        localFavorite: false,
+        source: "maps",
+        amountLabel: "8만원",
+      },
+    ],
+  });
+  const lodging = readContextWorkspace(EVENT_PIN);
+  assert.ok(lodging);
+  const hotelA = lodging!.nodes.find((n) => n.title.includes("호텔 A"));
+  assert.ok(hotelA);
+  applyWorkspaceTransition({
+    contextEventId: EVENT_PIN,
+    op: "bookmark",
+    nodeIds: [hotelA!.id],
+    pin: true,
+  });
+  assert.equal(
+    readContextWorkspace(EVENT_PIN)?.nodes.find((n) => n.id === hotelA!.id)
+      ?.bookmarked,
+    true,
+  );
+
+  openMapContextWorkspace({
+    contextEventId: EVENT_PIN,
+    domain: "eatery",
+    query: "맛집",
+    hits: [
+      {
+        id: "maps:food-1",
+        labelKo: "맛집 1",
+        domain: "eatery",
+        lat: 34.662,
+        lng: 135.502,
+        rating: 4.5,
+        walkMinutes: 3,
+        priceBand: 2,
+        reservable: false,
+        localFavorite: true,
+        source: "maps",
+        amountLabel: "1.2만원",
+      },
+    ],
+  });
+  const after = readContextWorkspace(EVENT_PIN);
+  assert.ok(after);
+  assert.equal(after!.domain, "eatery");
+  assert.ok(
+    after!.nodes.some((n) => n.bookmarked && n.title.includes("호텔 A")),
+    "pinned hotel A must survive eatery search",
+  );
+  assert.ok(after!.nodes.some((n) => n.title.includes("맛집 1")));
+  assert.equal(
+    after!.nodes.some((n) => n.title.includes("호텔 B") && !n.bookmarked),
+    false,
+    "unpinned hotel B drops on replace",
+  );
+
+  applyWorkspaceTransition({
+    contextEventId: EVENT_PIN,
+    op: "bookmark",
+    nodeIds: [hotelA!.id],
+    pin: false,
+  });
+  assert.equal(
+    readContextWorkspace(EVENT_PIN)?.nodes.find((n) => n.title.includes("호텔 A"))
+      ?.bookmarked,
+    false,
+  );
+  clearContextWorkspace(EVENT_PIN);
 }
 
 console.log("ok — context workspace lodging loop");

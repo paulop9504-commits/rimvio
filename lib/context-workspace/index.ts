@@ -79,6 +79,12 @@ export {
 } from "@/lib/context-workspace/sync-workspace-relationships";
 
 export {
+  forcePinnedVisible,
+  listPinnedWorkspaceNodes,
+  mergePreservePinnedNodes,
+} from "@/lib/context-workspace/merge-preserve-pinned";
+
+export {
   buildCapsuleProjection,
   listCapsuleProjections,
   readCapsuleCompilerIr,

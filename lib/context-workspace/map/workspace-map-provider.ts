@@ -16,6 +16,8 @@ export type WorkspaceMapPin = {
   readonly rating?: number | null;
   readonly amountLabel?: string | null;
   readonly selected?: boolean;
+  /** Pin cart — stays across domain search. */
+  readonly bookmarked?: boolean;
 };
 
 export type WorkspaceMapCamera = {

@@ -39,11 +39,14 @@ export function buildTossWorkspaceMarkerEl(input: {
 
   const chip = document.createElement("span");
   const price = pin.amountLabel?.trim() || null;
+  const pinned = Boolean(pin.bookmarked);
   const label = compact
     ? `★${pin.rating != null ? pin.rating.toFixed(1) : "—"}`
     : selected
       ? shortTitle(pin.title, 12)
-      : `★${pin.rating != null ? pin.rating.toFixed(1) : String(index + 1)}`;
+      : pinned
+        ? `📌 ${shortTitle(pin.title, 8)}`
+        : `★${pin.rating != null ? pin.rating.toFixed(1) : String(index + 1)}`;
 
   chip.textContent = label;
   chip.style.cssText = [
@@ -52,7 +55,7 @@ export function buildTossWorkspaceMarkerEl(input: {
     "justify-content:center",
     "min-width:28px",
     "height:28px",
-    compact ? "padding:0 8px" : selected ? "padding:0 10px" : "padding:0 2px",
+    compact ? "padding:0 8px" : selected || pinned ? "padding:0 10px" : "padding:0 2px",
     "border-radius:999px",
     "font-size:11px",
     "font-weight:700",
@@ -61,9 +64,11 @@ export function buildTossWorkspaceMarkerEl(input: {
     "box-shadow:0 2px 8px rgba(25,31,40,0.12), 0 0 0 1px rgba(25,31,40,0.04)",
     selected
       ? `background:${GLOBE_TOSS_THEME.blue};color:#fff`
-      : `background:#fff;color:${GLOBE_TOSS_THEME.ink}`,
+      : pinned
+        ? "background:#191f28;color:#fff"
+        : `background:#fff;color:${GLOBE_TOSS_THEME.ink}`,
     "transition:transform 120ms ease, box-shadow 120ms ease",
-    selected ? "transform:scale(1.06)" : "",
+    selected || pinned ? "transform:scale(1.06)" : "",
   ]
     .filter(Boolean)
     .join(";");
