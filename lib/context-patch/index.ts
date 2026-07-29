@@ -1,0 +1,12 @@
+export type { ActiveContext, ActiveContextState } from "@/lib/context-patch/active-context-resolver";
+export { getActiveContext, lockContext, unlockContext, isContextLocked, updateActiveSlots } from "@/lib/context-patch/active-context-resolver";
+export type { TurnIntent, TurnIntentResult } from "@/lib/context-patch/classify-turn-intent";
+export { TURN_INTENTS, classifyTurnIntent } from "@/lib/context-patch/classify-turn-intent";
+export type { SlotKey, SlotPatch, PatchResult } from "@/lib/context-patch/context-patch-engine";
+export { extractPatches } from "@/lib/context-patch/context-patch-engine";
+export type { TaskId, AffectedTask } from "@/lib/context-patch/dependency-graph";
+export { resolveAffectedTasks, isMajorChange } from "@/lib/context-patch/dependency-graph";
+export type { RecomputeResult, TaskExecutor } from "@/lib/context-patch/recompute-engine";
+export { recomputeAffectedTasks } from "@/lib/context-patch/recompute-engine";
+export type { ContextTurnInput, ContextTurnResult } from "@/lib/context-patch/run-context-turn";
+export { runContextTurn } from "@/lib/context-patch/run-context-turn";
