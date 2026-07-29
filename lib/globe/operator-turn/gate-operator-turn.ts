@@ -206,7 +206,10 @@ export function gateOperatorTurnSync(input: {
       ) {
         return {
           tool: "scout",
-          reason: cmd.reason || "command_first_execute",
+          reason:
+            cmd.commandId === "search_eatery"
+              ? "active_domain_scout_eatery"
+              : "active_domain_scout_lodging",
         };
       }
     }
