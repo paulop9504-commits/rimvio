@@ -20,10 +20,13 @@ import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-b
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner";
-import { tryRunContextCommand } from "@/lib/context-command";
+import {
+  classifyContextCommand,
+  tryRunContextCommand,
+} from "@/lib/context-command";
+import { routeRimvioCommandMode, resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { createContextReferenceLink } from "@/lib/context-reference/create-context-reference-link";
 import type { ContextReferenceKind } from "@/lib/context-reference/types";
-import { shouldSpawnNewContext } from "@/lib/context-run/should-spawn-new-context";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import {
@@ -1538,10 +1541,19 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           anchorPlaceName,
         });
         if (commandResult?.ok) {
-          appendContextAgentComposeTurn(contextEventId, {
-            role: "user",
-            text: triggerMessage.trim(),
-          });
+          // User turn already appended by PromptFrame onUserCompose when from pin bar.
+          const last = readContextAgentComposeThread(contextEventId).at(-1);
+          if (
+            !(
+              last?.role === "user" &&
+              last.text.trim() === triggerMessage.trim()
+            )
+          ) {
+            appendContextAgentComposeTurn(contextEventId, {
+              role: "user",
+              text: triggerMessage.trim(),
+            });
+          }
           appendContextAgentComposeTurn(contextEventId, {
             role: "assistant",
             kind: "text",
@@ -1594,62 +1606,63 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
         }
       }
 
-      // ADR-029 — new trip/workspace Intent opens a fresh Context (not this hub).
-      if (
-        shouldSpawnNewContext({
+      // ADR-035 / ADR-029 — Create mode opens a fresh Context (not this hub).
+      {
+        const commandRoute = routeRimvioCommandMode({
           utterance: pipelineMessage,
-          activeContextEventId: contextEventId,
-        })
-      ) {
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "user",
-          text: triggerMessage.trim(),
+          activeContextId: contextEventId,
         });
-        appendContextAgentComposeTurn(contextEventId, {
-          role: "assistant",
-          kind: "text",
-          text: copy.globe.contextSpawnNewReply,
-        });
-        toast.message(copy.globe.contextSpawnNewToast);
-        const spawnResult = await dispatchContextRun(
-          {
+        if (commandRoute.mode === "create") {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "user",
+            text: triggerMessage.trim(),
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
             kind: "text",
-            text: pipelineMessage,
-            surface: "composer",
-            layerMode: "personal",
-            contextEventId: null,
-            forceNewContext: true,
-            lat: userLat ?? null,
-            lng: userLng ?? null,
-          },
-          {
-            openPortal: async () => {},
-            openFieldDiscovery: () => {},
-            tryQuickListMarket: async () => false,
-            navigateUrl: (url, label) => {
-              window.location.assign(url);
-              toast.success(`${label} 여는 중…`);
+            text: copy.globe.contextSpawnNewReply,
+          });
+          toast.message(copy.globe.contextSpawnNewToast);
+          const spawnResult = await dispatchContextRun(
+            {
+              kind: "text",
+              text: pipelineMessage,
+              surface: "composer",
+              layerMode: "personal",
+              contextEventId: null,
+              forceNewContext: true,
+              lat: userLat ?? null,
+              lng: userLng ?? null,
             },
-            toastSuccess: (line) => {
-              toast.success(line);
+            {
+              openPortal: async () => {},
+              openFieldDiscovery: () => {},
+              tryQuickListMarket: async () => false,
+              navigateUrl: (url, label) => {
+                window.location.assign(url);
+                toast.success(`${label} 여는 중…`);
+              },
+              toastSuccess: (line) => {
+                toast.success(line);
+              },
+              toastMessage: (line) => {
+                toast.message(line);
+              },
+              onAttached: (eventId) => {
+                requestGlobeAskBridgeFocus(eventId, "bridge");
+              },
+              onGlobeIngressCompiled: ({ eventId }) => {
+                requestGlobeAskBridgeFocus(eventId, "bridge");
+              },
             },
-            toastMessage: (line) => {
-              toast.message(line);
-            },
-            onAttached: (eventId) => {
-              requestGlobeAskBridgeFocus(eventId, "bridge");
-            },
-            onGlobeIngressCompiled: ({ eventId }) => {
-              requestGlobeAskBridgeFocus(eventId, "bridge");
-            },
-          },
-        );
-        if (spawnResult.status === "error") {
-          toast.error(spawnResult.errorMessage ?? copy.globe.ingestAttachFail);
+          );
+          if (spawnResult.status === "error") {
+            toast.error(spawnResult.errorMessage ?? copy.globe.ingestAttachFail);
+          }
+          setContextAgentSessionPhase("awaiting_human");
+          onQuestionsChange?.([]);
+          return null;
         }
-        setContextAgentSessionPhase("awaiting_human");
-        onQuestionsChange?.([]);
-        return null;
       }
 
       // Graph Command OS / Action Planner gate — freeze free-NL scout when matched.
@@ -2083,6 +2096,10 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       if (!trimmed) {
         return false;
       }
+      // ADR-028 — never steal migrate / clone / save into trip intake.
+      if (classifyContextCommand(trimmed)) {
+        return false;
+      }
       const event = findLifeEventCandidate(contextEventId);
       const offer = resolveIntakeOffer(
         buildIntakeContext({
@@ -2100,14 +2117,15 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       if (!sheet || sheet.fields.length === 0) {
         return false;
       }
-      appendIntakeSlotsComposeTurn(contextEventId, {
+      const appended = appendIntakeSlotsComposeTurn(contextEventId, {
         domainId: sheet.domainId,
         hint: sheet.hint,
         submitLabel: sheet.submitLabel,
         pendingTrigger: trimmed,
         fields: sheet.fields,
       });
-      return true;
+      // Already-open intake card → do not swallow the turn silently.
+      return appended != null;
     },
     [contextEventId, destinationConfirmed, operatorBlueprint],
   );
@@ -2689,6 +2707,19 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
         return;
       }
     }
+    if (text && classifyContextCommand(text)) {
+      // ADR-028 — Command Bar before trip intake / Operator graph Move.
+      setBusy(true);
+      beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
+      try {
+        await resolveAndMaybeExecute(text);
+        clearComposerMessage();
+      } finally {
+        setBusy(false);
+        finishContextAgentWork();
+      }
+      return;
+    }
     if (text && !isLodgingPrepUtterance(text) && !isFlightPrepUtterance(text) && !isTransitPrepUtterance(text) && !isFinancePrepUtterance(text) && !isTripExperienceUtterance(text) && tryOpenIntakeForMessage(text)) {
       clearComposerMessage();
       return;
@@ -3054,6 +3085,10 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       setBusy(true);
       beginContextAgentWork("analyzing", copy.globe.contextAgentStatusBusy);
       try {
+        if (classifyContextCommand(text)) {
+          await resolveAndMaybeExecute(text);
+          return;
+        }
         const composeTail = readContextAgentComposeThread(contextEventId)
           .slice(-6)
           .map((turn) => ({ role: turn.role, text: turn.text }));
@@ -3565,7 +3600,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       <GlobeContextConditionComposeInput
         ref={composeInputRef}
         busy={busy}
-        placeholder={copy.globe.contextConditionPinPlaceholder}
+        placeholder={resolveRimvioCommandPlaceholder("context")}
         submitLabel={copy.globe.contextConditionPinSubmit}
         onSubmit={onComposeSubmit}
       />

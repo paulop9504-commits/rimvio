@@ -1,4 +1,5 @@
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
+import { classifyContextCommand } from "@/lib/context-command/classify-context-command";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { classifyTravelRequestScope } from "@/lib/container-ai/classify-travel-request-scope";
 import {
@@ -10,6 +11,10 @@ import { readTripIntakeState } from "@/lib/globe/trip-intake/read-trip-intake-st
 export function isBroadTripPackageMessage(message: string): boolean {
   const text = message.trim();
   if (!text) {
+    return false;
+  }
+  // ADR-028 — migrate/clone/save are Command Bar ops, not trip package intake.
+  if (classifyContextCommand(text)) {
     return false;
   }
   return classifyTravelRequestScope(text).scope === "broad";

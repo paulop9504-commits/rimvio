@@ -3,6 +3,7 @@
  */
 
 import type { IntentFamily } from "@/lib/rule-engine/constitution";
+import { classifyContextCommand } from "@/lib/context-command/classify-context-command";
 import { isTripReviseUtterance } from "@/lib/intent-engine/is-trip-revise-utterance";
 import {
   isLodgingStayReviseUtterance,
@@ -113,7 +114,11 @@ export function classifyIntentFamily(utterance: string): IntentFamily {
   if (/(?:묶어|그룹|ungroup|풀어)/iu.test(text)) {
     return /풀어|ungroup|그룹\s*해제/iu.test(text) ? "Ungroup" : "Group";
   }
-  if (/맥락으로\s*옮겨|옮겨(?:줘|요|주세요)?/iu.test(text)) {
+  // ADR-028 Context Command (migrate/clone) — not graph Move of selected places.
+  if (
+    /맥락으로\s*옮겨|옮겨(?:줘|요|주세요)?/iu.test(text) &&
+    !classifyContextCommand(text)
+  ) {
     return "Move";
   }
   if (/(?:메모|적어(?:줘|요|주세요)?|메모해)/iu.test(text)) {

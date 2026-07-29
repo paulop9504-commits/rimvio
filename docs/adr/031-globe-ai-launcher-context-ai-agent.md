@@ -76,3 +76,4 @@ No search-engine hero. No dual-planet toggle (ADR-027).
 3. Reference chips after open (ADR-030) inside Context thread  
 4. Motion polish (card fly Globe → Workspace) — progressive  
 5. Marketplace Continuum — ADR-032 (`used_goods` WorkspaceKind)  
+6. **Superseded product surface:** ADR-035 RIMVIO Command — one Command Bar; Globe AI hidden Create route  

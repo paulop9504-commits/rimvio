@@ -11,6 +11,12 @@ import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
+import {
+  dispatchExecutionFeedGoal,
+  dispatchExecutionFeedStep,
+} from "@/lib/context-run/execution-feed-bridge";
+import { scheduleExecutionFeedDismiss } from "@/lib/context-run/execution-feed-lifecycle";
 import { cn } from "@/lib/utils";
 
 export type WorkspacePromptBarProps = {
@@ -30,6 +36,7 @@ export function WorkspacePromptBar({
 }: WorkspacePromptBarProps) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const placeholder = resolveRimvioCommandPlaceholder("workspace");
 
   const runTurn = useCallback(
     async (raw: string) => {
@@ -40,15 +47,42 @@ export function WorkspacePromptBar({
       }
       setBusy(true);
       onTurn?.();
+      const graphId = `ws-turn-${Date.now()}`;
+      dispatchExecutionFeedGoal({ graphId, goalKo: text });
+      dispatchExecutionFeedStep({
+        graphId,
+        stepId: "analyze",
+        labelKo: copy.globe.activityAnalyzing,
+        status: "running",
+      });
       appendWorkspaceChatTurn({
         contextEventId: eventId,
         role: "user",
         text,
       });
       try {
+        dispatchExecutionFeedStep({
+          graphId,
+          stepId: "analyze",
+          labelKo: copy.globe.activityAnalyzing,
+          status: "done",
+        });
+        dispatchExecutionFeedStep({
+          graphId,
+          stepId: "apply",
+          labelKo: copy.globe.activityWorkspaceTurn,
+          status: "running",
+        });
         const result = await tryApplyWorkspacePromptTurn({
           utterance: text,
           contextEventId: eventId,
+        });
+        dispatchExecutionFeedStep({
+          graphId,
+          stepId: "apply",
+          labelKo: copy.globe.activityWorkspaceTurn,
+          status: "done",
+          resultKo: result.handled ? `✓ ${copy.globe.activityDone}` : undefined,
         });
         const reply = result.handled
           ? (result.replyKo ??
@@ -63,6 +97,7 @@ export function WorkspacePromptBar({
         setValue("");
       } finally {
         setBusy(false);
+        scheduleExecutionFeedDismiss("run_complete");
       }
     },
     [busy, contextEventId, onTurn],
@@ -102,10 +137,10 @@ export function WorkspacePromptBar({
           type="text"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder={copy.globe.workspacePromptPlaceholder}
+          placeholder={placeholder}
           disabled={busy}
           className="min-w-0 flex-1 border-0 bg-transparent px-1 py-1.5 text-[13px] text-[#191f28] outline-none placeholder:text-[#8b95a1]"
-          aria-label={copy.globe.workspacePromptPlaceholder}
+          aria-label={placeholder}
           autoComplete="off"
         />
         <button

@@ -1,0 +1,30 @@
+# RIMVIO Command (locked)
+
+**Canonical:** `docs/adr/035-rimvio-command.md` · `lib/rimvio-command/`
+
+> **Command** turns user intent into Context + state — not a chat assistant product.
+
+## Stack
+
+```
+Globe → Context → Command → Agent → Reality Commit
+```
+
+| Mode | Internal (hidden) |
+|------|-------------------|
+| Create | Globe AI Architect |
+| Continue | Context AI Operator |
+| Execute | Domain Agent Worker |
+
+## UI
+
+- **One Command Bar** — placeholders by surface (`resolveRimvioCommandPlaceholder`)
+- No 「AI Assistant / 챗봇」 product nouns
+- Lodging / Portal / Action Chat text → Command ingress (progressive absorb)
+
+## PR reject
+
+- Parallel branded AI bars as peer products
+- Globe essay without opening Context
+- Duplicate Command components bypassing `routeRimvioCommandMode`
+- Commit without human approval

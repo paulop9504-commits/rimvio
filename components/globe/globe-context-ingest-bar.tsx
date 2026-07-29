@@ -36,6 +36,7 @@ import {
 } from "@/lib/brand/rimvio-neon-theme";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { cn } from "@/lib/utils";
 import { GlobeContextTravelGpsChip } from "@/components/globe/globe-context-travel-gps-chip";
 import { GlobeComposerHintStrip } from "@/components/globe/globe-composer-hint-strip";
@@ -220,9 +221,9 @@ export const GlobeContextIngestBar = forwardRef<
       ? copy.globe.ingestDiscoveryPlaceholder
       : mapPromptMode
         ? copy.globe.mapIntentPromptPlaceholder
-        : attachHintTitle
+          : attachHintTitle
           ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
-          : copy.globe.ingestDefaultPlaceholder);
+          : resolveRimvioCommandPlaceholder("globe"));
   const marketComposeBusy = busy || marketRoleBusy;
 
   const tryQuickListMarket = useCallback(

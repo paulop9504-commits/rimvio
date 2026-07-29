@@ -30,6 +30,7 @@ export const INTENT_FAMILIES = [
   "Highlight",
   "Note",
   "Calendar",
+  "Prepare",
   "Unknown",
 ] as const;
 
@@ -160,3 +161,9 @@ export const GRAPH_MUTATING_INTENTS: ReadonlySet<IntentFamily> = new Set([
   "Search",
   "Reserve",
 ]);
+
+/** Action Ontology — re-exported for constitution-level access. */
+export { ACTION_VERBS } from "@/lib/rimvio-command/action-verb";
+export type { ActionVerb } from "@/lib/rimvio-command/action-verb";
+export { COMMAND_TARGETS } from "@/lib/rimvio-command/resolve-command-target";
+export type { CommandTarget } from "@/lib/rimvio-command/resolve-command-target";

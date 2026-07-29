@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "meta": {
+    "urlLen": 40,
+    "keyLen": 208,
+    "urlLooksHttps": true,
+    "keyKind": "anon",
+    "migrationFiles": 68
+  },
+  "tables": {
+    "expected": 34,
+    "ok": 34,
+    "missing": []
+  },
+  "functions": {
+    "expected": 22,
+    "ok": 22,
+    "missing": []
+  },
+  "checkedAt": "2026-07-17T22:42:15.655Z"
+}

@@ -150,6 +150,8 @@ export const STORY_FORBIDDEN_USER_FACING = [
   "좋아요",
   "별점",
   "리뷰 작성",
+  "AI Assistant",
+  "챗봇",
 ] as const;
 
 /** Discouraged in hero · CTA · empty state — prefer L1 alternatives. */
@@ -177,6 +179,7 @@ export function buildStoryLayerPromptHeader(surface: "globe" | "feed" | "peers" 
     `- Never say in UI: ${STORY_FORBIDDEN_USER_FACING.slice(0, 6).join(", ")}…`,
     `- Implement as L3 (Globe): PinEntity projection + EventCandidate truth; no Post model, no like counts.`,
     `- Hub · Resource (locked): docs/GLOBE_HUB_RESOURCE.md — Hub factory/transactions; Resource rank → MAIN slot.`,
+    `- RIMVIO Command (ADR-035): one Command Bar; Create|Continue|Execute; no AI Assistant product noun.`,
     `- Architecture: docs/RFC_UNIVERSAL_PIN_SYSTEM.md`,
     `- Full spec: docs/RIMVIO_STORY_LAYER.md`,
   ].join("\n");

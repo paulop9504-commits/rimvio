@@ -39,6 +39,13 @@ clearSessionGraphs();
 }
 
 {
+  const osaka = classifyContextCommand("이 맥락 오사카로 옮겨");
+  assert.ok(osaka);
+  assert.equal(osaka!.kind, "migrate_anchor");
+  assert.equal(osaka!.destinationLabelKo, "오사카");
+}
+
+{
   assert.equal(classifyContextCommand("주변 맛집 찾아줘"), null);
 }
 

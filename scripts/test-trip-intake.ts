@@ -18,6 +18,8 @@ assert.equal(
 );
 assert.equal(isBroadTripPackageMessage("오사카 7일 여행, 초행이니까 잘 부탁해"), true);
 assert.equal(isBroadTripPackageMessage("주변 호텔"), false);
+assert.equal(isBroadTripPackageMessage("이 맥락 오사카로 옮겨"), false);
+assert.equal(isBroadTripPackageMessage("이 맥락 제주도로 옮겨줘"), false);
 
 const emptyEvent = {
   id: "evt-trip-intake",
@@ -27,6 +29,14 @@ const emptyEvent = {
   updatedAt: "2026-07-01T00:00:00.000Z",
   metadata: {},
 } as unknown as EventCandidate;
+
+assert.equal(
+  shouldOpenTripIntake({
+    message: "이 맥락 오사카로 옮겨",
+    event: emptyEvent,
+  }),
+  false,
+);
 
 const partial = readTripIntakeState({
   event: emptyEvent,

@@ -1,0 +1,69 @@
+{
+  "files": [
+    ".env.vercel.production",
+    ".env.local"
+  ],
+  ".env.vercel.production": [
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "len": 11,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "len": 46,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "len": 11,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "POSTGRES_HOST",
+      "len": 35,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "SUPABASE_ANON_KEY",
+      "len": 208,
+      "https": false,
+      "eyJ": true
+    },
+    {
+      "key": "SUPABASE_JWT_SECRET",
+      "len": 11,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "SUPABASE_PUBLISHABLE_KEY",
+      "len": 46,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "SUPABASE_SECRET_KEY",
+      "len": 11,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "len": 11,
+      "https": false,
+      "eyJ": false
+    },
+    {
+      "key": "SUPABASE_URL",
+      "len": 40,
+      "https": true,
+      "eyJ": false
+    }
+  ],
+  ".env.local": []
+}
