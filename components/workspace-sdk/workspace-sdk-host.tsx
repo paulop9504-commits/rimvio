@@ -68,6 +68,13 @@ export function WorkspaceSdkHost({
       }
       const ws = readContextWorkspace(id);
       setNodes(ws?.nodes.filter((n) => n.visible).slice(0, 8) ?? []);
+      const explicitId =
+        ws?.selectedIds[0] ??
+        ws?.nodes.find((n) => n.selected && n.visible)?.id ??
+        null;
+      if (explicitId) {
+        setSelectedId(explicitId);
+      }
     },
     [hubId],
   );
@@ -96,10 +103,20 @@ export function WorkspaceSdkHost({
     };
   }, [hubId, refresh]);
 
-  const selected = useMemo(
-    () => nodes.find((n) => n.id === selectedId) ?? nodes[0] ?? null,
-    [nodes, selectedId],
-  );
+  const selected = useMemo(() => {
+    const explicit =
+      nodes.find((n) => n.id === selectedId && n.selected) ??
+      nodes.find((n) => n.selected) ??
+      null;
+    // Soft UI focus alone is not enough for booking.prepare — require explicit select.
+    if (explicit) return explicit;
+    if (selectedId) {
+      return nodes.find((n) => n.id === selectedId) ?? null;
+    }
+    return null;
+  }, [nodes, selectedId]);
+
+  const canPrepare = Boolean(selected?.selected);
 
   const ghostLines = useMemo(
     () => (frame ? readFocusGhostLines(frame) : []),
@@ -140,6 +157,10 @@ export function WorkspaceSdkHost({
   const linkedCount = linkedReality?.links.length ?? 0;
 
   const onAction = () => {
+    if (frame.action.toolId === "booking.prepare" && !canPrepare) {
+      toast.message(copy.globe.workspacePreviewSelectFirstHint);
+      return;
+    }
     const result = runWorkspaceSdkAction({
       frame,
       placeId: selected?.placeId || selected?.id,
@@ -152,6 +173,8 @@ export function WorkspaceSdkHost({
           : selected?.kind === "poi"
             ? "activity"
             : "lodging",
+      requireExplicitSelect: frame.action.toolId === "booking.prepare",
+      explicitlySelected: canPrepare,
     });
     if (!result.ok) {
       toast.message(result.reasonKo);
@@ -318,7 +341,7 @@ export function WorkspaceSdkHost({
                     className="w-full rounded-2xl bg-[#3182f6] py-3 text-[14px] font-semibold text-white disabled:opacity-40"
                     onClick={onAction}
                     disabled={
-                      frame.action.toolId === "booking.prepare" && !selected
+                      frame.action.toolId === "booking.prepare" && !canPrepare
                     }
                     data-workspace-sdk-action
                   >

@@ -46,6 +46,9 @@ export function runWorkspaceSdkAction(input: {
   readonly lat?: number | null;
   readonly lng?: number | null;
   readonly nodeKind?: "lodging" | "eatery" | "activity";
+  /** Preview Layer gate — booking.prepare needs explicit Select first. */
+  readonly requireExplicitSelect?: boolean;
+  readonly explicitlySelected?: boolean;
 }): WorkspaceSdkHostActionResult {
   const ctx = input.frame.contextEventId?.trim() ?? "";
   if (!ctx) {
@@ -53,6 +56,12 @@ export function runWorkspaceSdkAction(input: {
   }
 
   if (input.frame.action.toolId === "booking.prepare") {
+    if (input.requireExplicitSelect && !input.explicitlySelected) {
+      return {
+        ok: false,
+        reasonKo: copy.globe.workspacePreviewSelectFirstHint,
+      };
+    }
     const placeName = input.placeName?.trim();
     const placeId = input.placeId?.trim();
     if (!placeName || !placeId) {

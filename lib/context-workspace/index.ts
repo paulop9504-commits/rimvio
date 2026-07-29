@@ -121,6 +121,14 @@ export {
 
 export { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
 export type { WorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
+export {
+  buildNodePreview,
+  buildNodePreviewsForCompare,
+} from "@/lib/context-workspace/build-node-preview";
+export type {
+  NodePreviewModel,
+  NodePreviewNearbyChip,
+} from "@/lib/context-workspace/build-node-preview";
 export { buildWorkspaceWhy } from "@/lib/context-workspace/build-workspace-why";
 export { optimizeWorkspaceNodeRoute } from "@/lib/context-workspace/optimize-workspace-route";
 

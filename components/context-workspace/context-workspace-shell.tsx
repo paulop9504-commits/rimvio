@@ -30,6 +30,7 @@ import {
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
+import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
@@ -71,6 +72,8 @@ export function ContextWorkspaceShell({
   const [listOpen, setListOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -129,10 +132,9 @@ export function ContextWorkspaceShell({
     [state],
   );
   const selectedId =
+    focusedId ??
     state?.selectedIds[0] ??
     visibleNodes.find((n) => n.selected)?.id ??
-    visibleNodes.find((n) => !n.bookmarked)?.id ??
-    visibleNodes[0]?.id ??
     null;
 
   const mapPins = useMemo(
@@ -196,30 +198,20 @@ export function ContextWorkspaceShell({
       if (!id) {
         return;
       }
-      applyWorkspaceTransition({
-        contextEventId: id,
-        op: "select",
-        nodeIds: [nodeId],
-      });
+      // Soft focus only — Preview opens; explicit 「선택」 confirms for prepare/commit.
+      setFocusedId(nodeId);
       setListOpen(false);
       setPeekDismissedId(null);
-      setChatOpen(true);
+      setChatOpen(false);
       const node = readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId);
       if (node) {
-        const photo =
-          node.tags.includes("photo_spot") ||
-          /포토|사진|photo|전망|야경/i.test(`${node.title} ${node.summaryKo}`);
         const why =
           node.summaryKo.trim() ||
-          (photo
-            ? "사진 찍기 좋은 명소로 잡힌 곳이에요"
-            : `${domainLabelKo(node.kind)} 후보`);
+          `${domainLabelKo(node.kind)} 후보`;
         appendWorkspaceChatTurn({
           contextEventId: id,
           role: "assistant",
-          text: photo
-            ? `📸 ${node.title}\n왜 포토스팟: ${why}`
-            : `${node.title}\n${why}`,
+          text: `${copy.globe.workspacePreviewEyebrow} · ${node.title}\n${why}`,
         });
       }
     },
@@ -332,8 +324,18 @@ export function ContextWorkspaceShell({
             type="button"
             className="rounded-full bg-[#3182f6] px-2.5 py-1.5 text-[10px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
             onClick={() => setCommitPreviewOpen(true)}
-            disabled={visibleNodes.length === 0}
+            disabled={
+              visibleNodes.length === 0 ||
+              (state.selectedIds.length === 0 &&
+                !visibleNodes.some((n) => n.selected))
+            }
             data-workspace-commit
+            title={
+              state.selectedIds.length === 0 &&
+              !visibleNodes.some((n) => n.selected)
+                ? copy.globe.workspacePreviewSelectFirstHint
+                : undefined
+            }
           >
             {copy.globe.workspaceCommitCta}
           </button>
@@ -419,11 +421,21 @@ export function ContextWorkspaceShell({
 
       {/* Bottom: peek · chat · slim tools · prompt (pin lives on map markers) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-1.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-20">
-        {showPeek && selectedNode ? (
+        {showPeek && selectedNode && !compareOpen ? (
           <WorkspaceNodePeek
             contextEventId={eventId}
             node={selectedNode}
+            workspace={state}
             onClose={() => setPeekDismissedId(selectedNode.id)}
+            onOpenCompare={() => setCompareOpen(true)}
+            onRecenterItinerary={(nodeId) => {
+              applyWorkspaceTransition({
+                contextEventId: eventId,
+                op: "optimize_route",
+                nodeIds: [nodeId],
+              });
+              toast.success(copy.globe.workspacePreviewRecenter);
+            }}
           />
         ) : null}
 
@@ -438,15 +450,22 @@ export function ContextWorkspaceShell({
             [
               {
                 label: copy.globe.workspaceToolCompare,
-                run: () =>
+                run: () => {
+                  const ids =
+                    state.compareIds.length >= 2
+                      ? state.compareIds
+                      : state.selectedIds.length >= 2
+                        ? state.selectedIds
+                        : focusedId
+                          ? [focusedId, ...visibleNodes.map((n) => n.id).filter((id) => id !== focusedId)].slice(0, 2)
+                          : visibleNodes.slice(0, 2).map((n) => n.id);
                   applyWorkspaceTransition({
                     contextEventId: eventId,
                     op: "compare",
-                    nodeIds:
-                      state.selectedIds.length >= 2
-                        ? state.selectedIds
-                        : visibleNodes.slice(0, 2).map((n) => n.id),
-                  }),
+                    nodeIds: ids,
+                  });
+                  if (ids.length >= 2) setCompareOpen(true);
+                },
               },
               {
                 label: copy.globe.workspaceToolOptimizeRoute,
@@ -493,6 +512,17 @@ export function ContextWorkspaceShell({
           onCancel={() => setCommitPreviewOpen(false)}
         />
       ) : null}
+
+      <WorkspaceCompareSheet
+        open={compareOpen}
+        contextEventId={eventId}
+        workspace={state}
+        onClose={() => setCompareOpen(false)}
+        onSelect={(nodeId) => {
+          setFocusedId(nodeId);
+          setPeekDismissedId(null);
+        }}
+      />
     </div>
   );
 }

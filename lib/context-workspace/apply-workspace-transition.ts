@@ -400,7 +400,7 @@ export function applyWorkspaceTransition(input: {
   }
 
   if (input.op === "compare") {
-    compareIds = (input.nodeIds ?? selectedIds).slice(0, 4);
+    compareIds = (input.nodeIds ?? selectedIds).slice(0, 5);
     lastChangeKo = lastChangeKo ?? `${compareIds.length}곳 비교`;
   }
 
