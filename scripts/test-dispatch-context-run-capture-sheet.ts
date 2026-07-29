@@ -31,10 +31,10 @@ const captureDiscovery = planFor("근처 거래", "capture_sheet", "discovery");
 assert.equal(captureDiscovery.kind, "external_context_ask");
 
 const composerMarket = planFor("아이폰 팔고 싶어", "composer", "personal");
-assert.equal(composerMarket.kind, "portal_compose_run");
+assert.equal(composerMarket.kind, "workspace_intent_continuum");
 
 const captureMarket = planFor("맥북 구해요", "capture_sheet", "personal");
-assert.equal(captureMarket.kind, "portal_compose_run");
+assert.equal(captureMarket.kind, "workspace_intent_continuum");
 
 const captureSheet = readFileSync(
   join(root, "components/globe/capture-sheet.tsx"),

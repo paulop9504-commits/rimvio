@@ -9,9 +9,9 @@ const FOOD_ENTITY = /(?:맛집|식당|레스토랑|음식점|카페|브런치|fo
 const FOOD_NEED = /(?:찾|추천|알려|골라|어디|갈|need|search)/iu;
 
 const MARKET_SIGNAL =
-  /(?:팔아|판매|삽니다|팝니다|중고|거래|나눔|양도|구매|구입|내놓기|구하기)/u;
+  /(?:팔아|판매|삽니다|팝니다|중고|거래|나눔|양도|구매|구입|내놓기|구하기|살만)/u;
 const NATURAL_MARKET_ROLE =
-  /(?:팔고\s*싶|팔래|팔아요?|내놓|양도|나눔|사고\s*싶|구해요?|구합니다|삽니다|구입하고\s*싶)/u;
+  /(?:팔고\s*싶|팔래|팔아요?|내놓|양도|나눔|사고\s*싶|살만|사줄|구해요?|구합니다|삽니다|구입하고\s*싶)/u;
 const PRICE_SIGNAL = /(?:(\d{1,3}(?:,\d{3})+|\d+)\s*(?:만\s*)?원)/u;
 
 function readBareMentionToken(raw: string): string | null {

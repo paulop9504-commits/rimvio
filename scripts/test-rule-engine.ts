@@ -87,6 +87,14 @@ assert.equal(
 );
 assert.equal(routeToolFamily("Navigate"), "maps");
 assert.equal(routeToolFamily("Calendar"), "calendar");
+assert.equal(
+  resolveToolIdForIntent({ intent: "Navigate" }),
+  "maps.navigate",
+);
+assert.equal(
+  resolveToolIdForIntent({ intent: "Calendar" }),
+  "calendar.add",
+);
 
 {
   const one = resolveClarifyLess({

@@ -73,7 +73,8 @@ export type ContextRunPlanKind =
   | "gps_dwell_confirm_open"
   | "mention_contract"
   | "portal_compose_run"
-  | "graph_command";
+  | "graph_command"
+  | "workspace_intent_continuum";
 
 export type ContextRunPlan = {
   kind: ContextRunPlanKind;

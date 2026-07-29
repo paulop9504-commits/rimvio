@@ -65,6 +65,12 @@ export function resolveToolIdForIntent(input: {
   if (input.intent === "Purchase" || family === "payment") {
     return "booking.prepare";
   }
+  if (input.intent === "Navigate") {
+    return "maps.navigate";
+  }
+  if (input.intent === "Calendar" || family === "calendar") {
+    return "calendar.add";
+  }
   if (
     input.intent === "Analyze" ||
     input.intent === "Predict" ||
@@ -91,9 +97,6 @@ export function resolveToolIdForIntent(input: {
     if (input.query && isAmenityLookupQuery(input.query)) {
       return "pharmacy.lookup";
     }
-    return "maps.search";
-  }
-  if (input.intent === "Navigate") {
     return "maps.search";
   }
 

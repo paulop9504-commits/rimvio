@@ -8,13 +8,20 @@ import {
 import { synthesizeCheckoutRoomOffer } from "@/lib/globe/context-hub/derive-lodging-room-offers";
 import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
-import type { HubLodgingCheckoutSession } from "@/lib/globe/hub-checkout/types";
+import type {
+  HubLodgingCheckoutSession,
+  LiteApiLockedPrebook,
+  LodgingCheckoutOfferWire,
+} from "@/lib/globe/hub-checkout/types";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 
 export type ResolveLodgingHubCheckoutInput = {
   contextEventId: string;
   placeId: string;
   offerId?: string | null;
+  /** LiteAPI provider offer id (preferred over card row id). */
+  providerOfferId?: string | null;
+  liteapiLockedPrebook?: LiteApiLockedPrebook | null;
 };
 
 export type LodgingRoomCardStep = {
@@ -22,6 +29,54 @@ export type LodgingRoomCardStep = {
   resourceId: string;
   payload: LodgingResourcePayload;
 };
+
+type OfferPick = {
+  readonly id: string;
+  readonly title: string;
+  readonly occupancyLabelKo: string;
+  readonly totalPriceKrw: number | null;
+  readonly priceKrw: number | null;
+  readonly guestCount: number;
+  readonly refundable: boolean;
+  readonly sourceLabelKo: string;
+  readonly providerOfferId?: string | null;
+  readonly imageUrls?: readonly string[];
+};
+
+export function pickLodgingCheckoutOffer(
+  offers: readonly OfferPick[] | null | undefined,
+  ids: {
+    readonly offerId?: string | null;
+    readonly providerOfferId?: string | null;
+  },
+): OfferPick | null {
+  if (!offers || offers.length === 0) {
+    return null;
+  }
+  const providerOfferId = ids.providerOfferId?.trim() || null;
+  const offerId = ids.offerId?.trim() || null;
+  if (providerOfferId) {
+    const byProvider = offers.find(
+      (row) => row.providerOfferId?.trim() === providerOfferId,
+    );
+    if (byProvider) {
+      return byProvider;
+    }
+  }
+  if (offerId) {
+    const byId = offers.find((row) => row.id === offerId);
+    if (byId) {
+      return byId;
+    }
+    const byProviderFallback = offers.find(
+      (row) => row.providerOfferId?.trim() === offerId,
+    );
+    if (byProviderFallback) {
+      return byProviderFallback;
+    }
+  }
+  return offers[0] ?? null;
+}
 
 export function resolveLodgingRoomCardStep(
   event: EventCandidate,
@@ -82,27 +137,45 @@ export function resolveLodgingHubCheckoutSession(
   if (!step) {
     return null;
   }
-  const offer =
-    step.payload.roomOffers?.find((row) => row.id === input.offerId) ??
-    step.payload.roomOffers?.[0];
+  const offer = pickLodgingCheckoutOffer(step.payload.roomOffers, {
+    offerId: input.offerId,
+    providerOfferId: input.providerOfferId ?? input.offerId,
+  });
   if (!offer) {
     return null;
   }
-  return prepareLodgingHubCheckout({
+  const wire: LodgingCheckoutOfferWire = {
+    id: offer.id,
+    title: offer.title,
+    occupancyLabelKo: offer.occupancyLabelKo,
+    totalPriceKrw: offer.totalPriceKrw ?? null,
+    priceKrw: offer.priceKrw ?? null,
+    guestCount: offer.guestCount,
+    refundable: offer.refundable,
+    sourceLabelKo: offer.sourceLabelKo,
+    providerOfferId: offer.providerOfferId ?? null,
+  };
+  const session = prepareLodgingHubCheckout({
     contextEventId: step.contextEventId,
     resourceId: step.resourceId,
     payload: step.payload,
-    offer: {
-      id: offer.id,
-      title: offer.title,
-      occupancyLabelKo: offer.occupancyLabelKo,
-      totalPriceKrw: offer.totalPriceKrw ?? null,
-      priceKrw: offer.priceKrw ?? null,
-      guestCount: offer.guestCount,
-      refundable: offer.refundable,
-      sourceLabelKo: offer.sourceLabelKo,
-      providerOfferId: offer.providerOfferId ?? null,
-    },
+    offer: wire,
     offerImages: offer.imageUrls,
   });
+  if (!session) {
+    return null;
+  }
+  if (!input.liteapiLockedPrebook) {
+    return session;
+  }
+  return {
+    ...session,
+    liteapiLockedPrebook: input.liteapiLockedPrebook,
+    liteapiOfferId:
+      session.liteapiOfferId ??
+      input.providerOfferId?.trim() ??
+      input.offerId?.trim() ??
+      null,
+    checkoutProvider: "liteapi",
+  };
 }

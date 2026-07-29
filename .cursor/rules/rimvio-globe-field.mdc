@@ -18,6 +18,17 @@ alwaysApply: true
 
 자연어가 필요 없어지면 채팅을 강제하지 않는다.
 
+## Workspace (locked)
+
+> **One Intent → One Workspace → One Focus**  
+> 사용자는 항상 **한 가지 일만** 본다. ADR-025 · ADR-024  
+> 모든 Workspace = **Workspace SDK 6 regions** (Header · AI · Primary Focus · Node · Action · Commit). ADR-026
+
+- Prep: 자원 준비 → **작업장 열기** 1탭
+- Open: Primary Focus = `focusSequence`의 **지금 스텝 1개**만
+- Ghost: ✓ 완료 / 대기 / 계산 중 **한 줄** — 슬롯 카드 벽 금지
+- New domain = new **recipe**, not a new app IA
+
 ## 두 표면
 
 - **Globe** — 조건 생성. 채팅만. 지도=핀만. `chatting`→`soft_signal`→`confirmed` 후 draft.
@@ -29,3 +40,4 @@ alwaysApply: true
 - Post-confirm yes/no in Globe chat
 - Draft/checklist on map · Field resource creation UI
 - Persona + slot extraction in one LLM call
+- Workspace first paint with ≥2 Primary domain cards (One Focus 위반)

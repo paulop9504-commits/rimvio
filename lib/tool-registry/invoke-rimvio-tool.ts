@@ -21,15 +21,22 @@ import {
   browseOffersToPlaceHits,
   runBrowseExtract,
 } from "@/lib/tool-registry/browse-extract";
+import {
+  buildMapsNavigateUrl,
+  travelModeFromUtterance,
+} from "@/lib/tool-registry/maps-navigate";
+import { enqueueCalendarPrepOperation } from "@/lib/reality-queue/enqueue-calendar-prep-operation";
 
 export const RIMVIO_TOOL_IDS = [
   "maps.search",
+  "maps.navigate",
   "hotel.lookup",
   "restaurant.lookup",
   "pharmacy.lookup",
   "browse.extract",
   "ranking.pick",
   "booking.prepare",
+  "calendar.add",
 ] as const;
 
 export type RimvioToolId = (typeof RIMVIO_TOOL_IDS)[number];
@@ -65,6 +72,7 @@ export type ToolInvokeInput = {
     readonly priceKrw?: number | null;
   }[];
   readonly contextEventId?: string;
+  readonly contextLabelKo?: string | null;
   readonly placeId?: string;
   readonly placeName?: string;
   readonly lat?: number | null;
@@ -86,6 +94,9 @@ export type ToolInvokeResult = {
   readonly pickedId?: string | null;
   readonly pickedLabelKo?: string | null;
   readonly candidates?: ToolInvokeInput["candidates"];
+  readonly mapsUrl?: string | null;
+  readonly reservedOpIds?: readonly string[];
+  readonly waitingCommit?: boolean;
   readonly meta?: Readonly<Record<string, string | number | boolean | null>>;
 };
 
@@ -93,6 +104,11 @@ const TOOLS: readonly RimvioToolDefinition[] = [
   {
     id: "maps.search",
     labelKo: "지도 찾기",
+    skills: ["maps", "travel"],
+  },
+  {
+    id: "maps.navigate",
+    labelKo: "길찾기",
     skills: ["maps", "travel"],
   },
   {
@@ -124,6 +140,11 @@ const TOOLS: readonly RimvioToolDefinition[] = [
     id: "booking.prepare",
     labelKo: "예약 준비",
     skills: ["travel", "finance"],
+  },
+  {
+    id: "calendar.add",
+    labelKo: "일정 넣기",
+    skills: ["travel", "maps"],
   },
 ];
 
@@ -342,6 +363,63 @@ export function invokeRimvioTool(
       toolId,
       summaryKo: formatLookupCountSummaryKo("지도", candidates.length),
       candidates,
+    };
+  }
+
+  if (toolId === "maps.navigate") {
+    const lat = input.lat;
+    const lng = input.lng;
+    const label = input.placeName?.trim() || input.query?.trim() || "목적지";
+    if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return {
+        ok: true,
+        toolId,
+        summaryKo: "길찾을 좌표가 없어요",
+        mapsUrl: null,
+        meta: { handoff: "maps_directions", missingCoords: true },
+      };
+    }
+    const mode = travelModeFromUtterance(
+      input.utterance?.trim() || input.query?.trim() || "",
+    );
+    const mapsUrl = buildMapsNavigateUrl({ lat, lng, label, mode });
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `${label}까지 길을 열었어요`,
+      mapsUrl,
+      pickedLabelKo: label,
+      meta: { handoff: "maps_directions", travelMode: mode },
+    };
+  }
+
+  if (toolId === "calendar.add") {
+    const contextEventId = input.contextEventId?.trim() ?? "";
+    const label = input.placeName?.trim() || input.query?.trim() || "";
+    if (!contextEventId || !label) {
+      return {
+        ok: true,
+        toolId,
+        summaryKo: "일정에 넣을 장소가 없어요",
+        waitingCommit: false,
+        reservedOpIds: [],
+        meta: { handoff: "calendar_prep", missingContext: true },
+      };
+    }
+    const op = enqueueCalendarPrepOperation({
+      contextEventId,
+      contextLabelKo: input.contextLabelKo,
+      placeLabelKo: label,
+      placeId: input.placeId,
+    });
+    return {
+      ok: true,
+      toolId,
+      summaryKo: `${label} 일정을 결재함에 담았어요 · 아직 캘린더에 쓰지 않았어요`,
+      waitingCommit: true,
+      reservedOpIds: [op.operationId],
+      pickedLabelKo: label,
+      meta: { handoff: "calendar_prep", prepareOnly: true },
     };
   }
 

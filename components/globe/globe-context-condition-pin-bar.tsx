@@ -20,6 +20,9 @@ import { GlobeLodgingBookingSlotChips } from "@/components/globe/globe-lodging-b
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import { copy } from "@/lib/copy/human-ko";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner";
+import { tryRunContextCommand } from "@/lib/context-command";
+import { createContextReferenceLink } from "@/lib/context-reference/create-context-reference-link";
+import type { ContextReferenceKind } from "@/lib/context-reference/types";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import {
@@ -1525,6 +1528,131 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       });
       const pipelineMessage = interpreted.refinedMessage;
 
+      // ADR-028 — Context Command Bar (migrate / clone / save) before scout.
+      {
+        const commandResult = tryRunContextCommand({
+          utterance: pipelineMessage,
+          contextEventId,
+          contextTitleKo: null,
+          anchorPlaceName,
+        });
+        if (commandResult?.ok) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "user",
+            kind: "text",
+            text: triggerMessage.trim(),
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: commandResult.assistantReplyKo,
+          });
+          toast.message(commandResult.toastKo);
+          if (
+            commandResult.anchorLat != null &&
+            commandResult.anchorLng != null &&
+            Number.isFinite(commandResult.anchorLat) &&
+            Number.isFinite(commandResult.anchorLng)
+          ) {
+            globeRef?.current?.flyToPin(
+              commandResult.anchorLat,
+              commandResult.anchorLng,
+              "city",
+              { pinViewportY: 0.58 },
+            );
+          }
+          if (
+            commandResult.shouldRescout &&
+            commandResult.rescoutUtterance?.trim()
+          ) {
+            // Defer so EVENT_CANDIDATES_UPDATED can sync activeCluster / PromptFrame anchors.
+            window.setTimeout(() => {
+              void resolveAndMaybeExecute(
+                commandResult.rescoutUtterance!,
+                answers,
+                { skipFeedGate: true },
+              );
+            }, 120);
+            setContextAgentSessionPhase("awaiting_human");
+            onQuestionsChange?.([]);
+            return null;
+          }
+          setContextAgentSessionPhase("awaiting_human");
+          onQuestionsChange?.([]);
+          return null;
+        }
+        if (commandResult && !commandResult.ok) {
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: commandResult.reasonKo,
+          });
+          toast.message(commandResult.reasonKo);
+          setContextAgentSessionPhase("awaiting_human");
+          onQuestionsChange?.([]);
+          return null;
+        }
+      }
+
+      // ADR-029 — new trip/workspace Intent opens a fresh Context (not this hub).
+      if (
+        shouldSpawnNewContext({
+          utterance: pipelineMessage,
+          activeContextEventId: contextEventId,
+        })
+      ) {
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "user",
+          kind: "text",
+          text: triggerMessage.trim(),
+        });
+        appendContextAgentComposeTurn(contextEventId, {
+          role: "assistant",
+          kind: "text",
+          text: copy.globe.contextSpawnNewReply,
+        });
+        toast.message(copy.globe.contextSpawnNewToast);
+        const spawnResult = await dispatchContextRun(
+          {
+            kind: "text",
+            text: pipelineMessage,
+            surface: "composer",
+            layerMode: "personal",
+            contextEventId: null,
+            forceNewContext: true,
+            lat: userLat ?? null,
+            lng: userLng ?? null,
+          },
+          {
+            openPortal: async () => {},
+            openFieldDiscovery: () => {},
+            tryQuickListMarket: async () => false,
+            navigateUrl: (url, label) => {
+              window.location.assign(url);
+              toast.success(`${label} 여는 중…`);
+            },
+            toastSuccess: (line) => {
+              toast.success(line);
+            },
+            toastMessage: (line) => {
+              toast.message(line);
+            },
+            onAttached: (eventId) => {
+              requestGlobeAskBridgeFocus(eventId, "bridge");
+            },
+            onGlobeIngressCompiled: ({ eventId }) => {
+              requestGlobeAskBridgeFocus(eventId, "bridge");
+            },
+          },
+        );
+        if (spawnResult.status === "error") {
+          toast.error(spawnResult.errorMessage ?? copy.globe.ingestAttachFail);
+        }
+        setContextAgentSessionPhase("awaiting_human");
+        onQuestionsChange?.([]);
+        return null;
+      }
+
       // Graph Command OS / Action Planner gate — freeze free-NL scout when matched.
       {
         const graphResult = await tryRunContextNlActionAsync({
@@ -2318,6 +2446,42 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           if (result.status === "error") {
             toast.error(result.errorMessage ?? copy.globe.ingestAttachFail);
           }
+          return;
+        } else if (chipDomain === "context_reference") {
+          const raw = input.value.trim();
+          const sep = raw.indexOf("|");
+          const kindRaw = sep >= 0 ? raw.slice(0, sep) : "style";
+          const sourceEventId = sep >= 0 ? raw.slice(sep + 1) : raw;
+          const kind = (
+            ["style", "preference", "budget", "generic"] as const
+          ).includes(kindRaw as ContextReferenceKind)
+            ? (kindRaw as ContextReferenceKind)
+            : "style";
+          const linked = createContextReferenceLink({
+            targetEventId: contextEventId,
+            sourceEventId,
+            kind,
+            labelKo: input.labelKo,
+          });
+          if (!linked.ok) {
+            toast.message(linked.reasonKo);
+            return;
+          }
+          markOperatorAskChipsTurnSubmitted(contextEventId, input.turnId, {
+            chipId: input.chipId,
+            summaryKo: linked.link.labelKo,
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: copy.globe.contextReferenceLinkedReply(
+              linked.link.labelKo,
+              linked.link.preferenceLinesKo,
+            ),
+          });
+          toast.success(
+            copy.globe.contextReferenceLinkedToast(linked.link.labelKo),
+          );
           return;
         } else {
           applyTripIntakeAskChip({

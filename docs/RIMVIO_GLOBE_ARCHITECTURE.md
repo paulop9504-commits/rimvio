@@ -1,22 +1,24 @@
-# Rimvio Globe Architecture — Internal · External · Hub · Portal
+# Rimvio Globe Architecture — One Globe · Hub · Portal
 
-> **Status:** canonical 2026-06-24  
+> **Status:** canonical 2026-07 (ADR-027)  
 > **Layer:** L2 Product · L3: `EventCandidate` (SSOT) · `globeLayerMode` · `market_intents` · `context-hub`  
-> **Story (L1):** 내 지구 · 밖 지구 — never 「Internal Globe」「Portal」 in hero UI  
-> **Related:** `docs/RIMVIO_CONSTITUTION.md` · `docs/RFC_UNIVERSAL_PIN_SYSTEM.md` · `docs/GLOBE_HUB_RESOURCE.md`
+> **Story (L1):** 지구 · 내 맥락 · 발견 — never 「Internal/External Globe」 or 「내 지구/밖 지구」 as two worlds  
+> **Related:** [ADR-027](./adr/027-one-globe-reality-context-layers.md) · `docs/RIMVIO_CONSTITUTION.md` · `docs/RFC_UNIVERSAL_PIN_SYSTEM.md` · `docs/GLOBE_HUB_RESOURCE.md`
 
 ---
 
 ## One line
 
-**Internal Globe is lived truth; Hub is where you choose a world; Portal is the engine that projects that truth outward; External Globe is where projections are discovered.**
+**One Globe is the Reality Surface.** Reality Entities live on it; the user opens Context Instances and Workspaces on the same surface. Hub chooses a world; Portal projects Context outward (visibility) — discovery is a **lens**, not a second Earth.
 
 ---
 
-## Stack
+## Stack (ADR-027)
 
 ```
-Internal Globe (SSOT · 생성)
+One Globe (Reality Surface)
+ ├─ Reality 겹     — Entity pins (place · listing · brand · …)
+ └─ My Context 겹  — Context Instance + Workspace (+ Capsule)
         │
         ▼
       Hub (세상 선택 · Portal Launcher)
@@ -25,25 +27,29 @@ Internal Globe (SSOT · 생성)
      Portal (투영 설정 · Projection Engine)
         │
         ▼
-External Globe (발견 · 읽기 전용)
+ discovery lens (read model — same Globe)
 ```
 
 | Layer | Owns data? | User verb (L1) |
 |-------|------------|----------------|
-| **Internal Globe** | ✅ Yes — sole SSOT | 흔적 · 맥락 · 남기기 |
+| **Globe** | ❌ Projection only | 지구 · 흔적 · 발견 |
+| **Context Instance** | ✅ Yes — sole user SSOT | 맥락 · 작업 |
+| **Workspace** | ❌ Execution space | 작업장 |
 | **Hub** | ❌ No — launcher only | 세상 고르기 |
-| **Portal** | ❌ No — projection only | 외부에 내놓기 |
-| **External Globe** | ❌ No — discovery index | 발견 · 찾기 |
+| **Portal** | ❌ No — projection only | 외부에 내놓기 / 공개 |
+| **discovery lens** | ❌ No — read index | 찾기 · 발견 |
+
+**Archived nouns:** Internal Globe / External Globe as product worlds → use **Context Instance** / **Reality Entity + discovery lens**.
 
 ---
 
-## 1. Internal Globe (내 지구)
+## 1. Context Instance (was “Internal Globe”)
 
 ### Definition
 
-The **only** place user activity and context are **created** and owned.
+The **only** place user activity and context are **created** and owned — projected on the **same** Globe.
 
-Everything starts here. External Globe **never** creates context.
+Everything starts here. Discovery lens **never** creates context.
 
 ### Owns
 
@@ -68,23 +74,24 @@ Everything starts here. External Globe **never** creates context.
 | Personal pins | `lib/globe/personal-globe-pin-store.ts` |
 | Globe mode | `globeLayerMode: personal` · `lib/globe/globe-layer-mode.ts` |
 | Composer ingress | `components/globe/globe-context-ingest-bar.tsx` |
+| Workspace | `lib/workspace-sdk/` · ADR-026 |
 
 ---
 
-## 2. External Globe (밖 지구)
+## 2. Reality 겹 + discovery lens (was “External Globe”)
 
 ### Definition
 
-A **discovery space**. Does not own user data. Shows **projections** from others (and opt-in public traces).
+**Reality Entities** and **projections** others can discover. Does not own the viewer’s Context. Same Globe; filter with `globeLayerMode: discovery`.
 
 ### Roles
 
 - Discovery · search · recommendation · matching
-- Aggregates **Market · People · Place** (not separate apps)
+- Aggregates **Market · People · Place** (not separate apps / not a second home)
 
 ### Example
 
-User searches **「아이폰15 Pro」** on External Globe → sees:
+User searches **「아이폰15 Pro」** on discovery lens → sees:
 
 - Public listing intents
 - Public seeking intents
@@ -141,7 +148,7 @@ Both are **connectors** — neither is SSOT.
 
 ### Definition
 
-**Intent-first projection launcher** — maps Internal context → External world exposure.
+**Intent-first projection launcher** — maps Context Instance → public / neighbor exposure.
 
 **UI spec:** `docs/RIMVIO_PORTAL_UI_SPEC.md` · **L1 sheet:** `components/portal/rimvio-portal-sheet.tsx`
 
@@ -153,7 +160,7 @@ Portal **does not store** context. Portal **does not create** context.
 
 | Rule | |
 |------|--|
-| Context created only on Internal Globe | ✅ |
+| Context created only as Context Instance (personal lens) | ✅ |
 | Portal only projects existing `eventId` | ✅ |
 | One context → one `eventId` → **many** portal projections allowed | ✅ |
 | No duplicate context / no clone `EventCandidate` on project | ✅ |
@@ -161,30 +168,30 @@ Portal **does not store** context. Portal **does not create** context.
 ### Market example
 
 ```
-Internal: "아이폰15 Pro 판매" (eventId = e-abc)
+Context: "아이폰15 Pro 판매" (eventId = e-abc)
     → Portal: 내놓기 → 중고 물품
     → Projection: price · battery · condition · trade region
-    → [ 외부 공개 ]
-    → External: listing projection (market_intents row)
+    → [ 공개 ]
+    → Reality / discovery: listing projection (market_intents row)
 ```
 
-Other users on External Globe search → find projection → chat (handshake).
+Other users on discovery lens search → find projection → chat (handshake) · Field monitors trades.
 
 ### Travel example
 
 ```
-Internal: "통영 여행"
-    → Hub: Travel
-    → Portal: dates · party size · origin
-    → External Travel World: lodging · flight · rent search handoff
+Context: "통영 여행"
+    → Workspace (travel recipe) · lodging Focus
+    → Hub/Portal handoff as needed
+    → Commit → Field queue / payment
 ```
 
 ### Code (L3) — today vs target
 
 | Portal | Today | Target |
 |--------|-------|--------|
-| Marketplace | `globe-market-intent-wizard-sheet` | + explicit 「외부 공개」gate before `market_intents` |
-| Travel | `context-hub` lodging / departure | Portal fields → external index only |
+| Marketplace | `globe-market-intent-wizard-sheet` | + explicit 「공개」gate before `market_intents` |
+| Travel | `context-hub` lodging / departure · Workspace SDK | Workspace-first (ADR-024…026) |
 | Job · Property | stub / phase gate | same pattern |
 
 ---
@@ -192,7 +199,7 @@ Internal: "통영 여행"
 ## Data flow (canonical)
 
 ```text
-Internal Globe          Hub                 Portal              External Globe
+Context Instance       Hub                 Portal           discovery lens
 (EventCandidate)   (world pick)      (projection config)     (read model)
      │                  │                    │                      │
      │  create context  │                    │                      │
@@ -203,28 +210,30 @@ Internal Globe          Hub                 Portal              External Globe
      │                  │                    │  EventCandidate)       │
      │                  │                    ├─────────────────────►│
      │                  │                    │                      │
-     │◄── manage / recall ───────────────────────────────────────────┤
+     │◄── manage / recall / Workspace ──────────────────────────────┤
      │   (always SSOT)  │                    │     discover only    │
 ```
+
+All of the above **project onto one Globe**.
 
 ---
 
 ## @중고 UX (locked sequence)
 
-1. User creates context on **Internal Globe** (composer · photo · memo).
-2. User picks **Marketplace Hub** on that context.
+1. User creates Context Instance on Globe (composer · photo · memo).
+2. User picks **Marketplace Hub** on that context (or used_goods Workspace).
 3. **Marketplace Portal** opens (price · condition · trade place · photos).
-4. User taps **「외부 공개」** (or equivalent L1) — projection only then.
-5. **External Globe** shows listing/seeking to others (same `eventId` lineage).
-6. Owner manages active listings on **Internal** (맞춤 관리) — not mixed into personal trace map.
+4. User taps **「공개」** (or equivalent L1) — projection only then.
+5. **discovery lens** shows listing/seeking to others (same `eventId` lineage).
+6. Owner monitors active listings in **Field · 내 글** — not mixed into personal-trace chrome.
 
-### Pin rule (no double pin on one globe view)
+### Pin rule (no double clutter on one chrome)
 
-| Surface | What appears |
-|---------|----------------|
-| Internal Globe map | Life traces only — **no** grey market trade pin |
-| Internal manage | My active listing/seeking |
-| External Globe map | **Others’** market projections + public traces |
+| Lens | What appears |
+|------|----------------|
+| `personal` map | Life traces · open Workspaces — **no** grey market trade pin clutter |
+| Field · mine | My active listing/seeking |
+| `discovery` map | **Others’** market projections + public traces |
 | Same `eventId` | One truth · one or more **projection records** — not two contexts |
 
 ---
@@ -233,26 +242,29 @@ Internal Globe          Hub                 Portal              External Globe
 
 - ❌ Store Marketplace catalog inside Hub
 - ❌ Store context inside Portal
-- ❌ Create context on External Globe
-- ❌ Clone / duplicate Internal context on project
+- ❌ Create context only via discovery lens (no Context Instance)
+- ❌ Clone / duplicate Context on project
 - ❌ Two `EventCandidate` roots for one user action
-- ❌ Mix personal trace clutter with External discovery on one screen (use `globeLayerMode`)
+- ❌ Mix personal-trace hero copy with neighbor discovery CTAs on one strip (use `globeLayerMode`)
+- ❌ Teach 「두 개의 지구」 in L1 / onboarding (ADR-027)
 
 ---
 
-## Implementation status (2026-06)
+## Implementation status (2026-07)
 
 | Capability | Status |
 |------------|--------|
-| Internal SSOT (`EventCandidate`) | ✅ Shipped |
-| 내 지구 / 밖 지구 toggle | ✅ Shipped |
-| Market pin hidden on 내 지구 | ✅ Shipped |
+| Context SSOT (`EventCandidate`) | ✅ Shipped |
+| personal / discovery **lens** toggle | ✅ Shipped (L1 nouns → 내 맥락 / 발견) |
+| Market pin hidden on personal lens | ✅ Shipped |
 | `market_intents` server projection | ✅ Shipped |
-| External Globe shows others’ market | ✅ Shipped |
-| Hub as world launcher (replace 나의기억/흐름) | ✅ Shipped (Context Hub + 맞춤) |
-| Explicit 「외부 공개」 portal gate | ✅ Shipped |
+| discovery shows others’ market | ✅ Shipped |
+| Hub as world launcher | ✅ Shipped (Context Hub + 맞춤) |
+| Explicit 「공개」 portal gate | ✅ Shipped |
 | Composer mode split (create vs discover) | ✅ Shipped |
-| Intent-first Portal (L1 → L2 → projection) | ✅ Shipped (`rimvio-portal-sheet`) |
+| Intent-first Portal | ✅ Shipped (`rimvio-portal-sheet`) |
+| Workspace SDK + One Focus | ✅ Shipped (ADR-024…026) |
+| One Globe product nouns (ADR-027) | ✅ Docs + L1 lock |
 
 ---
 
@@ -260,9 +272,10 @@ Internal Globe          Hub                 Portal              External Globe
 
 | Concept | Code |
 |---------|------|
-| Internal Globe | `globeLayerMode: "personal"` · `PinScope: "internal"` |
-| External Globe | `globeLayerMode: "discovery"` · `PinScope: "external"` |
+| personal lens | `globeLayerMode: "personal"` · `PinScope: "internal"` |
+| discovery lens | `globeLayerMode: "discovery"` · `PinScope: "external"` |
 | Hub launcher | `context-hub-service-catalog` · hub kind registry (extend) |
-| Portal | `rimvio-portal-sheet` → `globe-market-intent-wizard-sheet` (L3 projection) · `docs/RIMVIO_PORTAL_UI_SPEC.md` |
+| Portal | `rimvio-portal-sheet` → `globe-market-intent-wizard-sheet` · `docs/RIMVIO_PORTAL_UI_SPEC.md` |
 | Projection | `market_intents` · `external_globe_traces` · `visibility: external` |
 | SSOT | `EventCandidate.id` (`eventId`) |
+| Workspace | `lib/workspace-sdk/` |

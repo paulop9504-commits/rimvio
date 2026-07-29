@@ -24,7 +24,7 @@ export type InputClassification = {
 
 /** Verbs that mean "make/execute something" rather than look a place up. */
 const TASK_CUE =
-  /요약|번역|일정|캘린더|알림|리마인|메일|이메일|메모|저장해|추가해|만들어|정리해|공유해|보내줘|예약해|schedule|remind|translate|summari|email/iu;
+  /요약|번역|일정|캘린더|알림|리마인|메일|이메일|메모|저장해|추가해|만들어|정리해|공유해|보내줘|예약해|옮겨|이동|복제|클론|schedule|remind|translate|summari|email/iu;
 
 /** Drink / cafe cravings after small talk — always search, never hotel. */
 const BEVERAGE_SEARCH =

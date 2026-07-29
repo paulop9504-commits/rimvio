@@ -51,6 +51,7 @@ import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-s
 import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelligent-discovery-stage";
 import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
 import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
+import { WorkspaceSdkHost } from "@/components/workspace-sdk/workspace-sdk-host";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { globeFamiliesHiddenByWorkspace } from "@/lib/context-workspace/should-project-lodging-to-globe";
 import { dispatchGlobeResourceReelFocus } from "@/lib/globe/resource-reel";
@@ -145,12 +146,13 @@ import { subscribeGlobePhotoIngest } from "@/lib/globe/globe-photo-ingest-bridge
 import { isGlobeComposeInputFocused } from "@/lib/globe/compose-input-focus";
 import { setLiveLocationPowerMode } from "@/lib/location-ping/live-location-service";
 import { usePersonalGlobePinSync } from "@/hooks/use-personal-globe-pin-sync";
-import { findPersonalGlobePinByEventId } from "@/lib/globe/personal-globe-pin-store";
+import { findPersonalGlobePinByEventId, PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
 import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { subscribeFieldFlyToIntent, subscribeFieldSheetOpenState, dispatchCloseFieldSheet } from "@/lib/nav/field-sheet-bridge";
 import {
   clearFieldDashboardSearchParams,
   openFieldDashboardIngress,
+  openFieldMineIngress,
   parseFieldDashboardIngressFromSearchParams,
 } from "@/lib/nav/field-dashboard-ingress";
 import { finishContextRun } from "@/lib/context-run/execution-feed-lifecycle";
@@ -172,7 +174,6 @@ import {
   syncPortalComposeClarifyToFeed,
 } from "@/lib/context-run/sync-portal-compose-to-feed";
 import { syncPortalComposeTurnToChat, syncPortalComposeClarifyToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
-import { useIosPwaMemoryGuards } from "@/hooks/use-ios-pwa-memory-guards";
 import { useGlobeInbox } from "@/hooks/use-globe-inbox";
 import { useMediaPool } from "@/hooks/use-media-pool";
 import { useGlobeTripArrival } from "@/hooks/use-globe-trip-arrival";
@@ -418,7 +419,6 @@ import {
   enterContextSoloStage,
   exitContextSoloStage,
 } from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
-import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
 import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
@@ -555,8 +555,6 @@ function GlobeHomeBody() {
     return subscribeCaptureSheetOpen(setCaptureSheetOpen);
   }, []);
   const fieldOverlayOpen = fieldSheetOpen;
-  const [layerSwitchSuspend, setLayerSwitchSuspend] = useState(false);
-  const iosPwaGuards = useIosPwaMemoryGuards();
   const [mediaPoolOpen, setMediaPoolOpen] = useState(false);
   const [poolAttachIds, setPoolAttachIds] = useState<string[]>([]);
   const [poolSuggestedStart, setPoolSuggestedStart] = useState<string | null>(null);
@@ -926,26 +924,10 @@ function GlobeHomeBody() {
     }
   }, [activeCluster?.eventId, schedulePinRevertToCardPlace]);
 
-  const onLayerModeChange = useCallback(
-    (mode: GlobeLayerMode) => {
-      if (iosPwaGuards) {
-        setLayerSwitchSuspend(true);
-        window.setTimeout(() => {
-          setLayerSwitchSuspend(false);
-        }, 500);
-      }
-      setLayerMode(mode);
-      closeGlobeContextConditionPanel();
-      clearGlobeContextAgent();
-      resetContextAgentRuntime();
-      clearActiveContext({ force: true });
-      setHubDetailOpen(false);
-      setListOpen(false);
-      setManageOpen(false);
-      globeRef.current?.resetToOverview();
-    },
-    [clearActiveContext, iosPwaGuards, setLayerMode],
-  );
+  // ADR-027 — lock Globe home to personal; no discovery-planet toggle.
+  useEffect(() => {
+    setLayerMode("personal");
+  }, [setLayerMode]);
 
   const openContextCluster = useCallback(
     (
@@ -3879,7 +3861,11 @@ function GlobeHomeBody() {
       });
     };
     window.addEventListener(EVENT_CANDIDATES_UPDATED, sync);
-    return () => window.removeEventListener(EVENT_CANDIDATES_UPDATED, sync);
+    window.addEventListener(PERSONAL_GLOBE_PINS_UPDATED, sync);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, sync);
+      window.removeEventListener(PERSONAL_GLOBE_PINS_UPDATED, sync);
+    };
   }, [activeCluster?.eventId]);
 
   const onPinRelocate = useCallback(
@@ -4540,13 +4526,15 @@ function GlobeHomeBody() {
 
   const focusResourceOnOuterGlobe = useCallback(
     (input: { eventId: string; anchorLat: number; anchorLng: number }) => {
+      // ADR-027: one Globe — no discovery planet; fly on personal + Field for neighbor posts.
       setGlobeChatOpen(false);
-      setLayerMode("discovery");
+      setLayerMode("personal");
       setMarketFocusEventId(input.eventId);
       globeRef.current?.flyToPin(input.anchorLat, input.anchorLng, "street", {
         pinViewportY: 0.58,
       });
       focusContextByEventId(input.eventId, { openSheet: false });
+      openFieldMineIngress();
     },
     [focusContextByEventId, setLayerMode],
   );
@@ -4841,7 +4829,6 @@ function GlobeHomeBody() {
     mediaPoolOpen ||
     bridgeGhostOpen ||
     shareSheetOpen ||
-    layerSwitchSuspend ||
     // Soft keyboard + IME — freeze WebGL only while the PromptFrame is actually up.
     contextConditionPromptOpen;
 
@@ -5269,6 +5256,7 @@ function GlobeHomeBody() {
           null
         }
       />
+      <WorkspaceSdkHost contextEventId={hubEventId} />
       <GlobePlaceMapYoutubeStage globeRef={globeRef} />
       <GlobeTrendBridgeLayer
         visible={trendBridgeLayerActive && !globeRenderSuspended}
@@ -5432,7 +5420,6 @@ function GlobeHomeBody() {
       <GlobeHomeLeftChrome
         mapMediaFocusOpen={mapMediaFocusOpen}
         layerMode={layerMode}
-        onLayerModeChange={onLayerModeChange}
         timeFilter={timeFilter}
         onTimeFilterChange={setTimeFilter}
         peopleFilter={peopleFilter}

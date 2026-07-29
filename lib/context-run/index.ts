@@ -67,6 +67,11 @@ export { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 export { bindSituation } from "@/lib/context-run/bind-situation";
 export { planContextRun } from "@/lib/context-run/plan-context-run";
 export {
+  isExplicitContextContinue,
+  resolveIngressContextEventId,
+  shouldSpawnNewContext,
+} from "@/lib/context-run/should-spawn-new-context";
+export {
   clearRunState,
   completeRunState,
   CONTEXT_RUN_STORAGE_KEY,

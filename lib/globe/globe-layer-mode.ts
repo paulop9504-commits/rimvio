@@ -1,4 +1,4 @@
-/** Personal (내 지구) vs platform discovery (밖 지구) — same renderer, different pin layer. */
+/** Globe pin filter lens — L3 only. Product: one Globe, no planet toggle (ADR-027). */
 
 export type GlobeLayerMode = "personal" | "discovery";
 

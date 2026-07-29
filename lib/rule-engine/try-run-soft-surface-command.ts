@@ -1,5 +1,5 @@
 /**
- * Soft Navigate / Calendar commands — no Reality Commit.
+ * Soft Navigate / Calendar — place resolve here, execution via Tool Registry.
  * Navigate: only succeed with a real mapsUrl.
  * Calendar: only succeed when Field calendar prep was enqueued.
  */
@@ -12,7 +12,7 @@ import {
   resolveSelectionOrOrdinalRef,
 } from "@/lib/graph-command/resolve-selection-ref";
 import { extractBookingTargetLabel } from "@/lib/globe/context-action-injection/resolve-context-action-intent";
-import { enqueueCalendarPrepOperation } from "@/lib/reality-queue/enqueue-calendar-prep-operation";
+import { invokeRimvioTool } from "@/lib/tool-registry";
 
 export type SoftCommandResult = {
   readonly ok: true;
@@ -46,28 +46,6 @@ function extractNamedPlace(text: string): string | null {
     }
   }
   return null;
-}
-
-function mapsUrlFor(
-  lat: number,
-  lng: number,
-  label: string,
-  mode: "walking" | "driving" | "transit",
-): string {
-  const q = encodeURIComponent(label);
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=&travelmode=${mode}&q=${q}`;
-}
-
-function travelModeFromUtterance(
-  text: string,
-): "walking" | "driving" | "transit" {
-  if (/택시|차로|driving|드라이브/iu.test(text)) {
-    return "driving";
-  }
-  if (/지하철|전철|버스|transit|대중교통/iu.test(text)) {
-    return "transit";
-  }
-  return "walking";
 }
 
 function resolvePlaceNode(
@@ -132,16 +110,26 @@ export function tryRunSoftSurfaceCommand(input: {
 
   if (intent === "Navigate") {
     const place = resolvePlaceNode(text, graph);
-    if (place?.lat != null && place.lng != null) {
-      const mode = travelModeFromUtterance(text);
-      return {
-        ok: true,
-        kind: "navigate",
-        assistantReplyKo: `${place.labelKo}까지 길을 열었어요`,
-        mapsUrl: mapsUrlFor(place.lat, place.lng, place.labelKo, mode),
-      };
+    if (place?.lat == null || place.lng == null) {
+      return null;
     }
-    return null;
+    const tool = invokeRimvioTool("maps.navigate", {
+      lat: place.lat,
+      lng: place.lng,
+      placeName: place.labelKo,
+      placeId: place.nodeId ?? undefined,
+      utterance: text,
+    });
+    const mapsUrl = tool.mapsUrl?.trim() || null;
+    if (!mapsUrl) {
+      return null;
+    }
+    return {
+      ok: true,
+      kind: "navigate",
+      assistantReplyKo: tool.summaryKo,
+      mapsUrl,
+    };
   }
 
   if (intent === "Calendar") {
@@ -155,18 +143,22 @@ export function tryRunSoftSurfaceCommand(input: {
     if (!label) {
       return null;
     }
-    const op = enqueueCalendarPrepOperation({
+    const tool = invokeRimvioTool("calendar.add", {
       contextEventId,
       contextLabelKo: input.contextLabelKo,
-      placeLabelKo: label,
+      placeName: label,
       placeId: place?.nodeId,
+      utterance: text,
     });
+    if (!tool.waitingCommit || !(tool.reservedOpIds?.length)) {
+      return null;
+    }
     return {
       ok: true,
       kind: "calendar",
-      assistantReplyKo: `${label} 일정을 결재함에 담았어요 · 아직 캘린더에 쓰지 않았어요`,
+      assistantReplyKo: tool.summaryKo,
       mapsUrl: null,
-      reservedOpIds: [op.operationId],
+      reservedOpIds: tool.reservedOpIds,
       waitingCommit: true,
     };
   }

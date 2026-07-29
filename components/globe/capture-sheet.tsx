@@ -14,13 +14,11 @@ import {
 import { ExternalContextAskReply } from "@/components/globe/external-context-ask-reply";
 import { CaptureSheetMemoryTriggerStage } from "@/components/globe/capture-sheet-memory-trigger-stage";
 import { GlobeContextAiOrb } from "@/components/globe/globe-context-ai-orb";
-import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
 import { PersonalContextAskReply } from "@/components/globe/personal-context-ask-reply";
 import { GlobeComposerHintStrip } from "@/components/globe/globe-composer-hint-strip";
 import { useAskSpeechRecognition } from "@/hooks/use-ask-speech-recognition";
 import { useComposerHint } from "@/hooks/use-composer-hint";
 import { useGlobeContextTriggers } from "@/hooks/use-globe-context-triggers";
-import { useGlobeLayerMode } from "@/hooks/use-globe-layer-mode";
 import { useLiveLocationSnapshot } from "@/hooks/use-live-location-snapshot";
 import { useCopy, useAppLocale } from "@/hooks/use-copy";
 import type { ExternalContextOpportunityHit } from "@/lib/external-context-ask";
@@ -85,9 +83,11 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const onGlobeHome = isGlobeHomePath(pathname);
-  const { layerMode, setLayerMode } = useGlobeLayerMode();
+  /** ADR-027 — Capture is always personal Context; no discovery planet toggle. */
+  const layerMode = "personal" as const;
+  const isPersonal = true;
   const recallTriggers = useGlobeContextTriggers({
-    enabled: open && layerMode === "personal",
+    enabled: open,
     layerMode,
   });
   const liveLocation = useLiveLocationSnapshot();
@@ -100,7 +100,6 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
   const [messages, setMessages] = useState<AskMessage[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isPersonal = layerMode === "personal";
   const { hint: composerHint, showHint: showComposerHint } = useComposerHint();
 
   const { listening: voiceListening, phase: voicePhase, start: toggleVoiceInput, supported: voiceSupported } =
@@ -515,10 +514,9 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
     if (!seed) {
       return;
     }
-    setLayerMode("personal");
     setMessages([]);
     runAskTurn(seed);
-  }, [open, busy, runAskTurn, setLayerMode]);
+  }, [open, busy, runAskTurn]);
 
   if (!mounted) {
     return null;
@@ -575,12 +573,7 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
 
               <div className="relative shrink-0 px-5 pt-3">
                 <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#1d1d1f]/12" aria-hidden />
-                <div className="flex items-center justify-between gap-3">
-                  <GlobeLayerModeToggle
-                    mode={layerMode}
-                    onModeChange={setLayerMode}
-                    variant="sheet"
-                  />
+                <div className="flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={close}
@@ -716,20 +709,10 @@ export function CaptureSheet({ open, onOpenChange }: CaptureSheetProps) {
                 )}
               </div>
 
-              {messages.length === 0 && !isPersonal ? (
-                <p className="shrink-0 px-6 pb-2 text-center text-[14px] leading-relaxed text-[#8b95a1]">
-                  {copy.globe.layerModeDiscoveryHint}
-                </p>
-              ) : null}
-
               <div className="relative shrink-0 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
                 {messages.length === 0 && attachMode === "closed" ? (
                   <GlobeActionPillGuide
-                    pills={
-                      isPersonal
-                        ? copy.globe.askSheet.capturePillsPersonal
-                        : copy.globe.askSheet.capturePillsDiscovery
-                    }
+                    pills={copy.globe.askSheet.capturePillsPersonal}
                     variant="inline"
                     showLabel={false}
                     tone="light"

@@ -1497,14 +1497,22 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
             }
           >
             <p className={cn("truncate", rimvioAssistantTitleClass())}>
-              {anchorPlaceName}
+              {event.title?.trim() || anchorPlaceName}
             </p>
             <p
               className="mt-0.5 truncate text-[11px] text-[#86868b]"
               data-globe-context-agent-status
               data-globe-context-agent-lifecycle={runtime.lifecycle}
             >
-              {pipelineLabel}
+              {[
+                copy.globe.contextCommandBarEyebrow,
+                event.title?.trim() && event.title.trim() !== anchorPlaceName
+                  ? anchorPlaceName
+                  : null,
+                pipelineLabel,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <button

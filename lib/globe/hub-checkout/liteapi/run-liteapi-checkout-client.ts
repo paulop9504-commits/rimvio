@@ -67,8 +67,13 @@ export async function runLiteApiCheckoutClient(input: {
     return { ok: false, reason: "checkout_in_flight" };
   }
 
+  const lockedEarly = input.session.liteapiLockedPrebook;
   const offerId = input.session.liteapiOfferId?.trim();
-  if (!offerId) {
+  const hasLocked =
+    Boolean(lockedEarly?.prebookId?.trim()) &&
+    Boolean(lockedEarly?.transactionId?.trim()) &&
+    Boolean(lockedEarly?.secretKey?.trim());
+  if (!offerId && !hasLocked) {
     return { ok: false, reason: "missing_offer" };
   }
 
@@ -89,37 +94,62 @@ export async function runLiteApiCheckoutClient(input: {
 
   const returnUrl = `${appOrigin()}/?hub_liteapi=return&session_id=${encodeURIComponent(input.session.sessionId)}`;
 
-  const prebookResponse = await fetch("/api/hub/checkout/liteapi/prebook", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      offerId,
-      returnUrl,
-      sessionId: input.session.sessionId,
-      contextEventId: input.session.contextEventId,
-      resourceId: input.session.resourceId,
-      propertyName: input.session.propertyName,
-      offerTitle: input.session.offer.title,
-      amountKrw: input.session.amountKrw,
-    }),
-  });
+  const locked = input.session.liteapiLockedPrebook;
+  let prebookId: string | undefined;
+  let transactionId: string | undefined;
+  let secretKey: string | undefined;
+  let publicKey: "live" | "sandbox" | undefined;
 
-  if (!prebookResponse.ok) {
-    checkoutInFlightSessionIds.delete(sessionId);
-    return { ok: false, reason: "prebook_failed" };
+  if (
+    locked?.prebookId?.trim() &&
+    locked.transactionId?.trim() &&
+    locked.secretKey?.trim()
+  ) {
+    prebookId = locked.prebookId.trim();
+    transactionId = locked.transactionId.trim();
+    secretKey = locked.secretKey.trim();
+    publicKey = locked.publicKey ?? "live";
+  } else {
+    const offerId = input.session.liteapiOfferId?.trim();
+    if (!offerId) {
+      checkoutInFlightSessionIds.delete(sessionId);
+      return { ok: false, reason: "missing_offer" };
+    }
+
+    const prebookResponse = await fetch("/api/hub/checkout/liteapi/prebook", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        offerId,
+        returnUrl,
+        sessionId: input.session.sessionId,
+        contextEventId: input.session.contextEventId,
+        resourceId: input.session.resourceId,
+        propertyName: input.session.propertyName,
+        offerTitle: input.session.offer.title,
+        amountKrw: input.session.amountKrw,
+      }),
+    });
+
+    if (!prebookResponse.ok) {
+      checkoutInFlightSessionIds.delete(sessionId);
+      return { ok: false, reason: "prebook_failed" };
+    }
+
+    const prebook = (await prebookResponse.json()) as {
+      prebookId?: string;
+      transactionId?: string;
+      secretKey?: string;
+      publicKey?: "live" | "sandbox";
+    };
+
+    prebookId = prebook.prebookId?.trim();
+    transactionId = prebook.transactionId?.trim();
+    secretKey = prebook.secretKey?.trim();
+    publicKey = prebook.publicKey ?? "live";
   }
 
-  const prebook = (await prebookResponse.json()) as {
-    prebookId?: string;
-    transactionId?: string;
-    secretKey?: string;
-    publicKey?: "live" | "sandbox";
-  };
-
-  const prebookId = prebook.prebookId?.trim();
-  const transactionId = prebook.transactionId?.trim();
-  const secretKey = prebook.secretKey?.trim();
   if (!prebookId || !transactionId || !secretKey) {
     clearLiteApiPendingCheckout();
     checkoutInFlightSessionIds.delete(sessionId);
@@ -153,7 +183,7 @@ export async function runLiteApiCheckoutClient(input: {
   }
 
   const payment = new PaymentCtor({
-    publicKey: prebook.publicKey ?? "live",
+    publicKey: publicKey ?? "live",
     secretKey,
     returnUrl,
     targetElement: input.paymentTargetSelector,

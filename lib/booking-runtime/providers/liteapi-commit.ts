@@ -53,6 +53,15 @@ export async function executeLiteApiBookingPrebook(input: {
     };
   }
 
+  const secretKey = prebook.secretKey?.trim() ?? "";
+  const transactionId = prebook.transactionId?.trim() ?? "";
+  if (!secretKey || !transactionId) {
+    return {
+      ok: false,
+      reasonKo: "결제 준비가 불완전해요 · 잠시 후 다시 결재해 주세요",
+    };
+  }
+
   return {
     ok: true,
     receipt: {
@@ -66,8 +75,10 @@ export async function executeLiteApiBookingPrebook(input: {
       committedAtIso: input.nowIso ?? new Date().toISOString(),
       meta: {
         prebookId: prebook.prebookId,
-        transactionId: prebook.transactionId ?? "",
+        transactionId,
         offerId,
+        secretKey,
+        publicKey: prebook.publicKey,
       },
     },
   };

@@ -22,29 +22,39 @@ import {
   readSessionGraph,
 } from "@/lib/graph-command";
 import { isCompoundActionUtterance } from "@/lib/action-planner";
+import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
+import { resolveIngressContextEventId } from "@/lib/context-run/should-spawn-new-context";
 
-function planPortalComposeIfEligible(
+function planPortalComposeResumeIfEligible(
+  bound: BoundSituation,
+): ContextRunPlan | null {
+  const pending = readPortalComposeRunState();
+  if (
+    pending?.status !== "waiting_slot" &&
+    pending?.status !== "drafting" &&
+    pending?.status !== "conversing"
+  ) {
+    return null;
+  }
+  return {
+    kind: "portal_compose_run",
+    portalIntentId: pending.intentId,
+    portalCategoryId: pending.categoryId,
+    resumePortalRun: true,
+    graphId: pending.graphId,
+    goalKo: bound.goalKo,
+  };
+}
+
+/**
+ * Fresh portal (together / join…). Marketplace NL → continuum (ADR-032), not portal.
+ */
+function planPortalComposeFreshIfEligible(
   bound: BoundSituation,
   text: string,
   ingress: Extract<ContextRunIngress, { kind: "text" }>,
 ): ContextRunPlan | null {
   const base = { graphId: bound.graphId, goalKo: bound.goalKo };
-  const pending = readPortalComposeRunState();
-
-  if (
-    pending?.status === "waiting_slot" ||
-    pending?.status === "drafting" ||
-    pending?.status === "conversing"
-  ) {
-    return {
-      kind: "portal_compose_run",
-      portalIntentId: pending.intentId,
-      portalCategoryId: pending.categoryId,
-      resumePortalRun: true,
-      graphId: pending.graphId,
-      goalKo: bound.goalKo,
-    };
-  }
 
   if (ingress.layerMode !== "personal") {
     return null;
@@ -53,8 +63,18 @@ function planPortalComposeIfEligible(
     return null;
   }
 
+  // Used-goods / driver are Context kinds on the Workspace continuum.
+  const workspaceKind = classifyWorkspaceKind(text);
+  if (workspaceKind === "used_goods" || workspaceKind === "driver") {
+    return null;
+  }
+
   const detected = detectPortalIntentFromText(text);
   if (!detected) {
+    return null;
+  }
+  // Defense: market category must not open portal as product SSOT.
+  if (detected.categoryId === "used_goods") {
     return null;
   }
 
@@ -129,9 +149,9 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return recallPlan;
   }
 
-  const portalPlan = planPortalComposeIfEligible(bound, text, ingress);
-  if (portalPlan) {
-    return portalPlan;
+  const portalResume = planPortalComposeResumeIfEligible(bound);
+  if (portalResume) {
+    return portalResume;
   }
 
   // Small talk lane: a greeting/thanks/chit-chat on the composer gets a short
@@ -169,6 +189,23 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
         ...base,
       };
     }
+  }
+
+  // Driver + Marketplace — Intent → New Context → Domain Agent (ADR-031/032).
+  // Travel stays on globe_ingress (Article 0 create chip) then continuum on commit.
+  if (
+    (ingress.surface === "composer" || ingress.surface === "capture_sheet") &&
+    ingress.layerMode === "personal"
+  ) {
+    const workspaceKind = classifyWorkspaceKind(text);
+    if (workspaceKind === "driver" || workspaceKind === "used_goods") {
+      return { kind: "workspace_intent_continuum", ...base };
+    }
+  }
+
+  const portalPlan = planPortalComposeFreshIfEligible(bound, text, ingress);
+  if (portalPlan) {
+    return portalPlan;
   }
 
   if (ingress.surface === "capture_sheet") {
@@ -218,11 +255,16 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     ingress.layerMode === "personal" &&
     isGlobeIngressEligible(text)
   ) {
+    const existingContextId = resolveIngressContextEventId({
+      utterance: text,
+      activeContextEventId: ingress.contextEventId,
+      forceNewContext: ingress.forceNewContext === true,
+    });
     return {
       kind: "globe_ingress",
       globeIngress: compileGlobeIngress({
         text,
-        existingContextId: ingress.contextEventId,
+        existingContextId,
       }),
       ...base,
     };

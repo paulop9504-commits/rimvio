@@ -1,13 +1,13 @@
-# Rimvio External Globe AI
+# Rimvio Opportunity / Discovery AI (formerly External Globe AI)
 
-> **Canonical.** 밖 지구 · Explorer scope · Opportunity & Achievement Intelligence.  
+> **Canonical scope AI for discovery lens.** Product nouns: **발견** — not 「밖 지구」 as a second world ([ADR-027](./adr/027-one-globe-reality-context-layers.md)).  
 > **Related:** [RIMVIO_SCOPE_AI.md](./RIMVIO_SCOPE_AI.md) · [RIMVIO_PERSONAL_CONTEXT_AI.md](./RIMVIO_PERSONAL_CONTEXT_AI.md) · [RIMVIO_CONTEXT_AI_RESPONSE.md](./RIMVIO_CONTEXT_AI_RESPONSE.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md)
 
 ---
 
 ## Thesis
 
-External Globe AI is **not** a search engine.
+Discovery AI is **not** a search engine.
 
 It is an **Opportunity & Achievement Intelligence System** that discovers and connects, across countless **public Bridges (Context)**:
 
@@ -18,8 +18,8 @@ It is an **Opportunity & Achievement Intelligence System** that discovers and co
 
 …so the user can **execute and achieve** — not scroll lists.
 
-| Personal Globe AI | External Globe AI |
-|-------------------|-------------------|
+| Personal / Context AI | Discovery AI |
+|-----------------------|--------------|
 | "나를 이해한다" | "세상의 기회를 발견한다" |
 | Memory Intelligence | Opportunity Intelligence |
 | Guardian | Explorer → Achievement |

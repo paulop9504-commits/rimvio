@@ -18,6 +18,21 @@
 
 ---
 
+## Workspace Focus 철학 (모든 Workspace)
+
+> **One Intent → One Workspace → One Focus**  
+> 사용자는 **항상 한 가지 일만** 본다. (`docs/adr/025-one-intent-workspace-focus.md`)
+
+| | |
+|--|--|
+| **One Intent** | 의도 한 줄 |
+| **One Workspace** | 그 의도용 작업장 1개 (자원은 뒤에서 준비) |
+| **One Focus** | 화면 Primary = **지금 할 다음 행동 1개**만 크게 |
+
+나머지 슬롯은 ✓ 완료 / 대기 / 계산 중 **한 줄 ghost**. 항공·호텔·맛집을 한꺼번에 카드 벽으로 열지 않는다.
+
+---
+
 ## 두 표면 (조건 아키텍처)
 
 | | Globe | Field |
@@ -63,12 +78,13 @@
 - Field에서 새 compose UI / 별도 등록 폼
 - Globe 지도 위 draft 카드·체크리스트
 - 채팅 + JSON 추출 단일 LLM 호출 (페르소나와 추출 분리 필수)
+- Workspace 첫 화면에 슬롯/도메인 카드 **2개 이상** Primary로 동시 노출 (One Focus 위반)
 
 ---
 
 ## Cursor 프롬프트 헤더 (복붙용)
 
 ```
-[Rimvio UX] 분류: Yes 하나뿐 → Field 버튼/FSM. 여러 방향 → Globe 채팅(기존 파이프라인, 새 UI 금지).
-Globe=조건 생성, Field=조건 실행. docs/RIMVIO_UX_CONSTITUTION.md
+[Rimvio UX] One Intent→One Workspace→One Focus. Yes 하나뿐→Field. 여러 방향→Globe 채팅(기존 파이프라인).
+docs/RIMVIO_UX_CONSTITUTION.md · ADR-025
 ```

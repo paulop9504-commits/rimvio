@@ -81,6 +81,7 @@ export type OperatorAskChipsComposePayload = {
     | "clarify_less"
     | "plan_handoff"
     | "ingress_converge"
+    | "context_reference"
     | "research_approval";
   readonly pendingTrigger: string;
   readonly chips: readonly {
@@ -114,6 +115,10 @@ export type WorkspacePreviewComposePayload = {
   readonly query: string;
   readonly domain?: "lodging" | "eatery" | "poi" | "amenity";
   readonly nodes: readonly WorkspacePreviewComposeNode[];
+};
+
+export type WorkspaceSdkComposePayload = {
+  readonly frame: import("@/lib/workspace-sdk/types").WorkspaceSdkFrame;
 };
 
 export type IntentExecutionTimelineLaneWire = {
@@ -188,6 +193,12 @@ export type ContextAgentComposeTurnInput =
       kind: "workspace_preview";
       text: string;
       payload: WorkspacePreviewComposePayload;
+    }
+  | {
+      role: "assistant";
+      kind: "workspace_sdk";
+      text: string;
+      payload: WorkspaceSdkComposePayload;
     };
 
 export type ContextAgentComposeTurn =
@@ -266,6 +277,14 @@ export type ContextAgentComposeTurn =
       kind: "workspace_preview";
       text: string;
       payload: WorkspacePreviewComposePayload;
+      atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "workspace_sdk";
+      text: string;
+      payload: WorkspaceSdkComposePayload;
       atIso: string;
     };
 

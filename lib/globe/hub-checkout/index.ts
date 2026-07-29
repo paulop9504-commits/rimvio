@@ -2,11 +2,13 @@ export type {
   ExecuteLodgingHubCheckoutResult,
   HubCheckoutPaymentMethod,
   HubLodgingCheckoutSession,
+  LiteApiLockedPrebook,
   LodgingCheckoutOfferWire,
 } from "@/lib/globe/hub-checkout/types";
 export { prepareLodgingHubCheckout } from "@/lib/globe/hub-checkout/prepare-lodging-hub-checkout";
 export { executeLodgingHubCheckout, finalizeLodgingHubCheckoutFromPgReturn, finalizeLodgingHubCheckoutFromLiteApiReturn } from "@/lib/globe/hub-checkout/execute-lodging-hub-checkout";
 export {
+  pickLodgingCheckoutOffer,
   resolveLodgingHubCheckoutSession,
   resolveLodgingRoomCardStep,
   type LodgingRoomCardStep,
@@ -18,6 +20,10 @@ export {
   type LodgingHubCheckoutOpenDetail,
   type LodgingHubCheckoutOpenEventDetail,
 } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
+export {
+  lockedPrebookFromBookingReceipt,
+  openLodgingHubCheckoutFromPendingPayment,
+} from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-from-pending-payment";
 export {
   closeLodgingCheckoutState,
   getActiveLodgingCheckout,

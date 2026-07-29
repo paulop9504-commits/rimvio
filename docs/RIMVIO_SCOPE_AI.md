@@ -81,7 +81,7 @@ Scope AI persona: guardian | explorer  (lib/scope-ai/)
 | P2 | experience | external read | Explorer (discover) |
 | P3+ | gathering… | external default | Explorer (connect · compose) |
 
-**Law:** Personal and external copy/mode **never mixed on one surface** — [RIMVIO_STORY_LAYER.md](./RIMVIO_STORY_LAYER.md).
+**Law:** Personal and discovery **lens** copy/mode **never mixed on one chrome strip** — [RIMVIO_STORY_LAYER.md](./RIMVIO_STORY_LAYER.md) · [ADR-027](./adr/027-one-globe-reality-context-layers.md). One Globe; not two planets.
 
 ---
 

@@ -50,7 +50,7 @@ Users should **not** remember every next step — **trigger edges** should fire 
 
 **Rimvio AI is not a conversational AI — it derives and re-executes Task Graphs from truth when synaptic context matches.**
 
-**Users create context only; Rimvio executes that context and projects it—personal globe (내 지구) and external globe (밖 지구)—in the most appropriate surface. Projection is read-only; Commit is truth.**
+**Users create context only; Rimvio executes that context and projects it onto one Reality Surface (Globe)—Reality entities and the user’s Context Instances as layers/lenses, never two planets. Projection is read-only; Commit is truth.** See **ADR-027**.
 
 **Durability law:** *Execution is disposable. Truth is durable.* Derived Execution Graphs are ephemeral and may be rebuilt at any time. Only committed truth is durable. Projection may be redrawn at any time; it never owns truth.
 

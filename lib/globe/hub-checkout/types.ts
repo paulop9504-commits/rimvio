@@ -18,6 +18,14 @@ export type LodgingCheckoutOfferWire = {
   readonly providerOfferId?: string | null;
 };
 
+/** Rate lock from Field Commit — Hub Pay reuses this (no second prebook). */
+export type LiteApiLockedPrebook = {
+  readonly prebookId: string;
+  readonly transactionId: string;
+  readonly secretKey: string;
+  readonly publicKey?: "live" | "sandbox";
+};
+
 export type HubLodgingCheckoutSession = {
   readonly sessionId: string;
   readonly hubId: Extract<ContextHubServiceId, "lodging">;
@@ -35,6 +43,8 @@ export type HubLodgingCheckoutSession = {
   readonly coverImageUrl?: string | null;
   readonly partnerLabel?: string | null;
   readonly refundable?: boolean;
+  /** When set, Payment SDK skips /api/hub/checkout/liteapi/prebook. */
+  readonly liteapiLockedPrebook?: LiteApiLockedPrebook | null;
 };
 
 export type ExecuteLodgingHubCheckoutResult =

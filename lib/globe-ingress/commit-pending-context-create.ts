@@ -18,6 +18,11 @@ import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
 import { copy } from "@/lib/copy/human-ko";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
+import {
+  runWorkspaceIntentContinuum,
+  seedTravelLodgingForContinuum,
+} from "@/lib/workspace-kind/run-workspace-intent-continuum";
+import { offerContextReferenceChips } from "@/lib/context-reference/offer-context-reference-chips";
 
 export type CommitPendingContextCreateResult = {
   readonly event: EventCandidate;
@@ -77,11 +82,31 @@ export function commitPendingContextCreate(input: {
     text: `${copy.globe.contextAnchor.committedHeadline}\n${assistantText}`,
   });
 
+  // One tool: Context created → Workspace prep → Focus → booking path seed.
+  runWorkspaceIntentContinuum({
+    utterance: draft.utterance,
+    graphId: draft.graphId,
+    contextEventId: event.id,
+    createIfMissing: false,
+    skipChatEcho: false,
+  });
+
+  void seedTravelLodgingForContinuum({
+    contextEventId: event.id,
+    utterance: draft.utterance,
+  });
+
   input.handlers.onGlobeIngressCompiled?.({
     compiled: draft.compiled,
     eventId: event.id,
   });
   input.handlers.onAttached?.(event.id);
+
+  // ADR-030 — optional Reference Links only (never auto-merge).
+  offerContextReferenceChips({
+    targetEventId: event.id,
+    utterance: draft.utterance,
+  });
 
   clearPendingContextCreate(draft.graphId);
   return { event, compiled: draft.compiled, draft };

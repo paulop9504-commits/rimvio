@@ -6,10 +6,8 @@ import { GlobeContextAgentMapButton } from "@/components/globe/globe-context-age
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
-import { GlobeLayerModeToggle } from "@/components/globe/globe-layer-mode-toggle";
 import { useMemoryRecallContext } from "@/components/globe/globe-home-memory-dock";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
-import { copy } from "@/lib/copy/human-ko";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
 import type { GlobeContextTimeFilter } from "@/lib/globe/globe-context-time-filter";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
@@ -20,7 +18,6 @@ import { findLifeEventCandidate } from "@/lib/life-read-model";
 export type GlobeHomeLeftChromeProps = {
   mapMediaFocusOpen: boolean;
   layerMode: GlobeLayerMode;
-  onLayerModeChange: (mode: GlobeLayerMode) => void;
   timeFilter: GlobeContextTimeFilter;
   onTimeFilterChange: (filter: GlobeContextTimeFilter) => void;
   peopleFilter: GlobeContextPeopleFilter;
@@ -68,11 +65,10 @@ export type GlobeHomeLeftChromeProps = {
   };
 };
 
-/** Top-left globe — sidebar trigger + layer toggle + context hub rail only. */
+/** Top-left globe — sidebar trigger + context hub rail only (ADR-027: no layer toggle). */
 export function GlobeHomeLeftChrome({
   mapMediaFocusOpen,
   layerMode,
-  onLayerModeChange,
   timeFilter,
   onTimeFilterChange,
   peopleFilter,
@@ -137,17 +133,6 @@ export function GlobeHomeLeftChrome({
                 onPress={onToggleContextAgentArm}
               />
             </div>
-          ) : null}
-          <div className="pointer-events-auto">
-            <GlobeLayerModeToggle mode={layerMode} onModeChange={onLayerModeChange} />
-          </div>
-          {layerMode === "discovery" ? (
-            <p
-              className="pointer-events-none max-w-[11rem] px-1 text-[11px] font-medium leading-snug text-muted-foreground"
-              data-globe-layer-mode-hint
-            >
-              {copy.globe.layerModeDiscoveryHint}
-            </p>
           ) : null}
         </>
       ) : null}

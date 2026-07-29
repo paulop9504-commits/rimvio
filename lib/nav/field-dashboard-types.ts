@@ -1,7 +1,6 @@
 /**
  * Field dashboard — **Reality Control Center** (Pending Reality · Commit Gate).
- * Secondary lenses: trades (execution FSM) · mine (outer posts).
- *
+ * Secondary lenses: trades (execution FSM) · mine (published listings/seeking).
  * Surface tier: **Field = product**. Do not mount from `/metrics` (Context Ops).
  * @see lib/dev/rimvio-surface-tiers.ts
  * @see lib/reality-queue/

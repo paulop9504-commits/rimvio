@@ -18,6 +18,10 @@ import {
   planPersonalContextAskFallback,
   planTextIngestFallback,
 } from "@/lib/context-run/plan-context-run";
+import {
+  resolveIngressContextEventId,
+  shouldSpawnNewContext,
+} from "@/lib/context-run/should-spawn-new-context";
 import { ensureRunState, touchRunStateNode } from "@/lib/context-run/run-state-store";
 import {
   appendGlobeChatTextMessage,
@@ -116,6 +120,10 @@ import { sellItemDraftToComposeText } from "@/lib/portal/compose-draft/draft-to-
 import type { PortalIntentId } from "@/lib/portal/portal-types";
 import { classifyGlobeWorkSurface } from "@/lib/work-queue/classify-globe-work-surface";
 import { syncWorkQueueFromActiveRuns } from "@/lib/work-queue/sync-work-queue-from-runs";
+import {
+  runWorkspaceIntentContinuum,
+  seedTravelLodgingForContinuum,
+} from "@/lib/workspace-kind/run-workspace-intent-continuum";
 
 function refreshWorkQueue(handlers: ContextRunEffectHandlers): void {
   syncWorkQueueFromActiveRuns();
@@ -351,6 +359,46 @@ async function executeContextRunPlan(
         text: small.replyKo || plan.smallTalkReplyKo || "네, 편하게 말해줘요 🙂",
       });
       return { graphId, status: "done", planKind: plan.kind };
+    }
+    case "workspace_intent_continuum": {
+      const ingressText = bound.ingress;
+      const rawExisting =
+        ingressText.kind === "text"
+          ? ingressText.contextEventId?.trim() || null
+          : null;
+      const existing = resolveIngressContextEventId({
+        utterance: bound.goalKo,
+        activeContextEventId: rawExisting,
+        forceNewContext:
+          ingressText.kind === "text" && ingressText.forceNewContext === true,
+      });
+      const continuum = runWorkspaceIntentContinuum({
+        utterance: bound.goalKo,
+        graphId,
+        contextEventId: existing,
+        createIfMissing: true,
+        lat: ingressText.kind === "text" ? ingressText.lat : null,
+        lng: ingressText.kind === "text" ? ingressText.lng : null,
+      });
+      if (!continuum) {
+        return { graphId, status: "noop", planKind: plan.kind };
+      }
+      handlers.onAttached?.(continuum.contextEventId);
+      if (continuum.kind === "travel") {
+        void seedTravelLodgingForContinuum({
+          contextEventId: continuum.contextEventId,
+          utterance: bound.goalKo,
+          lat: ingressText.kind === "text" ? ingressText.lat : null,
+          lng: ingressText.kind === "text" ? ingressText.lng : null,
+        });
+      }
+      handlers.toastMessage?.(continuum.card.ctaKo);
+      refreshWorkQueue(handlers);
+      return {
+        graphId,
+        status: "done",
+        planKind: plan.kind,
+      };
     }
     case "graph_command": {
       const commands = plan.graphCommands ?? [];
@@ -1051,10 +1099,23 @@ async function executeContextRunPlan(
         );
       }
       const ingressText = bound.ingress;
-      const existingContextId =
+      const rawExisting =
         ingressText.kind === "text" ? ingressText.contextEventId : null;
-      const forceNew =
+      const forceNewFlag =
         ingressText.kind === "text" && ingressText.forceNewContext === true;
+      // ADR-029 — new trip Intent does not refresh the open hub Context.
+      const existingContextId = resolveIngressContextEventId({
+        utterance: bound.goalKo,
+        activeContextEventId: rawExisting,
+        forceNewContext: forceNewFlag,
+      });
+      const forceNew =
+        forceNewFlag ||
+        (Boolean(rawExisting?.trim()) &&
+          shouldSpawnNewContext({
+            utterance: bound.goalKo,
+            activeContextEventId: rawExisting,
+          }));
 
       // Cursor magic — Find before mint when hub is null.
       if (!existingContextId?.trim() && !forceNew) {
@@ -1079,7 +1140,7 @@ async function executeContextRunPlan(
       }
 
       // Mint path — Draft preview + 「생성」before Reality Commit (Article 0).
-      // Hub refresh (existingContextId) still commits immediately.
+      // Explicit continue still commits onto existingContextId.
       if (existingContextId?.trim()) {
         const classified = classifyExperienceRunIntent(bound.goalKo);
         const event = ensureTripContextEvent({
@@ -1119,6 +1180,18 @@ async function executeContextRunPlan(
 
         handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
         handlers.onAttached?.(event.id);
+        runWorkspaceIntentContinuum({
+          utterance: bound.goalKo,
+          graphId,
+          contextEventId: event.id,
+          createIfMissing: false,
+        });
+        void seedTravelLodgingForContinuum({
+          contextEventId: event.id,
+          utterance: bound.goalKo,
+          lat: ingressText.kind === "text" ? ingressText.lat : null,
+          lng: ingressText.kind === "text" ? ingressText.lng : null,
+        });
         refreshWorkQueue(handlers);
         return {
           graphId,
@@ -1137,7 +1210,11 @@ async function executeContextRunPlan(
         profile: classified?.profile ?? null,
       });
       offerPendingContextCreate({ draft, skipUserEcho: true });
-      handlers.toastMessage?.(copy.globe.contextAnchor.chipPrompt);
+      handlers.toastMessage?.(
+        forceNew
+          ? copy.globe.contextSpawnNewToast
+          : copy.globe.contextAnchor.chipPrompt,
+      );
       refreshWorkQueue(handlers);
       return {
         graphId,

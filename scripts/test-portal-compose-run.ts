@@ -45,9 +45,10 @@ async function main() {
   assert.equal(detectComposeSchemaFromText("아이패드 팔고 싶어"), "sell_item");
   assert.equal(detectComposeSchemaFromText("방 좀 놓으려고"), "rent_property");
 
-  assert.equal(planFor("아이폰 팔고 싶어").kind, "portal_compose_run");
+  // Marketplace NL → Context continuum (ADR-032); together/join stay portal.
+  assert.equal(planFor("아이폰 팔고 싶어").kind, "workspace_intent_continuum");
   assert.equal(planFor("주말 스터디 같이해요", "capture_sheet").kind, "portal_compose_run");
-  assert.equal(planFor("호텔 추천해줘").kind, "experience_run");
+  assert.equal(planFor("호텔 추천해줘").kind, "graph_command");
 
   const event = commitEventUpsert({
     id: "ec-portal-run-test",

@@ -10,7 +10,8 @@ import type {
   MarketIntentRole,
 } from "@/lib/globe/market/market-intent-types";
 
-const SEEKING_SIGNAL = /(?:삽니다|구합니다|구해|구함|구하기|구매|구입|찾아요|찾습니다|wanted)/u;
+const SEEKING_SIGNAL =
+  /(?:삽니다|구합니다|구해|구함|구하기|구매|구입|찾아요|찾습니다|사고\s*싶|살만|사줄|찾아\s*줘|찾아줘|wanted)/u;
 const LISTING_SIGNAL = /(?:팝니다|팔아|판매|나눔|양도|내놓기|sell)/u;
 
 function readRole(text: string): MarketIntentRole {

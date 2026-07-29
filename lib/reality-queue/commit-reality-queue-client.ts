@@ -14,6 +14,7 @@ import { stampMultiOperatorRole } from "@/lib/engine/team-collab/multi-operator-
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { executeBookingOperationsClient } from "@/lib/booking-runtime";
 import { resolveBookingProviderForOperation } from "@/lib/booking-runtime/resolve-booking-provider";
+import { openLodgingHubCheckoutFromPendingPayment } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-from-pending-payment";
 import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
 import { executePaymentPrepAfterCommit } from "@/lib/reality-queue/execute-payment-prep-after-commit";
 import type { RealityQueueItemV1 } from "@/lib/reality-queue/types";
@@ -215,6 +216,12 @@ export async function commitRealityQueueClient(input: {
     for (const receipt of booking.receipts) {
       if (receipt.status === "handoff" && receipt.handoffUrl) {
         window.open(receipt.handoffUrl, "_blank", "noopener,noreferrer");
+      }
+      if (receipt.status === "pending_payment") {
+        openLodgingHubCheckoutFromPendingPayment({
+          contextEventId: eventId,
+          receipt,
+        });
       }
     }
     stampCommittedOperationsOnEvent({ event, operations: bookingOps });

@@ -45,7 +45,7 @@ L3 Engineering — code · migration · RFC (PinEntity · EventCandidate · visi
 > **You were here. And it mattered.**  
 > 당신은 이곳에 있었고, 그것은 의미가 있었습니다.
 
-**External / launch film (Phase 2):**
+**External / discovery (Phase 2 narrative — same Globe, discovery lens):**
 
 > **Every place has a story. Now, it can remember yours.**
 
@@ -175,13 +175,15 @@ Globe Story Layer는 **공간·기억** 축. Feed North Star는 **다음 행동*
 - [ ] No forbidden words in hero · toast · empty state?
 - [ ] PRD / rule uses L2, not L0 poetry alone?
 - [ ] Code / migration uses L3, not 「흔적」 table names?
-- [ ] Personal vs external copy not mixed on one surface?
+- [ ] Personal vs discovery **lens** copy not mixed on one chrome strip? (ADR-027 — one Globe)
+- [ ] No 「내 지구 / 밖 지구」 as two-world product nouns in new UI?
 - [ ] **이 기능이 internal인데 Creator 행동을 하고 있지 않은가?** — [`RIMVIO_SCOPE_AI.md`](./RIMVIO_SCOPE_AI.md)
 
 ---
 
 ## Related docs
 
+- `docs/adr/027-one-globe-reality-context-layers.md` — One Globe lock
 - `docs/RIMVIO_CONSTITUTION.md` — Experience OS doctrine
 - `docs/RFC_UNIVERSAL_PIN_SYSTEM.md` — PinEntity projection + domain registry
 - `docs/RIMVIO_EXPERIENCE_LAYERS.md` — FACT → ACTION

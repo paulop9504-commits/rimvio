@@ -1,6 +1,7 @@
 # Rimvio Personal Context AI
 
-> **Canonical.** Globe ask sheet (`CaptureSheet`) · Guardian scope on **내 지구**.  
+> **Canonical.** Globe ask sheet (`CaptureSheet`) · Guardian scope on **내 맥락** lens.  
+> **Architecture:** [ADR-027](./adr/027-one-globe-reality-context-layers.md) — One Globe.  
 > **Response system:** [RIMVIO_CONTEXT_AI_RESPONSE.md](./RIMVIO_CONTEXT_AI_RESPONSE.md) · [RIMVIO_EXPERIENCE_LAYERS.md](./RIMVIO_EXPERIENCE_LAYERS.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md)
 
 ---
@@ -16,8 +17,8 @@ Rimvio AI is **not** a generic chat bot. It is **Context Understanding → Retri
 | Guess when data is missing | **Never guess** — answer only from stored bridges |
 | Long prose replies | One-line summary + Bridge cards + ACTION CTAs |
 
-**Internal (내 지구):** Memory OS — recall people, places, trips, schedule from the user's own traces.  
-**External (밖 지구):** Opportunity OS — see [RIMVIO_EXTERNAL_GLOBE_AI.md](./RIMVIO_EXTERNAL_GLOBE_AI.md).
+**Personal / Context AI (내 맥락):** Memory OS — recall people, places, trips, schedule from the user's own traces.  
+**Discovery AI (발견):** Opportunity OS — see [RIMVIO_EXTERNAL_GLOBE_AI.md](./RIMVIO_EXTERNAL_GLOBE_AI.md).
 
 ---
 
@@ -94,7 +95,7 @@ Forbidden in replies: 업로드 · 게시 · 좋아요 · 별점 · generic “A
 | Phase | Scope |
 |-------|-------|
 | **A** (now) | Client deterministic retrieval over `listLifeEventCandidates()` |
-| **B** | External / alignment ask on 밖 지구 |
+| **B** | Discovery / alignment ask on discovery lens |
 | **C** | Context graph + vector RAG **retrieve only**; LLM formats, does not invent |
 
 ---

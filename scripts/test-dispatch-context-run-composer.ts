@@ -4,6 +4,13 @@ import assert from "node:assert/strict";
 import { bindSituation } from "../lib/context-run/bind-situation";
 import { planContextRun } from "../lib/context-run/plan-context-run";
 import type { ContextRunIngress } from "../lib/context-run/ingress-types";
+import {
+  clearSessionGraphs,
+  resetGraphCommandStoreForTests,
+} from "../lib/graph-command";
+
+resetGraphCommandStoreForTests();
+clearSessionGraphs();
 
 function planFor(
   text: string,
@@ -20,11 +27,13 @@ function planFor(
 }
 
 const marketBare = planFor("아이폰 팔고 싶어");
-assert.equal(marketBare.kind, "portal_compose_run");
-assert.equal(marketBare.portalIntentId, "offer");
+assert.equal(marketBare.kind, "workspace_intent_continuum");
 
 const marketMention = planFor("@중고 맥북");
-assert.equal(marketMention.kind, "portal_compose_run");
+assert.equal(marketMention.kind, "workspace_intent_continuum");
+
+const marketBuy = planFor("맥북 살만한 거 찾아줘");
+assert.equal(marketBuy.kind, "workspace_intent_continuum");
 
 const genericMemo = planFor("점심에 김치찌개 먹음");
 assert.equal(genericMemo.kind, "text_ingest");
@@ -55,13 +64,13 @@ const compareAsk = planFor("여유 있게 가는 거랑 빡빡하게 가는 거 
 assert.equal(compareAsk.kind, "personal_context_ask");
 
 const lodging = planFor("호텔 추천해줘");
-assert.equal(lodging.kind, "experience_run");
+assert.equal(lodging.kind, "graph_command");
 
 const trip = planFor("부산 출장");
 assert.equal(trip.kind, "globe_ingress");
 
 const eatery = planFor("강남 맛집 추천");
-assert.equal(eatery.kind, "experience_run");
+assert.equal(eatery.kind, "graph_command");
 
 const mealMention = planFor("@식사 강남역");
 assert.equal(mealMention.kind, "mention_contract");
