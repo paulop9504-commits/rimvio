@@ -11,6 +11,8 @@
  * "렌터카"       → { transport: "렌터카" }
  */
 
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
+
 export type SlotKey =
   | "location"
   | "duration"
@@ -47,11 +49,11 @@ const EXTRACTORS: readonly SlotExtractor[] = [
   {
     key: "location",
     extract: (t) => {
-      // Korean location patterns
+      const fromShared = extractTravelDestination(t);
+      if (fromShared) return fromShared;
+
       const m = t.match(/(.+?)(으로|로)\s*(이동|변경|바꿔|가자|갈래|출발)/);
       if (m) return m[1]!.trim();
-      const m2 = t.match(/(제주|서울|부산|오사카|도쿄|교토|후쿠오카|방콕|파리|뉴욕|하와이|다낭|발리|싱가포르|홍콩|타이페이|osaka|tokyo|kyoto|jeju|seoul|busan)/i);
-      if (m2) return m2[1]!.trim();
       return null;
     },
   },

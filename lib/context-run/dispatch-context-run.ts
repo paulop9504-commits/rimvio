@@ -47,7 +47,7 @@ import {
   fetchExternalContextSourcesClient,
   resolveExternalContextAsk,
 } from "@/lib/external-context-ask";
-import { resolveExperienceRunTurn, ensureTripContextEvent } from "@/lib/experience-run";
+import { resolveExperienceRunTurn, ensureTripContextEventAsync } from "@/lib/experience-run";
 import { buildMarketQuickListDraft } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchGlobeIntentSupplyClear } from "@/lib/globe/intent-supply/globe-intent-supply-bridge";
 import { runGlobeMapIntentSupply } from "@/lib/globe/intent-supply/run-globe-map-intent-supply";
@@ -252,7 +252,7 @@ export async function dispatchContextRun(
         role: "user",
         text: replyText,
       });
-      proposeContextAnchorMoveFromNl({
+      await proposeContextAnchorMoveFromNl({
         graphId: replyGraphId,
         eventId: activeEventId,
         utterance: replyText,
@@ -1143,7 +1143,7 @@ async function executeContextRunPlan(
       // Explicit continue still commits onto existingContextId.
       if (existingContextId?.trim()) {
         const classified = classifyExperienceRunIntent(bound.goalKo);
-        const event = ensureTripContextEvent({
+        const event = await ensureTripContextEventAsync({
           message: bound.goalKo,
           existingEventId: existingContextId,
           profile: classified?.profile,

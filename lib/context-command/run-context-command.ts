@@ -6,7 +6,7 @@
 import { copy } from "@/lib/copy/human-ko";
 import { classifyContextCommand } from "@/lib/context-command/classify-context-command";
 import type { ContextCommandResult } from "@/lib/context-command/types";
-import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
+import { ensureTripContextEventAsync } from "@/lib/experience-run/ensure-trip-context-event";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { clearContextConditionLastBatch } from "@/lib/globe/context-condition-ai";
 import { createPersonalGlobePinFromEvent } from "@/lib/globe/create-personal-globe-pin";
@@ -72,12 +72,12 @@ function syncGlobeAnchorFromEvent(event: EventCandidate): {
   return coords;
 }
 
-export function runContextCommand(input: {
+export async function runContextCommand(input: {
   readonly utterance: string;
   readonly contextEventId: string;
   readonly contextTitleKo?: string | null;
   readonly anchorPlaceName?: string | null;
-}): ContextCommandResult {
+}): Promise<ContextCommandResult> {
   const classified = classifyContextCommand(input.utterance);
   if (!classified) {
     return { ok: false, reasonKo: copy.globe.contextCommandUnrecognized };
@@ -111,7 +111,7 @@ export function runContextCommand(input: {
   const dest = classified.destinationLabelKo!.trim();
 
   if (classified.kind === "migrate_anchor") {
-    const event = ensureTripContextEvent({
+    const event = await ensureTripContextEventAsync({
       message: `${dest} ${criteria} · ${classified.rawUtterance}`,
       existingEventId: input.contextEventId,
       profile,
@@ -135,7 +135,7 @@ export function runContextCommand(input: {
   }
 
   // clone_context
-  const cloned = ensureTripContextEvent({
+  const cloned = await ensureTripContextEventAsync({
     message: `${dest} ${criteria} · 복제 · ${title} · ${classified.rawUtterance}`,
     profile,
   });
@@ -156,12 +156,12 @@ export function runContextCommand(input: {
   };
 }
 
-export function tryRunContextCommand(input: {
+export async function tryRunContextCommand(input: {
   readonly utterance: string;
   readonly contextEventId: string;
   readonly contextTitleKo?: string | null;
   readonly anchorPlaceName?: string | null;
-}): ContextCommandResult | null {
+}): Promise<ContextCommandResult | null> {
   if (!classifyContextCommand(input.utterance)) {
     return null;
   }

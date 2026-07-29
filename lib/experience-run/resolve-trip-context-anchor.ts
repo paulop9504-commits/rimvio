@@ -6,6 +6,7 @@ import {
 import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
 import { enrichCanonicalPlaceProfileFromRealityGraph } from "@/lib/reality-graph/project-to-place-profile";
 import { projectWorldGeoToPlaceFields } from "@/lib/reality-graph/project-to-place-profile";
+import { resolveLocationFromText } from "@/lib/location-engine/resolve-location";
 
 export type TripContextAnchor = {
   placeLabel: string;
@@ -14,9 +15,11 @@ export type TripContextAnchor = {
   profile: CanonicalPlaceProfile;
   /** Reality Graph entity when known. */
   zoneId?: string;
+  /** How coords were obtained — sync dictionary vs open-world geocode. */
+  resolveSource?: "world_geo" | "domestic" | "overseas_registry" | "nominatim";
 };
 
-/** Stable explicit destination anchor for trip contexts. */
+/** Stable explicit destination anchor for trip contexts (sync dictionaries). */
 export function resolveTripContextAnchor(
   placeLabel: string | null | undefined,
 ): TripContextAnchor | null {
@@ -44,6 +47,7 @@ export function resolveTripContextAnchor(
       lng: world.lng,
       profile,
       zoneId: world.zoneId,
+      resolveSource: "world_geo",
     };
   }
 
@@ -61,6 +65,7 @@ export function resolveTripContextAnchor(
         }),
         domestic.placeLabel,
       ),
+      resolveSource: "domestic",
     };
   }
 
@@ -81,8 +86,55 @@ export function resolveTripContextAnchor(
         }),
         overseas.label,
       ),
+      resolveSource: "overseas_registry",
     };
   }
 
   return null;
+}
+
+/**
+ * Open-world destination resolve — dictionaries first, then Location Engine (Nominatim).
+ * Use for NL move / create when sync registries miss secondary overseas cities.
+ */
+export async function resolveTripContextAnchorAsync(
+  placeLabel: string | null | undefined,
+): Promise<TripContextAnchor | null> {
+  const sync = resolveTripContextAnchor(placeLabel);
+  if (sync) return sync;
+
+  const label = placeLabel?.trim();
+  if (!label) return null;
+
+  const located = await resolveLocationFromText(label);
+  const entity = located?.entity;
+  if (!entity) return null;
+  if (!Number.isFinite(entity.lat) || !Number.isFinite(entity.lng)) return null;
+
+  const placeName =
+    entity.labelKo?.trim() ||
+    entity.labelEn?.trim() ||
+    label;
+
+  return {
+    placeLabel: placeName,
+    lat: entity.lat,
+    lng: entity.lng,
+    profile: enrichCanonicalPlaceProfileFromRealityGraph(
+      buildCanonicalPlaceProfile({
+        lat: entity.lat,
+        lng: entity.lng,
+        label: placeName,
+        formattedAddress:
+          entity.formattedAddress?.trim() ||
+          entity.hierarchyKo?.trim() ||
+          placeName,
+        anchorSource: "explicit_destination",
+        confidence: Math.max(0.7, entity.confidence ?? 0.75),
+      }),
+      placeName,
+    ),
+    zoneId: entity.id,
+    resolveSource: "nominatim",
+  };
 }

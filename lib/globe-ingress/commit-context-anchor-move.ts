@@ -2,7 +2,10 @@
  * Propose / commit Context Anchor moves (NL + drag).
  */
 
-import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
+import {
+  resolveTripContextAnchor,
+  resolveTripContextAnchorAsync,
+} from "@/lib/experience-run/resolve-trip-context-anchor";
 import { relocateGlobeContextPin } from "@/lib/globe/relocate-globe-context-pin";
 import { resolveEventGlobeCoords } from "@/lib/globe/resolve-event-globe-coords";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -27,11 +30,11 @@ export const CONTEXT_ANCHOR_MOVE_SLOT_ID = "context_anchor_move";
 export const CONTEXT_ANCHOR_MOVE_CONFIRM = "confirm";
 export const CONTEXT_ANCHOR_MOVE_CANCEL = "cancel";
 
-export function proposeContextAnchorMoveFromNl(input: {
+export async function proposeContextAnchorMoveFromNl(input: {
   graphId: string;
   eventId: string;
   utterance: string;
-}): "offered" | "unresolved" | "missing_event" {
+}): Promise<"offered" | "unresolved" | "missing_event"> {
   const event = findLifeEventCandidate(input.eventId);
   if (!event) {
     return "missing_event";
@@ -52,11 +55,15 @@ export function proposeContextAnchorMoveFromNl(input: {
     event.title.trim() ||
     "현재";
 
-  const resolved = resolveTripContextAnchor(targetLabel);
-  const toLat = resolved?.lat ?? current.lat;
-  const toLng = resolved?.lng ?? current.lng;
-  const toLabel = resolved?.placeLabel ?? targetLabel;
-  if (toLat == null || toLng == null || !Number.isFinite(toLat) || !Number.isFinite(toLng)) {
+  // Sync dictionaries first, then open-world Nominatim — never fake-move to current pin.
+  const resolved =
+    resolveTripContextAnchor(targetLabel) ??
+    (await resolveTripContextAnchorAsync(targetLabel));
+  if (
+    !resolved ||
+    !Number.isFinite(resolved.lat) ||
+    !Number.isFinite(resolved.lng)
+  ) {
     appendGlobeChatTextMessage({
       graphId: input.graphId,
       role: "assistant",
@@ -64,6 +71,10 @@ export function proposeContextAnchorMoveFromNl(input: {
     });
     return "unresolved";
   }
+
+  const toLat = resolved.lat;
+  const toLng = resolved.lng;
+  const toLabel = resolved.placeLabel;
 
   writePendingContextAnchorMove({
     graphId: input.graphId,

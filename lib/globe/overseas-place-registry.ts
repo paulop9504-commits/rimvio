@@ -21,8 +21,9 @@ function termToRegex(term: string): string {
 /** Word-boundary match for Korean / Latin place tokens (allows 로/으로 particles). */
 export function buildPlacePattern(...terms: string[]): RegExp {
   const alts = terms.map(termToRegex).join("|");
+  // After place+particle, allow space/punct OR Korean verb start (이동/여행/옮겨…)
   return new RegExp(
-    `(?:^|[\\s,·])(?:${alts})(?:로|으로|에|에서|까지|발)?(?:[\\s,·]|$)`,
+    `(?:^|[\\s,·])(?:${alts})(?:로|으로|에|에서|까지|발)?(?=[\\s,·]|[가-힣A-Za-z]|$)`,
     "iu",
   );
 }

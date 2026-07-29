@@ -1,46 +1,120 @@
 /**
  * Travel destination noun extract — shared by experience-run + Globe prep.
- * Kept out of action-chat so Globe L1 boundary stays clean.
+ * Open-world: hardcoded hubs + overseas registry + particle/phrase capture.
+ * Coord resolve (incl. Nominatim) lives in resolveTripContextAnchor / Location Engine.
  */
 
-const TRAVEL_DEST =
-  /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|상하이|상해|베이징|타이베이|타이페이|홍콩|마카오|대만|방콕|싱가포르|파리|런던|뉴욕|LA|인천공항|김포공항|공항)/iu;
+import { classifyOverseasManualPlace } from "@/lib/globe/classify-overseas-manual-place";
+import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-from-text";
+
+/** Frequent hubs — fast path; not the full world. */
+const TRAVEL_DEST_HUBS =
+  /(?:오사카|제주(?:도)?|도쿄|후쿠오카|삿포로|교토|나고야|오키나와|상하이|상해|베이징|타이베이|타이페이|홍콩|마카오|대만|방콕|싱가포르|파리|런던|뉴욕|LA|로스앤젤레스|하와이|다낭|발리|괌|사이판|인천공항|김포공항)/iu;
 
 const TRIP_ANNOUNCE =
-  /(?:여행(?:간|감|가|을|을\s*)?|출장|해외(?:여행)?|놀러(?:감|가|갈)?|trip|abroad)/iu;
+  /(?:여행(?:간|감|가|을|을\s*)?|출장|해외(?:여행)?|놀러(?:감|가|갈)?|trip|abroad|vacation|holiday)/iu;
 
 const TIMED =
   /(?:\d{1,3}\s*시간\s*(?:뒤|후|뒤에|후에)|\d{1,3}\s*분\s*(?:뒤|후|뒤에|후에)|내일|모레)/iu;
+
+/** Noise particles / verbs that should not become place labels. */
+const PLACE_NOISE =
+  /^(?:여기|저기|그곳|어디|근처|주변|맥락|위치|앵커|여행|출장|숙소|호텔|맛집|일정|please|here|there|somewhere)$/iu;
+
+function cleanPlaceLabel(raw: string): string | null {
+  let cleaned = raw
+    .replace(/^(?:저|그|이)\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned || cleaned.length < 2 || cleaned.length > 48) return null;
+  if (PLACE_NOISE.test(cleaned)) return null;
+  // Normalize common Korean destination suffixes used in speech
+  if (/^제주도$/u.test(cleaned)) cleaned = "제주";
+  return cleaned;
+}
 
 export function isTravelTripAnnouncement(message: string): boolean {
   const trimmed = message.trim();
   if (!trimmed) {
     return false;
   }
-  const hasTrip = TRIP_ANNOUNCE.test(trimmed) || TRAVEL_DEST.test(trimmed);
+  const hasTrip =
+    TRIP_ANNOUNCE.test(trimmed) ||
+    TRAVEL_DEST_HUBS.test(trimmed) ||
+    classifyOverseasManualPlace(trimmed) != null;
   if (!hasTrip) {
     return false;
   }
   return TIMED.test(trimmed) || TRIP_ANNOUNCE.test(trimmed);
 }
 
+/**
+ * Extract destination label from NL — any overseas/domestic place name when possible.
+ * Returns label only; call resolveTripContextAnchor(Async) for coords.
+ */
 export function extractTravelDestination(message: string): string | null {
-  const destMatch = message.match(
-    /(?:오사카|제주|도쿄|후쿠오카|삿포로|교토|상하이|상해|베이징|타이베이|타이페이|홍콩|마카오|대만|방콕|싱가포르|파리|런던|뉴욕|인천공항|김포공항)/iu,
-  );
-  if (destMatch?.[0]) {
-    return destMatch[0].trim();
+  const text = message.trim();
+  if (!text) return null;
+
+  const hasMoveOrTripVerb =
+    /(?:로|으로)\s*(?:여행|출장|놀러|감|간|가|이동|옮겨|변경|바꿔|가자|갈래|출발)|(?:에도|에)\s*(?:만들|열어|복제|복사)|(?:여행|출장)(?:\s|$|[!?.,])|(?:to|for)\s+[A-Za-z]|go(?:ing)?\s+to|trip|vacation/iu.test(
+      text,
+    );
+
+  // 1) Particle / phrase capture first when user is naming a destination action
+  //    (avoids picking incidental KR places like "둔산동 … 제주도로 옮겨")
+  if (hasMoveOrTripVerb) {
+    const particlePatterns: RegExp[] = [
+      // Destination immediately before particle — not the whole preceding phrase
+      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})(?:도)?(?:로|으로)\s*(?:여행|출장|놀러|감|간|가|이동|옮겨|변경|바꿔|가자|갈래|출발)/iu,
+      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})(?:도)?(?:에도|에)\s*(?:만들|열어|복제|복사)/iu,
+      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})\s+(?:여행|출장)(?:\s|$|[!?.,])/iu,
+      /(?:to|for|in|at)\s+([A-Za-z][A-Za-z\s'.-]{1,40}?)(?:\s+(?:trip|travel|vacation|holiday|please)|[.!?,]|$)/iu,
+      /(?:go(?:ing)?\s+to|visit(?:ing)?|fly(?:ing)?\s+to)\s+([A-Za-z][A-Za-z\s'.-]{1,40})/iu,
+    ];
+    for (const pat of particlePatterns) {
+      const m = text.match(pat);
+      const label = m?.[1] ? cleanPlaceLabel(m[1]) : null;
+      if (label) {
+        const overseas = classifyOverseasManualPlace(label);
+        if (overseas) return overseas.label;
+        const domestic = resolveRunPlaceFromText(label);
+        if (domestic) return domestic.placeLabel;
+        return label;
+      }
+    }
   }
 
-  const toMatch = message.match(
-    /([가-힣A-Za-z]{2,12})(?:로|으로)\s*(?:여행|출장|놀러|감|간|가)/iu,
-  );
-  if (toMatch?.[1]) {
-    return toMatch[1].trim();
+  // 2) Overseas registry (~100 cities + countries)
+  const overseas = classifyOverseasManualPlace(text);
+  if (overseas) {
+    return overseas.label;
   }
 
-  if (TRAVEL_DEST.test(message)) {
-    return message.match(TRAVEL_DEST)?.[0] ?? null;
+  // 3) Domestic / KR known places
+  const domestic = resolveRunPlaceFromText(text);
+  if (domestic) {
+    return domestic.placeLabel;
+  }
+
+  // 4) Frequent hub regex
+  const hub = text.match(TRAVEL_DEST_HUBS);
+  if (hub?.[0]) {
+    return cleanPlaceLabel(hub[0]);
+  }
+
+  // 5) Bare Latin city when message is mostly the place name
+  if (/^[A-Za-z][A-Za-z\s'.-]{1,40}$/.test(text)) {
+    return cleanPlaceLabel(text);
+  }
+
+  // 6) Bare Hangul place when short and trip-ish context
+  if (TRIP_ANNOUNCE.test(text)) {
+    const bare = text.match(
+      /(?:^|[\s,·])([가-힣]{2,12})(?:[\s,·]|$)/u,
+    );
+    const label = bare?.[1] ? cleanPlaceLabel(bare[1]) : null;
+    if (label && !PLACE_NOISE.test(label)) return label;
   }
 
   return null;

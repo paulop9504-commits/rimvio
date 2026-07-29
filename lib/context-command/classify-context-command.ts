@@ -23,13 +23,13 @@ function extractCommandDestination(text: string): string | null {
     return known;
   }
   const toPlace = text.match(
-    /([가-힣A-Za-z]{2,16})(?:로|으로)\s*(?:옮겨|이동|옮겨줘|이동해|옮겨\s*주세요)/u,
+    /([가-힣A-Za-z][가-힣A-Za-z\s'.-]{1,40}?)(?:로|으로)\s*(?:옮겨|이동|옮겨줘|이동해|옮겨\s*주세요)/u,
   );
   if (toPlace?.[1] && !/(?:이|그|저|여기|거기|맥락|작업장)/u.test(toPlace[1])) {
     return toPlace[1].trim();
   }
   const also = text.match(
-    /([가-힣A-Za-z]{2,16})(?:에도|에)\s*(?:만들|열어|복제|복사)/u,
+    /([가-힣A-Za-z][가-힣A-Za-z\s'.-]{1,40}?)(?:에도|에)\s*(?:만들|열어|복제|복사)/u,
   );
   if (also?.[1] && !/(?:이|그|저|여기|맥락|작업장)/u.test(also[1])) {
     return also[1].trim();

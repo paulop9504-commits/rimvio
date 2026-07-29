@@ -44,7 +44,9 @@ export function extractRunDestination(message: string): string | null {
   if (anchored) {
     return anchored.placeLabel;
   }
-  const cityTrip = message.match(/([가-힣]{2,10})\s+(?:출장|여행)/iu);
+  const cityTrip = message.match(
+    /([가-힣A-Za-z][가-힣A-Za-z\s'.-]{1,30})\s+(?:출장|여행|trip|vacation)/iu,
+  );
   if (cityTrip?.[1]) {
     return cityTrip[1].trim();
   }

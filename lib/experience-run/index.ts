@@ -8,7 +8,15 @@ export type {
 } from "@/lib/experience-run/experience-run-types";
 
 export { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
-export { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
+export {
+  ensureTripContextEvent,
+  ensureTripContextEventAsync,
+} from "@/lib/experience-run/ensure-trip-context-event";
+export {
+  resolveTripContextAnchor,
+  resolveTripContextAnchorAsync,
+} from "@/lib/experience-run/resolve-trip-context-anchor";
+export type { TripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 export { resolveExperienceRunTurn } from "@/lib/experience-run/resolve-experience-run-turn";
 export { runBusinessTripExperienceRun } from "@/lib/experience-run/run-business-trip-experience-run";
 export {

@@ -1,7 +1,11 @@
 import type { ExperienceRunProfile } from "@/lib/experience-run/experience-run-types";
 import { parseRelativeDateTimeFromText } from "@/lib/action-chat/action-agent-normalize";
 import { extractRunDestination } from "@/lib/experience-run/classify-experience-run-intent";
-import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
+import {
+  resolveTripContextAnchor,
+  resolveTripContextAnchorAsync,
+  type TripContextAnchor,
+} from "@/lib/experience-run/resolve-trip-context-anchor";
 import type { TravelFilledSlots } from "@/lib/experience-run/travel-context-slots";
 import { computeWindowEndIso } from "@/lib/experience-run/travel-context-slots";
 import type { EventCandidate } from "@/lib/events/event-candidate";
@@ -22,22 +26,18 @@ function toLocalEventIso(date: Date): string {
   );
 }
 
-/** Agent step — create or refresh travel/business context event (SSOT). */
-export function ensureTripContextEvent(input: {
+function commitTripContextEvent(input: {
   message: string;
-  referenceDate?: string;
+  referenceDate: string;
   existingEventId?: string | null;
-  profile?: ExperienceRunProfile;
-  travelSlots?: TravelFilledSlots | null;
+  profile: ExperienceRunProfile;
+  slots: TravelFilledSlots | null;
+  destination: string | null;
+  destinationAnchor: TripContextAnchor | null;
 }): EventCandidate {
-  const message = input.message.trim();
-  const referenceDate = input.referenceDate ?? new Date().toISOString().slice(0, 10);
-  const slots = input.travelSlots ?? null;
-  const destination =
-    slots?.destination?.trim() || extractRunDestination(message);
-  const destinationAnchor = resolveTripContextAnchor(destination);
+  const { message, referenceDate, slots, destination, destinationAnchor } = input;
   const resolvedDestination = destinationAnchor?.placeLabel ?? destination ?? null;
-  const profile = input.profile ?? "business_trip";
+  const profile = input.profile;
   const isBusiness =
     profile === "business_trip" &&
     /(?:출장|business|미팅|회의|업무)/iu.test(message);
@@ -71,7 +71,6 @@ export function ensureTripContextEvent(input: {
     feedPlanEnabled: true,
     globeManualContext: true,
     targetingSource: "experience_run",
-    /** Preserve original utterance so TravelBrain companion/aesthetic survive city confirm. */
     sourceMessage: message,
     executionProfileId:
       profile === "lodging_search"
@@ -108,22 +107,19 @@ export function ensureTripContextEvent(input: {
 
   const companionGroup =
     /(?:연인|커플|남친|여친|신혼|허니문|친구|가족|부모님|엄마|아빠)/u.test(message);
-  const metadata = stampPlanContextMetadata(
-    baseMetadata,
-    {
-      planId: eventId,
-      title,
-      windowStartIso: datetime,
-      windowEndIso,
-      windowConfidence: windowEndIso ? "confirmed" : "open",
-      nights: slots?.durationDays ?? undefined,
-      place: resolvedDestination,
-      peerDisplayName: null,
-      peerThreadId: null,
-      attachMode: "new",
-      planMode: companionGroup ? "group" : "solo",
-    },
-  );
+  const metadata = stampPlanContextMetadata(baseMetadata, {
+    planId: eventId,
+    title,
+    windowStartIso: datetime,
+    windowEndIso,
+    windowConfidence: windowEndIso ? "confirmed" : "open",
+    nights: slots?.durationDays ?? undefined,
+    place: resolvedDestination,
+    peerDisplayName: null,
+    peerThreadId: null,
+    attachMode: "new",
+    planMode: companionGroup ? "group" : "solo",
+  });
 
   const event = commitEventUpsert({
     id: eventId,
@@ -143,4 +139,52 @@ export function ensureTripContextEvent(input: {
   });
 
   return event;
+}
+
+/** Agent step — create or refresh travel/business context event (SSOT). */
+export function ensureTripContextEvent(input: {
+  message: string;
+  referenceDate?: string;
+  existingEventId?: string | null;
+  profile?: ExperienceRunProfile;
+  travelSlots?: TravelFilledSlots | null;
+}): EventCandidate {
+  const message = input.message.trim();
+  const referenceDate = input.referenceDate ?? new Date().toISOString().slice(0, 10);
+  const slots = input.travelSlots ?? null;
+  const destination =
+    slots?.destination?.trim() || extractRunDestination(message);
+  return commitTripContextEvent({
+    message,
+    referenceDate,
+    existingEventId: input.existingEventId,
+    profile: input.profile ?? "business_trip",
+    slots,
+    destination,
+    destinationAnchor: resolveTripContextAnchor(destination),
+  });
+}
+
+/** Open-world create/refresh — Nominatim when city is not in sync registries. */
+export async function ensureTripContextEventAsync(input: {
+  message: string;
+  referenceDate?: string;
+  existingEventId?: string | null;
+  profile?: ExperienceRunProfile;
+  travelSlots?: TravelFilledSlots | null;
+}): Promise<EventCandidate> {
+  const message = input.message.trim();
+  const referenceDate = input.referenceDate ?? new Date().toISOString().slice(0, 10);
+  const slots = input.travelSlots ?? null;
+  const destination =
+    slots?.destination?.trim() || extractRunDestination(message);
+  return commitTripContextEvent({
+    message,
+    referenceDate,
+    existingEventId: input.existingEventId,
+    profile: input.profile ?? "business_trip",
+    slots,
+    destination,
+    destinationAnchor: await resolveTripContextAnchorAsync(destination),
+  });
 }

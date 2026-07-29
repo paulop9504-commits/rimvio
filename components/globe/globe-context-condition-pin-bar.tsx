@@ -1534,7 +1534,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
 
       // ADR-028 — Context Command Bar (migrate / clone / save) before scout.
       {
-        const commandResult = tryRunContextCommand({
+        const commandResult = await tryRunContextCommand({
           utterance: pipelineMessage,
           contextEventId,
           contextTitleKo: null,
