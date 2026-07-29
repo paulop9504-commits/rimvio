@@ -147,7 +147,7 @@ export function tryRunSoftSurfaceCommand(input: {
       contextEventId,
       contextLabelKo: input.contextLabelKo,
       placeName: label,
-      placeId: place?.nodeId,
+      placeId: place?.nodeId ?? undefined,
       utterance: text,
     });
     if (!tool.waitingCommit || !(tool.reservedOpIds?.length)) {

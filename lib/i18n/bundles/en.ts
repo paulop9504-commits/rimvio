@@ -259,6 +259,40 @@ export const copyEn: Copy = {
     contextAgentFrameExpand: "Expand context details",
     contextAgentFrameCollapse: "Collapse context details",
     contextAgentComposeHint: "Ask for nearby food or lodging and we'll tailor it",
+    contextCommandBarEyebrow: "Active context",
+    contextCommandUnrecognized: "Say where to move or clone this context",
+    contextCommandSaveToast: "Saved this state",
+    contextCommandSaveReply:
+      "Saved · you can still say move, clone, or prepare a booking",
+    contextCommandMigrateToast: (place: string) =>
+      `Moved context to ${place} · retuning Reality`,
+    contextCommandMigrateReply: (place: string) =>
+      `Re-running this context around ${place}`,
+    contextCommandCloneToast: (place: string) =>
+      `Opened the same criteria for ${place}`,
+    contextCommandCloneReply: (place: string, fromTitle: string) =>
+      `Kept “${fromTitle}” criteria and opened a ${place} context · continue from the sidebar`,
+    contextSpawnNewToast: "Opened a new context · kept separate from the last one",
+    contextSpawnNewReply:
+      "Starting a new context. Say “continue in this context” to attach instead.",
+    contextReferenceOfferBody:
+      "New context ready. Pick one below to reference — skip to leave it unlinked.",
+    contextReferenceOfferBodyMarket:
+      "Opened a buy/sell context. Link a trip to continue together? The trip Reality stays unchanged.",
+    contextReferenceOfferHint: "Link an existing Context (optional)",
+    contextReferenceChipStyle: (title: string) => `Apply ${title} style`,
+    contextReferenceChipFood: (title: string) => `Apply ${title} taste`,
+    contextReferenceChipTogether: (title: string) => `Continue with ${title}`,
+    contextReferenceDefaultLabel: (title: string) => `Reference ${title}`,
+    contextReferenceLinkedStrip: "Linked Reality",
+    contextReferenceMissing: "Couldn't find a context to link",
+    contextReferenceSelf: "Can't link a context to itself",
+    contextReferenceLinkedToast: (label: string) =>
+      `${label} · linked as reference (source unchanged)`,
+    contextReferenceLinkedReply: (label: string, lines: readonly string[]) =>
+      lines.length > 0
+        ? `Linked ${label} as reference\n${lines.map((l) => `· ${l}`).join("\n")}`
+        : `Linked ${label} as reference`,
     cicadaAgentPhaseClarifying: "Clarifying intent",
     cicadaAgentPhaseVisualizing: "On globe",
     cicadaAgentPhaseSearching: "Searching",
@@ -440,6 +474,46 @@ export const copyEn: Copy = {
       count > 0
         ? `${count} places ready · Open workspace`
         : "Places ready · Open workspace",
+    workspacePrepEyebrow: "Resources ready",
+    workspacePrepTravelTitle: "Trip workspace",
+    workspacePrepDriverTitle: "Driver workspace",
+    workspacePrepMarketSellTitle: "Sell workspace",
+    workspacePrepMarketBuyTitle: "Buy workspace",
+    workspacePrepBody: (prepared: number, total: number) =>
+      prepared > 0
+        ? `${prepared}/${total} resources ready · open workspace`
+        : "Tuning resources · workspace opens soon",
+    workspacePrepOpenCta: "Open workspace",
+    workspaceOpenTogether:
+      "Let's build Reality together · starting trip prep",
+    workspaceOpenTogetherDriver:
+      "Let's build Reality together · starting with today's route",
+    workspaceOpenTogetherMarket:
+      "Let's build Reality together · starting sell prep",
+    workspaceOpenTogetherMarketBuy:
+      "Let's build Reality together · tuning buy conditions",
+    workspaceOpenTogetherGeneric:
+      "Let's build Reality together · starting here",
+    workspaceProgressiveEyebrow: "Reality pieces",
+    workspaceProgressiveActive: "Open",
+    workspaceProgressiveLatent: "Next",
+    workspacePrepDriverShellHint:
+      "Calls & earnings still warming up · start with location & route",
+    workspacePrepFocusHint: (focusLabel: string) =>
+      `Now · ${focusLabel}`,
+    workspaceFocusHeadline: (focusLabel: string) =>
+      `Current work · ${focusLabel}`,
+    workspaceFocusAsk: (focusLabel: string) =>
+      `Next up — ${focusLabel}?`,
+    workspaceFocusGhostDone: (label: string) => `✓ ${label} done`,
+    workspaceFocusGhostWaiting: (label: string) => `${label} · waiting`,
+    workspaceFocusGhostBackground: (label: string) =>
+      `${label} · calculating`,
+    workspaceSdkFocusNext: "Next step",
+    workspaceSdkFlightSkipHint: "Flights later · continue with stay",
+    workspaceSdkCommitPrimary: "Approve in Field",
+    workspaceSdkActionReadyHint: (placeName: string) =>
+      `Queued booking prep for ${placeName}`,
     workspaceOpenTitle: "Workspace",
     workspaceCommitCta: "Commit to Globe",
     workspaceCollapse: "Collapse",
