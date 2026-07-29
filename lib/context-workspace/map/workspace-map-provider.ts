@@ -20,6 +20,12 @@ export type WorkspaceMapPin = {
   readonly bookmarked?: boolean;
   /** Photo-spot / activity cue for marker label. */
   readonly photoSpot?: boolean;
+  /** Lodging markers may show soft [예약 준비] when focused. */
+  readonly kind?: "lodging" | "eatery" | "poi" | "amenity";
+  /** Explicit Preview 「선택」 — prepare gate. */
+  readonly explicitlySelected?: boolean;
+  /** Prepare done — waiting for Field approval. */
+  readonly awaitingField?: boolean;
 };
 
 export type WorkspaceMapCamera = {

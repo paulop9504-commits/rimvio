@@ -265,6 +265,8 @@ async function placeSearchCandidatesAsync(
     checkInIso: stay?.checkInIso,
     checkOutIso: stay?.checkOutIso,
     guestCount: stay?.guestCount,
+    contextEventId: input.contextEventId,
+    contextLabelKo: input.placeName ?? input.query ?? null,
   });
   return hitsToCandidates(rankByValueConsensus(hits));
 }

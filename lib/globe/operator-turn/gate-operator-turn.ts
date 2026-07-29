@@ -25,6 +25,11 @@ import { parseGraphCommands } from "@/lib/graph-command/parse-graph-commands";
 import { isLocalDiscoveryRefinement } from "@/lib/globe/context-condition-ai/resolve-local-discovery-action";
 import { gateLodgingStayReviseAskChips } from "@/lib/globe/operator-turn/gate-lodging-stay-revise-ask-chips";
 import { gateSoftConfirmAskChips } from "@/lib/globe/operator-turn/gate-soft-confirm-ask-chips";
+import {
+  resolveCommandFirstDecision,
+  shouldExecuteWithoutAsk,
+} from "@/lib/rimvio-command/command-first";
+import { resolveConfirmedRealityAskGate } from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
 
 function isRichGraphFilter(text: string): boolean {
   const cmd = parseGraphCommands(text, null)[0];
@@ -170,6 +175,40 @@ export function gateOperatorTurnSync(input: {
         engineTurn.reason === "trip_experience_gap")
     ) {
       return { tool: "scout", reason: "search_or_bare_domain" };
+    }
+    // Confirmed Reality → never re-quiz dates/lodging (Context OS vs chatbot).
+    if (
+      engineTurn.tool === "ask_chips" &&
+      (engineTurn.reason === "trip_intake_gap" ||
+        engineTurn.reason === "trip_experience_gap")
+    ) {
+      const gate = resolveConfirmedRealityAskGate({
+        event: input.event,
+        contextEventId: input.ssot.contextEventId,
+      });
+      if (
+        gate.askForbiddenSlots.includes("dates") ||
+        gate.askForbiddenSlots.includes("lodging") ||
+        gate.askForbiddenSlots.includes("destination")
+      ) {
+        return { tool: "scout", reason: "confirmed_reality_skip_ask" };
+      }
+    }
+    // Command-first: high-confidence 숙소/맛집 search → execute, never quiz.
+    if (engineTurn.tool === "ask_chips" && text) {
+      const cmd = resolveCommandFirstDecision({
+        utterance: text,
+        activeContextId: input.ssot.contextEventId,
+      });
+      if (
+        shouldExecuteWithoutAsk(cmd) &&
+        (cmd.commandId === "search_hotel" || cmd.commandId === "search_eatery")
+      ) {
+        return {
+          tool: "scout",
+          reason: cmd.reason || "command_first_execute",
+        };
+      }
     }
     return engineTurn;
   }

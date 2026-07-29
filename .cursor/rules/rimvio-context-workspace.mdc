@@ -5,11 +5,19 @@ alwaysApply: true
 
 # Context Workspace (locked)
 
-**Canonical:** `docs/adr/022-context-workspace-first.md`
+**Canonical:** `docs/adr/022-context-workspace-first.md` · **Workstream:** `docs/adr/036-work-becomes-context.md` · **Commit densify:** `docs/adr/037-reality-commit-confirms-context.md`
 
 ## One sentence
 
 > **Chat mutates the Workspace; Capsules live on the Globe; Commit roots Reality.**
+
+> **Never ask users to create a context. Let their work become the context.** (ADR-036)
+
+> **Reality Commit confirms the Context Graph** — Observation → Selection → Commit → Context Reality (ADR-037). Booking does not invent Context; Commit densifies it.
+
+> **Confirmed Reality → never re-ask. Inferable → fill. Decision-needed → action propose, not slot quiz.**
+
+Context · Session · Project IDs are engine bags. Users only work; `lib/workstream/` records residue (`HotelSelected` → `HotelCommitted`, …). Search does not persist history — selection / schedule / budget / Reality Commit do.
 
 Context Workspace = Cursor IDE. Globe = Capsule 지도 + Forest (not the street editor).
 

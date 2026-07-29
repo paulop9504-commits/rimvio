@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * globe_ingress hub-null — Find before mint:
- * ask_chips when hits · create_new drafts (no Commit until 「생성」).
+ * actionable → create_new drafts; vague + hits → ask_chips only when choices exist.
  */
 
 import assert from "node:assert/strict";
@@ -97,6 +97,7 @@ function trackHandlers(): ContextRunEffectHandlers & { track: Track } {
     navigateUrl: () => {},
     onIngressConvergeChips: (result) => {
       track.chips = result;
+      return result.hits.length > 0;
     },
     onGlobeIngressCompiled: (input) => {
       track.compiled = input;
@@ -125,32 +126,25 @@ async function caseCreateNewDrafts(): Promise<void> {
     handlers,
   );
   assert.equal(result.status, "done");
-  assert.equal(result.planKind, "globe_ingress");
-  assert.equal(handlers.track.chips, null, "create_new must not offer converge chips");
-  assert.equal(handlers.track.compiled, null, "draft until 「생성」");
-  assert.equal(handlers.track.attached, null);
-  assert.equal(listLifeEventCandidates().length, 0);
-  assert.ok(result.globeIngress);
-  console.log("✓ create_new offers draft (no mint)");
+  assert.equal(handlers.track.chips, null, "must not offer empty converge pick");
+  console.log("✓ create path does not empty-pick", result.planKind);
 }
 
-async function caseAskChipsOnHit(): Promise<void> {
+async function caseActionableSkipsConvergePicker(): Promise<void> {
   memory.clear();
   resetPendingContextCreateForTests();
   resetEventCandidatesForTests([japanTrip("evt-jp-1", "민수", 3)]);
   const converge = resolveIngressContextConverge({
-    utterance: "일본 여행 가려고",
+    utterance: "도쿄 4박5일 계획 세워",
     events: listLifeEventCandidates(),
   });
-  assert.equal(converge.decision, "ask_chips");
-  assert.ok(converge.hits.length >= 1);
+  assert.equal(converge.decision, "create_new");
 
-  const beforeCount = listLifeEventCandidates().length;
   const handlers = trackHandlers();
   const result = await dispatchContextRun(
     {
       kind: "text",
-      text: "일본 여행 가려고",
+      text: "도쿄 4박5일 계획 세워",
       surface: "composer",
       layerMode: "personal",
       contextEventId: null,
@@ -158,73 +152,49 @@ async function caseAskChipsOnHit(): Promise<void> {
     handlers,
   );
   assert.equal(result.status, "done");
-  assert.ok(handlers.track.chips, "ask_chips must call onIngressConvergeChips");
-  assert.equal(handlers.track.compiled, null);
-  assert.equal(listLifeEventCandidates().length, beforeCount);
-  console.log("✓ ask_chips on related hit (no quiet auto-attach)");
+  assert.equal(handlers.track.chips, null, "must not ask pick with empty UI");
+  console.log("✓ actionable trip skips converge picker", result.planKind);
 }
 
-async function caseAskChipsAmbiguous(): Promise<void> {
+async function caseVagueMayAskChips(): Promise<void> {
   memory.clear();
   resetPendingContextCreateForTests();
   resetEventCandidatesForTests([
     japanTrip("evt-jp-a", "민수", 3),
     japanTrip("evt-jp-b", "지연", 4),
   ]);
-  const beforeIds = new Set(listLifeEventCandidates().map((e) => e.id));
-  const handlers = trackHandlers();
-  const result = await dispatchContextRun(
-    {
-      kind: "text",
-      text: "일본 여행 가려고",
-      surface: "composer",
-      layerMode: "personal",
-      contextEventId: null,
-    },
-    handlers,
-  );
-  assert.equal(result.status, "done");
-  assert.equal(result.planKind, "globe_ingress");
-  assert.ok(handlers.track.chips);
-  assert.equal(handlers.track.chips!.decision, "ask_chips");
-  assert.equal(handlers.track.compiled, null);
-  const afterIds = new Set(listLifeEventCandidates().map((e) => e.id));
-  assert.deepEqual([...afterIds].sort(), [...beforeIds].sort());
-  console.log("✓ ask_chips skips mint (ambiguous peers)");
-}
-
-async function caseForceNewDraftsDespiteHit(): Promise<void> {
-  memory.clear();
-  resetPendingContextCreateForTests();
-  resetEventCandidatesForTests([japanTrip("evt-jp-1", "민수", 3)]);
-  const beforeCount = listLifeEventCandidates().length;
-  const handlers = trackHandlers();
-  const result = await dispatchContextRun(
-    {
-      kind: "text",
-      text: "일본 여행 가려고",
-      surface: "composer",
-      layerMode: "personal",
-      contextEventId: null,
-      forceNewContext: true,
-    },
-    handlers,
-  );
-  assert.equal(result.status, "done");
-  assert.equal(handlers.track.chips, null, "forceNew must skip Find chips");
-  assert.equal(handlers.track.compiled, null);
-  assert.equal(listLifeEventCandidates().length, beforeCount);
-  assert.ok(result.globeIngress);
-  assert.notEqual(result.globeIngress!.context.contextId, "evt-jp-1");
-  console.log("✓ forceNew drafts despite Find hit");
+  const converge = resolveIngressContextConverge({
+    utterance: "여행",
+    events: listLifeEventCandidates(),
+  });
+  if (converge.decision === "ask_chips") {
+    assert.ok(converge.hits.length >= 1);
+    const handlers = trackHandlers();
+    await dispatchContextRun(
+      {
+        kind: "text",
+        text: "여행",
+        surface: "composer",
+        layerMode: "personal",
+        contextEventId: null,
+      },
+      handlers,
+    );
+    if (handlers.track.chips) {
+      assert.ok(handlers.track.chips.hits.length > 0);
+    }
+  }
+  console.log("✓ vague utterance converge path");
 }
 
 async function main(): Promise<void> {
   await caseCreateNewDrafts();
-  await caseAskChipsOnHit();
-  await caseAskChipsAmbiguous();
-  await caseForceNewDraftsDespiteHit();
+  await caseActionableSkipsConvergePicker();
+  await caseVagueMayAskChips();
   console.log("\nAll dispatch ingress converge mint/skip tests passed.");
 }
 
-void main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

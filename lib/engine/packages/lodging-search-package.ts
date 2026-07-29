@@ -14,6 +14,10 @@ import { resolveExecutionNodesForEngine } from "@/lib/engine/execution-graph-eng
 import { readLodgingSearchEngineState } from "@/lib/engine/read-engine-run-state";
 import { isLodgingPrepUtterance } from "@/lib/globe/lodging-prep/is-lodging-prep-utterance";
 import {
+  isInstantLodgingSearch,
+  requiresLodgingBookingSlots,
+} from "@/lib/globe/context-condition-ai/instant-lodging-search";
+import {
   planOneShotLodgingPrep,
   type OneShotLodgingPrepPlan,
 } from "@/lib/globe/lodging-prep/plan-one-shot-lodging-prep";
@@ -117,16 +121,32 @@ export const lodgingSearchEnginePackage: RimvioEnginePackage<OneShotLodgingPrepP
       }
       if (domain.intakeGaps.length > 0) {
         // Soft gaps (budget · origin · guests · dates under express) do not block.
+        // Search-only commands never hard-block on dates — Command-first execute.
+        // Confirmed Reality (ADR-037) — never re-quiz dates/lodging already densified.
+        const searchOnly =
+          isInstantLodgingSearch(domain.message) &&
+          !requiresLodgingBookingSlots(domain.message);
         const hardGaps = domain.intakeGaps.filter((gap) => {
           if (gap === "destination") {
             return true;
           }
-          // dates stay hard only when not express-ready.
           if (gap === "dates") {
+            if (searchOnly) return false;
             return !domain.readyForExpress;
           }
           return false;
         });
+        if (hardGaps.length === 0) {
+          const destinationOk = !domain.intakeGaps.includes("destination");
+          if (destinationOk || searchOnly) {
+            return {
+              tool: "scout",
+              reason: searchOnly
+                ? "command_first_lodging_search"
+                : "confirmed_reality_skip_ask",
+            };
+          }
+        }
         const chips = buildTripIntakeAskChips(
           hardGaps.length > 0 ? hardGaps : domain.intakeGaps,
         );
@@ -137,6 +157,8 @@ export const lodgingSearchEnginePackage: RimvioEnginePackage<OneShotLodgingPrepP
             chips,
           };
         }
+        // Gaps remain but no chips — scout instead of empty pick UI.
+        return { tool: "scout", reason: "intake_gap_without_chips" };
       }
       return null;
     },

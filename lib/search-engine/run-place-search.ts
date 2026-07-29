@@ -59,6 +59,9 @@ export type PlaceSearchInput = {
   readonly checkInIso?: string | null;
   readonly checkOutIso?: string | null;
   readonly guestCount?: number | null;
+  /** Open Context — resolve destination coords when lat/lng missing. */
+  readonly contextEventId?: string | null;
+  readonly contextLabelKo?: string | null;
 };
 
 function orbit(

@@ -11,3 +11,13 @@ export { ACTION_VERBS, classifyActionVerb } from "@/lib/rimvio-command/action-ve
 export type { CommandTarget, CommandTargetResult } from "@/lib/rimvio-command/resolve-command-target";
 export { COMMAND_TARGETS, resolveCommandTarget } from "@/lib/rimvio-command/resolve-command-target";
 export { resolveIntentFromActionVerb } from "@/lib/rimvio-command/action-verb-to-intent";
+export {
+  COMMAND_ASK_CONFIDENCE,
+  COMMAND_EXECUTE_CONFIDENCE,
+  resolveCommandFirstDecision,
+  shouldExecuteWithoutAsk,
+} from "@/lib/rimvio-command/command-first";
+export type {
+  CommandFirstAction,
+  CommandFirstDecision,
+} from "@/lib/rimvio-command/command-first";

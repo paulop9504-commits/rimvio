@@ -156,8 +156,10 @@ export type ContextRunEffectHandlers = {
     compiled: GlobeIngressCompileResult;
     eventId: string;
   }) => void;
-  /** Ambiguous existing contexts — chips-first (rare; auto_attach preferred). */
-  onIngressConvergeChips?: (result: import("@/lib/globe-ingress").IngressContextConvergeResult) => void;
+  /** Ambiguous existing contexts — chips-first. Return true only if chips rendered. */
+  onIngressConvergeChips?: (
+    result: import("@/lib/globe-ingress").IngressContextConvergeResult,
+  ) => boolean | void;
   onPersonalContextAsk?: (result: PersonalContextAskResult) => void;
   onExternalContextAsk?: (result: ExternalContextAskResult) => void;
   onExternalContextAskError?: () => void;

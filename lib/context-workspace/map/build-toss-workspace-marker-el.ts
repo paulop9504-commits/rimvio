@@ -5,6 +5,7 @@
 
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import type { WorkspaceMapPin } from "@/lib/context-workspace/map/workspace-map-provider";
+import { copy } from "@/lib/copy/human-ko";
 
 function shortTitle(title: string, max = 10): string {
   const t = title.trim().replace(/\s+/gu, " ");
@@ -62,6 +63,10 @@ export type WorkspaceMarkerActions = {
   onSelect: (id: string) => void;
   onPinToggle?: (id: string) => void;
   onRemove?: (id: string) => void;
+  /** Soft prepare — lodging only; never charges. */
+  onPrepareReserve?: (id: string) => void;
+  /** Prepared → open Field 결재함. */
+  onOpenField?: (id: string) => void;
 };
 
 export type TossWorkspaceMarkerInput = {
@@ -72,9 +77,14 @@ export type TossWorkspaceMarkerInput = {
   actions: WorkspaceMarkerActions;
 };
 
+type MarkerChromeInput = Omit<TossWorkspaceMarkerInput, "actions"> & {
+  actionsHasPrepare?: boolean;
+  actionsHasOpenField?: boolean;
+};
+
 /** Stable chrome signature — skip DOM work when unchanged. */
 export function tossWorkspaceMarkerChromeKey(
-  input: Omit<TossWorkspaceMarkerInput, "actions">,
+  input: MarkerChromeInput,
 ): string {
   const { pin, index, selected, compact } = input;
   return [
@@ -84,9 +94,14 @@ export function tossWorkspaceMarkerChromeKey(
     pin.bookmarked ? 1 : 0,
     pin.photoSpot ? 1 : 0,
     compact ? 1 : 0,
+    pin.kind ?? "",
+    pin.explicitlySelected ? 1 : 0,
+    pin.awaitingField ? 1 : 0,
     pin.title,
     pin.rating ?? "",
     pin.amountLabel ?? "",
+    input.actionsHasPrepare ? 1 : 0,
+    input.actionsHasOpenField ? 1 : 0,
   ].join("|");
 }
 
@@ -105,11 +120,26 @@ function fillTossWorkspaceMarkerEl(
     index,
     selected,
     compact,
+    actionsHasPrepare: Boolean(actions.onPrepareReserve),
+    actionsHasOpenField: Boolean(actions.onOpenField),
   });
 
   const pinned = Boolean(pin.bookmarked);
   const photoSpot = Boolean(pin.photoSpot);
+  const awaitingField = Boolean(pin.awaitingField);
   const showActions = !compact && (selected || pinned);
+  const showPrepare =
+    !compact &&
+    selected &&
+    pin.kind === "lodging" &&
+    !awaitingField &&
+    Boolean(actions.onPrepareReserve);
+  const showAwaitingField =
+    !compact &&
+    selected &&
+    pin.kind === "lodging" &&
+    awaitingField &&
+    Boolean(actions.onOpenField);
 
   if (showActions) {
     const bar = document.createElement("div");
@@ -147,6 +177,70 @@ function fillTossWorkspaceMarkerEl(
     root.appendChild(bar);
   }
 
+  if (showPrepare) {
+    const prepare = document.createElement("button");
+    prepare.type = "button";
+    prepare.dataset.markerPrepare = "1";
+    prepare.title = copy.globe.workspacePrepareReserveHint;
+    prepare.setAttribute("aria-label", copy.globe.workspacePrepareReserveCta);
+    prepare.textContent = copy.globe.workspacePrepareReserveCta;
+    prepare.style.cssText = [
+      "display:inline-flex",
+      "align-items:center",
+      "justify-content:center",
+      "height:24px",
+      "padding:0 10px",
+      "border:0",
+      "border-radius:999px",
+      "cursor:pointer",
+      "font-size:10px",
+      "font-weight:800",
+      "letter-spacing:-0.03em",
+      "background:#191f28",
+      "color:#fff",
+      "box-shadow:0 1px 3px rgba(25,31,40,0.14)",
+      "touch-action:manipulation",
+      "-webkit-tap-highlight-color:transparent",
+    ].join(";");
+    prepare.addEventListener("click", (event) => {
+      event.stopPropagation();
+      actions.onPrepareReserve?.(pin.id);
+    });
+    root.appendChild(prepare);
+  }
+
+  if (showAwaitingField) {
+    const field = document.createElement("button");
+    field.type = "button";
+    field.dataset.markerAwaitingField = "1";
+    field.title = copy.globe.workspacePrepareAwaitingFieldHint;
+    field.setAttribute("aria-label", copy.globe.workspacePrepareOpenFieldCta);
+    field.textContent = copy.globe.workspacePrepareAwaitingFieldCta;
+    field.style.cssText = [
+      "display:inline-flex",
+      "align-items:center",
+      "justify-content:center",
+      "height:24px",
+      "padding:0 10px",
+      "border:0",
+      "border-radius:999px",
+      "cursor:pointer",
+      "font-size:10px",
+      "font-weight:800",
+      "letter-spacing:-0.03em",
+      "background:#3182f6",
+      "color:#fff",
+      "box-shadow:0 1px 3px rgba(49,130,246,0.35)",
+      "touch-action:manipulation",
+      "-webkit-tap-highlight-color:transparent",
+    ].join(";");
+    field.addEventListener("click", (event) => {
+      event.stopPropagation();
+      actions.onOpenField?.(pin.id);
+    });
+    root.appendChild(field);
+  }
+
   const chip = document.createElement("button");
   chip.type = "button";
   chip.title = pin.title;
@@ -155,12 +249,15 @@ function fillTossWorkspaceMarkerEl(
     pin.rating != null && Number.isFinite(pin.rating)
       ? pin.rating.toFixed(1)
       : null;
+  const priceBit = pin.amountLabel?.trim() || null;
   const label = compact
     ? photoSpot
       ? "포토"
-      : pin.amountLabel?.trim() || `★${rating ?? "—"}`
+      : priceBit || `★${rating ?? "—"}`
     : selected
-      ? shortTitle(pin.title, 11)
+      ? [shortTitle(pin.title, 9), rating ? `★${rating}` : null, priceBit]
+          .filter(Boolean)
+          .join(" · ")
       : pinned
         ? shortTitle(pin.title, 9)
         : photoSpot
@@ -236,6 +333,8 @@ export function syncTossWorkspaceMarkerEl(
     index: input.index,
     selected: input.selected,
     compact: input.compact,
+    actionsHasPrepare: Boolean(input.actions.onPrepareReserve),
+    actionsHasOpenField: Boolean(input.actions.onOpenField),
   });
   if (root.dataset.chromeKey === nextKey) {
     return false;

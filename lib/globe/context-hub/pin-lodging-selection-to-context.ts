@@ -15,6 +15,7 @@ import { attachRealityObjectToPinMetadata } from "@/lib/reality-object/attach-on
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { markLodgingResourceSelected } from "@/lib/resource-operation";
+import { recordHotelSelected } from "@/lib/workstream";
 
 function buildLodgingResourceId(eventId: string, placeId: string): string {
   return `${eventId}:lodging:${placeId}`;
@@ -116,6 +117,19 @@ export function pinLodgingSelectionToContext(input: {
     lifecycleUpdatedAt: stamp,
     updatedAt: stamp,
     metadata,
+  });
+
+  // Work residue — search does not persist; selection does (ADR-036).
+  recordHotelSelected({
+    contextEventId: pinned.id,
+    labelKo: input.row.name,
+    placeId: input.row.placeId,
+    objectId: resourceId,
+    placeLabel:
+      (typeof pinned.place === "string" && pinned.place.trim()) ||
+      (typeof pinned.metadata?.globePlaceLabel === "string"
+        ? pinned.metadata.globePlaceLabel
+        : null),
   });
 
   // 3-layer: pin Commit → ContextResource file (not scout inventory).

@@ -493,6 +493,10 @@ export function appendOperatorAskChipsComposeTurn(
     chips: OperatorAskChipsComposePayload["chips"];
   },
 ): ContextAgentComposeTurn | null {
+  // Never render “골라 주세요” with zero chips.
+  if (!input.chips.some((c) => c.id.trim() && c.labelKo.trim())) {
+    return null;
+  }
   if (hasOpenAskChipsTurn(eventId)) {
     return null;
   }

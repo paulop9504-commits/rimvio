@@ -25,7 +25,11 @@ import {
   tryRunContextCommand,
 } from "@/lib/context-command";
 import { routeRimvioCommandMode, resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
-import { resolveActiveWorkspaceKind } from "@/lib/workspace-kind/resolve-active-workspace-kind";
+import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
+import {
+  activeContextAllowsDomainScout,
+  resolveActiveWorkspaceKind,
+} from "@/lib/workspace-kind/resolve-active-workspace-kind";
 import { createContextReferenceLink } from "@/lib/context-reference/create-context-reference-link";
 import type { ContextReferenceKind } from "@/lib/context-reference/types";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
@@ -1608,13 +1612,25 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
       }
 
       // ADR-035 / ADR-029 — Create mode opens a fresh Context (not this hub).
+      // Domain scout (숙소·맛집) on travel hub must continue here — never spawn.
       {
+        const activeKind = resolveActiveWorkspaceKind(contextEventId);
         const commandRoute = routeRimvioCommandMode({
           utterance: pipelineMessage,
           activeContextId: contextEventId,
-          activeWorkspaceKind: resolveActiveWorkspaceKind(contextEventId),
+          activeWorkspaceKind: activeKind,
         });
-        if (commandRoute.mode === "create") {
+        const domainScoutStay =
+          Boolean(contextEventId?.trim()) &&
+          activeContextAllowsDomainScout(activeKind) &&
+          (() => {
+            const exp = classifyExperienceRunIntent(pipelineMessage);
+            return (
+              exp?.profile === "lodging_search" ||
+              exp?.profile === "eatery_search"
+            );
+          })();
+        if (commandRoute.mode === "create" && !domainScoutStay) {
           appendContextAgentComposeTurn(contextEventId, {
             role: "user",
             text: triggerMessage.trim(),
@@ -2751,33 +2767,39 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
         });
 
         if (plan.tool === "ask_chips") {
-          const chipDomain = resolveOperatorAskChipDomain({
-            pendingTrigger: text,
-            planReason: plan.reason,
-          });
-          const stayHint =
-            chipDomain === "lodging_stay_revise"
-              ? readLodgingStayRevisePending(contextEventId)?.confirmHintKo ??
-                copy.globe.lodgingStayReviseAskHint
-              : null;
-          appendOperatorAskChipsComposeTurn(contextEventId, {
-            chipDomain,
-            hint:
-              stayHint ??
-              (chipDomain === "trip_experience"
-                ? copy.globe.tripExperienceAskHint
-                : chipDomain === "flight_prep"
-                  ? copy.globe.flightPrepAskHint
-                  : chipDomain === "transit_prep"
-                    ? copy.globe.transitPrepAskHint
-                    : chipDomain === "finance_prep"
-                      ? copy.globe.financePrepAskHint
-                      : copy.globe.tripIntakeAskHint),
-            pendingTrigger: text,
-            chips: plan.chips,
-          });
-          clearComposerMessage();
-          return;
+          const chips = plan.chips ?? [];
+          if (chips.length > 0) {
+            const chipDomain = resolveOperatorAskChipDomain({
+              pendingTrigger: text,
+              planReason: plan.reason,
+            });
+            const stayHint =
+              chipDomain === "lodging_stay_revise"
+                ? readLodgingStayRevisePending(contextEventId)?.confirmHintKo ??
+                  copy.globe.lodgingStayReviseAskHint
+                : null;
+            const turned = appendOperatorAskChipsComposeTurn(contextEventId, {
+              chipDomain,
+              hint:
+                stayHint ??
+                (chipDomain === "trip_experience"
+                  ? copy.globe.tripExperienceAskHint
+                  : chipDomain === "flight_prep"
+                    ? copy.globe.flightPrepAskHint
+                    : chipDomain === "transit_prep"
+                      ? copy.globe.transitPrepAskHint
+                      : chipDomain === "finance_prep"
+                        ? copy.globe.financePrepAskHint
+                        : copy.globe.tripIntakeAskHint),
+              pendingTrigger: text,
+              chips,
+            });
+            if (turned) {
+              clearComposerMessage();
+              return;
+            }
+          }
+          // Empty or blocked chips → fall through (prefer scout over blank pick UI).
         }
 
         if (plan.tool === "lens_command") {

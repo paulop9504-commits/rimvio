@@ -10,6 +10,9 @@ import { writeClarifyLessPending } from "@/lib/rule-engine/clarify-less-pending-
 import type { RuleEngineDecision } from "@/lib/rule-engine/evaluate-utterance-rules";
 import { classifyIntentFamily } from "@/lib/rule-engine/classify-intent-family";
 import type { SessionGraphV1 } from "@/lib/graph-command/types";
+import { isExplicitContextContinue } from "@/lib/context-run/should-spawn-new-context";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { resolveConfirmedRealityAskGate } from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
 
 export type UnmatchedNlRecovery = {
   readonly via: "clarify" | "reason";
@@ -320,6 +323,37 @@ export function recoverUnmatchedNlTurn(input: {
   }
 
   // Reason-Later / Unknown — one chip set, never silent.
+  if (isExplicitContextContinue(utterance)) {
+    const continueChips = chips([
+      {
+        id: "recover_continue_lodging",
+        labelKo: "숙소 찾기",
+        value: "숙소 찾아줘",
+      },
+      {
+        id: "recover_continue_eatery",
+        labelKo: "맛집 찾기",
+        value: "맛집 찾아줘",
+      },
+      {
+        id: "recover_continue_amenity",
+        labelKo: "약국·편의",
+        value: "주변 약국 찾아줘",
+      },
+    ]);
+    writeClarifyLessPending(input.contextEventId, {
+      originalUtterance: utterance,
+      intentLabelKo: "Continue",
+      candidateIds: continueChips.map((c) => c.value),
+      atIso: new Date().toISOString(),
+    });
+    return {
+      via: "clarify",
+      assistantReplyKo: "이 맥락에서 이어서 할게요. 다음에 뭐 할까요?",
+      clarifyChips: continueChips,
+    };
+  }
+
   const reasonChips = chips([
     lodgingOpen
       ? {
@@ -351,12 +385,24 @@ export function recoverUnmatchedNlTurn(input: {
     atIso: new Date().toISOString(),
   });
 
+  const event = findLifeEventCandidate(input.contextEventId);
+  const realityGate = resolveConfirmedRealityAskGate({
+    event,
+    contextEventId: input.contextEventId,
+  });
+
   const family = classifyIntentFamily(utterance);
-  const reasonLine = allowReason
-    ? family === "Analyze" || family === "Unknown"
-      ? "아직 바로 실행할 명령은 못 잡았어요. 다음에 뭐 할까요?"
-      : `${intent}으로 이해했어요. 실행할 다음을 골라 주세요.`
-    : "다음에 뭐 할까요?";
+  const actionLine = realityGate.actionProposalsKo[0] ?? null;
+  const reasonLine =
+    actionLine &&
+    (realityGate.knownFacts.lodgingCommitted ||
+      realityGate.askForbiddenSlots.includes("dates"))
+      ? actionLine
+      : allowReason
+        ? family === "Analyze" || family === "Unknown"
+          ? "아직 바로 실행할 명령은 못 잡았어요. 다음에 뭐 할까요?"
+          : `${intent}으로 이해했어요. 실행할 다음을 골라 주세요.`
+        : "다음에 뭐 할까요?";
 
   return {
     via: allowReason ? "reason" : "clarify",

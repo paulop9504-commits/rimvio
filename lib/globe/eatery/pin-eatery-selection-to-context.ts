@@ -15,6 +15,7 @@ import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resour
 import {
   CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY,
 } from "@/lib/globe/eatery/eatery-resource-types";
+import { recordRestaurantAdded } from "@/lib/workstream";
 
 function buildEateryResourceId(eventId: string, placeId: string): string {
   return `${eventId}:eatery:${placeId}`;
@@ -108,6 +109,19 @@ export function pinEaterySelectionToContext(input: {
     lifecycleUpdatedAt: stamp,
     updatedAt: stamp,
     metadata,
+  });
+
+  // Work residue — scout inventory is ephemeral; pin is HotelSelected-class (ADR-036).
+  recordRestaurantAdded({
+    contextEventId: pinned.id,
+    labelKo: input.row.name,
+    placeId: input.row.placeId,
+    objectId: resourceId,
+    placeLabel:
+      (typeof pinned.place === "string" && pinned.place.trim()) ||
+      (typeof pinned.metadata?.globePlaceLabel === "string"
+        ? pinned.metadata.globePlaceLabel
+        : null),
   });
 
   // 3-layer: pin Commit → ContextResource file (not scout inventory).

@@ -27,6 +27,7 @@ import { promotePendingPreparedOpsForCeoSign } from "@/lib/reality-queue/promote
 import { stampCommittedOperationsOnEvent } from "@/lib/reality-queue/stamp-committed-operations";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { RealityOperationV1 } from "@/lib/reality-queue/types";
+import { promoteRealityCommitToContextGraph } from "@/lib/workstream/promote-reality-commit";
 
 export type CommitRealityQueueResult =
   | {
@@ -225,6 +226,11 @@ export async function commitRealityQueueClient(input: {
       }
     }
     stampCommittedOperationsOnEvent({ event, operations: bookingOps });
+    // ADR-037: Commit densifies Context Graph (Confirmed stay · timeline · completeness).
+    promoteRealityCommitToContextGraph({
+      contextEventId: eventId,
+      operations: bookingOps,
+    });
     for (const op of bookingOps) {
       deletePreparedRealityOperation(op.operationId);
       preparedCommittedCount += 1;

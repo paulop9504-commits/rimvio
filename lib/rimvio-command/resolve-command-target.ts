@@ -80,6 +80,7 @@ function isTopicMismatch(
   return shouldSpawnNewContext({
     utterance,
     activeContextEventId: activeContextId,
+    activeWorkspaceKind,
   });
 }
 

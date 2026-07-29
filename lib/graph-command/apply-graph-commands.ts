@@ -38,6 +38,7 @@ import {
   invokeRimvioTool,
   invokeRimvioToolAsync,
 } from "@/lib/tool-registry/invoke-rimvio-tool";
+import { resolvePlaceSearchAnchor } from "@/lib/search-engine/resolve-place-search-anchor";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import {
   stampSearchToolResultsToDiff,
@@ -378,8 +379,17 @@ function applySearchProject(
   const anchorNode = command.anchorRef
     ? resolveNode(seeded, command.anchorRef)
     : seeded.nodes.find((n) => n.kind === "anchor") ?? null;
-  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? 36.3621;
-  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? 127.3446;
+  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? null;
+  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? null;
+  const resolved = resolvePlaceSearchAnchor({
+    anchorLat: baseLat,
+    anchorLng: baseLng,
+    contextEventId: seeded.contextEventId,
+    query: command.query,
+    contextLabelKo: command.destinationLabelKo,
+  });
+  const searchLat = resolved?.lat ?? baseLat ?? 36.3621;
+  const searchLng = resolved?.lng ?? baseLng ?? 127.3446;
 
   const toolId = resolveLookupToolId(
     command.domain === "eatery"
@@ -392,8 +402,8 @@ function applySearchProject(
   const toolResult = invokeRimvioTool(toolId, {
     query: command.query,
     domain: command.domain,
-    lat: baseLat,
-    lng: baseLng,
+    lat: searchLat,
+    lng: searchLng,
     utterance: command.query,
     contextEventId: seeded.contextEventId,
   });
@@ -469,8 +479,17 @@ async function applySearchProjectAsync(
   const anchorNode = command.anchorRef
     ? resolveNode(seeded, command.anchorRef)
     : seeded.nodes.find((n) => n.kind === "anchor") ?? null;
-  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? 36.3621;
-  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? 127.3446;
+  const baseLat = anchorNode?.lat ?? seeded.anchorLat ?? null;
+  const baseLng = anchorNode?.lng ?? seeded.anchorLng ?? null;
+  const resolved = resolvePlaceSearchAnchor({
+    anchorLat: baseLat,
+    anchorLng: baseLng,
+    contextEventId: seeded.contextEventId,
+    query: command.query,
+    contextLabelKo: command.destinationLabelKo,
+  });
+  const searchLat = resolved?.lat ?? baseLat ?? 36.3621;
+  const searchLng = resolved?.lng ?? baseLng ?? 127.3446;
 
   const toolId = resolveLookupToolId(
     command.domain === "eatery"
@@ -483,8 +502,8 @@ async function applySearchProjectAsync(
   const toolResult = await invokeRimvioToolAsync(toolId, {
     query: command.query,
     domain: command.domain,
-    lat: baseLat,
-    lng: baseLng,
+    lat: searchLat,
+    lng: searchLng,
     utterance: command.query,
     contextEventId: seeded.contextEventId,
   });

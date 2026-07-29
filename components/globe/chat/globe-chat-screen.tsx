@@ -459,7 +459,8 @@ export function GlobeChatScreen({
                             message.clarifyKind === "context_create" ||
                             message.clarifyKind === "context_anchor_move" ||
                             message.slotId === "context_create" ||
-                            message.slotId === "context_anchor_move"
+                            message.slotId === "context_anchor_move" ||
+                            message.slotId === "ingress_converge"
                           ) {
                             submitChipAnswer(choice.id);
                             return;

@@ -67,7 +67,9 @@ import {
 import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
 import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
+import { resolveActiveWorkspaceKind } from "@/lib/workspace-kind/resolve-active-workspace-kind";
 import { resolveIngressContextConverge } from "@/lib/globe-ingress";
+import { buildIngressConvergePortalChoices } from "@/lib/globe-ingress/build-ingress-converge-portal-choices";
 import { buildPendingContextCreateDraft } from "@/lib/globe-ingress/build-pending-context-create-draft";
 import {
   cancelPendingContextCreate,
@@ -1115,6 +1117,7 @@ async function executeContextRunPlan(
           shouldSpawnNewContext({
             utterance: bound.goalKo,
             activeContextEventId: rawExisting,
+            activeWorkspaceKind: resolveActiveWorkspaceKind(rawExisting),
           }));
 
       // Cursor magic — Find before mint when hub is null.
@@ -1125,17 +1128,27 @@ async function executeContextRunPlan(
         });
 
         if (converge.decision === "ask_chips") {
-          handlers.onIngressConvergeChips?.(converge);
-          syncPortalComposeTurnToChat({
-            graphId,
-            userText: bound.goalKo,
-            assistantText: copy.globe.tripSituationRouter.convergeHint,
-          });
-          return {
-            graphId,
-            status: "done",
-            planKind: plan.kind,
-          };
+          const portalChoices = buildIngressConvergePortalChoices(converge);
+          const offered =
+            Boolean(portalChoices?.length) &&
+            syncPortalComposeClarifyToChat({
+              graphId,
+              userText: bound.goalKo,
+              questionKo: copy.globe.tripSituationRouter.convergeHint,
+              clarifyKind: "slot",
+              slotId: "ingress_converge",
+              choices: portalChoices ?? undefined,
+            });
+          const hosted = handlers.onIngressConvergeChips?.(converge);
+          // Only stop for pick UI when the user can actually tap a choice.
+          if (offered || hosted === true) {
+            return {
+              graphId,
+              status: "done",
+              planKind: plan.kind,
+            };
+          }
+          // Fall through to create_new — never “골라 주세요” with empty chips.
         }
       }
 

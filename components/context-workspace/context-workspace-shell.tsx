@@ -23,11 +23,15 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
+import { buildWorkspaceItineraryLineCoords } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
+import { prepareWorkspaceNodeBooking } from "@/lib/context-workspace/prepare-workspace-booking";
+import { isWorkspacePlaceAwaitingField } from "@/lib/context-workspace/workspace-place-prepare-status";
 import {
   appendWorkspaceChatTurn,
   clearWorkspaceChat,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
+import { subscribePreparedRealityOperations } from "@/lib/reality-queue/prepared-operations-store";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
@@ -36,6 +40,7 @@ import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import { openFieldDashboardIngressForced } from "@/lib/nav/field-dashboard-ingress";
 
 export type ContextWorkspaceShellProps = {
   contextEventId: string | null | undefined;
@@ -74,6 +79,8 @@ export function ContextWorkspaceShell({
   const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [softRouteDismissed, setSoftRouteDismissed] = useState(false);
+  const [prepTick, setPrepTick] = useState(0);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -120,10 +127,14 @@ export function ContextWorkspaceShell({
         writeContextWorkspaceExpanded(detail.contextEventId, true);
       }
     });
+    const unsubPrep = subscribePreparedRealityOperations(() => {
+      setPrepTick((n) => n + 1);
+    });
     return () => {
       unsubUpdate();
       unsubOpen();
       unsubExpand();
+      unsubPrep();
     };
   }, [contextEventId, refresh]);
 
@@ -137,22 +148,100 @@ export function ContextWorkspaceShell({
     visibleNodes.find((n) => n.selected)?.id ??
     null;
 
-  const mapPins = useMemo(
-    () =>
-      visibleNodes.map((n) => ({
-        id: n.id,
-        title: n.title,
-        lat: n.lat,
-        lng: n.lng,
-        rating: n.rating,
-        amountLabel: n.amountLabel,
-        selected: n.id === selectedId,
-        bookmarked: n.bookmarked,
-        photoSpot:
-          n.tags.includes("photo_spot") ||
-          /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
-      })),
-    [visibleNodes, selectedId],
+  const mapPins = useMemo(() => {
+    const ctx = contextEventId?.trim() ?? "";
+    return visibleNodes.map((n) => ({
+      id: n.id,
+      title: n.title,
+      lat: n.lat,
+      lng: n.lng,
+      rating: n.rating,
+      amountLabel: n.amountLabel,
+      selected: n.id === selectedId,
+      bookmarked: n.bookmarked,
+      kind: n.kind,
+      explicitlySelected: n.selected,
+      awaitingField: ctx
+        ? isWorkspacePlaceAwaitingField({
+            contextEventId: ctx,
+            placeId: n.placeId || n.id,
+            nodeId: n.id,
+          })
+        : false,
+      photoSpot:
+        n.tags.includes("photo_spot") ||
+        /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
+    }));
+  }, [visibleNodes, selectedId, contextEventId, prepTick]);
+
+  const selectedAwaitingField = useMemo(() => {
+    const ctx = contextEventId?.trim() ?? "";
+    const node = visibleNodes.find((n) => n.id === selectedId);
+    if (!ctx || !node) return false;
+    return isWorkspacePlaceAwaitingField({
+      contextEventId: ctx,
+      placeId: node.placeId || node.id,
+      nodeId: node.id,
+    });
+  }, [visibleNodes, selectedId, contextEventId, prepTick]);
+
+  const onOpenField = useCallback(
+    (_nodeId?: string) => {
+      const id = contextEventId?.trim();
+      if (!id) return;
+      openFieldDashboardIngressForced({
+        tab: "queue",
+        primaryEventId: id,
+      });
+    },
+    [contextEventId],
+  );
+
+  const routeLineCoords = useMemo(
+    () => buildWorkspaceItineraryLineCoords(visibleNodes),
+    [visibleNodes],
+  );
+
+  const showSoftRouteChip =
+    !softRouteDismissed &&
+    visibleNodes.length >= 2 &&
+    !(state?.lastChangeKo && /동선|가까운\s*순/.test(state.lastChangeKo));
+
+  const onPrepareReserve = useCallback(
+    (nodeId: string) => {
+      const id = contextEventId?.trim();
+      if (!id) {
+        return;
+      }
+      const node =
+        readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId) ??
+        visibleNodes.find((n) => n.id === nodeId);
+      if (!node) {
+        return;
+      }
+      if (!node.selected) {
+        toast.message(copy.globe.workspacePreviewSelectFirstHint);
+        setFocusedId(nodeId);
+        setPeekDismissedId(null);
+        setChatOpen(false);
+        return;
+      }
+      const result = prepareWorkspaceNodeBooking({
+        contextEventId: id,
+        node,
+        contextLabelKo: projectTitleKo ?? state?.query ?? null,
+      });
+      if (!result.ok) {
+        toast.message(result.reasonKo);
+        return;
+      }
+      setPrepTick((n) => n + 1);
+      setFocusedId(nodeId);
+      setPeekDismissedId(null);
+      setChatOpen(false);
+      toast.success(result.toastKo);
+    },
+    [contextEventId, visibleNodes, projectTitleKo, state?.query],
   );
 
   const onPinToggle = useCallback(
@@ -290,8 +379,44 @@ export function ContextWorkspaceShell({
           onSelectPin={onSelect}
           onPinToggle={onPinToggle}
           onRemovePin={onRemovePin}
+          onPrepareReserve={onPrepareReserve}
+          onOpenField={onOpenField}
+          routeLineCoords={routeLineCoords}
         />
       </div>
+
+      {showSoftRouteChip ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[4.75rem] z-[2] flex justify-center px-3">
+          <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
+            <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
+              {copy.globe.workspaceMapSoftRouteHint}
+            </p>
+            <button
+              type="button"
+              className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+              data-workspace-soft-route-apply
+              onClick={() => {
+                applyWorkspaceTransition({
+                  contextEventId: eventId,
+                  op: "optimize_route",
+                });
+                setSoftRouteDismissed(true);
+                toast.success(copy.globe.workspaceToolOptimizeRoute);
+              }}
+            >
+              {copy.globe.workspaceMapSoftRouteApply}
+            </button>
+            <button
+              type="button"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+              aria-label="닫기"
+              onClick={() => setSoftRouteDismissed(true)}
+            >
+              <X className="h-3 w-3" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
@@ -428,6 +553,9 @@ export function ContextWorkspaceShell({
             workspace={state}
             onClose={() => setPeekDismissedId(selectedNode.id)}
             onOpenCompare={() => setCompareOpen(true)}
+            onPrepareReserve={() => onPrepareReserve(selectedNode.id)}
+            onOpenField={() => onOpenField(selectedNode.id)}
+            awaitingField={selectedAwaitingField}
             onRecenterItinerary={(nodeId) => {
               applyWorkspaceTransition({
                 contextEventId: eventId,

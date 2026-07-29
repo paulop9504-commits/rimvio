@@ -32,7 +32,7 @@ export function syncPortalComposeTurnToChat(input: {
   }
 }
 
-/** Clarify turn with chip / category picker UI. */
+/** Clarify turn with chip / category picker UI. Returns false if no choices (no empty pick). */
 export function syncPortalComposeClarifyToChat(input: {
   graphId: string;
   userText: string;
@@ -41,7 +41,14 @@ export function syncPortalComposeClarifyToChat(input: {
   slotId: string;
   choices?: readonly { id: string; labelKo: string }[];
   categoryOptions?: readonly { id: string; labelKo: string }[];
-}): void {
+}): boolean {
+  const hasChoices = Boolean(
+    (input.choices && input.choices.length > 0) ||
+      (input.categoryOptions && input.categoryOptions.length > 0),
+  );
+  if (!hasChoices) {
+    return false;
+  }
   if (input.userText.trim()) {
     appendGlobeChatTextMessage({ graphId: input.graphId, role: "user", text: input.userText });
   }
@@ -55,4 +62,5 @@ export function syncPortalComposeClarifyToChat(input: {
       categoryOptions: input.categoryOptions,
     });
   }
+  return true;
 }

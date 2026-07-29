@@ -10,6 +10,7 @@ import {
 import { buildLodgingBookingSlotChipLabels } from "@/lib/globe/context-hub/build-lodging-booking-slot-chip-labels";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
+import { recordScheduleUpdated } from "@/lib/workstream";
 
 export type ApplyLodgingStayReviseResult =
   | { readonly ok: true; readonly summaryKo: string; readonly event: EventCandidate }
@@ -43,6 +44,13 @@ export function applyLodgingStayRevisePending(input: {
     const summaryKo =
       chips.join(" · ") ||
       copy.globe.lodgingStayReviseApplied(pending.summaryKo);
+    recordScheduleUpdated({
+      contextEventId: input.contextEventId,
+      labelKo: summaryKo,
+      scheduleLabel: pending.summaryKo,
+      placeLabel:
+        (typeof updated.place === "string" && updated.place.trim()) || null,
+    });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event(EVENT_CANDIDATES_UPDATED));
     }

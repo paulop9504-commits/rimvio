@@ -318,12 +318,13 @@ export const GlobeContextIngestBar = forwardRef<
         });
       },
       onIngressConvergeChips: (result) => {
-        offerIngressConvergeChipsClient(result);
+        const ok = offerIngressConvergeChipsClient(result);
         const topId = result.hits[0]?.eventId?.trim();
-        if (topId) {
+        if (ok && topId) {
           onIngressConvergeAttachFocus?.(topId);
           onAttached?.(topId);
         }
+        return ok;
       },
     }),
     [

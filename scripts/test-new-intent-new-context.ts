@@ -80,4 +80,30 @@ assert.equal(
   }
 }
 
+assert.equal(
+  shouldSpawnNewContext({
+    utterance: "숙소 찾아줘",
+    activeContextEventId: "ctx-tokyo",
+    activeWorkspaceKind: "travel",
+  }),
+  false,
+);
+
+assert.equal(
+  resolveIngressContextEventId({
+    utterance: "숙소 찾아줘",
+    activeContextEventId: "ctx-tokyo",
+    activeWorkspaceKind: "travel",
+  }),
+  "ctx-tokyo",
+);
+
+assert.equal(
+  shouldSpawnNewContext({
+    utterance: "숙소 찾아줘",
+    activeContextEventId: null,
+  }),
+  true,
+);
+
 console.log("ok — new-intent-new-context");

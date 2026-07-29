@@ -29,6 +29,12 @@ export type WorkspaceNodePeekProps = {
   onClose?: () => void;
   onOpenCompare?: () => void;
   onRecenterItinerary?: (nodeId: string) => void;
+  /** Soft prepare — lodging Select gate; never charges. */
+  onPrepareReserve?: () => void;
+  /** Prepared → Field 결재함 1탭. */
+  onOpenField?: () => void;
+  /** Place already prepared and awaiting Field. */
+  awaitingField?: boolean;
   className?: string;
 };
 
@@ -77,6 +83,9 @@ export function WorkspaceNodePeek({
   onClose,
   onOpenCompare,
   onRecenterItinerary,
+  onPrepareReserve,
+  onOpenField,
+  awaitingField = false,
   className,
 }: WorkspaceNodePeekProps) {
   const [expanded, setExpanded] = useState(false);
@@ -290,6 +299,46 @@ export function WorkspaceNodePeek({
             data-workspace-open-compare
           >
             {copy.globe.workspacePreviewOpenCompare(compareCount)}
+          </button>
+        ) : null}
+
+        {node.kind === "lodging" && awaitingField && onOpenField ? (
+          <button
+            type="button"
+            className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
+            onClick={onOpenField}
+            data-workspace-open-field
+            title={copy.globe.workspacePrepareAwaitingFieldHint}
+          >
+            {copy.globe.workspacePrepareOpenFieldCta}
+            <span className="mt-0.5 block text-[10px] font-semibold opacity-90">
+              {copy.globe.workspacePrepareAwaitingFieldCta} ·{" "}
+              {copy.globe.workspacePrepareAwaitingFieldHint}
+            </span>
+          </button>
+        ) : null}
+
+        {node.kind === "lodging" && !awaitingField && onPrepareReserve ? (
+          <button
+            type="button"
+            className={cn(
+              "mt-2 w-full rounded-xl px-3 py-2.5 text-[12px] font-extrabold text-white",
+              preview.selected ? "bg-[#3182f6]" : "bg-[#191f28]/80",
+            )}
+            onClick={onPrepareReserve}
+            data-workspace-prepare-reserve
+            title={copy.globe.workspacePrepareReserveHint}
+          >
+            {copy.globe.workspacePrepareReserveCta}
+            {!preview.selected ? (
+              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
+                {copy.globe.workspacePreviewSelectFirstHint}
+              </span>
+            ) : (
+              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
+                {copy.globe.workspacePrepareReserveHint}
+              </span>
+            )}
           </button>
         ) : null}
       </div>

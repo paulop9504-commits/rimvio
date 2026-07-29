@@ -7,6 +7,16 @@ import {
 } from "@/lib/experience-run/resolve-run-place-from-text";
 import type { ExperienceRunProfile } from "@/lib/experience-run/experience-run-types";
 import { copy } from "@/lib/copy/human-ko";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  resolveConfirmedRealityAskGate,
+  shouldSkipTravelSlotAsk,
+} from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
+import type { EventCandidate } from "@/lib/events/event-candidate";
+import {
+  resolveConfirmedRealityAskGate,
+  shouldSkipTravelSlotAsk,
+} from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
 
 export type TravelSlotName =
   | "destination"
@@ -287,18 +297,35 @@ export function mergeTravelSlots(
   };
 }
 
-export function nextTravelSlot(slots: TravelFilledSlots): TravelSlotName | null {
+export function nextTravelSlot(
+  slots: TravelFilledSlots,
+  options?: { readonly event?: EventCandidate | null },
+): TravelSlotName | null {
+  const gate = options?.event
+    ? resolveConfirmedRealityAskGate({ event: options.event })
+    : null;
+
   if (!slots.destination?.trim()) {
-    return "destination";
+    if (gate && shouldSkipTravelSlotAsk("destination", gate)) {
+      // destination known from Reality
+    } else if (!gate?.knownFacts.destinationLabel) {
+      return "destination";
+    }
   }
   if (!slots.durationDays) {
-    return "duration";
+    if (!(gate && shouldSkipTravelSlotAsk("duration", gate))) {
+      return "duration";
+    }
   }
   if (!slots.anchorTimeIso?.trim()) {
-    return "anchor_time";
+    if (!(gate && shouldSkipTravelSlotAsk("anchor_time", gate))) {
+      return "anchor_time";
+    }
   }
   if (!slots.originLabel?.trim() && (slots.originLat == null || slots.originLng == null)) {
-    return "origin_location";
+    if (!(gate && shouldSkipTravelSlotAsk("origin_location", gate))) {
+      return "origin_location";
+    }
   }
   return null;
 }

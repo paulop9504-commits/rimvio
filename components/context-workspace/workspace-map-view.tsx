@@ -19,6 +19,10 @@ import {
   buildTossWorkspaceMarkerEl,
   syncTossWorkspaceMarkerEl,
 } from "@/lib/context-workspace/map/build-toss-workspace-marker-el";
+import {
+  WORKSPACE_ITINERARY_LAYER_ID,
+  WORKSPACE_ITINERARY_SOURCE_ID,
+} from "@/lib/context-workspace/map/build-workspace-itinerary-line";
 import { TOSS_WORKSPACE_MAP_CANVAS } from "@/lib/context-workspace/map/toss-workspace-map-canvas-theme";
 import { GLOBE_VECTOR_MAP_STYLE_URL } from "@/lib/globe/globe-vector-map-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
@@ -27,6 +31,7 @@ import {
   syncGlobeVectorMapSize,
 } from "@/lib/globe/sync-globe-vector-map-size";
 import { cn } from "@/lib/utils";
+import { copy } from "@/lib/copy/human-ko";
 
 export type WorkspaceMapViewProps = {
   pins: readonly WorkspaceMapPin[];
@@ -34,12 +39,84 @@ export type WorkspaceMapViewProps = {
   onSelectPin?: (id: string) => void;
   onPinToggle?: (id: string) => void;
   onRemovePin?: (id: string) => void;
+  /** Soft prepare on lodging marker — never charges. */
+  onPrepareReserve?: (id: string) => void;
+  /** Prepared lodging → Field 결재함. */
+  onOpenField?: (id: string) => void;
   onBackgroundActivate?: () => void;
+  /** Primary itinerary LineString as [lng, lat][]. */
+  routeLineCoords?: readonly [number, number][];
   className?: string;
   compact?: boolean;
   /** Skip WebGL — chat teaser / low-power path. */
   preferPlaceholder?: boolean;
 };
+
+function itineraryGeoJson(coords: readonly [number, number][]): {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+        properties: Record<string, unknown>;
+    geometry: {
+      type: "LineString";
+      coordinates: [number, number][];
+    };
+  }>;
+} {
+  if (coords.length < 2) {
+    return { type: "FeatureCollection", features: [] };
+  }
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: coords.map(([lng, lat]) => [lng, lat] as [number, number]),
+        },
+      },
+    ],
+  };
+}
+
+function syncWorkspaceItineraryLine(
+  map: import("maplibre-gl").Map,
+  coords: readonly [number, number][],
+): void {
+  const data = itineraryGeoJson(coords);
+  const existing = map.getSource(WORKSPACE_ITINERARY_SOURCE_ID) as
+    | import("maplibre-gl").GeoJSONSource
+    | undefined;
+  if (existing) {
+    existing.setData(data);
+    return;
+  }
+  if (coords.length < 2) {
+    return;
+  }
+  map.addSource(WORKSPACE_ITINERARY_SOURCE_ID, {
+    type: "geojson",
+    data,
+  });
+  if (!map.getLayer(WORKSPACE_ITINERARY_LAYER_ID)) {
+    map.addLayer({
+      id: WORKSPACE_ITINERARY_LAYER_ID,
+      type: "line",
+      source: WORKSPACE_ITINERARY_SOURCE_ID,
+      layout: {
+        "line-cap": "round",
+        "line-join": "round",
+      },
+      paint: {
+        "line-color": GLOBE_TOSS_THEME.blue,
+        "line-width": 3.5,
+        "line-opacity": 0.78,
+      },
+    });
+  }
+}
 
 type MapLibreModule = typeof import("maplibre-gl");
 type MarkerEntry = {
@@ -118,6 +195,8 @@ function PlaceholderPinMap({
   onSelectPin,
   onPinToggle,
   onRemovePin,
+  onPrepareReserve,
+  onOpenField,
   onBackgroundActivate,
   compact,
 }: WorkspaceMapViewProps) {
@@ -161,6 +240,18 @@ function PlaceholderPinMap({
         const active = node.id === selectedId || node.selected;
         const pinned = Boolean(node.bookmarked);
         const showActions = !compact && (active || pinned);
+        const showPrepare =
+          !compact &&
+          active &&
+          node.kind === "lodging" &&
+          !node.awaitingField &&
+          Boolean(onPrepareReserve);
+        const showAwaitingField =
+          !compact &&
+          active &&
+          node.kind === "lodging" &&
+          Boolean(node.awaitingField) &&
+          Boolean(onOpenField);
         return (
           <div
             key={node.id}
@@ -202,6 +293,33 @@ function PlaceholderPinMap({
                 ) : null}
               </div>
             ) : null}
+            {showPrepare ? (
+              <button
+                type="button"
+                className="rounded-full bg-[#191f28] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-[0_1px_3px_rgba(25,31,40,0.14)]"
+                title={copy.globe.workspacePrepareReserveHint}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPrepareReserve?.(node.id);
+                }}
+              >
+                {copy.globe.workspacePrepareReserveCta}
+              </button>
+            ) : null}
+            {showAwaitingField ? (
+              <button
+                type="button"
+                className="rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-[0_1px_3px_rgba(49,130,246,0.35)]"
+                title={copy.globe.workspacePrepareAwaitingFieldHint}
+                data-marker-awaiting-field
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenField?.(node.id);
+                }}
+              >
+                {copy.globe.workspacePrepareAwaitingFieldCta}
+              </button>
+            ) : null}
             <button
               type="button"
               className="inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[11px] font-bold shadow-[0_1px_3px_rgba(25,31,40,0.1)]"
@@ -238,7 +356,10 @@ function MapLibreWorkspaceMap({
   onSelectPin,
   onPinToggle,
   onRemovePin,
+  onPrepareReserve,
+  onOpenField,
   onBackgroundActivate,
+  routeLineCoords,
   compact,
   className,
 }: WorkspaceMapViewProps) {
@@ -249,16 +370,34 @@ function MapLibreWorkspaceMap({
   const onSelectRef = useRef(onSelectPin);
   const onPinToggleRef = useRef(onPinToggle);
   const onRemovePinRef = useRef(onRemovePin);
+  const onPrepareRef = useRef(onPrepareReserve);
+  const onOpenFieldRef = useRef(onOpenField);
   const onBgRef = useRef(onBackgroundActivate);
   useEffect(() => {
     onSelectRef.current = onSelectPin;
     onPinToggleRef.current = onPinToggle;
     onRemovePinRef.current = onRemovePin;
+    onPrepareRef.current = onPrepareReserve;
+    onOpenFieldRef.current = onOpenField;
     onBgRef.current = onBackgroundActivate;
-  }, [onSelectPin, onPinToggle, onRemovePin, onBackgroundActivate]);
+  }, [
+    onSelectPin,
+    onPinToggle,
+    onRemovePin,
+    onPrepareReserve,
+    onOpenField,
+    onBackgroundActivate,
+  ]);
   const [ready, setReady] = useState(false);
   const bounds = useMemo(() => pinBounds(pins), [pins]);
   const mobile = useMemo(() => isCoarsePointerDevice(), []);
+  const routeKey = useMemo(
+    () =>
+      (routeLineCoords ?? [])
+        .map(([lng, lat]) => `${lng.toFixed(5)},${lat.toFixed(5)}`)
+        .join("|"),
+    [routeLineCoords],
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -321,6 +460,11 @@ function MapLibreWorkspaceMap({
           );
           lastGeometryKeyRef.current = pinsGeometryKey(pins);
         }
+        try {
+          syncWorkspaceItineraryLine(live, routeLineCoords ?? []);
+        } catch {
+          /* ignore */
+        }
         setReady(true);
       });
       created.on("click", (event) => {
@@ -374,6 +518,12 @@ function MapLibreWorkspaceMap({
           : undefined,
         onRemove: onRemovePinRef.current
           ? (id: string) => onRemovePinRef.current?.(id)
+          : undefined,
+        onPrepareReserve: onPrepareRef.current
+          ? (id: string) => onPrepareRef.current?.(id)
+          : undefined,
+        onOpenField: onOpenFieldRef.current
+          ? (id: string) => onOpenFieldRef.current?.(id)
           : undefined,
       };
 
@@ -444,6 +594,18 @@ function MapLibreWorkspaceMap({
       cancelled = true;
     };
   }, [ready, pins, selectedId, compact]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) {
+      return;
+    }
+    try {
+      syncWorkspaceItineraryLine(map, routeLineCoords ?? []);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, routeKey, routeLineCoords]);
 
   return (
     <div

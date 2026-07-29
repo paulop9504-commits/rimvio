@@ -21,6 +21,11 @@ import { mapLodgingInventoryToPlaceHits } from "@/lib/search-engine/map-lodging-
 import { mapRestaurantCandidatesToPlaceHits } from "@/lib/search-engine/map-restaurant-candidates-to-hits";
 import { searchOsakaDemoCatalog } from "@/lib/search-engine/osaka-demo-catalog";
 import {
+  fetchPlaceSearchViaApi,
+  shouldUsePlaceSearchApiBridge,
+} from "@/lib/search-engine/fetch-place-search-via-api";
+import { resolvePlaceSearchAnchor } from "@/lib/search-engine/resolve-place-search-anchor";
+import {
   runPlaceSearch,
   type PlaceSearchHit,
   type PlaceSearchInput,
@@ -233,17 +238,35 @@ async function livePoiHits(
 /**
  * Prefer LiteAPI (lodging) / Google Places + Naver (eatery) when configured.
  * Seed orbit (리버뷰 호텔 …) is never used unless Osaka demo forced or allowSeedFallback.
+ * Browser always goes through `/api/search/places` (server-only API keys).
  */
 export async function runPlaceSearchAsync(
   input: PlaceSearchInput,
 ): Promise<readonly PlaceSearchHit[]> {
-  const limit = input.limit ?? 4;
-  const fieldSearch = input.fieldSearch ?? null;
-  const composed: PlaceSearchInput = {
+  const resolvedAnchor = resolvePlaceSearchAnchor({
+    anchorLat: input.anchorLat,
+    anchorLng: input.anchorLng,
+    contextEventId: input.contextEventId,
+    query: input.query,
+    contextLabelKo: input.contextLabelKo,
+  });
+  const anchored: PlaceSearchInput = {
     ...input,
+    anchorLat: resolvedAnchor?.lat ?? input.anchorLat,
+    anchorLng: resolvedAnchor?.lng ?? input.anchorLng,
+  };
+
+  if (shouldUsePlaceSearchApiBridge()) {
+    return fetchPlaceSearchViaApi(anchored);
+  }
+
+  const limit = anchored.limit ?? 4;
+  const fieldSearch = anchored.fieldSearch ?? null;
+  const composed: PlaceSearchInput = {
+    ...anchored,
     query: fieldSearch
-      ? composeSearchQueryWithFieldControl(input.query, fieldSearch)
-      : input.query,
+      ? composeSearchQueryWithFieldControl(anchored.query, fieldSearch)
+      : anchored.query,
     // Avoid double-apply inside sync fallback; we apply once at the end.
     fieldSearch: null,
     limit: Math.max(limit, fieldSearch ? 8 : limit),
@@ -277,7 +300,7 @@ export async function runPlaceSearchAsync(
   if (!hits || hits.length === 0) {
     if (allowSeed) {
       hits = runPlaceSearch({
-        ...input,
+        ...anchored,
         query: composed.query,
         limit: composed.limit,
         fieldSearch: null,

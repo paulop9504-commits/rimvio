@@ -131,6 +131,13 @@ export type {
 } from "@/lib/context-workspace/build-node-preview";
 export { buildWorkspaceWhy } from "@/lib/context-workspace/build-workspace-why";
 export { optimizeWorkspaceNodeRoute } from "@/lib/context-workspace/optimize-workspace-route";
+export { prepareWorkspaceNodeBooking } from "@/lib/context-workspace/prepare-workspace-booking";
+export { buildWorkspaceItineraryLineCoords } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
+export {
+  isWorkspacePlaceAwaitingField,
+  readWorkspacePlacePreparedOperation,
+  workspacePlacePrepareOperationId,
+} from "@/lib/context-workspace/workspace-place-prepare-status";
 
 export {
   resolveWorkspaceMapProvider,

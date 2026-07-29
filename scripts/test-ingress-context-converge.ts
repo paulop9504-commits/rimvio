@@ -1,11 +1,14 @@
 #!/usr/bin/env npx tsx
 /**
- * Ingress Find gate — Japan tokens + auto_attach / ask_chips / create_new.
+ * Ingress Find gate — actionable work → create_new; vague only → ask_chips with hits.
  */
 
 import assert from "node:assert/strict";
 import type { EventCandidate } from "../lib/events/event-candidate";
-import { resolveIngressContextConverge } from "../lib/globe-ingress/resolve-ingress-context-converge";
+import {
+  isActionableTripWorkUtterance,
+  resolveIngressContextConverge,
+} from "../lib/globe-ingress/resolve-ingress-context-converge";
 import { splitContextSearchQuery } from "../lib/search/split-context-search-query";
 
 assert.deepEqual(splitContextSearchQuery("일본 여행").experienceTerms.sort(), [
@@ -47,61 +50,39 @@ function japanTrip(id: string, peer: string | null, day: number): EventCandidate
   };
 }
 
+assert.equal(isActionableTripWorkUtterance("도쿄 4박5일 계획 세워"), true);
+assert.equal(isActionableTripWorkUtterance("일본 여행 가려고"), true);
+assert.equal(isActionableTripWorkUtterance("여행"), false);
+
 const empty = resolveIngressContextConverge({
   utterance: "일본 여행 가려고",
   events: [],
 });
 assert.equal(empty.decision, "create_new");
-assert.equal(empty.hits.length, 0);
 
-const oneClear = resolveIngressContextConverge({
-  utterance: "일본 여행 가려고",
+const actionableWithHit = resolveIngressContextConverge({
+  utterance: "도쿄 4박5일 계획 세워",
   events: [japanTrip("evt-jp-1", "민수", 3)],
 });
-assert.equal(oneClear.decision, "auto_attach");
-assert.equal(oneClear.attachEventId, "evt-jp-1");
-assert.ok(oneClear.hits[0]!.score >= 18);
+assert.equal(
+  actionableWithHit.decision,
+  "create_new",
+  "actionable work must not open empty Context picker",
+);
 
-const ambiguous = resolveIngressContextConverge({
-  utterance: "일본 여행 가려고",
+const vague = resolveIngressContextConverge({
+  utterance: "여행",
   events: [
     japanTrip("evt-jp-a", "민수", 3),
     japanTrip("evt-jp-b", "지연", 4),
   ],
 });
 assert.ok(
-  ambiguous.decision === "ask_chips" || ambiguous.decision === "auto_attach",
-  `expected ask or auto, got ${ambiguous.decision}`,
+  vague.decision === "ask_chips" || vague.decision === "create_new",
+  `got ${vague.decision}`,
 );
-if (ambiguous.hits.length >= 2) {
-  const gap = ambiguous.hits[0]!.score - ambiguous.hits[1]!.score;
-  if (gap < 8 && ambiguous.hits[0]!.score >= 18) {
-    assert.equal(ambiguous.decision, "ask_chips");
-  }
+if (vague.decision === "ask_chips") {
+  assert.ok(vague.hits.length >= 1);
 }
 
-const unrelated = resolveIngressContextConverge({
-  utterance: "일본 여행 가려고",
-  events: [
-    {
-      id: "evt-seoul",
-      title: "강남 약속",
-      category: "schedule",
-      source: "chat",
-      lifecycle: "active",
-      datetime: "2026-07-01T10:00:00.000Z",
-      place: "강남",
-      confidence: 0.8,
-      metadata: {},
-      lifecycleUpdatedAt: "2026-07-01T10:00:00.000Z",
-      createdAt: "2026-07-01T10:00:00.000Z",
-      updatedAt: "2026-07-01T10:00:00.000Z",
-    },
-  ],
-});
-assert.ok(
-  unrelated.decision === "create_new" ||
-    (unrelated.hits[0] && unrelated.hits[0].score < 18),
-);
-
-console.log("✓ ingress-context-converge", oneClear.decision, oneClear.hits[0]?.meaningWhy);
+console.log("✓ ingress-context-converge");

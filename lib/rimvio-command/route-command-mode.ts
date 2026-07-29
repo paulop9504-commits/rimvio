@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RIMVIO Command Router — 4-step pipe (ADR-035).
  *
  * 1. classifyActionVerb   → what verb?
@@ -126,6 +126,7 @@ export function routeRimvioCommandMode(input: {
     shouldSpawnNewContext({
       utterance: text,
       activeContextEventId: active,
+      activeWorkspaceKind: activeKind,
     })
   ) {
     return { mode: "create", reason: "new_intent", verb, target: "new_context" };

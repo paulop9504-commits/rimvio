@@ -50,13 +50,23 @@ import { resolveRimvioCommandPlaceholder } from "../lib/rimvio-command";
 
 {
   const r = routeRimvioCommandMode({
-    utterance: "바다 보이는 숙소 찾아줘",
-    activeContextId: "evt-osaka",
+    utterance: "숙소 찾아줘",
+    activeContextId: "evt-tokyo",
     activeWorkspaceKind: "travel",
   });
   assert.equal(r.mode, "continue");
   assert.equal(r.reason, "active_domain_scout");
 }
+
+{
+  const r = routeRimvioCommandMode({
+    utterance: "이 맥락에 이어서 숙소 찾아줘",
+    activeContextId: "evt-tokyo",
+    activeWorkspaceKind: "travel",
+  });
+  assert.equal(r.mode, "continue");
+}
+
 
 {
   // 중고 판매 맥락에서 호텔 찾기 → 새 맥락 (의도 전환)

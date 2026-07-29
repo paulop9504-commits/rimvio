@@ -30,6 +30,10 @@ import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspa
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 import type { GraphFilterPredicate } from "@/lib/graph-command/types";
+import {
+  recordHotelSelected,
+  recordRestaurantAdded,
+} from "@/lib/workstream";
 
 function snapshotOf(state: ContextWorkspaceState): ContextWorkspaceStateSnapshot {
   return {
@@ -459,6 +463,32 @@ export function applyWorkspaceTransition(input: {
     query: nextQuery ?? undefined,
   });
   writeContextWorkspace(withWorkspaceRelationships(next, nextQuery));
+
+  // Selection residue only — replace_candidates / add_nodes stay ephemeral (ADR-036).
+  if (input.op === "select" && selectedIds.length > 0) {
+    const picked =
+      nodes.find((n) => selectedIds.includes(n.id) && n.selected) ??
+      nodes.find((n) => n.selected) ??
+      null;
+    if (picked) {
+      if (picked.kind === "lodging") {
+        recordHotelSelected({
+          contextEventId: prev.contextEventId,
+          labelKo: picked.title,
+          placeId: picked.placeId,
+          objectId: picked.id,
+        });
+      } else if (picked.kind === "eatery") {
+        recordRestaurantAdded({
+          contextEventId: prev.contextEventId,
+          labelKo: picked.title,
+          placeId: picked.placeId,
+          objectId: picked.id,
+        });
+      }
+    }
+  }
+
   return next;
 }
 

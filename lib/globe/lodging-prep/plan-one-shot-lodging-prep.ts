@@ -7,8 +7,16 @@ import {
   type TripIntakeState,
 } from "@/lib/globe/trip-intake";
 import { isLodgingPrepUtterance } from "@/lib/globe/lodging-prep/is-lodging-prep-utterance";
+import {
+  isInstantLodgingSearch,
+  requiresLodgingBookingSlots,
+} from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { resolveSpatialTargetFromText } from "@/lib/globe/spatial/resolve-spatial-target-from-text";
 import type { ContextSpatialTargetWire } from "@/lib/globe/spatial/context-spatial-target-metadata";
+import {
+  filterTripIntakeGapsByConfirmedReality,
+  resolveConfirmedRealityAskGate,
+} from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
 
 export type OneShotLodgingPrepStep =
   | "parse_spatial"
@@ -66,9 +74,15 @@ export function planOneShotLodgingPrep(input: {
     userLng: input.userLng,
     now: input.now,
   });
-  const intakeGaps = assessTripIntakeGaps(intakeState);
+  const realityGate = resolveConfirmedRealityAskGate({ event: input.event });
+  const intakeGaps = filterTripIntakeGapsByConfirmedReality(
+    assessTripIntakeGaps(intakeState),
+    realityGate,
+  );
   const destinationOk =
-    spatialTarget != null || Boolean(intakeState.destinationLabel?.trim());
+    spatialTarget != null ||
+    Boolean(intakeState.destinationLabel?.trim()) ||
+    Boolean(realityGate.knownFacts.destinationLabel);
   const softFill = input.expressReady === true;
   const softGapOnly =
     intakeGaps.length > 0 &&
@@ -79,13 +93,23 @@ export function planOneShotLodgingPrep(input: {
         (softFill && (gap === "guests" || gap === "dates")),
     );
 
+  // Command-first: 「숙소 찾아줘」 on a known destination executes — dates only for 예약/체크인.
+  const searchOnlyCommand =
+    isInstantLodgingSearch(message) && !requiresLodgingBookingSlots(message);
+
+  const datesFromReality = Boolean(
+    realityGate.knownFacts.checkInYmd && realityGate.knownFacts.checkOutYmd,
+  );
+
   const readyForScout =
     destinationOk &&
-    (hasLodgingTemporalSlots(intakeState) ||
-      (softFill && Boolean(intakeState.destinationLabel))) &&
-    (hasCompleteTripIntake(intakeState) ||
-      softGapOnly ||
-      intakeGaps.every((gap) => gap === "budget"));
+    (searchOnlyCommand ||
+      datesFromReality ||
+      ((hasLodgingTemporalSlots(intakeState) ||
+        (softFill && Boolean(intakeState.destinationLabel))) &&
+        (hasCompleteTripIntake(intakeState) ||
+          softGapOnly ||
+          intakeGaps.every((gap) => gap === "budget"))));
 
   const steps: OneShotLodgingPrepStep[] = ["parse_spatial", "merge_intake"];
   if (readyForScout) {

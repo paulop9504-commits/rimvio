@@ -14,6 +14,7 @@ export {
 export { isCountryOrRegionDestinationLabel } from "@/lib/globe-ingress/is-country-or-region-destination";
 export {
   resolveIngressContextConverge,
+  isActionableTripWorkUtterance,
   type IngressConvergeDecision,
   type IngressConvergeHit,
   type IngressContextConvergeResult,

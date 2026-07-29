@@ -21,7 +21,17 @@ function kindFromEvent(event: EventCandidate): WorkspaceKind | null {
   }
   if (
     event.category === "travel" ||
-    /여행|출장|맛집|숙소|trip|호텔/iu.test(title)
+    meta.globeManualContext === true ||
+    meta.targetingSource === "experience_run" ||
+    meta.executionProfileId === "leisure_travel" ||
+    meta.executionProfileId === "business_trip" ||
+    meta.executionProfileId === "lodging_search" ||
+    meta.executionProfileId === "eatery_search" ||
+    typeof meta.travelDestination === "string" ||
+    /여행|출장|맛집|숙소|trip|호텔/iu.test(title) ||
+    /^(?:오사카|도쿄|후쿠오카|교토|나고야|삿포로|오키나와|제주|부산|서울|파리|뉴욕|방콕|다낭|타이베이|세부|발리|마닐라)/u.test(
+      title,
+    )
   ) {
     return "travel";
   }

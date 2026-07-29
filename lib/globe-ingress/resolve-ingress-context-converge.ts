@@ -1,6 +1,7 @@
 /**
  * Ingress pre-find — rank existing contexts before minting a new Container.
- * Hits always surface as ask_chips (no quiet auto-attach). Commit stays human.
+ * Hits may surface as ask_chips only when choices can render; else create_new.
+ * Actionable trip work → create_new (ADR-036 — no Context pick quiz).
  */
 
 import { buildSearchableExperienceIndex } from "@/lib/search/build-searchable-experience-index";
@@ -8,6 +9,8 @@ import { searchRelatedContext } from "@/lib/search/search-related-context";
 import { splitContextSearchQuery } from "@/lib/search/split-context-search-query";
 import { resolveContextMeaningWhyLine } from "@/lib/meaning/resolve-context-meaning-why-line";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { extractRunDestination } from "@/lib/experience-run/classify-experience-run-intent";
+import { parseTravelSlotsFromMessage } from "@/lib/experience-run/travel-context-slots";
 
 export type IngressConvergeHit = {
   readonly eventId: string;
@@ -29,6 +32,25 @@ export type IngressContextConvergeResult = {
 /** Floor so weak lexical noise does not force chips. */
 const MIN_HIT_SCORE = 8;
 
+/**
+ * Clear destination / duration / plan → mint work, don't quiz “비슷한 맥락 고르세요”.
+ */
+export function isActionableTripWorkUtterance(utterance: string): boolean {
+  const text = utterance.trim();
+  if (!text) return false;
+  const ref = new Date().toISOString().slice(0, 10);
+  const slots = parseTravelSlotsFromMessage(text, ref);
+  if (slots.destination?.trim() || slots.durationDays) return true;
+  if (extractRunDestination(text)?.trim()) return true;
+  if (
+    /(?:계획|일정|동선|준비|세워|짜|만들|찾아|예약)/u.test(text) &&
+    /(?:여행|출장|도쿄|오사카|제주|후쿠오카|일본|해외|trip)/iu.test(text)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Pure — utterance + events → converge decision (no Commit, no mint). */
 export function resolveIngressContextConverge(input: {
   utterance: string;
@@ -39,6 +61,15 @@ export function resolveIngressContextConverge(input: {
   if (!seedUtterance) {
     return {
       seedUtterance: "",
+      decision: "create_new",
+      hits: [],
+    };
+  }
+
+  // ADR-036 — work becomes context; don't interrupt actionable trip work with a Context picker.
+  if (isActionableTripWorkUtterance(seedUtterance)) {
+    return {
+      seedUtterance,
       decision: "create_new",
       hits: [],
     };

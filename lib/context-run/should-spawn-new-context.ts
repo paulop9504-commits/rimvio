@@ -1,12 +1,18 @@
 /**
  * New Intent → New Context (ADR-029).
- * Attach to the open hub Context only when the user asks to continue.
+ * Attach to the open hub Context only when the user asks to continue,
+ * or when domain scout (숙소·맛집) continues on a travel-compatible hub.
  */
 
 import { classifyContextCommand } from "@/lib/context-command/classify-context-command";
 import { isGlobeIngressEligible } from "@/lib/globe-ingress/compile-globe-ingress";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
+import {
+  activeContextAllowsDomainScout,
+  resolveActiveWorkspaceKind,
+} from "@/lib/workspace-kind/resolve-active-workspace-kind";
+import type { WorkspaceKind } from "@/lib/workspace-kind/types";
 
 /** User explicitly wants to keep working on the active Context. */
 export function isExplicitContextContinue(utterance: string): boolean {
@@ -19,6 +25,13 @@ export function isExplicitContextContinue(utterance: string): boolean {
   );
 }
 
+function isDomainScoutUtterance(utterance: string): boolean {
+  const exp = classifyExperienceRunIntent(utterance);
+  return (
+    exp?.profile === "lodging_search" || exp?.profile === "eatery_search"
+  );
+}
+
 /**
  * True → mint a new Context (ignore active hub id).
  * False → may attach / refine on active Context.
@@ -26,6 +39,8 @@ export function isExplicitContextContinue(utterance: string): boolean {
 export function shouldSpawnNewContext(input: {
   readonly utterance: string;
   readonly activeContextEventId?: string | null;
+  /** When set, skips event-store lookup. */
+  readonly activeWorkspaceKind?: WorkspaceKind | null;
 }): boolean {
   const text = input.utterance.trim();
   if (!text) {
@@ -38,6 +53,17 @@ export function shouldSpawnNewContext(input: {
   }
 
   if (isExplicitContextContinue(text)) {
+    return false;
+  }
+
+  const active = input.activeContextEventId?.trim() || null;
+  const kind =
+    input.activeWorkspaceKind !== undefined
+      ? input.activeWorkspaceKind
+      : resolveActiveWorkspaceKind(active);
+
+  // Open travel (or unknown hub): 숙소·맛집 scout stays — not a new Intent.
+  if (active && activeContextAllowsDomainScout(kind) && isDomainScoutUtterance(text)) {
     return false;
   }
 
@@ -61,6 +87,7 @@ export function resolveIngressContextEventId(input: {
   readonly utterance: string;
   readonly activeContextEventId?: string | null;
   readonly forceNewContext?: boolean;
+  readonly activeWorkspaceKind?: WorkspaceKind | null;
 }): string | null {
   if (input.forceNewContext) {
     return null;
@@ -69,7 +96,13 @@ export function resolveIngressContextEventId(input: {
   if (!active) {
     return null;
   }
-  if (shouldSpawnNewContext({ utterance: input.utterance, activeContextEventId: active })) {
+  if (
+    shouldSpawnNewContext({
+      utterance: input.utterance,
+      activeContextEventId: active,
+      activeWorkspaceKind: input.activeWorkspaceKind,
+    })
+  ) {
     return null;
   }
   return active;

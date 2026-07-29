@@ -71,6 +71,8 @@ function commitTripContextEvent(input: {
     feedPlanEnabled: true,
     globeManualContext: true,
     targetingSource: "experience_run",
+    workspaceKind: "travel" as const,
+    travelDestination: resolvedDestination,
     sourceMessage: message,
     executionProfileId:
       profile === "lodging_search"
