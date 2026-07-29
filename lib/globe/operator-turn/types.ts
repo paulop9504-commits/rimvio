@@ -61,7 +61,13 @@ export type OperatorTurnPlan =
         | "instant_flight_search"
         | "instant_transit_navigate"
         | "instant_finance_payment"
-        | "trip_experience_parallel";
+        | "trip_experience_parallel"
+        | "command_first_lodging_search"
+        | "command_first_execute"
+        | "confirmed_reality_skip_ask"
+        | "intake_gap_without_chips"
+        | "active_domain_scout_lodging"
+        | "active_domain_scout_eatery";
     }
   | {
       readonly tool: "defer_classify";
