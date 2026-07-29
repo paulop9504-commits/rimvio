@@ -1539,7 +1539,6 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
         if (commandResult?.ok) {
           appendContextAgentComposeTurn(contextEventId, {
             role: "user",
-            kind: "text",
             text: triggerMessage.trim(),
           });
           appendContextAgentComposeTurn(contextEventId, {
