@@ -12,11 +12,6 @@ import {
   resolveConfirmedRealityAskGate,
   shouldSkipTravelSlotAsk,
 } from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
-import type { EventCandidate } from "@/lib/events/event-candidate";
-import {
-  resolveConfirmedRealityAskGate,
-  shouldSkipTravelSlotAsk,
-} from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
 
 export type TravelSlotName =
   | "destination"
