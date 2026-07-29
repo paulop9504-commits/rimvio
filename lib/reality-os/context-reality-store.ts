@@ -5,7 +5,7 @@
  * @see docs/adr/034-reality-os-primitives-projection.md
  */
 
-import { findEventCandidate } from "@/lib/events/event-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
 import type { RealityComposition } from "@/lib/reality-os/compose";
 import { composeRealityForSdkKind } from "@/lib/reality-os/compose";
 import {
@@ -108,7 +108,7 @@ function parseBundleFromUnknown(
 }
 
 function hydrateFromEvent(contextEventId: string): ContextRealityBundle | null {
-  const event = findEventCandidate(contextEventId);
+  const event = findLifeEventCandidate(contextEventId);
   const raw = event?.metadata?.[CONTEXT_REALITY_BUNDLE_META_KEY];
   const parsed = parseBundleFromUnknown(raw, contextEventId);
   if (!parsed) {
@@ -119,7 +119,7 @@ function hydrateFromEvent(contextEventId: string): ContextRealityBundle | null {
 }
 
 function persistToEvent(bundle: ContextRealityBundle): void {
-  const event = findEventCandidate(bundle.contextEventId);
+  const event = findLifeEventCandidate(bundle.contextEventId);
   if (!event) {
     return;
   }
