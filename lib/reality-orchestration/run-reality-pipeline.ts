@@ -322,7 +322,7 @@ export async function runRealityPipeline(
       key: `last_${input.domain}_action`,
       value: input.actionType,
       domain: input.domain,
-      confidence: 0.8,
+      sourceContextId: input.contextId,
     });
     return null;
   });
