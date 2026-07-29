@@ -552,7 +552,7 @@ export const copy = {
     workspacePreviewPhotoHint: "사진 준비 중",
     workspacePreviewPhotoCount: (n: number) => `사진 ${n}장`,
     workspacePreviewNearby: "주변",
-    workspacePreviewExpand: "자세히",
+    workspacePreviewRevealDetail: "자세히",
     workspacePreviewCollapse: "접기",
     workspacePreviewDetailTitle: "자세히 보기",
     workspacePreviewLodgingDetail:

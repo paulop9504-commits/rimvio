@@ -543,7 +543,7 @@ export const copyEn: Copy = {
     workspacePreviewPhotoHint: "Photos coming soon",
     workspacePreviewPhotoCount: (n: number) => `${n} photos`,
     workspacePreviewNearby: "Nearby",
-    workspacePreviewExpand: "Details",
+    workspacePreviewRevealDetail: "Details",
     workspacePreviewCollapse: "Collapse",
     workspacePreviewDetailTitle: "More details",
     workspacePreviewLodgingDetail:

@@ -144,7 +144,7 @@ export function WorkspaceNodePeek({
               aria-label={
                 expanded
                   ? copy.globe.workspacePreviewCollapse
-                  : copy.globe.workspacePreviewExpand
+                  : copy.globe.workspacePreviewRevealDetail
               }
             >
               <ChevronUp
