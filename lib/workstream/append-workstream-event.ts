@@ -14,6 +14,7 @@ import {
   ensureWorkstream,
   writeWorkstream,
 } from "@/lib/workstream/workstream-store";
+import { syncContextWorkState } from "@/lib/workstream/sync-context-work-state";
 
 function newEventId(kind: WorkstreamEventKind): string {
   return `ws:${kind}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
@@ -83,6 +84,11 @@ export function appendWorkstreamEvent(input: {
       atIso,
     });
   }
+
+  syncContextWorkState({
+    contextEventId,
+    event: findLifeEventCandidate(contextEventId),
+  });
 
   return next;
 }

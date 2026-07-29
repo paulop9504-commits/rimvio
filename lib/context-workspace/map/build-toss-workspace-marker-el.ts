@@ -63,7 +63,7 @@ export type WorkspaceMarkerActions = {
   onSelect: (id: string) => void;
   onPinToggle?: (id: string) => void;
   onRemove?: (id: string) => void;
-  /** Soft prepare — lodging only; never charges. */
+  /** Soft prepare — lodging / ticket-like POI; never charges. */
   onPrepareReserve?: (id: string) => void;
   /** Prepared → open Field 결재함. */
   onOpenField?: (id: string) => void;
@@ -97,6 +97,7 @@ export function tossWorkspaceMarkerChromeKey(
     pin.kind ?? "",
     pin.explicitlySelected ? 1 : 0,
     pin.awaitingField ? 1 : 0,
+    pin.legHintKo ?? "",
     pin.title,
     pin.rating ?? "",
     pin.amountLabel ?? "",
@@ -128,16 +129,18 @@ function fillTossWorkspaceMarkerEl(
   const photoSpot = Boolean(pin.photoSpot);
   const awaitingField = Boolean(pin.awaitingField);
   const showActions = !compact && (selected || pinned);
+  const canPrepareKind =
+    pin.kind === "lodging" || pin.kind === "poi" || pin.kind === "amenity";
   const showPrepare =
     !compact &&
     selected &&
-    pin.kind === "lodging" &&
+    canPrepareKind &&
     !awaitingField &&
     Boolean(actions.onPrepareReserve);
   const showAwaitingField =
     !compact &&
     selected &&
-    pin.kind === "lodging" &&
+    canPrepareKind &&
     awaitingField &&
     Boolean(actions.onOpenField);
 
@@ -178,12 +181,20 @@ function fillTossWorkspaceMarkerEl(
   }
 
   if (showPrepare) {
+    const prepareCta =
+      pin.kind === "poi" || pin.kind === "amenity"
+        ? copy.globe.workspacePrepareTicketCta
+        : copy.globe.workspacePrepareReserveCta;
+    const prepareHint =
+      pin.kind === "poi" || pin.kind === "amenity"
+        ? copy.globe.workspacePrepareTicketHint
+        : copy.globe.workspacePrepareReserveHint;
     const prepare = document.createElement("button");
     prepare.type = "button";
     prepare.dataset.markerPrepare = "1";
-    prepare.title = copy.globe.workspacePrepareReserveHint;
-    prepare.setAttribute("aria-label", copy.globe.workspacePrepareReserveCta);
-    prepare.textContent = copy.globe.workspacePrepareReserveCta;
+    prepare.title = prepareHint;
+    prepare.setAttribute("aria-label", prepareCta);
+    prepare.textContent = prepareCta;
     prepare.style.cssText = [
       "display:inline-flex",
       "align-items:center",
@@ -250,12 +261,18 @@ function fillTossWorkspaceMarkerEl(
       ? pin.rating.toFixed(1)
       : null;
   const priceBit = pin.amountLabel?.trim() || null;
+  const legBit = selected ? pin.legHintKo?.trim() || null : null;
   const label = compact
     ? photoSpot
       ? "포토"
       : priceBit || `★${rating ?? "—"}`
     : selected
-      ? [shortTitle(pin.title, 9), rating ? `★${rating}` : null, priceBit]
+      ? [
+          shortTitle(pin.title, 9),
+          rating ? `★${rating}` : null,
+          priceBit,
+          legBit,
+        ]
           .filter(Boolean)
           .join(" · ")
       : pinned

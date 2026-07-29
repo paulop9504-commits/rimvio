@@ -21,6 +21,10 @@ import {
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry/invoke-rimvio-tool";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
+import {
+  isContinueWorkUtterance,
+  resolveNextWorkAction,
+} from "@/lib/workstream/resolve-next-work-action";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -433,6 +437,41 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
   if (!contextEventId || !utterance) {
     return { handled: false, replyKo: null, committed: false };
   }
+
+  // ADR-038 — “계속해” reads Work State, not chat history.
+  if (isContinueWorkUtterance(utterance)) {
+    const next = resolveNextWorkAction({
+      contextEventId,
+      utterance,
+    });
+    if (!next.enqueueUtterance) {
+      return {
+        handled: true,
+        replyKo: next.replyKo,
+        committed: false,
+      };
+    }
+    if (!hasProvisionalContextWorkspace(contextEventId)) {
+      return {
+        handled: true,
+        replyKo: next.replyKo,
+        committed: false,
+      };
+    }
+    const inner = await tryApplyWorkspaceLodgingTurn({
+      utterance: next.enqueueUtterance,
+      contextEventId,
+    });
+    const detail = inner.replyKo?.trim();
+    return {
+      handled: true,
+      replyKo: detail
+        ? `${next.replyKo} ${detail}`.trim()
+        : next.replyKo,
+      committed: inner.committed,
+    };
+  }
+
   if (!hasProvisionalContextWorkspace(contextEventId)) {
     return { handled: false, replyKo: null, committed: false };
   }

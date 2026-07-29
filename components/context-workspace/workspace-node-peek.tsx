@@ -302,7 +302,11 @@ export function WorkspaceNodePeek({
           </button>
         ) : null}
 
-        {node.kind === "lodging" && awaitingField && onOpenField ? (
+        {node.kind === "lodging" ||
+        node.kind === "poi" ||
+        node.kind === "amenity"
+          ? awaitingField && onOpenField
+            ? (
           <button
             type="button"
             className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
@@ -316,9 +320,9 @@ export function WorkspaceNodePeek({
               {copy.globe.workspacePrepareAwaitingFieldHint}
             </span>
           </button>
-        ) : null}
-
-        {node.kind === "lodging" && !awaitingField && onPrepareReserve ? (
+              )
+            : onPrepareReserve
+              ? (
           <button
             type="button"
             className={cn(
@@ -327,20 +331,30 @@ export function WorkspaceNodePeek({
             )}
             onClick={onPrepareReserve}
             data-workspace-prepare-reserve
-            title={copy.globe.workspacePrepareReserveHint}
+            title={
+              node.kind === "lodging"
+                ? copy.globe.workspacePrepareReserveHint
+                : copy.globe.workspacePrepareTicketHint
+            }
           >
-            {copy.globe.workspacePrepareReserveCta}
+            {node.kind === "lodging"
+              ? copy.globe.workspacePrepareReserveCta
+              : copy.globe.workspacePrepareTicketCta}
             {!preview.selected ? (
               <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
                 {copy.globe.workspacePreviewSelectFirstHint}
               </span>
             ) : (
               <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
-                {copy.globe.workspacePrepareReserveHint}
+                {node.kind === "lodging"
+                  ? copy.globe.workspacePrepareReserveHint
+                  : copy.globe.workspacePrepareTicketHint}
               </span>
             )}
           </button>
-        ) : null}
+                )
+              : null
+          : null}
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commit-preview";
+import { buildWorkspaceConciergeStatus } from "@/lib/context-workspace/build-workspace-concierge-status";
 import { buildWorkspaceItineraryLineCoords } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
 import { prepareWorkspaceNodeBooking } from "@/lib/context-workspace/prepare-workspace-booking";
 import { isWorkspacePlaceAwaitingField } from "@/lib/context-workspace/workspace-place-prepare-status";
@@ -32,6 +33,8 @@ import {
 } from "@/lib/context-workspace/workspace-chat-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { subscribePreparedRealityOperations } from "@/lib/reality-queue/prepared-operations-store";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
@@ -65,6 +68,36 @@ function formatPrice(node: ContextWorkspaceNode): string {
   return "가격 미정";
 }
 
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function legHintForNode(
+  nodes: readonly ContextWorkspaceNode[],
+  nodeId: string,
+): string | null {
+  const idx = nodes.findIndex((n) => n.id === nodeId);
+  if (idx <= 0) return null;
+  const prev = nodes[idx - 1]!;
+  const cur = nodes[idx]!;
+  const km = haversineKm(prev, cur);
+  if (!Number.isFinite(km) || km <= 0) return null;
+  const minutes = Math.max(1, Math.round((km / 4.5) * 60));
+  return copy.globe.workspaceMapLegHint(minutes, km);
+}
+
 export function ContextWorkspaceShell({
   contextEventId,
   projectTitleKo = null,
@@ -80,6 +113,8 @@ export function ContextWorkspaceShell({
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   const [softRouteDismissed, setSoftRouteDismissed] = useState(false);
+  const [softRainDismissed, setSoftRainDismissed] = useState(false);
+  const [softQuietDismissed, setSoftQuietDismissed] = useState(false);
   const [prepTick, setPrepTick] = useState(0);
 
   const refresh = useCallback(() => {
@@ -171,6 +206,8 @@ export function ContextWorkspaceShell({
       photoSpot:
         n.tags.includes("photo_spot") ||
         /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
+      legHintKo:
+        n.id === selectedId ? legHintForNode(visibleNodes, n.id) : null,
     }));
   }, [visibleNodes, selectedId, contextEventId, prepTick]);
 
@@ -206,6 +243,42 @@ export function ContextWorkspaceShell({
     !softRouteDismissed &&
     visibleNodes.length >= 2 &&
     !(state?.lastChangeKo && /동선|가까운\s*순/.test(state.lastChangeKo));
+
+  const lifeEvent = useMemo(() => {
+    const id = contextEventId?.trim() ?? "";
+    return id ? findLifeEventCandidate(id) : null;
+  }, [contextEventId, state?.updatedAtIso]);
+  const weather = useActiveContextWeather({
+    event: lifeEvent,
+    enabled: expanded && Boolean(contextEventId?.trim()),
+  });
+  const concierge = useMemo(
+    () =>
+      buildWorkspaceConciergeStatus({
+        anchorTitle:
+          visibleNodes.find((n) => n.id === selectedId)?.title ??
+          visibleNodes[0]?.title ??
+          null,
+        tempC: weather.tempC,
+        prepLine: weather.prepLine,
+        routeStopCount: visibleNodes.length,
+      }),
+    [
+      visibleNodes,
+      selectedId,
+      weather.tempC,
+      weather.prepLine,
+    ],
+  );
+  const showSoftRainChip =
+    !softRainDismissed &&
+    concierge.suggestRainRevise &&
+    !(state?.lastChangeKo && /비\s*예보|실내\s*위주/.test(state.lastChangeKo));
+  const showSoftQuietChip =
+    !softQuietDismissed &&
+    !showSoftRainChip &&
+    concierge.suggestQuietRoute &&
+    !(state?.lastChangeKo && /덜\s*붐비/.test(state.lastChangeKo));
 
   const onPrepareReserve = useCallback(
     (nodeId: string) => {
@@ -385,36 +458,100 @@ export function ContextWorkspaceShell({
         />
       </div>
 
-      {showSoftRouteChip ? (
-        <div className="pointer-events-none absolute inset-x-0 top-[4.75rem] z-[2] flex justify-center px-3">
-          <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
-            <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
-              {copy.globe.workspaceMapSoftRouteHint}
-            </p>
-            <button
-              type="button"
-              className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
-              data-workspace-soft-route-apply
-              onClick={() => {
-                applyWorkspaceTransition({
-                  contextEventId: eventId,
-                  op: "optimize_route",
-                });
-                setSoftRouteDismissed(true);
-                toast.success(copy.globe.workspaceToolOptimizeRoute);
-              }}
-            >
-              {copy.globe.workspaceMapSoftRouteApply}
-            </button>
-            <button
-              type="button"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
-              aria-label="닫기"
-              onClick={() => setSoftRouteDismissed(true)}
-            >
-              <X className="h-3 w-3" strokeWidth={2.5} />
-            </button>
-          </div>
+      {(showSoftRainChip || showSoftQuietChip || showSoftRouteChip) ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[4.75rem] z-[2] flex flex-col items-center gap-1.5 px-3">
+          {showSoftRainChip ? (
+            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
+              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
+                {copy.globe.workspaceMapSoftRainHint}
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+                data-workspace-soft-rain-apply
+                onClick={() => {
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "simulate",
+                    simulateScenarioKo: "비 오면 실내",
+                  });
+                  setSoftRainDismissed(true);
+                  toast.success(copy.globe.workspaceMapSoftRainApply);
+                }}
+              >
+                {copy.globe.workspaceMapSoftRainApply}
+              </button>
+              <button
+                type="button"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+                aria-label="닫기"
+                onClick={() => setSoftRainDismissed(true)}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : null}
+          {showSoftQuietChip ? (
+            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
+              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
+                {copy.globe.workspaceMapSoftQuietHint}
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+                data-workspace-soft-quiet-apply
+                onClick={() => {
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "simulate",
+                    simulateScenarioKo: "덜 붐비는 동선",
+                  });
+                  setSoftQuietDismissed(true);
+                  toast.success(copy.globe.workspaceMapSoftQuietApply);
+                }}
+              >
+                {copy.globe.workspaceMapSoftQuietApply}
+              </button>
+              <button
+                type="button"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+                aria-label="닫기"
+                onClick={() => setSoftQuietDismissed(true)}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : null}
+          {showSoftRouteChip && !showSoftRainChip ? (
+            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
+              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
+                {copy.globe.workspaceMapSoftRouteHint}
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+                data-workspace-soft-route-apply
+                onClick={() => {
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "optimize_route",
+                  });
+                  setSoftRouteDismissed(true);
+                  toast.success(copy.globe.workspaceToolOptimizeRoute);
+                }}
+              >
+                {copy.globe.workspaceMapSoftRouteApply}
+              </button>
+              <button
+                type="button"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+                aria-label="닫기"
+                onClick={() => setSoftRouteDismissed(true)}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -432,7 +569,9 @@ export function ContextWorkspaceShell({
             {title}
           </p>
           <p className="text-center text-[9px] tabular-nums text-[#8b95a1]">
-            {domainLabelKo(state.domain)} · {visibleNodes.length}곳 · {progress}%
+            {concierge.topWeatherKo
+              ? concierge.topWeatherKo
+              : `${domainLabelKo(state.domain)} · ${visibleNodes.length}곳 · ${progress}%`}
           </p>
         </div>
         <div className="pointer-events-auto flex flex-col items-end gap-1.5">
@@ -546,6 +685,13 @@ export function ContextWorkspaceShell({
 
       {/* Bottom: peek · chat · slim tools · prompt (pin lives on map markers) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-1.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-20">
+        {concierge.bottomLiveKo || visibleNodes.length > 0 ? (
+          <div className="pointer-events-none mx-auto max-w-[min(92vw,340px)] rounded-full bg-[#191f28]/88 px-3 py-1 text-center shadow-[0_4px_16px_rgba(25,31,40,0.2)]">
+            <p className="truncate text-[10px] font-semibold tracking-tight text-white">
+              {concierge.bottomLiveKo ?? copy.globe.workspaceMapLiveFallback}
+            </p>
+          </div>
+        ) : null}
         {showPeek && selectedNode && !compareOpen ? (
           <WorkspaceNodePeek
             contextEventId={eventId}

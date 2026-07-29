@@ -9,6 +9,7 @@ import { ArrowUp } from "lucide-react";
 import { tryApplyWorkspacePromptTurn } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
+import { WorkspaceAgentStatusPanel } from "@/components/context-workspace/workspace-agent-status-panel";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { copy } from "@/lib/copy/human-ko";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
@@ -17,6 +18,12 @@ import {
   dispatchExecutionFeedStep,
 } from "@/lib/context-run/execution-feed-bridge";
 import { scheduleExecutionFeedDismiss } from "@/lib/context-run/execution-feed-lifecycle";
+import {
+  beginAgentExecutionSession,
+  completeAgentExecutionStep,
+  finishAgentExecutionSession,
+  pushAgentExecutionStep,
+} from "@/lib/workstream/agent-execution-session";
 import { cn } from "@/lib/utils";
 
 export type WorkspacePromptBarProps = {
@@ -47,6 +54,16 @@ export function WorkspacePromptBar({
       }
       setBusy(true);
       onTurn?.();
+      beginAgentExecutionSession({
+        contextEventId: eventId,
+        headlineKo: copy.globe.agentBuildingContext,
+      });
+      pushAgentExecutionStep({
+        id: "turn-analyze",
+        labelKo: copy.globe.activityAnalyzing,
+        status: "running",
+        contextEventId: eventId,
+      });
       const graphId = `ws-turn-${Date.now()}`;
       dispatchExecutionFeedGoal({ graphId, goalKo: text });
       dispatchExecutionFeedStep({
@@ -61,6 +78,13 @@ export function WorkspacePromptBar({
         text,
       });
       try {
+        completeAgentExecutionStep("turn-analyze");
+        pushAgentExecutionStep({
+          id: "turn-apply",
+          labelKo: copy.globe.activityWorkspaceTurn,
+          status: "running",
+          contextEventId: eventId,
+        });
         dispatchExecutionFeedStep({
           graphId,
           stepId: "analyze",
@@ -77,6 +101,7 @@ export function WorkspacePromptBar({
           utterance: text,
           contextEventId: eventId,
         });
+        completeAgentExecutionStep("turn-apply");
         dispatchExecutionFeedStep({
           graphId,
           stepId: "apply",
@@ -96,6 +121,7 @@ export function WorkspacePromptBar({
         });
         setValue("");
       } finally {
+        finishAgentExecutionSession({ keepMs: 5_000 });
         setBusy(false);
         scheduleExecutionFeedDismiss("run_complete");
       }
@@ -105,6 +131,11 @@ export function WorkspacePromptBar({
 
   return (
     <div className={cn("w-full", className)} data-workspace-prompt>
+      <WorkspaceAgentStatusPanel
+        contextEventId={contextEventId}
+        busy={busy}
+        onContinue={() => void runTurn("계속해")}
+      />
       {!compact ? (
         <div className="mb-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
           {(

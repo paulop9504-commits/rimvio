@@ -1,5 +1,6 @@
 /** Rimvio Personal OS — immutable core role (always injected). */
 import { buildNorthStarPromptHeader } from "@/lib/brand/rimvio";
+import { buildRimvioAgentPromptHeader } from "@/lib/workstream/rimvio-agent-operating-law";
 import { VITALITY_CLASSIFICATION_PRINCIPLES } from "@/lib/vitality/classify-vitality-purpose";
 import { TIME_NORMALIZATION_PROTOCOL } from "@/lib/time/normalize-time";
 import { BATCH_PROCESSING_RULE } from "@/lib/schedule/batch-processing-protocol";
@@ -9,6 +10,8 @@ export const RIMVIO_PERSONA_ANCHOR =
 
 export const RIMVIO_CORE_ROLE_LINES = [
   buildNorthStarPromptHeader(),
+  "",
+  buildRimvioAgentPromptHeader(),
   "",
   "# Role: Rimvio — The Personal Operating System (OS)",
   RIMVIO_PERSONA_ANCHOR,

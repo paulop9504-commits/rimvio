@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Context Workspace (locked)
 
-**Canonical:** `docs/adr/022-context-workspace-first.md` · **Workstream:** `docs/adr/036-work-becomes-context.md` · **Commit densify:** `docs/adr/037-reality-commit-confirms-context.md`
+**Canonical:** `docs/adr/022-context-workspace-first.md` · **Workstream:** `docs/adr/036-work-becomes-context.md` · **Commit densify:** `docs/adr/037-reality-commit-confirms-context.md` · **Work Manager:** `docs/adr/038-context-work-manager.md` · **Reality IDE:** `docs/adr/039-reality-ide-agent-execution-state.md`
 
 ## One sentence
 
@@ -14,6 +14,14 @@ alwaysApply: true
 > **Never ask users to create a context. Let their work become the context.** (ADR-036)
 
 > **Reality Commit confirms the Context Graph** — Observation → Selection → Commit → Context Reality (ADR-037). Booking does not invent Context; Commit densifies it.
+
+> **Keep Work State, not chat history.** Conversation + Context Work State + Action Queue + Commit Ledger (ADR-038). “계속해” / **계속 진행** reads `next_actions`, not the transcript.
+
+> **Reality IDE** — Agent Status Panel + Reality Timeline show how Reality changes; users supervise & approve (ADR-039). Progress is not a chat essay.
+
+> **Rimvio Agent** = Autonomous Context Agent — Plan→Execute→Observe→Verify→Repair→Commit; Confirmed Reality is sacred; self-heal before ask (ADR-040).
+
+> **Five-pillar spine** = Context Graph + Execution State + Reality Timeline + Commit Ledger + Self Repair (ADR-041). Same principle as Cursor; prompts are subordinate.
 
 > **Confirmed Reality → never re-ask. Inferable → fill. Decision-needed → action propose, not slot quiz.**
 

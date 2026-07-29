@@ -26,6 +26,16 @@ import {
   type TripStaySegment,
 } from "@/lib/workstream/build-stay-timeline";
 import { computeContextCompleteness } from "@/lib/workstream/compute-context-completeness";
+import {
+  beginAgentExecutionSession,
+  completeAgentExecutionStep,
+  finishAgentExecutionSession,
+  pushAgentExecutionStep,
+  setAgentExecutionCommitStatus,
+  setAgentExecutionHeadline,
+  setAgentExecutionNextHints,
+} from "@/lib/workstream/agent-execution-session";
+import { syncContextWorkState } from "@/lib/workstream/sync-context-work-state";
 import type { WorkstreamState } from "@/lib/workstream/types";
 
 function toYmd(iso: string | null | undefined): string | null {
@@ -61,13 +71,29 @@ export function promoteRealityCommitToContextGraph(input: {
       : null);
   const now = new Date().toISOString();
 
+  beginAgentExecutionSession({
+    contextEventId,
+    headlineKo: "Reality 업데이트 중…",
+    statusHint: "committing",
+  });
+  setAgentExecutionCommitStatus("preparing");
+  setAgentExecutionHeadline("Reality Commit 준비 중");
+
   let lastWs: WorkstreamState | null = null;
   let segments = readTripStaySegments(event?.metadata ?? null);
+  let hadLodging = false;
 
   for (const op of input.operations) {
     if (op.type === "payment_prep") continue;
 
     if (op.kind === "lodging") {
+      hadLodging = true;
+      pushAgentExecutionStep({
+        id: "commit-hotel-place",
+        labelKo: "호텔 위치 저장",
+        status: "running",
+        contextEventId,
+      });
       const hotelLabel =
         op.preview.placeLabelKo?.trim() || op.labelKo.trim() || "숙소";
       const placeId = op.sourceRef?.trim() || null;
@@ -100,6 +126,13 @@ export function promoteRealityCommitToContextGraph(input: {
         committedAtIso: now,
       };
       segments = mergeTripStaySegment(segments, segment);
+      completeAgentExecutionStep("commit-hotel-place");
+      pushAgentExecutionStep({
+        id: "commit-hotel-dates",
+        labelKo: "체크인/체크아웃 기간 반영",
+        status: "done",
+        contextEventId,
+      });
     }
 
     if (op.kind === "flight") {
@@ -124,6 +157,12 @@ export function promoteRealityCommitToContextGraph(input: {
     } catch {
       /* slots may reject past windows in edge tests */
     }
+    pushAgentExecutionStep({
+      id: "commit-timeline",
+      labelKo: "여행 Timeline 업데이트",
+      status: "running",
+      contextEventId,
+    });
     recordScheduleUpdated({
       contextEventId,
       labelKo: `${period.nights}박${period.days}일`,
@@ -132,9 +171,18 @@ export function promoteRealityCommitToContextGraph(input: {
       scheduleLabel: `${period.checkInYmd} ~ ${period.checkOutYmd}`,
       placeLabel,
     });
+    completeAgentExecutionStep("commit-timeline");
   }
 
   if (event && segments.length > 0) {
+    if (hadLodging && segments.length >= 2) {
+      pushAgentExecutionStep({
+        id: "commit-move-node",
+        labelKo: "숙소 이동 Node 생성",
+        status: "done",
+        contextEventId,
+      });
+    }
     commitEventUpsert({
       ...event,
       metadata: {
@@ -154,6 +202,24 @@ export function promoteRealityCommitToContextGraph(input: {
     event: findLifeEventCandidate(contextEventId),
   });
   const timeline = buildTripStayTimeline(segments);
+
+  const work = syncContextWorkState({
+    contextEventId,
+    event: findLifeEventCandidate(contextEventId),
+  });
+
+  pushAgentExecutionStep({
+    id: "commit-context-save",
+    labelKo: `${work.title} Context 저장 완료`,
+    status: "done",
+    contextEventId,
+  });
+  setAgentExecutionNextHints(
+    work.nextActions.map((a) => a.labelKo).slice(0, 3),
+  );
+  setAgentExecutionHeadline("Context Graph 업데이트 완료");
+  setAgentExecutionCommitStatus("committed");
+  finishAgentExecutionSession({ keepMs: 8_000 });
 
   return {
     workstream: lastWs,

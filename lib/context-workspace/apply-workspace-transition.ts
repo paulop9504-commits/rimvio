@@ -411,9 +411,36 @@ export function applyWorkspaceTransition(input: {
   if (input.op === "simulate") {
     const scenario = input.simulateScenarioKo?.trim() || "가정";
     if (/비|rain/i.test(scenario)) {
-      lastChangeKo = "비 오면 · 해안가보다 시내 숙소를 우선했어요";
-      nodes = sortNodes(nodes, "rating_desc");
-    } else if (/100|예산|budget|달러|달러/i.test(scenario)) {
+      const score = (n: ContextWorkspaceNode) => {
+        const blob = `${n.title} ${n.summaryKo} ${n.tags.join(" ")}`;
+        let s = 0;
+        if (/실내|박물관|미술관|몰|아케이드|카페|식당|호텔|숙소|indoor|museum|mall|cafe/iu.test(blob)) {
+          s += 4;
+        }
+        if (n.kind === "eatery" || n.kind === "lodging") s += 2;
+        if (n.kind === "poi" || n.kind === "amenity") s += 1;
+        if (n.tags.includes("photo_spot") || /야외|공원|다리|bridge|park|outdoor/iu.test(blob)) {
+          s -= 3;
+        }
+        if (n.bookmarked || n.selected) s += 5;
+        return s;
+      };
+      nodes = [...nodes].sort((a, b) => score(b) - score(a));
+      lastChangeKo = "비 예보 · 실내 위주 동선으로 바꿨어요";
+    } else if (/한적|덜\s*붐|quiet|crowd|혼잡/i.test(scenario)) {
+      const score = (n: ContextWorkspaceNode) => {
+        const blob = `${n.title} ${n.summaryKo} ${n.tags.join(" ")}`;
+        let s = n.rating ?? 0;
+        if (/한적|조용|골목|사찰|절|temple|quiet|local/iu.test(blob)) s += 2;
+        if (n.tags.includes("photo_spot") || /유명|핫플|관광|도톤보리|난바/iu.test(blob)) {
+          s -= 1.5;
+        }
+        if (n.bookmarked || n.selected) s += 4;
+        return s;
+      };
+      nodes = [...nodes].sort((a, b) => score(b) - score(a));
+      lastChangeKo = "덜 붐비는 순으로 바꿨어요";
+    } else if (/100|예산|budget|달러/i.test(scenario)) {
       filter = { ...filter, maxPriceBand: 2 };
       nodes = forcePinnedVisible(applyFilterToNodes(nodes, filter));
       lastChangeKo = "예산 가정 · 저가 숙소만 남겼어요";
