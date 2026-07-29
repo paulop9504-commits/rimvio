@@ -212,13 +212,13 @@ export function finishAgentExecutionSession(input?: {
 }): void {
   if (!session) return;
   const keepMs = input?.keepMs ?? 0;
-  const snapshot = {
+  const snapshot: AgentExecutionSession = {
     ...session,
-    statusHint: null as const,
+    statusHint: null,
     headlineKo: session.headlineKo,
     commitStatus:
       session.commitStatus === "preparing"
-        ? ("committed" as const)
+        ? "committed"
         : session.commitStatus,
     updatedAtIso: nowIso(),
   };
