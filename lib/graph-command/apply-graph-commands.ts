@@ -42,6 +42,7 @@ import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import {
   stampSearchToolResultsToDiff,
   toolCandidatesToPlaceHits,
+  type SearchToolCandidate,
 } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hub-action";
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
@@ -280,17 +281,8 @@ function keepLiveWorkspaceHits(
 }
 
 function keepLiveWorkspaceCandidates(
-  candidates:
-    | readonly {
-        id?: string | null;
-        source?: string | null;
-        labelKo?: string | null;
-        lat?: number | null;
-        lng?: number | null;
-      }[]
-    | null
-    | undefined,
-): NonNullable<typeof candidates> {
+  candidates: readonly SearchToolCandidate[] | null | undefined,
+): SearchToolCandidate[] {
   if (!candidates?.length) return [];
   if (isOsakaDemoCatalogForced()) return [...candidates];
   return candidates.filter((c) => {
