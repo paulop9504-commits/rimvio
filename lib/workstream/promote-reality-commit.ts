@@ -118,8 +118,8 @@ export function promoteRealityCommitToContextGraph(input: {
         contextEventId,
         checkInIso: period.checkInYmd,
         checkOutIso: period.checkOutYmd,
-        guestCount: slots.guestCount,
-        roomCount: slots.roomCount,
+        guestCount: slots.guestCount ?? 2,
+        roomCount: slots.roomCount ?? 1,
       });
     } catch {
       /* slots may reject past windows in edge tests */
