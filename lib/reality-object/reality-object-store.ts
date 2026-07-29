@@ -2,8 +2,8 @@
  * Reality Object store — CRUD + state transitions.
  */
 
-import type { RealityObject, RealityObjectState } from "@/lib/reality-object/types";
-import { REALITY_OBJECT_TRANSITIONS } from "@/lib/reality-object/types";
+import type { RealityObject, RealityObjectState } from "@/lib/reality-object/engine-types";
+import { REALITY_OBJECT_TRANSITIONS } from "@/lib/reality-object/engine-types";
 
 const objects = new Map<string, RealityObject>();
 
