@@ -23,6 +23,7 @@ import { tryRunContextNlActionAsync } from "@/lib/action-planner";
 import { tryRunContextCommand } from "@/lib/context-command";
 import { createContextReferenceLink } from "@/lib/context-reference/create-context-reference-link";
 import type { ContextReferenceKind } from "@/lib/context-reference/types";
+import { shouldSpawnNewContext } from "@/lib/context-run/should-spawn-new-context";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
 import { isGlobeContextConditionPanelOpen } from "@/lib/globe/context-condition-ai/globe-context-condition-panel-bridge";
 import {
