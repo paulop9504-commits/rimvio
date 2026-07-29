@@ -48,6 +48,11 @@ export type PlaceSearchInput = {
   readonly limit?: number;
   /** Skip Osaka demo catalog (used when live APIs miss but keys are present). */
   readonly skipOsakaCatalog?: boolean;
+  /**
+   * When false (default for async), never invent Riverview/orbit seeds.
+   * Sync `runPlaceSearch` and `RIMVIO_OSAKA_DEMO=1` still use deterministic seeds.
+   */
+  readonly allowSeedFallback?: boolean;
   /** Context Field search control — same pack that drives graph/recommend/booking. */
   readonly fieldSearch?: ContextFieldSearchControl | null;
   /** Open lodging Diff stay — LiteAPI occupancy / dates. */

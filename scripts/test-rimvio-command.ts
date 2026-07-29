@@ -52,9 +52,34 @@ import { resolveRimvioCommandPlaceholder } from "../lib/rimvio-command";
   const r = routeRimvioCommandMode({
     utterance: "바다 보이는 숙소 찾아줘",
     activeContextId: "evt-osaka",
+    activeWorkspaceKind: "travel",
   });
   assert.equal(r.mode, "continue");
   assert.equal(r.reason, "active_domain_scout");
+}
+
+{
+  // 중고 판매 맥락에서 호텔 찾기 → 새 맥락 (의도 전환)
+  const r = routeRimvioCommandMode({
+    utterance: "서울에서 호텔 찾아",
+    activeContextId: "evt-market",
+    activeWorkspaceKind: "used_goods",
+  });
+  assert.equal(r.mode, "create");
+  assert.ok(
+    r.reason === "new_intent" || r.reason === "topic_mismatch",
+    `expected create for intent switch, got ${r.reason}`,
+  );
+}
+
+{
+  // 여행 맥락에서 중고 판매 → 새 맥락
+  const r = routeRimvioCommandMode({
+    utterance: "아이폰 중고로 팔게",
+    activeContextId: "evt-osaka",
+    activeWorkspaceKind: "travel",
+  });
+  assert.equal(r.mode, "create");
 }
 
 assert.match(resolveRimvioCommandPlaceholder("globe"), /만들/);

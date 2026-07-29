@@ -79,17 +79,51 @@ export function graphDomainToWorkspaceDomain(
   return "poi";
 }
 
+function formatLiveSummary(input: {
+  rating: number | null;
+  reviewCount: number | null;
+  amountLabel: string | null;
+  priceBand: number | null;
+  domain: ContextWorkspaceDomain;
+  reasonKo?: string | null;
+}): string {
+  const reason = input.reasonKo?.trim();
+  if (reason) return reason;
+  const parts: string[] = [];
+  if (input.rating != null && Number.isFinite(input.rating)) {
+    const reviews =
+      input.reviewCount != null && input.reviewCount > 0
+        ? ` · 후기 ${input.reviewCount.toLocaleString("ko-KR")}`
+        : "";
+    parts.push(`★ ${input.rating.toFixed(1)}${reviews}`);
+  }
+  if (input.amountLabel?.trim()) {
+    parts.push(input.amountLabel.trim());
+  } else if (input.priceBand != null) {
+    parts.push(`${"₩".repeat(Math.min(4, Math.max(1, input.priceBand)))}`);
+  }
+  if (parts.length > 0) return parts.join(" · ");
+  return domainLabelKo(input.domain);
+}
+
 export function placeHitToWorkspaceNode(
   hit: PlaceSearchHit,
   index: number,
   domain: ContextWorkspaceDomain,
 ): ContextWorkspaceNode {
   const placeId = placeIdOf(hit.id) || `${domain}-${index}`;
-  const reason = hit.reasonKo?.trim() || null;
-  const summary =
-    reason ||
-    hit.amountLabel?.trim() ||
-    (hit.priceBand != null ? `가격대 ${hit.priceBand}` : domainLabelKo(domain));
+  const reviewCount =
+    typeof hit.reviewCount === "number" && Number.isFinite(hit.reviewCount)
+      ? Math.round(hit.reviewCount)
+      : null;
+  const summary = formatLiveSummary({
+    rating: hit.rating ?? null,
+    reviewCount,
+    amountLabel: hit.amountLabel ?? null,
+    priceBand: hit.priceBand ?? null,
+    domain,
+    reasonKo: hit.reasonKo,
+  });
   return {
     id: `ws:${domain}:${placeId}`,
     kind: domain,
@@ -101,6 +135,7 @@ export function placeHitToWorkspaceNode(
     rating: hit.rating ?? null,
     priceBand: hit.priceBand ?? null,
     amountLabel: hit.amountLabel ?? null,
+    reviewCount,
     thumbnailUrl: hit.thumbnailUrl?.trim() || null,
     tags: inferTags(hit.labelKo, summary, {
       reservable: hit.reservable,
@@ -120,11 +155,18 @@ export function candidateToWorkspaceNode(
   domain: ContextWorkspaceDomain,
 ): ContextWorkspaceNode {
   const placeId = placeIdOf(candidate.id) || `${domain}-${index}`;
-  const summary =
-    candidate.amountLabel?.trim() ||
-    (candidate.priceBand != null
-      ? `가격대 ${candidate.priceBand}`
-      : domainLabelKo(domain));
+  const reviewCount =
+    typeof candidate.reviewCount === "number" &&
+    Number.isFinite(candidate.reviewCount)
+      ? Math.round(candidate.reviewCount)
+      : null;
+  const summary = formatLiveSummary({
+    rating: candidate.rating ?? null,
+    reviewCount,
+    amountLabel: candidate.amountLabel ?? null,
+    priceBand: candidate.priceBand ?? null,
+    domain,
+  });
   return {
     id: `ws:${domain}:${placeId}`,
     kind: domain,
@@ -142,6 +184,7 @@ export function candidateToWorkspaceNode(
     rating: candidate.rating ?? null,
     priceBand: candidate.priceBand ?? null,
     amountLabel: candidate.amountLabel ?? null,
+    reviewCount,
     thumbnailUrl: null,
     tags: inferTags(candidate.labelKo, summary, {
       reservable: candidate.reservable ?? undefined,

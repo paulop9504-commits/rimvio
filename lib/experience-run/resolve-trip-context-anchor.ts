@@ -7,6 +7,7 @@ import { resolveRunPlaceFromText } from "@/lib/experience-run/resolve-run-place-
 import { enrichCanonicalPlaceProfileFromRealityGraph } from "@/lib/reality-graph/project-to-place-profile";
 import { projectWorldGeoToPlaceFields } from "@/lib/reality-graph/project-to-place-profile";
 import { resolveLocationFromText } from "@/lib/location-engine/resolve-location";
+import { isCountryOrRegionDestinationLabel } from "@/lib/globe-ingress/is-country-or-region-destination";
 
 export type TripContextAnchor = {
   placeLabel: string;
@@ -25,6 +26,11 @@ export function resolveTripContextAnchor(
 ): TripContextAnchor | null {
   const label = placeLabel?.trim();
   if (!label) {
+    return null;
+  }
+
+  // Country ≠ city — never pin country centroid / capital as destination.
+  if (isCountryOrRegionDestinationLabel(label)) {
     return null;
   }
 
@@ -71,6 +77,13 @@ export function resolveTripContextAnchor(
 
   const overseas = classifyOverseasManualPlace(label);
   if (overseas) {
+    // Multi-hub country (필리핀 · 일본 · …) — do not pin capital as city destination.
+    if (
+      overseas.kind === "country" &&
+      isCountryOrRegionDestinationLabel(overseas.label)
+    ) {
+      return null;
+    }
     return {
       placeLabel: overseas.label,
       lat: overseas.lat,
@@ -90,6 +103,11 @@ export function resolveTripContextAnchor(
     };
   }
 
+  // Bare multi-hub country label with no registry city match
+  if (isCountryOrRegionDestinationLabel(label)) {
+    return null;
+  }
+
   return null;
 }
 
@@ -100,11 +118,16 @@ export function resolveTripContextAnchor(
 export async function resolveTripContextAnchorAsync(
   placeLabel: string | null | undefined,
 ): Promise<TripContextAnchor | null> {
-  const sync = resolveTripContextAnchor(placeLabel);
-  if (sync) return sync;
-
   const label = placeLabel?.trim();
   if (!label) return null;
+
+  // Country-scale → never Nominatim-capital as confirmed city
+  if (isCountryOrRegionDestinationLabel(label)) {
+    return null;
+  }
+
+  const sync = resolveTripContextAnchor(label);
+  if (sync) return sync;
 
   const located = await resolveLocationFromText(label);
   const entity = located?.entity;
@@ -115,6 +138,10 @@ export async function resolveTripContextAnchorAsync(
     entity.labelKo?.trim() ||
     entity.labelEn?.trim() ||
     label;
+
+  if (isCountryOrRegionDestinationLabel(placeName)) {
+    return null;
+  }
 
   return {
     placeLabel: placeName,

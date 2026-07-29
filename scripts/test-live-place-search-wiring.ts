@@ -15,6 +15,10 @@ import {
 import { clearPreparedRealityOperations } from "../lib/reality-queue";
 import { resolveBookingProviderForOperation } from "../lib/booking-runtime/resolve-booking-provider";
 import type { RealityOperationV1 } from "../lib/reality-queue/types";
+import {
+  clearContextWorkspace,
+  readContextWorkspace,
+} from "../lib/context-workspace";
 
 async function main(): Promise<void> {
   {
@@ -122,7 +126,13 @@ async function main(): Promise<void> {
       lat: 34.6654,
       lng: 135.5019,
     });
-    assert.ok((tool.candidates?.length ?? 0) >= 1);
+    // Live-only: without Maps/LiteAPI keys → empty (never invent Riverview).
+    assert.equal(
+      (tool.candidates ?? []).some((c) =>
+        /리버뷰|스테이 인|시티 로지/.test(c.labelKo),
+      ),
+      false,
+    );
   }
 
   {
@@ -134,7 +144,19 @@ async function main(): Promise<void> {
       contextLabelKo: "오사카",
     });
     assert.ok(applied);
-    assert.ok(applied!.graph.nodes.some((n) => n.kind === "eatery"));
+    // Map search → Workspace; Globe stays clean until Commit.
+    assert.equal(
+      applied!.graph.nodes.filter((n) => n.kind === "eatery").length,
+      0,
+    );
+    assert.equal(
+      (readContextWorkspace("evt-live-wire")?.nodes ?? []).some((n) =>
+        /리버뷰|스테이 인|시티 로지|근처 카페|골목 맛집/.test(n.labelKo),
+      ),
+      false,
+      "workspace must not stamp orbit seed eatery labels",
+    );
+    clearContextWorkspace("evt-live-wire");
   }
 
   console.log("test-live-place-search-wiring: ok");

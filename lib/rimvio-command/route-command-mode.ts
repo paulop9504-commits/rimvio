@@ -21,6 +21,11 @@ import {
   type CommandTarget,
 } from "@/lib/rimvio-command/resolve-command-target";
 import type { RimvioCommandRoute } from "@/lib/rimvio-command/types";
+import {
+  activeContextAllowsDomainScout,
+  resolveActiveWorkspaceKind,
+} from "@/lib/workspace-kind/resolve-active-workspace-kind";
+import type { WorkspaceKind } from "@/lib/workspace-kind/types";
 
 const RESUME_CUE =
   /^(?:이어(?:줘|서|가|주세요)|계속(?:해|해\s*줘|진행)|다시\s*(?:열어|시작)|resume)$/iu;
@@ -45,9 +50,15 @@ export function routeRimvioCommandMode(input: {
   readonly activeContextId?: string | null;
   readonly activeWorkspaceId?: string | null;
   readonly selectedArtifactId?: string | null;
+  /** When set, skips event-store lookup (tests / callers with known kind). */
+  readonly activeWorkspaceKind?: WorkspaceKind | null;
 }): RimvioCommandRoute {
   const text = input.utterance.trim();
   const active = input.activeContextId?.trim() || null;
+  const activeKind =
+    input.activeWorkspaceKind !== undefined
+      ? input.activeWorkspaceKind
+      : resolveActiveWorkspaceKind(active);
 
   // Step 1: classify verb
   const verb = classifyActionVerb(text);
@@ -74,8 +85,13 @@ export function routeRimvioCommandMode(input: {
     return { mode: "execute", reason: "action_first", verb, target: "external_reality" };
   }
 
-  // Open trip/hub: domain scout (숙소·맛집) continues here — not a new Context.
-  if (active && !isGlobeIngressEligible(text)) {
+  // Open travel hub: domain scout (숙소·맛집) continues here — not a new Context.
+  // Market / driver hub + hotel search → create (intent switch).
+  if (
+    active &&
+    !isGlobeIngressEligible(text) &&
+    activeContextAllowsDomainScout(activeKind)
+  ) {
     const experience = classifyExperienceRunIntent(text);
     if (
       experience &&
@@ -93,6 +109,7 @@ export function routeRimvioCommandMode(input: {
     activeContextId: active,
     activeWorkspaceId: input.activeWorkspaceId,
     selectedArtifactId: input.selectedArtifactId,
+    activeWorkspaceKind: activeKind,
   });
 
   // Auto verb → delegation mode (always continue)

@@ -14,8 +14,12 @@ import type { DepartureHubAirport } from "@/lib/globe/departure-hub-airports";
 import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
 import type { RealitySurfaceSession } from "@/lib/reality-surface/project-globe-ingress";
 import { composeRealitySurfaceFromBlueprint } from "@/lib/reality-surface/project-globe-ingress";
-
-const DESTINATION_CHOICE_LABELS = ["오사카", "도쿄", "후쿠오카"] as const;
+import {
+  FALLBACK_DESTINATION_HUBS,
+  listHubLabelsForCountry,
+  matchCountryTravelFrame,
+  matchHubInAnyFrame,
+} from "@/lib/globe/country-travel-hubs";
 
 const DESTINATION_ALIASES: Readonly<Record<string, string>> = {
   osaka: "오사카",
@@ -24,7 +28,42 @@ const DESTINATION_ALIASES: Readonly<Record<string, string>> = {
   大阪: "오사카",
   東京: "도쿄",
   福岡: "후쿠오카",
+  manila: "마닐라",
+  cebu: "세부",
+  boracay: "보라카이",
+  palawan: "팔라완",
+  bohol: "보홀",
+  bali: "발리",
+  phuket: "푸켓",
+  bangkok: "방콕",
 };
+
+function readRegionLabel(blueprint: ContextBlueprint): string | null {
+  const fromTruth = blueprint.resourcePlan.knownTruth.find(
+    (row) => row.slotId === "region",
+  )?.value;
+  if (typeof fromTruth === "string" && fromTruth.trim()) {
+    return fromTruth.trim();
+  }
+  return null;
+}
+
+/** Hub labels for destination chips — country-aware when region is known. */
+export function destinationChoiceLabelsForBlueprint(
+  blueprint: ContextBlueprint | null | undefined,
+): readonly string[] {
+  const region = blueprint ? readRegionLabel(blueprint) : null;
+  const hubs = listHubLabelsForCountry(region);
+  if (hubs.length > 0) return hubs;
+  return FALLBACK_DESTINATION_HUBS.map((h) => h.label);
+}
+
+/** @deprecated Prefer destinationChoiceLabelsForBlueprint — Japan default. */
+export const DESTINATION_CHOICE_LABELS = [
+  "오사카",
+  "도쿄",
+  "후쿠오카",
+] as const;
 
 function normalizeDestinationLabel(raw: string): string {
   const trimmed = raw.trim();
@@ -84,13 +123,36 @@ export function blueprintNeedsDepartureConfirm(blueprint: ContextBlueprint): boo
 }
 
 /** Resolve destination label from chip tap or composer text. */
-export function resolveDestinationFromMessage(message: string): string | null {
+export function resolveDestinationFromMessage(
+  message: string,
+  blueprint?: ContextBlueprint | null,
+): string | null {
   const text = message.trim();
   if (!text) {
     return null;
   }
   const normalized = text.toLowerCase();
-  for (const label of DESTINATION_CHOICE_LABELS) {
+
+  const region = blueprint ? readRegionLabel(blueprint) : null;
+  const frame = matchCountryTravelFrame(region);
+  if (frame) {
+    const hub = matchHubInAnyFrame(text);
+    if (hub && hub.frame.countryId === frame.countryId) {
+      return hub.hub.labelKo;
+    }
+    for (const label of frame.hubs.map((h) => h.labelKo)) {
+      if (text.includes(label) || normalized.includes(label.toLowerCase())) {
+        return label;
+      }
+    }
+  }
+
+  const anyHub = matchHubInAnyFrame(text);
+  if (anyHub) {
+    return anyHub.hub.labelKo;
+  }
+
+  for (const label of destinationChoiceLabelsForBlueprint(blueprint)) {
     if (text.includes(label) || normalized.includes(label.toLowerCase())) {
       return label;
     }
@@ -335,5 +397,3 @@ export function advanceRealitySurfaceDepartureHub(input: {
     executionPlan: input.session.executionPlan ?? null,
   });
 }
-
-export { DESTINATION_CHOICE_LABELS };

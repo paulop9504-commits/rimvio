@@ -46,3 +46,7 @@ export {
   type WorkspaceIntentContinuumResult,
 } from "@/lib/workspace-kind/run-workspace-intent-continuum";
 export { ensureMarketContextEvent } from "@/lib/workspace-kind/ensure-market-context-event";
+export {
+  activeContextAllowsDomainScout,
+  resolveActiveWorkspaceKind,
+} from "@/lib/workspace-kind/resolve-active-workspace-kind";

@@ -25,6 +25,7 @@ import {
   tryRunContextCommand,
 } from "@/lib/context-command";
 import { routeRimvioCommandMode, resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
+import { resolveActiveWorkspaceKind } from "@/lib/workspace-kind/resolve-active-workspace-kind";
 import { createContextReferenceLink } from "@/lib/context-reference/create-context-reference-link";
 import type { ContextReferenceKind } from "@/lib/context-reference/types";
 import { openFieldDashboardIngress } from "@/lib/nav/field-dashboard-ingress";
@@ -1611,6 +1612,7 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
         const commandRoute = routeRimvioCommandMode({
           utterance: pipelineMessage,
           activeContextId: contextEventId,
+          activeWorkspaceKind: resolveActiveWorkspaceKind(contextEventId),
         });
         if (commandRoute.mode === "create") {
           appendContextAgentComposeTurn(contextEventId, {

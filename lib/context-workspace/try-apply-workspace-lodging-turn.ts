@@ -275,7 +275,12 @@ async function rescoutWorkspace(input: {
         utterance: input.utterance,
         contextEventId: input.contextEventId,
       });
-    const candidates = tool.candidates ?? [];
+    const candidates = (tool.candidates ?? []).filter((c) => {
+      const id = c.id ?? "";
+      if (id.startsWith("search:")) return false;
+      if (c.source === "seed") return false;
+      return true;
+    });
     if (input.mode === "add") {
       const next = applyWorkspaceTransition({
         contextEventId: input.contextEventId,

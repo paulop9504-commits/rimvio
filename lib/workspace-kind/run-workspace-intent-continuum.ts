@@ -260,17 +260,23 @@ export async function seedTravelLodgingForContinuum(input: {
     lng: input.lng,
     domain: "lodging",
   });
+  const candidates = (tool.candidates ?? []).filter((c) => {
+    const id = c.id ?? "";
+    if (id.startsWith("search:")) return false;
+    if (c.source === "seed") return false;
+    return true;
+  });
   const workspace = openLodgingContextWorkspace({
     contextEventId,
     query: `${dest} 숙소`,
-    summaryKo: copy.globe.workspacePreviewReady(tool.candidates?.length ?? 0),
-    candidates: tool.candidates ?? [],
+    summaryKo: copy.globe.workspacePreviewReady(candidates.length),
+    candidates,
     source: "trip_prep",
   });
   appendWorkspacePreviewComposeTurn(contextEventId);
   syncTravelSdkFrameAfterLodgingSeed({
     contextEventId,
-    candidateCount: tool.candidates?.length ?? 0,
+    candidateCount: candidates.length,
     headerTitleKo: dest,
   });
   return workspace;

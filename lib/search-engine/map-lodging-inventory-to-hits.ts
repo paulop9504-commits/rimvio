@@ -96,6 +96,8 @@ export function mapLodgingInventoryToPlaceHits(input: {
         (typeof row.priceKrw === "number" && Number.isFinite(row.priceKrw)
           ? row.priceKrw
           : null),
+      thumbnailUrl: row.images?.[0]?.trim() || null,
+      reasonKo: null,
     };
   });
 }

@@ -7,10 +7,11 @@ import {
   inferDepartureHubHypothesis,
   listDepartureHubChoices,
 } from "@/lib/globe/infer-departure-hub-hypothesis";
+import { pickPromptForCountry } from "@/lib/globe/country-travel-hubs";
 import {
   blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
-  DESTINATION_CHOICE_LABELS,
+  destinationChoiceLabelsForBlueprint,
 } from "@/lib/reality-surface/advance-ingress-flow";
 import type { RealitySurfaceSession } from "@/lib/reality-surface/project-globe-ingress";
 import type {
@@ -46,8 +47,20 @@ function readDestinationLabel(blueprint: ContextBlueprint): string | null {
   return blueprint.constraints.destination?.label?.trim() ?? null;
 }
 
-function buildDestinationChoices(): TripSituationRouterChip[] {
-  return DESTINATION_CHOICE_LABELS.map((label, index) => ({
+function readRegionLabel(blueprint: ContextBlueprint): string | null {
+  const fromTruth = blueprint.resourcePlan.knownTruth.find(
+    (row) => row.slotId === "region",
+  )?.value;
+  if (typeof fromTruth === "string" && fromTruth.trim()) {
+    return fromTruth.trim();
+  }
+  return null;
+}
+
+function buildDestinationChoices(
+  blueprint: ContextBlueprint,
+): TripSituationRouterChip[] {
+  return destinationChoiceLabelsForBlueprint(blueprint).map((label, index) => ({
     id: `trip-dest-${index}`,
     label,
     action: "destination" as const,
@@ -188,10 +201,12 @@ export function resolveTripSituationRouter(input: {
   }
 
   if (blueprintNeedsDestination(blueprint)) {
+    const region = readRegionLabel(blueprint);
+    const pickPrompt = pickPromptForCountry(region);
     return {
       stage: "needs_destination",
-      reasonKo: router.needsDestination,
-      choices: buildDestinationChoices(),
+      reasonKo: pickPrompt ?? router.needsDestination,
+      choices: buildDestinationChoices(blueprint),
     };
   }
 

@@ -768,11 +768,17 @@ export async function executeActionPlanAsync(
       const args = resolveEntityToolArgs(step, input.utterance, anchors);
       const toolResult = await invokeRimvioToolAsync(args.toolId, args.invoke);
       lastTool = toolResult;
-      const hasHits = Boolean(toolResult.candidates?.length);
+      const liveCandidates = (toolResult.candidates ?? []).filter((c) => {
+        const id = c.id ?? "";
+        if (id.startsWith("search:")) return false;
+        if (c.source === "seed") return false;
+        return true;
+      });
+      const hasHits = liveCandidates.length > 0;
       if (hasHits) {
         const ordered = injectLookupCandidates({
           contextEventId,
-          candidates: toolResult.candidates,
+          candidates: liveCandidates,
           preferredLabelKo: args.pinLabelKo,
           ...anchors,
           kind: args.domain === "poi" ? "poi" : args.domain,

@@ -25,6 +25,7 @@ export {
   advanceRealitySurfaceDepartureHub,
   blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
+  destinationChoiceLabelsForBlueprint,
   patchTravelBlueprintForDestination,
   patchTravelBlueprintForDepartureHub,
   resolveDestinationFromMessage,

@@ -104,12 +104,12 @@ export function GlobeContextFirstDemo({ className }: { className?: string }) {
           <span
             key={row.id}
             className={cn(
-              "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+              "rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition-colors",
               i === index
-                ? "bg-[#3182f6] text-white"
+                ? "bg-[#3182f6] text-white shadow-sm"
                 : i < index
-                  ? "bg-[#3182f6]/12 text-[#3182f6]"
-                  : "bg-[#02204708] text-[#8b95a1]",
+                  ? "bg-[#e8f1fe] text-[#1b64da] ring-1 ring-[#3182f6]/25"
+                  : "bg-[#f2f4f6] text-[#4e5968] ring-1 ring-[#02204714]",
             )}
           >
             {row.label}

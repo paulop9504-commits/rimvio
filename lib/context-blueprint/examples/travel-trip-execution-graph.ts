@@ -22,6 +22,7 @@ import {
 } from "@/lib/context-blueprint/temporal-targets";
 import { composeContextBlueprint, type ContextBlueprint } from "@/lib/context-blueprint/types";
 import { composeEmptyNodeResourceState } from "@/lib/context-blueprint/node-resource-state";
+import { matchCountryTravelFrame } from "@/lib/globe/country-travel-hubs";
 
 export function composeTravelTripExecutionGraph(): ExecutionGraph {
   return composeExecutionGraph({
@@ -265,6 +266,45 @@ export function composeJapanTravelTripSpatialTargets(): SpatialTargets {
   });
 }
 
+/** Generic multi-hub country — stay unresolved until hub/city pick. */
+export function composeCountryTravelTripSpatialTargets(
+  countryLabelKo: string,
+): SpatialTargets {
+  return composeSpatialTargets({
+    byNodeId: {
+      prepare: composePhysicalSpatialTarget({
+        label: "집",
+        resolution: "confirmed",
+      }),
+      departure: composePhysicalSpatialTarget({
+        label: "인천공항",
+        resolution: "confirmed",
+        zoneId: "incheon-airport",
+      }),
+      arrival: composePhysicalSpatialTarget({
+        label: `${countryLabelKo} 도착`,
+        resolution: "unresolved",
+        linkedSlotId: "destination",
+      }),
+      stay: composePhysicalSpatialTarget({
+        label: `${countryLabelKo} 숙소 권역`,
+        resolution: "unresolved",
+        linkedSlotId: "destination",
+      }),
+      explore: composePhysicalSpatialTarget({
+        label: countryLabelKo,
+        resolution: "hypothesis",
+        linkedSlotId: "destination",
+      }),
+      return: composePhysicalSpatialTarget({
+        label: "인천공항",
+        resolution: "hypothesis",
+        zoneId: "incheon-airport",
+      }),
+    },
+  });
+}
+
 export function composeTravelTripTemporalTargets(): TemporalTargets {
   return composeTemporalTargets({
     byNodeId: {
@@ -292,31 +332,58 @@ export function composeTravelTripBlueprint(input: {
   bridgeId?: string;
   runtimeId?: string;
   goal?: string;
-  /** Country-scale frame — do not pin Osaka as stay until city pick. */
-  regionFrame?: "japan" | null;
+  /**
+   * Country-scale frame — stay/city unresolved until hub pick.
+   * Pass country labelKo (일본 · 필리핀 · …) or legacy "japan".
+   */
+  regionFrame?: string | null;
 }): ContextBlueprint {
   const executionGraph = composeTravelTripExecutionGraph();
-  const japan = input.regionFrame === "japan";
+  const regionRaw = input.regionFrame?.trim() || null;
+  const regionLabel =
+    regionRaw === "japan" ? "일본" : regionRaw;
+  const countryFrame = regionLabel
+    ? matchCountryTravelFrame(regionLabel)
+    : null;
+  const isCountryScale = countryFrame != null || regionRaw === "japan";
+  const pickPrompt =
+    countryFrame?.pickPromptKo ??
+    (isCountryScale
+      ? "어디부터 시작할까요? 오사카 · 도쿄 · 후쿠오카"
+      : "어디로 갈까요?");
+
   return composeContextBlueprint({
     containerKind: "travel",
     contextId: input.contextId,
     bridgeId: input.bridgeId,
     runtimeId: input.runtimeId,
-    goal: input.goal ?? (japan ? "일본 여행" : "여행"),
+    goal:
+      input.goal ??
+      (countryFrame ? `${countryFrame.labelKo} 여행` : "여행"),
     executionGraph,
-    spatialTargets: japan
-      ? composeJapanTravelTripSpatialTargets()
-      : composeTravelTripSpatialTargets(),
+    spatialTargets:
+      countryFrame?.countryId === "japan" || regionRaw === "japan"
+        ? composeJapanTravelTripSpatialTargets()
+        : isCountryScale
+          ? composeCountryTravelTripSpatialTargets(countryFrame!.labelKo)
+          : composeTravelTripSpatialTargets(),
     temporalTargets: composeTravelTripTemporalTargets(),
     resourcePlan: {
       requiredResources: ["flight", "lodging", "transit", "eatery", "documents", "payment"],
-      knownTruth: [],
+      knownTruth: countryFrame
+        ? [
+            {
+              slotId: "region",
+              value: countryFrame.labelKo,
+              source: "user_stated" as const,
+              confidence: 0.95,
+            },
+          ]
+        : [],
       emptySlots: ["destination", "lodging_place"],
       nextQuestion: {
         slotId: "destination",
-        promptKo: japan
-          ? "어디부터 시작할까요? 오사카 · 도쿄 · 후쿠오카"
-          : "어디로 갈까요?",
+        promptKo: pickPrompt,
       },
     },
     assignedExecutors: ["travel", "lodging", "transit", "eatery", "finance"],

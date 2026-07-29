@@ -46,6 +46,15 @@ export function mapRestaurantCandidatesToPlaceHits(input: {
           ? candidate.priceLevel
           : null,
       source: "maps" as const,
+      reviewCount:
+        typeof candidate.reviewCount === "number" &&
+        Number.isFinite(candidate.reviewCount)
+          ? Math.round(candidate.reviewCount)
+          : null,
+      amountLabel: null,
+      priceKrw: null,
+      reasonKo: candidate.specialReasonKo?.trim() || null,
+      thumbnailUrl: candidate.images[0] ?? null,
     };
   });
 }

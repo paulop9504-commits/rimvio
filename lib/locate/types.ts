@@ -12,6 +12,12 @@ export type LocatePlaceResult = {
   lng: number;
   google_place_id: string | null;
   cached: boolean;
+  /** Google Places rating when requested. */
+  rating?: number | null;
+  /** Google user_ratings_total. */
+  reviewCount?: number | null;
+  /** Google price_level 0–4. */
+  priceLevel?: number | null;
 };
 
 export type LocateActionResult = {

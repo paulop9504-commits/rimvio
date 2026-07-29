@@ -188,7 +188,10 @@ export function useRealitySurfaceProjection(): UseRealitySurfaceProjectionResult
       if (!session || !blueprintNeedsDestination(session.operatorBlueprint)) {
         return null;
       }
-      const destination = resolveDestinationFromMessage(message);
+      const destination = resolveDestinationFromMessage(
+        message,
+        session.operatorBlueprint,
+      );
       if (!destination) {
         return null;
       }

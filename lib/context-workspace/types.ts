@@ -34,6 +34,8 @@ export type ContextWorkspaceNode = {
   readonly rating: number | null;
   readonly priceBand: number | null;
   readonly amountLabel: string | null;
+  /** Live review volume (Google / providers) when known. */
+  readonly reviewCount?: number | null;
   readonly thumbnailUrl: string | null;
   readonly tags: readonly string[];
   readonly visible: boolean;

@@ -12,6 +12,7 @@ import { searchLiteApiLodgingNearby } from "@/lib/globe/context-hub/providers/li
 import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-lodging-nearby";
 import { isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { findPlacesByName } from "@/lib/locate/google-places-find";
+import type { LocatePlaceResult } from "@/lib/locate/types";
 import {
   applyFieldControlToPlaceHits,
   composeSearchQueryWithFieldControl,
@@ -42,6 +43,40 @@ function mapsTextQuery(input: PlaceSearchInput): string {
     return "APA Hotel Osaka Namba";
   }
   return q.slice(0, 80);
+}
+
+/** Google price_level → band; never invent when missing. */
+function priceBandFromLevel(level: number | null | undefined): number | null {
+  if (level == null || !Number.isFinite(level)) return null;
+  const n = Math.round(level);
+  if (n <= 0) return 1;
+  if (n >= 4) return 4;
+  return n;
+}
+
+function locateResultsToHits(
+  rows: readonly LocatePlaceResult[],
+  domain: PlaceSearchHit["domain"],
+  query: string,
+): PlaceSearchHit[] {
+  return rows.map((row, index) => ({
+    id: row.google_place_id
+      ? `maps:${row.google_place_id}`
+      : `maps:${domain}:${index}`,
+    labelKo: row.place_name,
+    domain,
+    lat: row.lat,
+    lng: row.lng,
+    rating: row.rating ?? null,
+    walkMinutes: null,
+    reservable: domain === "lodging",
+    localFavorite: /현지|로컬|local/iu.test(query) || index === 0,
+    priceBand: priceBandFromLevel(row.priceLevel),
+    source: "maps" as const,
+    reviewCount: row.reviewCount ?? null,
+    priceKrw: null,
+    amountLabel: null,
+  }));
 }
 
 async function liveEateryHits(
@@ -158,21 +193,7 @@ async function liveLodgingHits(
         maxResults: limit,
       });
       if (found.length > 0) {
-        return found.slice(0, limit).map((row, index) => ({
-          id: row.google_place_id
-            ? `maps:${row.google_place_id}`
-            : `maps:lodging:${index}`,
-          labelKo: row.place_name,
-          domain: "lodging" as const,
-          lat: row.lat,
-          lng: row.lng,
-          rating: null,
-          walkMinutes: 5 + index * 2,
-          reservable: true,
-          localFavorite: false,
-          priceBand: 2,
-          source: "maps" as const,
-        }));
+        return locateResultsToHits(found.slice(0, limit), "lodging", input.query);
       }
     } catch {
       // fall through
@@ -199,21 +220,11 @@ async function livePoiHits(
     if (found.length === 0) {
       return null;
     }
-    return found.slice(0, limit).map((row, index) => ({
-      id: row.google_place_id
-        ? `maps:${row.google_place_id}`
-        : `maps:${input.domain}:${index}`,
-      labelKo: row.place_name,
-      domain: input.domain,
-      lat: row.lat,
-      lng: row.lng,
-      rating: null,
-      walkMinutes: 5 + index * 2,
-      reservable: index % 2 === 0,
-      localFavorite: /현지|로컬|local/iu.test(input.query) || index === 0,
-      priceBand: 1 + (index % 3),
-      source: "maps" as const,
-    }));
+    return locateResultsToHits(
+      found.slice(0, limit),
+      input.domain,
+      input.query,
+    );
   } catch {
     return null;
   }
@@ -221,7 +232,7 @@ async function livePoiHits(
 
 /**
  * Prefer LiteAPI (lodging) / Google Places + Naver (eatery) when configured.
- * Osaka catalog only when forced or no live providers.
+ * Seed orbit (리버뷰 호텔 …) is never used unless Osaka demo forced or allowSeedFallback.
  */
 export async function runPlaceSearchAsync(
   input: PlaceSearchInput,
@@ -260,17 +271,25 @@ export async function runPlaceSearchAsync(
     }
   }
 
+  const allowSeed =
+    input.allowSeedFallback === true || isOsakaDemoCatalogForced();
+
   if (!hits || hits.length === 0) {
-    hits = runPlaceSearch({
-      ...input,
-      query: composed.query,
-      limit: composed.limit,
-      fieldSearch: null,
-      skipOsakaCatalog:
-        liveProvidersReady() && !isOsakaDemoCatalogForced()
-          ? true
-          : input.skipOsakaCatalog,
-    });
+    if (allowSeed) {
+      hits = runPlaceSearch({
+        ...input,
+        query: composed.query,
+        limit: composed.limit,
+        fieldSearch: null,
+        skipOsakaCatalog:
+          liveProvidersReady() && !isOsakaDemoCatalogForced()
+            ? true
+            : input.skipOsakaCatalog,
+      });
+    } else {
+      // Live-only: empty beats fake Riverview / orbit seeds on every city.
+      hits = [];
+    }
   }
 
   const controlled = fieldSearch

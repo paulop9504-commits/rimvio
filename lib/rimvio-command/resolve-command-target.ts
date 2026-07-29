@@ -12,6 +12,8 @@ import {
 } from "@/lib/context-run/should-spawn-new-context";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { isGlobeIngressEligible } from "@/lib/globe-ingress/compile-globe-ingress";
+import { activeContextAllowsDomainScout } from "@/lib/workspace-kind/resolve-active-workspace-kind";
+import type { WorkspaceKind } from "@/lib/workspace-kind/types";
 
 export const COMMAND_TARGETS = [
   "new_context",
@@ -29,6 +31,7 @@ export type CommandTargetInput = {
   readonly activeContextId?: string | null;
   readonly activeWorkspaceId?: string | null;
   readonly selectedArtifactId?: string | null;
+  readonly activeWorkspaceKind?: WorkspaceKind | null;
 };
 
 export type CommandTargetResult = {
@@ -53,15 +56,13 @@ const RESUME_VERBS: ReadonlySet<ActionVerb> = new Set(["resume"]);
 const ARTIFACT_VERBS: ReadonlySet<ActionVerb> = new Set(["edit", "cancel"]);
 
 /**
- * Detect when an utterance's topic doesn't match the active context.
- * Heuristic: if shouldSpawnNewContext says yes and there IS an active context,
- * the user likely wants a new, unrelated project.
+ * Domain scout (lodging/eatery) continues only on travel-compatible Context.
  */
-/**
- * Domain scout (lodging/eatery search) inside an active context
- * is NOT a topic mismatch — it continues the current context.
- */
-function isDomainScoutInContext(utterance: string): boolean {
+function isDomainScoutInContext(
+  utterance: string,
+  activeWorkspaceKind?: WorkspaceKind | null,
+): boolean {
+  if (!activeContextAllowsDomainScout(activeWorkspaceKind)) return false;
   if (isGlobeIngressEligible(utterance)) return false;
   const exp = classifyExperienceRunIntent(utterance);
   return !!(
@@ -70,8 +71,12 @@ function isDomainScoutInContext(utterance: string): boolean {
   );
 }
 
-function isTopicMismatch(utterance: string, activeContextId: string): boolean {
-  if (isDomainScoutInContext(utterance)) return false;
+function isTopicMismatch(
+  utterance: string,
+  activeContextId: string,
+  activeWorkspaceKind?: WorkspaceKind | null,
+): boolean {
+  if (isDomainScoutInContext(utterance, activeWorkspaceKind)) return false;
   return shouldSpawnNewContext({
     utterance,
     activeContextEventId: activeContextId,
@@ -81,7 +86,14 @@ function isTopicMismatch(utterance: string, activeContextId: string): boolean {
 export function resolveCommandTarget(
   input: CommandTargetInput,
 ): CommandTargetResult {
-  const { verb, utterance, activeContextId, activeWorkspaceId, selectedArtifactId } = input;
+  const {
+    verb,
+    utterance,
+    activeContextId,
+    activeWorkspaceId,
+    selectedArtifactId,
+    activeWorkspaceKind,
+  } = input;
   const text = utterance.trim();
   const active = activeContextId?.trim() || null;
   const workspace = activeWorkspaceId?.trim() || null;
@@ -109,7 +121,7 @@ export function resolveCommandTarget(
     return { target: "new_context", reason: "create_globe" };
   }
 
-  if (active && isTopicMismatch(text, active)) {
+  if (active && isTopicMismatch(text, active, activeWorkspaceKind)) {
     return { target: "new_context", reason: "topic_mismatch" };
   }
 

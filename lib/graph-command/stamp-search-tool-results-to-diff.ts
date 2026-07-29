@@ -92,6 +92,8 @@ export function toolCandidatesToPlaceHits(
     liteapiOfferId: c.liteapiOfferId ?? null,
     liteapiHotelId: c.liteapiHotelId ?? null,
     amountLabel: c.amountLabel ?? null,
+    reviewCount: c.reviewCount ?? null,
+    priceKrw: c.priceKrw ?? null,
   }));
 }
 

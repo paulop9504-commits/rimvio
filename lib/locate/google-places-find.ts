@@ -17,6 +17,9 @@ function toPlaceResult(
     formatted_address?: string;
     place_id?: string;
     geometry?: { location?: { lat?: number; lng?: number } };
+    rating?: number;
+    user_ratings_total?: number;
+    price_level?: number;
   },
   fallbackName: string
 ): LocatePlaceResult | null {
@@ -27,6 +30,21 @@ function toPlaceResult(
     return null;
   }
 
+  const rating =
+    typeof candidate.rating === "number" && Number.isFinite(candidate.rating)
+      ? candidate.rating
+      : null;
+  const reviewCount =
+    typeof candidate.user_ratings_total === "number" &&
+    Number.isFinite(candidate.user_ratings_total)
+      ? Math.round(candidate.user_ratings_total)
+      : null;
+  const priceLevel =
+    typeof candidate.price_level === "number" &&
+    Number.isFinite(candidate.price_level)
+      ? Math.round(candidate.price_level)
+      : null;
+
   return {
     place_name: candidate.name?.trim() || fallbackName,
     formatted_address: candidate.formatted_address ?? null,
@@ -34,6 +52,9 @@ function toPlaceResult(
     lng,
     google_place_id: candidate.place_id ?? null,
     cached: false,
+    rating,
+    reviewCount,
+    priceLevel,
   };
 }
 
@@ -51,7 +72,15 @@ export async function findPlacesByName(input: {
   const params: Parameters<typeof client.findPlaceFromText>[0]["params"] = {
     input: input.placeName,
     inputtype: PlaceInputType.textQuery,
-    fields: ["formatted_address", "geometry", "name", "place_id"],
+    fields: [
+      "formatted_address",
+      "geometry",
+      "name",
+      "place_id",
+      "rating",
+      "user_ratings_total",
+      "price_level",
+    ],
     language: Language.ko,
     key,
   };

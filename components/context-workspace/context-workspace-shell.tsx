@@ -55,7 +55,7 @@ function formatPrice(node: ContextWorkspaceNode): string {
     return node.amountLabel.trim();
   }
   if (node.priceBand != null) {
-    return `가격대 ${node.priceBand}`;
+    return `${"₩".repeat(Math.min(4, Math.max(1, node.priceBand)))}`;
   }
   return "가격 미정";
 }

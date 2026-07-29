@@ -121,7 +121,8 @@ async function main() {
   const preview = buildNodePreview(nodes[0]!, state);
   assert(preview.title === "리버뷰 호텔", "title");
   assert(preview.price.includes("14"), "price");
-  assert(preview.nearby.length > 0, "nearby chips");
+  assert(preview.ratingLabel.includes("4.6"), "live rating label");
+  assert(preview.nearby.length === 0, "no invented nearby chips");
   assert(!preview.selected, "not selected yet");
   console.log("  ✅ preview model ok\n");
 

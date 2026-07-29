@@ -23,7 +23,8 @@ const PLACE_NOISE =
 
 function cleanPlaceLabel(raw: string): string | null {
   let cleaned = raw
-    .replace(/^(?:저|그|이)\s*/, "")
+    // Demonstratives only when followed by space ("그 오사카") — not "그리스"
+    .replace(/^(?:저|그|이)\s+/u, "")
     .replace(/\s+/g, " ")
     .trim();
   if (!cleaned || cleaned.length < 2 || cleaned.length > 48) return null;

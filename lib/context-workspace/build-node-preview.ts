@@ -38,10 +38,7 @@ export type NodePreviewModel = {
 function formatPrice(node: ContextWorkspaceNode): string {
   if (node.amountLabel?.trim()) return node.amountLabel.trim();
   if (node.priceBand != null) {
-    if (node.priceBand <= 1) return "저렴";
-    if (node.priceBand === 2) return "보통";
-    if (node.priceBand === 3) return "다소 비쌈";
-    return "고급";
+    return `${"₩".repeat(Math.min(4, Math.max(1, node.priceBand)))}`;
   }
   return "가격 미정";
 }
@@ -51,15 +48,22 @@ function formatRating(rating: number | null): string {
   return `★ ${rating.toFixed(1)}`;
 }
 
+function formatReviewSummary(node: ContextWorkspaceNode): string {
+  const count = node.reviewCount;
+  if (typeof count === "number" && Number.isFinite(count) && count > 0) {
+    return `후기 ${count.toLocaleString("ko-KR")}`;
+  }
+  if (node.rating != null && Number.isFinite(node.rating)) {
+    return "평점 있음";
+  }
+  return "후기 없음";
+}
+
 function amenityChips(node: ContextWorkspaceNode): readonly string[] {
-  const fromTags = node.tags
+  return node.tags
     .filter((t) => !/photo_spot|lodging|eatery|poi|amenity/i.test(t))
     .slice(0, 4)
     .map((t) => t.replace(/_/g, " "));
-  if (fromTags.length > 0) return fromTags;
-  if (node.kind === "lodging") return ["위치", "후기", "가격"];
-  if (node.kind === "eatery") return ["대표메뉴", "대기", "영업"];
-  return [domainLabelKo(node.kind)];
 }
 
 function inferNearbyKind(
@@ -133,34 +137,12 @@ export function buildNodePreview(
     if (nearby.length >= 4) break;
   }
 
-  // Domain fallback chips when graph has no nearby edges yet
-  if (nearby.length === 0) {
-    if (node.kind === "lodging") {
-      nearby.push(
-        { kind: "eatery", labelKo: "🍣 주변 맛집", meters: null },
-        { kind: "cafe", labelKo: "☕ 주변 카페", meters: null },
-        { kind: "poi", labelKo: "🏖 관광·명소", meters: null },
-      );
-    } else if (node.kind === "eatery") {
-      nearby.push(
-        { kind: "amenity", labelKo: "🏪 편의점", meters: null },
-        { kind: "route", labelKo: "🚗 이동", meters: null },
-      );
-    }
-  }
-
+  // No invented nearby chips — only live relationship edges.
   const why =
     node.summaryKo.trim() ||
     `${domainLabelKo(node.kind)} 후보 · ${formatPrice(node)}`;
 
-  const reviewSummary =
-    node.rating != null && Number.isFinite(node.rating)
-      ? node.rating >= 4.5
-        ? "후기 상위권"
-        : node.rating >= 4.0
-          ? "좋은 후기"
-          : "보통 후기"
-      : "후기 수집 중";
+  const reviewSummary = formatReviewSummary(node);
 
   return {
     nodeId: node.id,

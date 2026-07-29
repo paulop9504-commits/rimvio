@@ -47,6 +47,7 @@ import { emitToolSearchHubAction } from "@/lib/graph-command/emit-tool-search-hu
 import { resolveLodgingStayForTools } from "@/lib/context-builder/resolve-lodging-stay-for-tools";
 import { resolveWorldGeoEntity } from "@/lib/reality-graph/resolve-world-geo";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
+import { isOsakaDemoCatalogForced } from "@/lib/search-engine/run-place-search-async";
 import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import { hasProvisionalContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
@@ -264,6 +265,42 @@ function worldGeoSeedHitsForQuery(
   ];
 }
 
+/** Orbit / invent seeds (리버뷰 호텔) — never stamp into Workspace as live inventory. */
+function isInventedOrbitSeedHit(hit: PlaceSearchHit): boolean {
+  return hit.id.startsWith("search:");
+}
+
+function keepLiveWorkspaceHits(
+  hits: readonly PlaceSearchHit[],
+): PlaceSearchHit[] {
+  if (isOsakaDemoCatalogForced()) {
+    return [...hits];
+  }
+  return hits.filter((h) => !isInventedOrbitSeedHit(h) && h.source !== "seed");
+}
+
+function keepLiveWorkspaceCandidates(
+  candidates:
+    | readonly {
+        id?: string | null;
+        source?: string | null;
+        labelKo?: string | null;
+        lat?: number | null;
+        lng?: number | null;
+      }[]
+    | null
+    | undefined,
+): NonNullable<typeof candidates> {
+  if (!candidates?.length) return [];
+  if (isOsakaDemoCatalogForced()) return [...candidates];
+  return candidates.filter((c) => {
+    const id = c.id ?? "";
+    if (id.startsWith("search:")) return false;
+    if (c.source === "seed") return false;
+    return true;
+  });
+}
+
 function mergeSearchProjectIntoGraph(
   graph: SessionGraphV1,
   command: Extract<GraphCommand, { op: "search_project" }>,
@@ -376,6 +413,7 @@ function applySearchProject(
     hits = worldGeoSeedHitsForQuery(command.query, command.domain);
   }
   // Map Search → Context Workspace (Globe stamp deferred to Commit).
+  // Sync path may still invent orbit seeds for unit tests — product uses Async.
   if (
     command.domain === "lodging" ||
     command.domain === "eatery" ||
@@ -458,25 +496,36 @@ async function applySearchProjectAsync(
     utterance: command.query,
     contextEventId: seeded.contextEventId,
   });
-  let hits = toolCandidatesToPlaceHits(
-    command.domain,
-    toolResult.candidates,
+  let hits = keepLiveWorkspaceHits(
+    toolCandidatesToPlaceHits(command.domain, toolResult.candidates),
   );
-  if (hits.length === 0) {
-    hits = worldGeoSeedHitsForQuery(command.query, command.domain);
+  const liveCandidates = keepLiveWorkspaceCandidates(toolResult.candidates);
+  // World-geo POI only — never invent lodging/eatery orbit seeds into Workspace.
+  if (hits.length === 0 && command.domain === "poi") {
+    hits = keepLiveWorkspaceHits(
+      worldGeoSeedHitsForQuery(command.query, command.domain),
+    );
   }
   if (
     command.domain === "lodging" ||
     command.domain === "eatery" ||
     command.domain === "poi"
   ) {
+    const summaryKo =
+      liveCandidates.length > 0 || hits.length > 0
+        ? toolResult.summaryKo
+        : command.domain === "lodging"
+          ? "근처 숙소를 아직 못 찾았어요 · 조건을 바꿔 보세요"
+          : command.domain === "eatery"
+            ? "근처 맛집을 아직 못 찾았어요 · 조건을 바꿔 보세요"
+            : "근처 장소를 아직 못 찾았어요 · 조건을 바꿔 보세요";
     openMapContextWorkspace({
       contextEventId: seeded.contextEventId,
       domain: command.domain,
       query: command.query,
-      summaryKo: toolResult.summaryKo,
+      summaryKo,
       hits,
-      candidates: toolResult.candidates,
+      candidates: liveCandidates,
       source: "map_search",
     });
     emitToolSearchHubAction({
@@ -484,10 +533,7 @@ async function applySearchProjectAsync(
       toolId,
       domain: command.domain,
       query: command.query,
-      candidateCount: Math.max(
-        toolResult.candidates?.length ?? 0,
-        hits.length,
-      ),
+      candidateCount: Math.max(liveCandidates.length, hits.length),
     });
     return ensureDestinationAnchor(seeded, command);
   }
@@ -496,8 +542,8 @@ async function applySearchProjectAsync(
     contextEventId: seeded.contextEventId,
     domain: command.domain,
     query: command.query,
-    candidates: toolResult.candidates?.length
-      ? toolResult.candidates
+    candidates: liveCandidates.length
+      ? liveCandidates
       : hits.map((h) => ({
           id: h.id,
           labelKo: h.labelKo,
@@ -512,10 +558,7 @@ async function applySearchProjectAsync(
     toolId,
     domain: command.domain,
     query: command.query,
-    candidateCount: Math.max(
-      toolResult.candidates?.length ?? 0,
-      hits.length,
-    ),
+    candidateCount: Math.max(liveCandidates.length, hits.length),
   });
   return next;
 }

@@ -189,6 +189,13 @@ export function mapLiteApiRatesToInventory(input: {
       checkOutIso: input.checkOutIso,
       liteapiHotelId: hotelId,
       roomOffers,
+      rating:
+        typeof meta?.rating === "number" && Number.isFinite(meta.rating)
+          ? meta.rating
+          : typeof meta?.stars === "number" && Number.isFinite(meta.stars)
+            ? meta.stars
+            : null,
+      reviewCount: null,
     });
   }
 

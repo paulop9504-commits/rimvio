@@ -14,15 +14,25 @@ import { evaluateOnboardingParallelException } from "@/lib/container-ai/evaluate
 
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import {
+  FALLBACK_DESTINATION_HUBS,
+  hubChoiceRowsForCountry,
+} from "@/lib/globe/country-travel-hubs";
 
 const SIMILAR_PRICE_HINT = /비슷한|같은\s*가격|similar\s*price/iu;
 const WALK_DISTANCE_HINT = /걸어|도보|walk|분\s*이내/iu;
 
-const DEFAULT_DESTINATION_CHOICES = [
-  { id: "osaka", label: "오사카" },
-  { id: "tokyo", label: "도쿄" },
-  { id: "fukuoka", label: "후쿠오카" },
-] as const;
+function destinationChoicesForBlueprint(
+  blueprint: ContextBlueprint,
+): readonly { id: string; label: string }[] {
+  const region = blueprint.resourcePlan.knownTruth.find(
+    (row) => row.slotId === "region",
+  )?.value;
+  const regionLabel = typeof region === "string" ? region : null;
+  const hubs = hubChoiceRowsForCountry(regionLabel);
+  if (hubs.length > 0) return hubs;
+  return FALLBACK_DESTINATION_HUBS;
+}
 
 function isLodgingRequest(message: string): boolean {
   return hasLodgingDomainCue(message);
@@ -95,8 +105,8 @@ export function gateContainerAIRequest(input: {
         reasonKo:
           `현재는 ${ctx.activeNode.label} 단계입니다. 먼저 목적지를 확정하면 숙소를 추천할 수 있습니다.`,
         suggestedNodeKind: "prepare",
-        destinationChoices: [...DEFAULT_DESTINATION_CHOICES],
-        quickActions: DEFAULT_DESTINATION_CHOICES.map((row) => ({
+        destinationChoices: [...destinationChoicesForBlueprint(input.blueprint)],
+        quickActions: destinationChoicesForBlueprint(input.blueprint).map((row) => ({
           id: row.id,
           label: row.label,
         })),

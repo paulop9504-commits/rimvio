@@ -117,7 +117,7 @@ function composeContextDraft(input: {
   }
 
   if (isJapanRegionIntent(input.intent) && !slots.some((s) => s.key === "region")) {
-    slots.push({ key: "region", value: "Japan", resolution: "hypothesis" });
+    slots.push({ key: "region", value: "일본", resolution: "hypothesis" });
   }
   if (/여행|trip|travel/u.test(input.intent)) {
     slots.push({ key: "frame", value: "travel", resolution: "confirmed" });
@@ -201,6 +201,19 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
     runtimeKind === "travel" &&
     (isJapanRegionIntent(intent) || isCountryOrRegionDestinationLabel(regionLabel));
 
+  const extractedDestination = extractRunDestination(intent);
+  const regionFrameLabel =
+    runtimeKind === "travel"
+      ? regionLabel && isCountryOrRegionDestinationLabel(regionLabel)
+        ? regionLabel
+        : isJapanRegionIntent(intent)
+          ? "일본"
+          : extractedDestination &&
+              isCountryOrRegionDestinationLabel(extractedDestination)
+            ? extractedDestination
+            : null
+      : null;
+
   const blueprint =
     runtimeKind === "travel"
       ? composeTravelTripBlueprint({
@@ -208,7 +221,7 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
           bridgeId,
           runtimeId: runtime.runtimeId,
           goal: context.goal,
-          regionFrame: japanFrame ? "japan" : null,
+          regionFrame: regionFrameLabel ?? (japanFrame ? "japan" : null),
         })
       : runtimeKind === "trade"
         ? composeTradeBlueprint({
