@@ -28,6 +28,9 @@ import { stampCommittedOperationsOnEvent } from "@/lib/reality-queue/stamp-commi
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import type { RealityOperationV1 } from "@/lib/reality-queue/types";
 import { promoteRealityCommitToContextGraph } from "@/lib/workstream/promote-reality-commit";
+import { enterAgentSpine } from "@/lib/workstream/agent-spine-law";
+import { syncContextGoalState } from "@/lib/workstream/context-goal-state";
+import { verifyOperationsBeforeCommit } from "@/lib/workstream/verify-operations-before-commit";
 
 export type CommitRealityQueueResult =
   | {
@@ -39,7 +42,12 @@ export type CommitRealityQueueResult =
     }
   | {
       ok: false;
-      reason: "blocked" | "empty" | "persist_failed" | "booking_failed";
+      reason:
+        | "blocked"
+        | "empty"
+        | "persist_failed"
+        | "booking_failed"
+        | "verification_blocked";
       reasonKo?: string;
     };
 
@@ -198,6 +206,28 @@ export async function commitRealityQueueClient(input: {
       continue;
     }
 
+    // ADR-043: Verification Agent must run before Reality mutate (not stage-only).
+    const verification = verifyOperationsBeforeCommit({
+      contextEventId: eventId,
+      event,
+      operations: bookingOps,
+    });
+    if (!verification.ok) {
+      return {
+        ok: false,
+        reason: "verification_blocked",
+        reasonKo:
+          verification.reasonKo ??
+          "검증 실패 — Reality Commit을 진행할 수 없어요",
+      };
+    }
+
+    enterAgentSpine({
+      source: "workstream",
+      contextEventId: eventId,
+      stage: "commit",
+    });
+
     const identityBundle = opsNeedIdentity(bookingOps)
       ? await readIdentityVaultBundleClient()
       : null;
@@ -230,6 +260,10 @@ export async function commitRealityQueueClient(input: {
     promoteRealityCommitToContextGraph({
       contextEventId: eventId,
       operations: bookingOps,
+    });
+    syncContextGoalState({
+      contextEventId: eventId,
+      event: findLifeEventCandidate(eventId),
     });
     for (const op of bookingOps) {
       deletePreparedRealityOperation(op.operationId);

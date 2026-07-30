@@ -19,6 +19,14 @@ import {
   readAgentExecutionSession,
   subscribeAgentExecutionSession,
 } from "@/lib/workstream/agent-execution-session";
+import {
+  readLastAgentJudgment,
+  type AgentJudgmentChainResult,
+} from "@/lib/workstream/agent-judgment-chain";
+import {
+  readLastRimvioAgentRuntimeTurn,
+  type RimvioAgentRuntimeTurn,
+} from "@/lib/workstream/rimvio-agent-runtime";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +49,10 @@ export function WorkspaceAgentStatusPanel({
   busy = false,
 }: WorkspaceAgentStatusPanelProps) {
   const [state, setState] = useState<AgentExecutionState | null>(null);
+  const [judgment, setJudgment] = useState<AgentJudgmentChainResult | null>(
+    null,
+  );
+  const [runtime, setRuntime] = useState<RimvioAgentRuntimeTurn | null>(null);
 
   useEffect(() => {
     const id = contextEventId.trim();
@@ -60,15 +72,31 @@ export function WorkspaceAgentStatusPanel({
           session: session?.contextEventId === id ? session : null,
         }),
       );
+      setJudgment(readLastAgentJudgment());
+      const turn = readLastRimvioAgentRuntimeTurn();
+      setRuntime(turn?.ingress.contextEventId === id ? turn : null);
     };
     refresh();
     const unsubWs = subscribeContextWorkspaceUpdated((updatedId) => {
       if (updatedId === id) refresh();
     });
     const unsubSession = subscribeAgentExecutionSession(() => refresh());
+    const onJudgment = () => {
+      setJudgment(readLastAgentJudgment());
+      const turn = readLastRimvioAgentRuntimeTurn();
+      setRuntime(turn?.ingress.contextEventId === id ? turn : null);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("rimvio:agent-judgment-chain", onJudgment);
+      window.addEventListener("rimvio:agent-runtime-bus", onJudgment);
+    }
     return () => {
       unsubWs();
       unsubSession();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("rimvio:agent-judgment-chain", onJudgment);
+        window.removeEventListener("rimvio:agent-runtime-bus", onJudgment);
+      }
     };
   }, [contextEventId]);
 
@@ -91,12 +119,57 @@ export function WorkspaceAgentStatusPanel({
         <div className="mt-1.5 space-y-1 text-[11px] leading-snug text-[#4e5968]">
           <div>
             <p className="font-medium text-[#8b95a1]">
-              {copy.globe.agentCurrentTask}
+              {copy.globe.agentGoalLabel}
             </p>
             <p className="text-[13px] font-semibold text-[#191f28]">
+              {state.goalKo}
+            </p>
+            <p className="mt-0.5 font-semibold tabular-nums text-[#3182f6]">
+              {state.percent}%
+            </p>
+            {runtime?.supervisor ? (
+              <p className="mt-0.5 text-[11px] text-[#8b95a1]">
+                {runtime.supervisor.whyKo}
+                <span className="mt-0.5 block text-[#3182f6]">
+                  → {runtime.supervisor.nextToRaiseKo}
+                </span>
+              </p>
+            ) : null}
+            {runtime && runtime.opportunities.length > 0 ? (
+              <p className="mt-0.5 text-[11px] text-[#8b95a1]">
+                Opportunity · {runtime.opportunities[0]!.titleKo}
+                {runtime.opportunities.length > 1
+                  ? ` +${runtime.opportunities.length - 1}`
+                  : ""}
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <p className="font-medium text-[#8b95a1]">
+              {copy.globe.agentCurrentTask}
+            </p>
+            <p className="truncate text-[12px] font-medium text-[#191f28]">
               {state.liveHeadlineKo || state.currentTaskKo}
             </p>
           </div>
+
+          {judgment ? (
+            <div>
+              <p className="font-medium text-[#8b95a1]">
+                {copy.globe.agentStrategyLabel}
+              </p>
+              <p className="text-[12px] font-medium text-[#191f28]">
+                {judgment.strategy.labelKo}
+                <span className="ml-1 font-normal text-[#8b95a1]">
+                  · {judgment.cost.complexity.band} (
+                  {judgment.cost.complexity.score}/10) · conf{" "}
+                  {judgment.cost.confidence.percent}% · ~
+                  {judgment.cost.estimatedSteps} steps
+                </span>
+              </p>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between gap-2 pt-0.5">
             <p>

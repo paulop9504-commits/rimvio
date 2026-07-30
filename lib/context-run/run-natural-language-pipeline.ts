@@ -17,6 +17,7 @@ import {
   NL_PIPELINE_STAGES,
   type NlPipelineStage,
 } from "@/lib/context-run/natural-language-pipeline";
+import { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { shouldDeferSearchProjectToDiscoveryScout } from "@/lib/graph-command/should-defer-search-project-to-scout";
 import { parsePalantirFacetFromMessage } from "@/lib/globe/spatial-semantic/resolve-palantir-refine-intent";
@@ -370,6 +371,13 @@ export function runNaturalLanguagePipeline(
   };
   const visited: NlPipelineStage[] = [];
   const contextEventId = input.contextEventId.trim();
+
+  spineIngressFromLegacy({
+    source: "context-run",
+    contextEventId,
+    utterance: input.utterance,
+    stage: "goal_state",
+  });
 
   pushStage(visited, "context_builder");
   const pack = buildTurnPack(input);
@@ -811,6 +819,7 @@ export function runNaturalLanguagePipeline(
           reservedOpIds: [],
           waitingCommit: false,
           workspaceCommitted: workspaceTurn.committed,
+          openedForReview: workspaceTurn.openedForReview === true,
           ruleDecision,
           contextPack: pack,
         },
@@ -923,6 +932,13 @@ export async function runNaturalLanguagePipelineAsync(
   };
   const visited: NlPipelineStage[] = [];
   const contextEventId = input.contextEventId.trim();
+
+  spineIngressFromLegacy({
+    source: "context-run",
+    contextEventId,
+    utterance: input.utterance,
+    stage: "goal_state",
+  });
 
   pushStage(visited, "context_builder");
   const pack = buildTurnPack(input);
@@ -1378,6 +1394,7 @@ export async function runNaturalLanguagePipelineAsync(
           reservedOpIds: [],
           waitingCommit: false,
           workspaceCommitted: workspaceTurn.committed,
+          openedForReview: workspaceTurn.openedForReview === true,
           ruleDecision,
           contextPack: pack,
         },

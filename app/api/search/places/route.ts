@@ -57,6 +57,16 @@ export async function POST(request: NextRequest) {
       ? body.checkOutIso.trim() || null
       : null;
   const guestCount = parseCoord(body.guestCount);
+  const contextLabelKo =
+    typeof body.contextLabelKo === "string"
+      ? body.contextLabelKo.trim() || null
+      : typeof body.placeName === "string"
+        ? body.placeName.trim() || null
+        : null;
+  const contextEventId =
+    typeof body.contextEventId === "string"
+      ? body.contextEventId.trim() || null
+      : null;
 
   if (!query || query.length < 1) {
     return NextResponse.json({ error: "query_required" }, { status: 400 });
@@ -71,6 +81,9 @@ export async function POST(request: NextRequest) {
     checkInIso,
     checkOutIso,
     guestCount: guestCount ?? null,
+    contextLabelKo,
+    contextEventId,
+    // Soft catalog for Osaka eatery when live Maps empty — never invent orbit hotels.
     allowSeedFallback: false,
   });
 

@@ -18,7 +18,7 @@ const NIGHTS_DAYS = /(\d{1,2})\s*박\s*(\d{1,2})\s*일/iu;
 const NIGHTS_ONLY = /(\d{1,2})\s*박(?!\s*\d)/iu;
 
 const PREP_CUE =
-  /여행\s*준비|준비해(?:줘|요|주세요)?|trip\s*prep|여행\s*계획|일정\s*(?:짜|세워|만들)|여행\s*짜/iu;
+  /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|여행\s*계획|일정\s*(?:짜|세워|만들)|여행\s*짜/iu;
 
 const TRIP_CUE = /여행|출장|trip|abroad|놀러/iu;
 

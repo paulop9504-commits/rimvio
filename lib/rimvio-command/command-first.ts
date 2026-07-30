@@ -17,6 +17,7 @@ import {
 } from "@/lib/globe/context-condition-ai/instant-lodging-search";
 import { detectLodgingSearchIntent } from "@/lib/globe/lodging/detect-lodging-search-intent";
 import { classifyActionVerb } from "@/lib/rimvio-command/action-verb";
+import { isOpenWorkspaceUtterance } from "@/lib/context-workspace/is-open-workspace-utterance";
 import {
   activeContextAllowsDomainScout,
   resolveActiveWorkspaceKind,
@@ -36,6 +37,7 @@ export type CommandFirstDecision = {
     | "search_eatery"
     | "booking_prepare"
     | "resume"
+    | "open_workspace"
     | null;
   readonly reason: string;
 };
@@ -66,6 +68,15 @@ export function resolveCommandFirstDecision(input: {
       : resolveActiveWorkspaceKind(active);
   const scoutOk = Boolean(active) && activeContextAllowsDomainScout(kind);
   const verb = classifyActionVerb(text);
+
+  if (isOpenWorkspaceUtterance(text)) {
+    return {
+      action: active ? "execute" : "ask",
+      confidence: active ? 0.99 : 0.45,
+      commandId: "open_workspace",
+      reason: active ? "explicit_open_workspace" : "open_needs_context",
+    };
+  }
 
   // Explicit booking/checkout → still execute path, but slots may gate downstream.
   if (requiresLodgingBookingSlots(text) && detectLodgingSearchIntent(text)) {

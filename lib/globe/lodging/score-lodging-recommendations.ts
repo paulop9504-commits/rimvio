@@ -48,6 +48,7 @@ import {
 import { findLatestPersonaSignal } from "@/lib/persona/persona-inference-store";
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { lodgingPreferenceScoreDelta } from "@/lib/workstream/preference-rank-bias";
 import type {
   TravelBrainState,
   TravelBudgetBand,
@@ -319,7 +320,13 @@ export function scoreLodgingRecommendations(input: {
       overlay +
       explorationDelta -
       lodgingChainScorePenalty(row.name) +
-      (verification.score100 >= 72 ? 6 : verification.score100 >= 58 ? 3 : 0);
+      (verification.score100 >= 72 ? 6 : verification.score100 >= 58 ? 3 : 0) +
+      lodgingPreferenceScoreDelta({
+        name: row.name,
+        address: row.address,
+        priceKrw: row.priceKrw ?? null,
+        distanceKm,
+      });
 
     const opportunity =
       hub != null

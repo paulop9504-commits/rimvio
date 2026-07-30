@@ -37,6 +37,12 @@ import {
 } from "@/lib/workstream/agent-execution-session";
 import { syncContextWorkState } from "@/lib/workstream/sync-context-work-state";
 import type { WorkstreamState } from "@/lib/workstream/types";
+import { writeAgentReflection } from "@/lib/workstream/agent-reflection";
+import { publishAgentRuntimeEvent } from "@/lib/workstream/agent-runtime-bus";
+import { readContextGoalState } from "@/lib/workstream/context-goal-state";
+import { detectOpportunities } from "@/lib/workstream/opportunity-detector";
+import { summarizeAgentRuntimeMetrics } from "@/lib/workstream/agent-runtime-metrics";
+import { readWorldState } from "@/lib/workstream/world-state";
 
 function toYmd(iso: string | null | undefined): string | null {
   const t = iso?.trim();
@@ -219,6 +225,33 @@ export function promoteRealityCommitToContextGraph(input: {
   );
   setAgentExecutionHeadline("Context Graph 업데이트 완료");
   setAgentExecutionCommitStatus("committed");
+
+  const goal = readContextGoalState(contextEventId);
+  const metrics = summarizeAgentRuntimeMetrics(contextEventId);
+  const opps = detectOpportunities({
+    contextEventId,
+    world: readWorldState(contextEventId),
+  });
+  const reflection = writeAgentReflection({
+    contextEventId,
+    goalKo: goal?.goalKo ?? work.title,
+    committedLabels: input.operations.map(
+      (op) => op.preview.placeLabelKo?.trim() || op.labelKo,
+    ),
+    repairCount: metrics.repairCount,
+    opportunityCount: opps.length,
+  });
+  publishAgentRuntimeEvent({
+    kind: "committed",
+    contextEventId,
+    labelKo: "Reality Commit",
+  });
+  publishAgentRuntimeEvent({
+    kind: "reflection_written",
+    contextEventId,
+    labelKo: reflection.lines[0] ?? "Reflection",
+  });
+
   finishAgentExecutionSession({ keepMs: 8_000 });
 
   return {

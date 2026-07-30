@@ -30,6 +30,7 @@ import {
   shouldExecuteWithoutAsk,
 } from "@/lib/rimvio-command/command-first";
 import { resolveConfirmedRealityAskGate } from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
+import { isOpenWorkspaceUtterance } from "@/lib/context-workspace/is-open-workspace-utterance";
 
 function isRichGraphFilter(text: string): boolean {
   const cmd = parseGraphCommands(text, null)[0];
@@ -122,6 +123,11 @@ export function gateOperatorTurnSync(input: {
   const text = input.text.trim();
   if (!text && !input.ssot.hasActiveSpec) {
     return { tool: "noop", reason: "empty_input" };
+  }
+
+  // “작업장 띄워” — expand Workspace; never Reality ask-gate Q&A.
+  if (text && isOpenWorkspaceUtterance(text)) {
+    return { tool: "open_workspace", reason: "explicit_open_workspace" };
   }
 
   // Condition revise (4박5일 → 5박6일) — confirm chips before Reality write.

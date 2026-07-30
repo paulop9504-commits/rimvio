@@ -40,6 +40,7 @@ import {
 } from "@/lib/globe/context-agent/snap-globe-to-context-agent-anchor";
 import { hasProvisionalContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
+import { tryOpenWorkspaceFromUtterance } from "@/lib/context-workspace/try-open-workspace-from-utterance";
 import {
   readContextConditionPinnedPlaceIds,
   pinContextConditionRecommendation,
@@ -1755,9 +1756,11 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               text: graphResult.assistantReplyKo,
             });
             if (
-              graphResult.via === "graph_command" &&
-              graphResult.commands.some((c) => c.op === "search_project") &&
-              hasProvisionalContextWorkspace(contextEventId)
+              (graphResult.via === "graph_command" &&
+                graphResult.commands.some((c) => c.op === "search_project") &&
+                hasProvisionalContextWorkspace(contextEventId)) ||
+              (graphResult.via === "workspace" &&
+                graphResult.openedForReview === true)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
             }
@@ -2802,6 +2805,21 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           // Empty or blocked chips → fall through (prefer scout over blank pick UI).
         }
 
+        if (plan.tool === "open_workspace") {
+          const opened = tryOpenWorkspaceFromUtterance({
+            contextEventId,
+            utterance: text,
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: opened?.replyKo ?? "작업장을 열었어요",
+          });
+          clearComposerMessage();
+          setContextAgentSessionPhase("awaiting_human");
+          return;
+        }
+
         if (plan.tool === "lens_command") {
           const lensResult = await applyLensCommand({
             contextEventId,
@@ -2926,9 +2944,11 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               text: graphResult.assistantReplyKo,
             });
             if (
-              graphResult.via === "graph_command" &&
-              graphResult.commands.some((c) => c.op === "search_project") &&
-              hasProvisionalContextWorkspace(contextEventId)
+              (graphResult.via === "graph_command" &&
+                graphResult.commands.some((c) => c.op === "search_project") &&
+                hasProvisionalContextWorkspace(contextEventId)) ||
+              (graphResult.via === "workspace" &&
+                graphResult.openedForReview === true)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
             }
@@ -3159,6 +3179,18 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           });
           return;
         }
+        if (plan.tool === "open_workspace") {
+          const opened = tryOpenWorkspaceFromUtterance({
+            contextEventId,
+            utterance: text,
+          });
+          appendContextAgentComposeTurn(contextEventId, {
+            role: "assistant",
+            kind: "text",
+            text: opened?.replyKo ?? "작업장을 열었어요",
+          });
+          return;
+        }
         if (
           !isLodgingPrepUtterance(text) &&
           !isFlightPrepUtterance(text) &&
@@ -3243,9 +3275,11 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
               text: graphResult.assistantReplyKo,
             });
             if (
-              graphResult.via === "graph_command" &&
-              graphResult.commands.some((c) => c.op === "search_project") &&
-              hasProvisionalContextWorkspace(contextEventId)
+              (graphResult.via === "graph_command" &&
+                graphResult.commands.some((c) => c.op === "search_project") &&
+                hasProvisionalContextWorkspace(contextEventId)) ||
+              (graphResult.via === "workspace" &&
+                graphResult.openedForReview === true)
             ) {
               appendWorkspacePreviewComposeTurn(contextEventId);
             }

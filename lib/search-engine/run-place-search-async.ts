@@ -19,7 +19,10 @@ import {
 } from "@/lib/context-field";
 import { mapLodgingInventoryToPlaceHits } from "@/lib/search-engine/map-lodging-inventory-to-hits";
 import { mapRestaurantCandidatesToPlaceHits } from "@/lib/search-engine/map-restaurant-candidates-to-hits";
-import { searchOsakaDemoCatalog } from "@/lib/search-engine/osaka-demo-catalog";
+import {
+  looksLikeOsakaContext,
+  searchOsakaDemoCatalog,
+} from "@/lib/search-engine/osaka-demo-catalog";
 import {
   fetchPlaceSearchViaApi,
   shouldUsePlaceSearchApiBridge,
@@ -46,6 +49,33 @@ function mapsTextQuery(input: PlaceSearchInput): string {
   const q = input.query.trim();
   if (input.domain === "lodging" && /apa|아파/iu.test(q)) {
     return "APA Hotel Osaka Namba";
+  }
+  const place =
+    input.contextLabelKo?.trim().replace(/\s*여행$/u, "").trim() || null;
+  // Bare “놀거리 찾아” → Places textSearch needs a real place + attraction cue.
+  if (
+    input.domain === "poi" &&
+    /놀거리|볼거리|할거리|관광|명소|액티비티|things?\s*to\s*do|attraction/iu.test(
+      q,
+    )
+  ) {
+    const cleaned = q
+      .replace(
+        /(?:찾아|보여|알려|추천)(?:\s*(?:줘|요|주세요|봐))?/giu,
+        "",
+      )
+      .replace(/놀거리|볼거리|할거리/giu, "tourist attractions")
+      .trim();
+    const base = cleaned || "tourist attractions";
+    return (place ? `${place} ${base}` : base).slice(0, 80);
+  }
+  if (
+    input.domain === "eatery" &&
+    /^(?:맛집|식당|카페)?\s*(?:찾아|보여|알려|추천)?(?:\s*(?:줘|요|주세요))?$/iu.test(
+      q,
+    )
+  ) {
+    return (place ? `${place} restaurants` : "restaurants").slice(0, 80);
   }
   return q.slice(0, 80);
 }
@@ -94,11 +124,19 @@ async function liveEateryHits(
   }
 
   const limit = input.limit ?? 4;
+  const anchorLabel = input.contextLabelKo?.trim() || null;
   const result = await searchRestaurants({
     query: input.query,
     origin: { lat, lng },
     maxResults: limit,
-    radiusM: 1_200,
+    radiusM: looksLikeOsakaContext({
+      query: `${input.query} ${anchorLabel ?? ""}`,
+      anchorLat: lat,
+      anchorLng: lng,
+    })
+      ? 2_400
+      : 1_200,
+    anchorLabel,
   });
   if (result.candidates.length === 0) {
     return null;
@@ -298,20 +336,45 @@ export async function runPlaceSearchAsync(
     input.allowSeedFallback === true || isOsakaDemoCatalogForced();
 
   if (!hits || hits.length === 0) {
-    if (allowSeed) {
-      hits = runPlaceSearch({
-        ...anchored,
+    const osakaCtx = looksLikeOsakaContext({
+      query: `${composed.query} ${input.contextLabelKo ?? ""}`,
+      anchorLat: composed.anchorLat,
+      anchorLng: composed.anchorLng,
+    });
+    // Osaka soft catalog when live Maps empty — eatery + poi/놀거리 (not fake lodging).
+    if (
+      osakaCtx &&
+      (composed.domain === "eatery" ||
+        composed.domain === "poi" ||
+        allowSeed)
+    ) {
+      const catalog = searchOsakaDemoCatalog({
         query: composed.query,
+        domain: composed.domain,
         limit: composed.limit,
-        fieldSearch: null,
-        skipOsakaCatalog:
-          liveProvidersReady() && !isOsakaDemoCatalogForced()
-            ? true
-            : input.skipOsakaCatalog,
+        anchorLat: composed.anchorLat,
+        anchorLng: composed.anchorLng,
       });
-    } else {
-      // Live-only: empty beats fake Riverview / orbit seeds on every city.
-      hits = [];
+      if (catalog?.length) {
+        hits = catalog;
+      }
+    }
+    if (!hits || hits.length === 0) {
+      if (allowSeed) {
+        hits = runPlaceSearch({
+          ...anchored,
+          query: composed.query,
+          limit: composed.limit,
+          fieldSearch: null,
+          skipOsakaCatalog:
+            liveProvidersReady() && !isOsakaDemoCatalogForced()
+              ? true
+              : input.skipOsakaCatalog,
+        });
+      } else {
+        // Live-only: empty beats fake Riverview / orbit seeds on every city.
+        hits = [];
+      }
     }
   }
 

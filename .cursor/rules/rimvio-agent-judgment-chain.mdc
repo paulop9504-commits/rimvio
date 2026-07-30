@@ -1,0 +1,26 @@
+---
+description: Agent Judgment Chain + Reality Cost (ADR-044)
+alwaysApply: true
+---
+
+# Agent Judgment Chain (locked)
+
+**Canonical:** `docs/adr/044-agent-judgment-chain.md` · `lib/workstream/agent-judgment-chain.ts`
+
+> Not one smart algorithm — **small judges chained**, then one Agent Spine.
+
+```
+Intent → Complexity → Scope → Reality Cost → Strategy → Spine Execution → Verify → Commit
+```
+
+| Strategy | Depth |
+|----------|--------|
+| Quick | Easy lookup — skip full Trip Planner |
+| Planning | Task Graph |
+| Multi | Full Verification → Repair → Commit |
+
+**Reality Cost** (Rimvio+): time · dataImpact · failureRisk · userApprovalNeed · verificationRequired.
+
+## PR reject
+
+Parallel Quick/Planning/Repair agents · Hard trip without Verification · Commit with approval `none` when booking in scope

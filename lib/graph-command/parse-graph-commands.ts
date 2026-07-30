@@ -751,7 +751,7 @@ function parseSearchProject(
   const domainCue =
     reSearch ||
     domain !== "poi" ||
-    /관광|명소|poi|편의|약국|입장권|티켓|ticket|테마\s*파크|액티비티/iu.test(
+    /관광|명소|poi|편의|약국|입장권|티켓|ticket|테마\s*파크|액티비티|놀거리|볼거리|할거리|things?\s*to\s*do|attraction/iu.test(
       text,
     ) ||
     isBrowseExtractQuery(text);

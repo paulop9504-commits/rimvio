@@ -78,6 +78,8 @@ export type ContextNlActionResult =
       readonly reservedOpIds: readonly [];
       readonly waitingCommit: false;
       readonly workspaceCommitted: boolean;
+      /** Search candidates ready — show preview / expand Workspace. */
+      readonly openedForReview?: boolean;
       readonly ruleDecision?: RuleEngineDecision;
       readonly contextPack?: ContextPackV1;
     }

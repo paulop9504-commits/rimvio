@@ -664,6 +664,16 @@ export async function resolvePortalComposeRunTurn(input: {
   answerText?: string | null;
   memoryNotesKo?: string | null;
 }): Promise<PortalComposeRunTurnResult> {
+  const { spineIngressFromLegacy } = await import(
+    "@/lib/workstream/spine-ingress-helpers"
+  );
+  spineIngressFromLegacy({
+    source: "action-chat",
+    contextEventId: input.eventId.trim() || input.graphId.trim() || "portal:compose",
+    utterance: input.message || input.answerText,
+    stage: "goal_state",
+  });
+
   const liveLat = input.liveLat ?? null;
   const liveLng = input.liveLng ?? null;
 

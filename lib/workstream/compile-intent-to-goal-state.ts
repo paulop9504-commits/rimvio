@@ -1,12 +1,15 @@
 /**
- * Intent Compiler → goal_state (ADR-042 priority #3).
- * Utterance must become intent · conditions · constraints · goal_state — not raw execute.
- * Extends Context Compiler IR; does not fork NL_PIPELINE_STAGES.
+ * Intent Compiler → goal_state (ADR-042 / ADR-043).
+ * Utterance → intent · conditions · constraints · goal_state — not raw execute.
+ * When contextEventId is set, persists Context Goal State (top SSOT).
  */
 
 import { compileContextFromUtterance } from "@/lib/context-compiler/compile-context-from-utterance";
 import type { ContextCompilerIrV1 } from "@/lib/context-compiler/types";
+import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { ContextWorkSlotId } from "@/lib/workstream/context-work-state";
+import { syncContextGoalState } from "@/lib/workstream/context-goal-state";
+import { observePreferenceFromUtterance } from "@/lib/workstream/preference-graph";
 
 export type IntentGoalState = {
   readonly goalId: string;
@@ -40,6 +43,8 @@ const TRAVEL_PENDING: ContextWorkSlotId[] = [
 export function compileIntentToGoalState(input: {
   readonly utterance: string;
   readonly ir?: ContextCompilerIrV1 | null;
+  readonly contextEventId?: string | null;
+  readonly event?: EventCandidate | null;
 }): IntentGoalState {
   const utterance = input.utterance.trim();
   const ir =
@@ -47,6 +52,8 @@ export function compileIntentToGoalState(input: {
     compileContextFromUtterance({
       utterance,
     });
+
+  observePreferenceFromUtterance(utterance);
 
   const goalKo =
     ir.intent.goalKo?.trim() ||
@@ -82,7 +89,7 @@ export function compileIntentToGoalState(input: {
     ? TRAVEL_PENDING.filter((s) => !confirmedHints.includes(s))
     : [];
 
-  return {
+  const result: IntentGoalState = {
     goalId: `goal:${ir.intent.family}:${entities[0] ?? "generic"}`,
     goalKo,
     intentFamily: ir.intent.family,
@@ -98,4 +105,15 @@ export function compileIntentToGoalState(input: {
     confirmedHints,
     ir,
   };
+
+  const contextEventId = input.contextEventId?.trim();
+  if (contextEventId) {
+    syncContextGoalState({
+      contextEventId,
+      event: input.event,
+      intentGoal: result,
+    });
+  }
+
+  return result;
 }

@@ -447,7 +447,7 @@ export function applyWorkspaceTransition(input: {
     } else {
       lastChangeKo = `가정: ${scenario}`;
     }
-    summaryKo = `숙소 ${nodes.filter((n) => n.visible).length}곳`;
+    summaryKo = `동선 ${nodes.filter((n) => n.visible).length}곳`;
   }
 
   if (input.op === "optimize_route") {

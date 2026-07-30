@@ -38,6 +38,7 @@ import type {
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
 import { foodBrandMatchAliases } from "@/lib/globe/context-condition-ai/parse-food-brand-focus";
 import { passesMinReviewCountGate } from "@/lib/places/min-review-count-gate";
+import { eateryPreferenceScoreDelta } from "@/lib/workstream/preference-rank-bias";
 
 export type ScoredEateryRecommendation = {
   row: ContextEateryInventoryRow;
@@ -389,7 +390,19 @@ export function scoreEateryRecommendations(input: {
         genericPreference?.value === "again" && row.specialReasonKo?.trim(),
       ),
     });
-    const score = coreScore + overlay;
+    const score =
+      coreScore +
+      overlay +
+      eateryPreferenceScoreDelta({
+        name: row.name,
+        address: row.address,
+        categoryLabel: row.categoryLabel,
+        cuisineHint: row.cuisineHint,
+        specialReasonKo: row.specialReasonKo,
+        priceLevel: row.priceLevel,
+        distanceKm,
+        reviewCount: row.reviewCount,
+      });
 
     const reasonInput: EateryRecommendReasonInput = {
       peoplePlaceMatch,

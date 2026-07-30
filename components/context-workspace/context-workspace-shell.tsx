@@ -35,6 +35,7 @@ import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspa
 import { subscribePreparedRealityOperations } from "@/lib/reality-queue/prepared-operations-store";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
+import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
@@ -252,6 +253,13 @@ export function ContextWorkspaceShell({
     event: lifeEvent,
     enabled: expanded && Boolean(contextEventId?.trim()),
   });
+  const world = useMemo(() => {
+    const id = contextEventId?.trim() ?? "";
+    return id ? readWorldState(id) : null;
+  }, [contextEventId, state?.updatedAtIso]);
+  const tripDraftReady = Boolean(
+    state?.nodes.some((n) => n.source === "trip_prep_draft"),
+  );
   const concierge = useMemo(
     () =>
       buildWorkspaceConciergeStatus({
@@ -262,12 +270,16 @@ export function ContextWorkspaceShell({
         tempC: weather.tempC,
         prepLine: weather.prepLine,
         routeStopCount: visibleNodes.length,
+        world,
+        tripDraftReady,
       }),
     [
       visibleNodes,
       selectedId,
       weather.tempC,
       weather.prepLine,
+      world,
+      tripDraftReady,
     ],
   );
   const showSoftRainChip =
@@ -459,15 +471,19 @@ export function ContextWorkspaceShell({
       </div>
 
       {(showSoftRainChip || showSoftQuietChip || showSoftRouteChip) ? (
-        <div className="pointer-events-none absolute inset-x-0 top-[4.75rem] z-[2] flex flex-col items-center gap-1.5 px-3">
+        <div className="pointer-events-none absolute inset-x-0 top-[5.5rem] z-[2] flex flex-col items-center gap-1.5 px-3">
           {showSoftRainChip ? (
-            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
-              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
-                {copy.globe.workspaceMapSoftRainHint}
+            <div className="pointer-events-auto flex max-w-[min(94vw,380px)] items-start gap-2 rounded-[20px] bg-white/98 px-3.5 py-2.5 shadow-[0_12px_32px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.05]">
+              <span className="mt-0.5 text-[16px] leading-none" aria-hidden>
+                🌧️
+              </span>
+              <p className="min-w-0 flex-1 text-[12px] font-bold leading-snug tracking-tight text-[#191f28]">
+                {concierge.opportunityTitleKo ??
+                  copy.globe.workspaceMapSoftRainHint}
               </p>
               <button
                 type="button"
-                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+                className="shrink-0 rounded-full bg-[#3182f6] px-3 py-1.5 text-[11px] font-extrabold text-white shadow-[0_4px_12px_rgba(49,130,246,0.35)]"
                 data-workspace-soft-rain-apply
                 onClick={() => {
                   applyWorkspaceTransition({
@@ -479,15 +495,15 @@ export function ContextWorkspaceShell({
                   toast.success(copy.globe.workspaceMapSoftRainApply);
                 }}
               >
-                {copy.globe.workspaceMapSoftRainApply}
+                ⚡ {copy.globe.workspaceMapSoftRainApply}
               </button>
               <button
                 type="button"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
                 aria-label="닫기"
                 onClick={() => setSoftRainDismissed(true)}
               >
-                <X className="h-3 w-3" strokeWidth={2.5} />
+                <X className="h-3.5 w-3.5" strokeWidth={2.5} />
               </button>
             </div>
           ) : null}
@@ -555,54 +571,70 @@ export function ContextWorkspaceShell({
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <button
-          type="button"
-          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
-          onClick={onClose}
-          aria-label={copy.globe.workspaceCollapse}
-        >
-          <X className="h-4 w-4" strokeWidth={2.25} />
-        </button>
-        <div className="pointer-events-auto max-w-[55%] rounded-full bg-white/95 px-3 py-1 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
-          <p className="truncate text-center text-[11px] font-bold tracking-tight text-[#191f28]">
-            {title}
-          </p>
-          <p className="text-center text-[9px] tabular-nums text-[#8b95a1]">
-            {concierge.topWeatherKo
-              ? concierge.topWeatherKo
-              : `${domainLabelKo(state.domain)} · ${visibleNodes.length}곳 · ${progress}%`}
-          </p>
-        </div>
-        <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-1.5 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex items-start justify-between gap-2">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
-            onClick={() => setListOpen((v) => !v)}
-            aria-label="목록"
-            aria-pressed={listOpen}
+            className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+            onClick={onClose}
+            aria-label={copy.globe.workspaceCollapse}
           >
-            <List className="h-4 w-4" strokeWidth={2.25} />
+            <X className="h-4 w-4" strokeWidth={2.25} />
           </button>
-          <button
-            type="button"
-            className="rounded-full bg-[#3182f6] px-2.5 py-1.5 text-[10px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
-            onClick={() => setCommitPreviewOpen(true)}
-            disabled={
-              visibleNodes.length === 0 ||
-              (state.selectedIds.length === 0 &&
-                !visibleNodes.some((n) => n.selected))
-            }
-            data-workspace-commit
-            title={
-              state.selectedIds.length === 0 &&
-              !visibleNodes.some((n) => n.selected)
-                ? copy.globe.workspacePreviewSelectFirstHint
-                : undefined
-            }
-          >
-            {copy.globe.workspaceCommitCta}
-          </button>
+          <div className="pointer-events-auto min-w-0 max-w-[58%] space-y-1">
+            <div className="rounded-full bg-white/95 px-3 py-1 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
+              <p className="truncate text-center text-[11px] font-bold tracking-tight text-[#191f28]">
+                {title}
+              </p>
+              <p className="text-center text-[9px] tabular-nums text-[#8b95a1]">
+                {visibleNodes.length}곳 · {progress}%
+              </p>
+            </div>
+            {(concierge.congestionKo || concierge.topWeatherKo) && (
+              <div className="flex flex-wrap items-center justify-center gap-1">
+                {concierge.congestionKo ? (
+                  <span className="rounded-full bg-[#191f28]/88 px-2 py-0.5 text-[9px] font-semibold text-white shadow-sm">
+                    {concierge.congestionKo}
+                  </span>
+                ) : null}
+                {concierge.topWeatherKo ? (
+                  <span className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold text-[#4e5968] shadow-sm ring-1 ring-black/[0.04]">
+                    {concierge.topWeatherKo}
+                  </span>
+                ) : null}
+              </div>
+            )}
+          </div>
+          <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
+              onClick={() => setListOpen((v) => !v)}
+              aria-label="목록"
+              aria-pressed={listOpen}
+            >
+              <List className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+            <button
+              type="button"
+              className="rounded-full bg-[#3182f6] px-2.5 py-1.5 text-[10px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
+              onClick={() => setCommitPreviewOpen(true)}
+              disabled={
+                visibleNodes.length === 0 ||
+                (state.selectedIds.length === 0 &&
+                  !visibleNodes.some((n) => n.selected))
+              }
+              data-workspace-commit
+              title={
+                state.selectedIds.length === 0 &&
+                !visibleNodes.some((n) => n.selected)
+                  ? copy.globe.workspacePreviewSelectFirstHint
+                  : undefined
+              }
+            >
+              {copy.globe.workspaceCommitCta}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -685,6 +717,38 @@ export function ContextWorkspaceShell({
 
       {/* Bottom: peek · chat · slim tools · prompt (pin lives on map markers) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-1.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-20">
+        {tripDraftReady || visibleNodes.some((n) => n.kind === "lodging") ? (
+          <div className="pointer-events-auto mx-auto flex max-w-xl gap-1.5">
+            <button
+              type="button"
+              className="rounded-full bg-white/96 px-3 py-1.5 text-[11px] font-bold text-[#191f28] shadow-[0_4px_16px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]"
+              onClick={() => {
+                const lodging =
+                  visibleNodes.find((n) => n.kind === "lodging" && n.selected) ??
+                  visibleNodes.find((n) => n.kind === "lodging");
+                if (lodging) onPrepareReserve(lodging.id);
+                else toast.message(copy.globe.workspacePreviewSelectFirstHint);
+              }}
+            >
+              {copy.globe.workspaceMapCapabilityHotel}
+            </button>
+            <button
+              type="button"
+              className="rounded-full bg-white/96 px-3 py-1.5 text-[11px] font-bold text-[#191f28] shadow-[0_4px_16px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]"
+              onClick={() => {
+                const poi =
+                  visibleNodes.find((n) => n.tags.includes("rain_safe")) ??
+                  visibleNodes.find((n) => n.kind === "poi");
+                if (poi) {
+                  onSelect(poi.id);
+                  toast.message(copy.globe.workspaceMapCapabilityTicketHint);
+                }
+              }}
+            >
+              {copy.globe.workspaceMapCapabilityTicket}
+            </button>
+          </div>
+        ) : null}
         {concierge.bottomLiveKo || visibleNodes.length > 0 ? (
           <div className="pointer-events-none mx-auto max-w-[min(92vw,340px)] rounded-full bg-[#191f28]/88 px-3 py-1 text-center shadow-[0_4px_16px_rgba(25,31,40,0.2)]">
             <p className="truncate text-[10px] font-semibold tracking-tight text-white">
@@ -717,6 +781,19 @@ export function ContextWorkspaceShell({
           contextEventId={eventId}
           open={chatOpen}
           onToggle={() => setChatOpen((v) => !v)}
+          onFocusNode={(nodeId) => {
+            onSelect(nodeId);
+            setChatOpen(true);
+          }}
+          onOpenLinkedWork={() => {
+            setChatOpen(true);
+            setListOpen(false);
+            const first =
+              visibleNodes.find((n) => n.kind === "lodging") ??
+              visibleNodes[0];
+            if (first) onSelect(first.id);
+            toast.message(copy.globe.workspaceChatLinkedWorkToast);
+          }}
         />
 
         <div className="pointer-events-auto mx-auto flex max-w-xl gap-1 overflow-x-auto">

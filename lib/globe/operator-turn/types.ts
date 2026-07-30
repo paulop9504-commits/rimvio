@@ -20,6 +20,7 @@ export const OPERATOR_FIXED_TOOLS = [
   "graph_command",
   "scout",
   "ask_chips",
+  "open_workspace",
 ] as const;
 
 export type OperatorFixedToolId = (typeof OPERATOR_FIXED_TOOLS)[number];
@@ -101,6 +102,10 @@ export type OperatorTurnPlan =
         readonly gapId: string;
         readonly value: string;
       }[];
+    }
+  | {
+      readonly tool: "open_workspace";
+      readonly reason: "explicit_open_workspace";
     }
   | {
       readonly tool: "noop";

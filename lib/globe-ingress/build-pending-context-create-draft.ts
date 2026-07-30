@@ -77,7 +77,11 @@ export function buildPendingContextCreateDraft(input: {
     anchor?.placeLabel ?? destination?.trim() ?? "여행지";
   const isProject =
     !destination && /(?:새\s*)?프로젝트|project/iu.test(utterance);
-  const titleKo = isProject ? "새 프로젝트" : `${placeLabel} 여행`;
+  const titleKo = isProject
+    ? "새 프로젝트"
+    : /여행$/u.test(placeLabel.trim())
+      ? placeLabel.trim()
+      : `${placeLabel} 여행`;
   const windowEndIso =
     travelSlots.durationDays && travelSlots.anchorTimeIso
       ? computeWindowEndIso(travelSlots.anchorTimeIso, travelSlots.durationDays)

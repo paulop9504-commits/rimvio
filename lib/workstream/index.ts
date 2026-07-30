@@ -176,3 +176,175 @@ export {
   runVerificationThenRepair,
 } from "@/lib/workstream/agent-brain";
 export type { AgentBrainSnapshot } from "@/lib/workstream/agent-brain";
+export { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
+export type { SpineIngressWithJudgment } from "@/lib/workstream/spine-ingress-helpers";
+export {
+  analyzeTaskComplexity,
+  analyzeTaskScope,
+  analyzeConfidence,
+  clearLastAgentJudgmentForTests,
+  estimateRealityCost,
+  formatRealityCostBrief,
+  readLastAgentJudgment,
+  runAgentJudgmentChain,
+  selectAgentStrategy,
+} from "@/lib/workstream/agent-judgment-chain";
+export type {
+  AgentJudgmentChainResult,
+  AgentStrategyId,
+  AgentStrategySelection,
+  ConfidenceAnalysis,
+  RealityCostEstimate,
+  TaskComplexityAnalysis,
+  TaskComplexityBand,
+  TaskScopeAnalysis,
+  TaskScopeDomain,
+  UserApprovalNeed,
+} from "@/lib/workstream/agent-judgment-chain";
+export {
+  ensureContextGoalState,
+  formatGoalProgressLine,
+  readContextGoalState,
+  syncContextGoalState,
+  writeContextGoalState,
+} from "@/lib/workstream/context-goal-state";
+export type {
+  ContextGoalState,
+  ContextGoalStatus,
+} from "@/lib/workstream/context-goal-state";
+export {
+  AGENT_SPINE_SLOGAN,
+  AGENT_SPINE_STAGES,
+  SPINE_LEGACY_INGRESS,
+  enterAgentSpine,
+  nextSpineStage,
+  readLastAgentSpineIngress,
+  spineRequiresVerificationBeforeCommit,
+} from "@/lib/workstream/agent-spine-law";
+export type {
+  AgentSpineStage,
+  SpineIngressRecord,
+  SpineLegacyIngress,
+} from "@/lib/workstream/agent-spine-law";
+export {
+  formatPreferenceGraphBrief,
+  observePreferenceFromUtterance,
+  preferenceWeight,
+  readPreferenceGraph,
+  resetPreferenceGraphForTests,
+} from "@/lib/workstream/preference-graph";
+export type {
+  PreferenceEdge,
+  PreferenceEdgeKind,
+  PreferenceGraph,
+} from "@/lib/workstream/preference-graph";
+export {
+  lodgingPreferenceScoreDelta,
+  eateryPreferenceScoreDelta,
+} from "@/lib/workstream/preference-rank-bias";
+export {
+  COMMIT_SCHEDULE_FEASIBILITY_META_KEY,
+  buildCommitScheduleFeasibility,
+  resolveLodgingAnchorFromCommitOps,
+} from "@/lib/workstream/build-commit-feasibility";
+export type { CommitScheduleFeasibilityWire } from "@/lib/workstream/build-commit-feasibility";
+export {
+  verifyLodgingPreferenceFit,
+  verifyOperationsBeforeCommit,
+} from "@/lib/workstream/verify-operations-before-commit";
+export type { CommitVerificationGateResult } from "@/lib/workstream/verify-operations-before-commit";
+export {
+  RIMVIO_AGENT_RUNTIME_LOOP,
+  RIMVIO_AGENT_RUNTIME_SLOGAN,
+  RIMVIO_AGENT_RUNTIME_STAGES,
+  RIMVIO_AGENT_RUNTIME_STAGE_LABEL_KO,
+} from "@/lib/workstream/agent-runtime-stages";
+export type {
+  RimvioAgentRuntimeLoopStep,
+  RimvioAgentRuntimeStage,
+} from "@/lib/workstream/agent-runtime-stages";
+export {
+  AGENT_CAPABILITY_IDS,
+  capabilitiesForScopeDomains,
+  getAgentCapability,
+  listAgentCapabilities,
+} from "@/lib/workstream/agent-capability-registry";
+export type {
+  AgentCapabilityId,
+  AgentCapabilityRegistration,
+} from "@/lib/workstream/agent-capability-registry";
+export {
+  clearAgentRuntimeEventLogForTests,
+  publishAgentRuntimeEvent,
+  readAgentRuntimeEventLog,
+  subscribeAgentRuntimeBus,
+} from "@/lib/workstream/agent-runtime-bus";
+export type {
+  AgentRuntimeEvent,
+  AgentRuntimeEventKind,
+} from "@/lib/workstream/agent-runtime-bus";
+export {
+  formatAgentMemoryBrief,
+  readAgentMemory,
+} from "@/lib/workstream/agent-memory";
+export type { AgentMemory } from "@/lib/workstream/agent-memory";
+export {
+  readAgentHealthSnapshot,
+  recordAgentHealthSample,
+  resetAgentHealthForTests,
+} from "@/lib/workstream/agent-health";
+export type {
+  AgentHealthSignal,
+  AgentHealthSnapshot,
+} from "@/lib/workstream/agent-health";
+export {
+  clearAgentRuntimeMetricsForTests,
+  formatAgentRuntimeMetricsBrief,
+  recordAgentRuntimeMetric,
+  summarizeAgentRuntimeMetrics,
+  timeAgentRuntimeStep,
+} from "@/lib/workstream/agent-runtime-metrics";
+export type {
+  AgentRuntimeMetricKind,
+  AgentRuntimeMetricSample,
+  AgentRuntimeMetricsSummary,
+} from "@/lib/workstream/agent-runtime-metrics";
+export {
+  clearLastRimvioAgentRuntimeTurnForTests,
+  enterRimvioAgentRuntime,
+  readLastRimvioAgentRuntimeTurn,
+} from "@/lib/workstream/rimvio-agent-runtime";
+export type { RimvioAgentRuntimeTurn } from "@/lib/workstream/rimvio-agent-runtime";
+export {
+  clearWorldStateForTests,
+  formatWorldStateBrief,
+  observeWorldState,
+  readWorldState,
+  upsertWorldSignal,
+  writeWorldState,
+} from "@/lib/workstream/world-state";
+export type {
+  WorldSignal,
+  WorldSignalKind,
+  WorldSignalSeverity,
+  WorldState,
+} from "@/lib/workstream/world-state";
+export {
+  detectOpportunities,
+  formatOpportunitiesBrief,
+} from "@/lib/workstream/opportunity-detector";
+export type { DetectedOpportunity } from "@/lib/workstream/opportunity-detector";
+export {
+  formatGoalSupervisorBrief,
+  readGoalSupervisor,
+  superviseGoal,
+} from "@/lib/workstream/goal-supervisor";
+export type { GoalSupervisorReport } from "@/lib/workstream/goal-supervisor";
+export {
+  clearAgentReflectionsForTests,
+  formatAgentReflectionBrief,
+  readAgentReflections,
+  readLatestAgentReflection,
+  writeAgentReflection,
+} from "@/lib/workstream/agent-reflection";
+export type { AgentReflection } from "@/lib/workstream/agent-reflection";

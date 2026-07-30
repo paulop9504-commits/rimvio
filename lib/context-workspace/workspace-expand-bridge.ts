@@ -7,7 +7,13 @@ export const CONTEXT_WORKSPACE_EXPAND = "rimvio:context-workspace-expand";
 
 export type ContextWorkspaceExpandDetail = {
   readonly contextEventId: string;
-  readonly source: "preview_expand" | "preview_map_tap" | "capsule_resume";
+  readonly source:
+    | "preview_expand"
+    | "preview_map_tap"
+    | "capsule_resume"
+    | "trip_prep"
+    | "nl_open"
+    | "scout_patch";
 };
 
 export function dispatchContextWorkspaceExpand(

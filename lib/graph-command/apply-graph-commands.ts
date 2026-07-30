@@ -272,13 +272,22 @@ function isInventedOrbitSeedHit(hit: PlaceSearchHit): boolean {
   return hit.id.startsWith("search:");
 }
 
+/** Osaka demo catalog ids are real inventory for that city — keep even if source=seed. */
+function isOsakaCatalogHitId(id: string): boolean {
+  return /^(?:eatery|lodging|poi|amenity):osaka:/i.test(id);
+}
+
 function keepLiveWorkspaceHits(
   hits: readonly PlaceSearchHit[],
 ): PlaceSearchHit[] {
   if (isOsakaDemoCatalogForced()) {
     return [...hits];
   }
-  return hits.filter((h) => !isInventedOrbitSeedHit(h) && h.source !== "seed");
+  return hits.filter((h) => {
+    if (isInventedOrbitSeedHit(h)) return false;
+    if (isOsakaCatalogHitId(h.id)) return true;
+    return h.source !== "seed";
+  });
 }
 
 function keepLiveWorkspaceCandidates(
@@ -289,6 +298,7 @@ function keepLiveWorkspaceCandidates(
   return candidates.filter((c) => {
     const id = c.id ?? "";
     if (id.startsWith("search:")) return false;
+    if (isOsakaCatalogHitId(id)) return true;
     if (c.source === "seed") return false;
     return true;
   });

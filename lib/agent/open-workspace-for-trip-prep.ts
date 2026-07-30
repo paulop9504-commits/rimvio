@@ -1,16 +1,22 @@
 /**
- * Open lodging Workspace when trip_prep plan starts (Agent ↔ Workspace bind).
+ * Open lodging / trip Workspace when trip_prep plan starts (Agent ↔ Workspace bind).
+ * Osaka (+ duration) → full map itinerary draft expanded for focus.
  */
 
 import type { ActionPlanV1 } from "@/lib/action-planner/types";
 import { isTripPrepUtterance } from "@/lib/action-planner/build-trip-prep-plan";
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import {
+  prepareTripWorkspaceDraft,
+  shouldPrepareTripWorkspaceDraft,
+} from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 
 export function openWorkspaceForTripPrep(input: {
   readonly utterance: string;
   readonly contextEventId: string;
   readonly plan?: ActionPlanV1 | null;
+  readonly skipUserChat?: boolean;
 }): ContextWorkspaceState | null {
   const utterance = input.utterance.trim();
   const contextEventId = input.contextEventId.trim();
@@ -23,6 +29,19 @@ export function openWorkspaceForTripPrep(input: {
     plan?.planKind === "trip_prep" || isTripPrepUtterance(utterance);
   if (!isTrip) {
     return null;
+  }
+
+  if (shouldPrepareTripWorkspaceDraft(utterance)) {
+    const draft = prepareTripWorkspaceDraft({
+      utterance,
+      contextEventId,
+      tripPrep: plan?.tripPrep ?? null,
+      expand: true,
+      skipUserChat: input.skipUserChat,
+    });
+    if (draft && draft.nodes.length > 0) {
+      return draft;
+    }
   }
 
   const slots = plan?.tripPrep;

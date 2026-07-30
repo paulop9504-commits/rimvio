@@ -1,0 +1,32 @@
+---
+description: One Rimvio Agent Runtime — no new runtimes (ADR-045)
+alwaysApply: true
+---
+
+# One Agent Runtime (locked)
+
+**Canonical:** `docs/adr/045-one-agent-runtime.md` · `lib/workstream/rimvio-agent-runtime.ts`
+
+> **새 Runtime 만들지 말 것.** Capability Registry 또는 Runtime stage에만 추가.
+
+```
+User → enterRimvioAgentRuntime() → Observe→Judge→Plan→Execute→Verify→Repair→Commit
+```
+
+| Add feature as… | Not as… |
+|-----------------|---------|
+| Judge / Planner / Executor / Verifier stage | `lib/new-agent-runtime` |
+| Capability (`booking`, `search`, `vision`…) | Peer “Booking Runtime OS” |
+| Agent Memory facet | Parallel memory store |
+
+Strategies: Quick · Lookup · Planning · Simulation · Execution · Recovery · Observation.
+
+Roles: Observer · **Supervisor** · Judge · Planner · **Coordinator** · Executor · Verifier · Repairer · Committer · Historian.
+
+Behavior quality (ADR-046): Goal Supervisor · World State · Opportunities · Reflection — still one Runtime.
+
+Confidence low → Lookup first. Verification is default loop, not optional.
+
+## PR reject
+
+New Runtime package · Ingress bypass · Capability reinvented as second Spine · Skip Supervisor on hard Goals

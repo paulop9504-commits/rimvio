@@ -10,6 +10,7 @@ import {
   scoreLodgingRowDimensions,
 } from "@/lib/globe/lodging/score-lodging-row-dimensions";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { lodgingPreferenceScoreDelta } from "@/lib/workstream/preference-rank-bias";
 
 /** Profile-weighted JIT score for hub carousel + feed reorder. */
 export function computeLodgingResourceRankWeight(input: {
@@ -25,12 +26,20 @@ export function computeLodgingResourceRankWeight(input: {
   });
   const travelBrain = buildTravelBrainState(input.event);
   const axes = describeLodgingRankTravelBrainAxes(travelBrain);
-  const { dimensions } = scoreLodgingRowDimensions({
+  const { dimensions, distanceKm } = scoreLodgingRowDimensions({
     row: input.row,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     lodgingPriority: axes.lodgingPriority,
     budgetBand: axes.budgetBand,
   });
-  return computeWeightedLodgingRankScore(dimensions, profile);
+  return (
+    computeWeightedLodgingRankScore(dimensions, profile) +
+    lodgingPreferenceScoreDelta({
+      name: input.row.name,
+      address: input.row.address,
+      priceKrw: input.row.priceKrw ?? null,
+      distanceKm,
+    })
+  );
 }

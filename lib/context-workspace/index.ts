@@ -50,6 +50,13 @@ export {
 } from "@/lib/context-workspace/open-map-workspace";
 
 export {
+  OSAKA_TRIP_DRAFT_STOPS,
+  prepareTripWorkspaceDraft,
+  shouldPrepareTripWorkspaceDraft,
+} from "@/lib/context-workspace/prepare-trip-workspace-draft";
+export type { TripDraftStop } from "@/lib/context-workspace/prepare-trip-workspace-draft";
+
+export {
   applyWorkspaceTransition,
   mergeWorkspaceFilterFromGraphPredicate,
   parseWorkspaceUtteranceTransition,
@@ -94,9 +101,18 @@ export {
   clearWorkspaceChat,
   readWorkspaceChat,
   subscribeWorkspaceChatUpdated,
+  type WorkspaceChatObjectCard,
+  type WorkspaceChatPatchStrip,
   type WorkspaceChatRole,
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
+
+export {
+  appendWorkspaceSyncedAssistantTurn,
+  buildTripDayPlanLines,
+  buildWorkspaceObjectCards,
+  buildWorkspacePatchStrip,
+} from "@/lib/context-workspace/build-workspace-chat-sync";
 
 export {
   buildCapsuleProjection,
@@ -111,6 +127,9 @@ export {
   dispatchContextWorkspaceExpand,
   subscribeContextWorkspaceExpand,
 } from "@/lib/context-workspace/workspace-expand-bridge";
+
+export { isOpenWorkspaceUtterance } from "@/lib/context-workspace/is-open-workspace-utterance";
+export { tryOpenWorkspaceFromUtterance } from "@/lib/context-workspace/try-open-workspace-from-utterance";
 
 export { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
 

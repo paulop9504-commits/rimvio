@@ -10,10 +10,14 @@ import { commitContextWorkspaceToGlobe } from "@/lib/context-workspace/commit-wo
 import {
   hasProvisionalContextWorkspace,
   readContextWorkspace,
+  writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { domainLabelKo } from "@/lib/context-workspace/types";
 import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
 import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { tryOpenWorkspaceFromUtterance } from "@/lib/context-workspace/try-open-workspace-from-utterance";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
+import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
 import {
   resolveWorkspaceSearchDomain,
   workspaceDomainToToolDomain,
@@ -30,12 +34,37 @@ export type WorkspacePromptTurnResult = {
   handled: boolean;
   replyKo: string | null;
   committed: boolean;
+  /** Search added/replaced candidates — pin-bar should show preview + expand. */
+  openedForReview?: boolean;
 };
 
 function resolveToolDomain(
   domain: ContextWorkspaceDomain,
 ): "lodging" | "eatery" | "poi" | "amenity" {
   return workspaceDomainToToolDomain(domain);
+}
+
+function searchDomainLabelKo(
+  domain: ContextWorkspaceDomain,
+  utterance: string,
+): string {
+  if (
+    domain === "poi" &&
+    /놀거리|볼거리|할거리|관광|명소|액티비티/iu.test(utterance)
+  ) {
+    return "놀거리";
+  }
+  return domainLabelKo(domain);
+}
+
+function expandWorkspaceForReview(contextEventId: string): void {
+  writeContextWorkspaceExpanded(contextEventId, true);
+  if (typeof window !== "undefined") {
+    dispatchContextWorkspaceExpand({
+      contextEventId,
+      source: "scout_patch",
+    });
+  }
 }
 
 function findNodesByTitleHint(
@@ -278,13 +307,32 @@ async function rescoutWorkspace(input: {
         lng: seed?.lng,
         utterance: input.utterance,
         contextEventId: input.contextEventId,
+        placeName:
+          state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
+          state.query ||
+          null,
       });
     const candidates = (tool.candidates ?? []).filter((c) => {
       const id = c.id ?? "";
       if (id.startsWith("search:")) return false;
+      if (/^(?:eatery|lodging|poi|amenity):osaka:/i.test(id)) return true;
       if (c.source === "seed") return false;
       return true;
     });
+    const label = searchDomainLabelKo(activeDomain, input.utterance);
+    if (candidates.length === 0) {
+      return {
+        handled: true,
+        replyKo:
+          activeDomain === "eatery"
+            ? "근처 맛집을 아직 못 찾았어요 · 동네나 메뉴를 더 말해 주세요"
+            : activeDomain === "poi"
+              ? "근처 놀거리를 아직 못 찾았어요 · 명소·테마파크처럼 더 말해 주세요"
+              : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`,
+        committed: false,
+        openedForReview: false,
+      };
+    }
     if (input.mode === "add") {
       const next = applyWorkspaceTransition({
         contextEventId: input.contextEventId,
@@ -294,13 +342,27 @@ async function rescoutWorkspace(input: {
         query,
         changeKo:
           candidates.length > 0
-            ? `${domainLabelKo(activeDomain)} ${candidates.length}곳 더 넣었어요`
+            ? `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`
             : null,
       });
+      expandWorkspaceForReview(input.contextEventId);
+      const after = readContextWorkspace(input.contextEventId);
+      if (after) {
+        appendWorkspaceSyncedAssistantTurn({
+          contextEventId: input.contextEventId,
+          state: after,
+          textKo:
+            next?.lastChangeKo ??
+            `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`,
+        });
+      }
       return {
         handled: true,
-        replyKo: next?.lastChangeKo ?? "비슷한 곳을 더 넣었어요",
+        replyKo:
+          next?.lastChangeKo ??
+          `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`,
         committed: false,
+        openedForReview: true,
       };
     }
 
@@ -311,7 +373,7 @@ async function rescoutWorkspace(input: {
       query,
       summaryKo:
         tool.summaryKo?.trim() ||
-        `${domainLabelKo(activeDomain)} 후보 ${candidates.length}곳`,
+        `${label} 후보 ${candidates.length}곳 · 작업장에서 확인`,
       candidates,
       source: "scout_patch",
     });
@@ -326,22 +388,35 @@ async function rescoutWorkspace(input: {
         nodeIds: [focus.id],
       });
     }
-    const pinned = opened.nodes.filter((n) => n.bookmarked).length;
-    const fresh = opened.nodes.filter((n) => !n.bookmarked).length;
+    expandWorkspaceForReview(input.contextEventId);
+    const freshState = readContextWorkspace(input.contextEventId) ?? opened;
+    const pinned = freshState.nodes.filter((n) => n.bookmarked).length;
+    const fresh = freshState.nodes.filter((n) => !n.bookmarked && n.visible).length;
+    const replyKo =
+      fresh > 0
+        ? pinned > 0
+          ? `${label} ${fresh}곳 · 고정 ${pinned}곳 유지 · 작업장에서 확인`
+          : `${label} 후보 ${fresh}곳 준비했어요 · 작업장에서 확인`
+        : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`;
+    if (fresh > 0) {
+      appendWorkspaceSyncedAssistantTurn({
+        contextEventId: input.contextEventId,
+        state: freshState,
+        textKo: replyKo,
+      });
+    }
     return {
       handled: true,
-      replyKo:
-        opened.lastChangeKo ??
-        (pinned > 0
-          ? `${domainLabelKo(activeDomain)} ${fresh}곳 · 고정 ${pinned}곳 유지`
-          : `${domainLabelKo(activeDomain)} 후보 ${fresh}곳으로 바꿨어요`),
+      replyKo,
       committed: false,
+      openedForReview: fresh > 0,
     };
   } catch {
     return {
       handled: true,
       replyKo: "지금은 다시 못 찾았어요 · 조건을 짧게 말해 보세요",
       committed: false,
+      openedForReview: false,
     };
   }
 }
@@ -436,6 +511,18 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
   const utterance = input.utterance.trim();
   if (!contextEventId || !utterance) {
     return { handled: false, replyKo: null, committed: false };
+  }
+
+  const openWs = tryOpenWorkspaceFromUtterance({
+    contextEventId,
+    utterance,
+  });
+  if (openWs?.ok) {
+    return {
+      handled: true,
+      replyKo: openWs.replyKo,
+      committed: false,
+    };
   }
 
   // ADR-038 — “계속해” reads Work State, not chat history.

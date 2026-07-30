@@ -13,6 +13,7 @@ import type { SessionGraphV1 } from "@/lib/graph-command/types";
 import { isExplicitContextContinue } from "@/lib/context-run/should-spawn-new-context";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { resolveConfirmedRealityAskGate } from "@/lib/workstream/resolve-confirmed-reality-ask-gate";
+import { tryOpenWorkspaceFromUtterance } from "@/lib/context-workspace/try-open-workspace-from-utterance";
 
 export type UnmatchedNlRecovery = {
   readonly via: "clarify" | "reason";
@@ -60,6 +61,18 @@ export function recoverUnmatchedNlTurn(input: {
   const places = placeLabels(input.graph);
   const lodgingOpen = Boolean(input.pack.lodgingDiff?.lastBatchId);
   const allowReason = input.ruleDecision.allowLlmReasoning;
+
+  const opened = tryOpenWorkspaceFromUtterance({
+    contextEventId: input.contextEventId,
+    utterance,
+  });
+  if (opened?.ok) {
+    return {
+      via: "reason",
+      assistantReplyKo: opened.replyKo,
+      clarifyChips: [],
+    };
+  }
 
   if (intent === "Move") {
     if (places.length === 0) {

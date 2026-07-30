@@ -1,14 +1,37 @@
 /**
  * Workspace chat transcript — Cursor/GPT-style turns in one Workspace.
+ * Rich turns carry Workspace patch + Object Cards (same nodeId as map SSOT).
  */
 
+import type { ContextWorkspaceNodeKind } from "@/lib/context-workspace/types";
+
 export type WorkspaceChatRole = "user" | "assistant";
+
+export type WorkspaceChatObjectCard = {
+  readonly nodeId: string;
+  readonly title: string;
+  readonly subtitleKo: string;
+  readonly kind: ContextWorkspaceNodeKind;
+  readonly ctaKo: string;
+};
+
+export type WorkspaceChatPatchStrip = {
+  readonly summaryKo: string;
+  readonly lodgingDelta?: number;
+  readonly poiDelta?: number;
+  readonly eateryDelta?: number;
+  readonly routeUpdated?: boolean;
+};
 
 export type WorkspaceChatTurn = {
   readonly id: string;
   readonly role: WorkspaceChatRole;
   readonly text: string;
   readonly atIso: string;
+  readonly patch?: WorkspaceChatPatchStrip | null;
+  readonly objects?: readonly WorkspaceChatObjectCard[];
+  readonly dayPlanLines?: readonly string[];
+  readonly showLinkedWorkCta?: boolean;
 };
 
 const memory = new Map<string, WorkspaceChatTurn[]>();
@@ -46,6 +69,10 @@ export function appendWorkspaceChatTurn(input: {
   contextEventId: string;
   role: WorkspaceChatRole;
   text: string;
+  patch?: WorkspaceChatPatchStrip | null;
+  objects?: readonly WorkspaceChatObjectCard[];
+  dayPlanLines?: readonly string[];
+  showLinkedWorkCta?: boolean;
 }): WorkspaceChatTurn | null {
   const key = input.contextEventId.trim();
   const text = input.text.trim();
@@ -57,6 +84,10 @@ export function appendWorkspaceChatTurn(input: {
     role: input.role,
     text,
     atIso: new Date().toISOString(),
+    patch: input.patch ?? null,
+    objects: input.objects ?? [],
+    dayPlanLines: input.dayPlanLines ?? [],
+    showLinkedWorkCta: input.showLinkedWorkCta === true,
   };
   const prev = memory.get(key) ?? [];
   memory.set(key, [...prev, turn].slice(-MAX_TURNS));

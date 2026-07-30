@@ -141,7 +141,8 @@ export type ContextWorkspaceOpenSource =
   | "transition"
   | "restore"
   | "scout_patch"
-  | "trip_prep";
+  | "trip_prep"
+  | "nl_open";
 
 export type ContextWorkspaceOpenDetail = {
   readonly contextEventId: string;

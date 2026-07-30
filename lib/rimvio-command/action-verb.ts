@@ -28,7 +28,7 @@ type VerbPattern = readonly [ActionVerb, RegExp];
 const VERB_PATTERNS: readonly VerbPattern[] = [
   [
     "resume",
-    /(?:이어(?:줘|서|가|주세요)|계속(?:해|해\s*줘|진행)|다시\s*(?:열어|시작|해)|불러(?:와|와\s*줘|줘)|resume|돌아가)/iu,
+    /(?:이어(?:줘|서|가|주세요)|계속(?:해|해\s*줘|진행)|다시\s*(?:열어|시작|해)|불러(?:와|와\s*줘|줘)|resume|돌아가|(?:작업장|워크스페이스|workspace)\s*(?:띄워|열어|펼쳐))/iu,
   ],
   [
     "cancel",

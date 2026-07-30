@@ -72,6 +72,62 @@ export const OSAKA_APA_BRANCHES: readonly OsakaCatalogPlace[] = [
   },
 ];
 
+/** Namba-area attractions — soft fallback when live POI search is empty. */
+export const OSAKA_NAMBA_POIS: readonly OsakaCatalogPlace[] = [
+  {
+    id: "poi:osaka:namba-parks",
+    labelKo: "난바 파크스",
+    domain: "poi",
+    lat: 34.6615,
+    lng: 135.5019,
+    rating: 4.3,
+    walkMinutesFromNamba: 8,
+    reservable: false,
+    localFavorite: false,
+    priceBand: 1,
+    aliases: ["난바파크스", "Namba Parks", "놀거리", "관광"],
+  },
+  {
+    id: "poi:osaka:dotonbori",
+    labelKo: "도톤보리",
+    domain: "poi",
+    lat: 34.6687,
+    lng: 135.5013,
+    rating: 4.5,
+    walkMinutesFromNamba: 10,
+    reservable: false,
+    localFavorite: true,
+    priceBand: 1,
+    aliases: ["도톤보리", "Dotonbori", "글리코", "놀거리"],
+  },
+  {
+    id: "poi:osaka:kuromon",
+    labelKo: "쿠로몬 시장",
+    domain: "poi",
+    lat: 34.6662,
+    lng: 135.5062,
+    rating: 4.2,
+    walkMinutesFromNamba: 12,
+    reservable: false,
+    localFavorite: true,
+    priceBand: 1,
+    aliases: ["쿠로몬", "Kuromon", "시장", "볼거리"],
+  },
+  {
+    id: "poi:osaka:shinsaibashi",
+    labelKo: "신사이바시",
+    domain: "poi",
+    lat: 34.6745,
+    lng: 135.5012,
+    rating: 4.3,
+    walkMinutesFromNamba: 15,
+    reservable: false,
+    localFavorite: false,
+    priceBand: 2,
+    aliases: ["신사이바시", "Shinsaibashi", "쇼핑", "놀거리"],
+  },
+];
+
 /** Nearby eateries around APA Namba — localFavorite thick for demo filter. */
 export const OSAKA_NAMBA_EATERIES: readonly OsakaCatalogPlace[] = [
   {
@@ -276,6 +332,17 @@ export function searchOsakaDemoCatalog(input: {
       }
     }
     return rows.map((r) => toHit(r, r.walkMinutesFromNamba)).slice(0, limit);
+  }
+
+  if (
+    input.domain === "poi" ||
+    /놀거리|볼거리|할거리|관광|명소|액티비티|things?\s*to\s*do|attraction/iu.test(
+      q,
+    )
+  ) {
+    return OSAKA_NAMBA_POIS.map((r) =>
+      toHit(r, r.walkMinutesFromNamba),
+    ).slice(0, limit);
   }
 
   // Generic lodging in Osaka without APA cue → null (live / mock keyword search).

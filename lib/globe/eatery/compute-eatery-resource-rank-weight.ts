@@ -10,6 +10,7 @@ import {
   scoreEateryRowDimensions,
 } from "@/lib/globe/eatery/score-eatery-row-dimensions";
 import { buildTravelBrainState } from "@/lib/situation-projection/travel-brain-personalization";
+import { eateryPreferenceScoreDelta } from "@/lib/workstream/preference-rank-bias";
 
 /** Profile-weighted JIT score for hub carousel + feed reorder. */
 export function computeEateryResourceRankWeight(input: {
@@ -25,7 +26,7 @@ export function computeEateryResourceRankWeight(input: {
   });
   const travelBrain = buildTravelBrainState(input.event);
   const axes = describeEateryRankTravelBrainAxes(travelBrain);
-  const { dimensions } = scoreEateryRowDimensions({
+  const { dimensions, distanceKm } = scoreEateryRowDimensions({
     row: input.row,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
@@ -33,5 +34,17 @@ export function computeEateryResourceRankWeight(input: {
     mealTiming: axes.mealTiming,
     budgetBand: axes.budgetBand,
   });
-  return computeWeightedEateryRankScore(dimensions, profile);
+  return (
+    computeWeightedEateryRankScore(dimensions, profile) +
+    eateryPreferenceScoreDelta({
+      name: input.row.name,
+      address: input.row.address,
+      categoryLabel: input.row.categoryLabel,
+      cuisineHint: input.row.cuisineHint,
+      specialReasonKo: input.row.specialReasonKo,
+      priceLevel: input.row.priceLevel,
+      distanceKm,
+      reviewCount: input.row.reviewCount,
+    })
+  );
 }

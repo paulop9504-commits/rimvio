@@ -10,6 +10,10 @@ import {
 } from "@/lib/workstream/context-work-state";
 import { buildContextWorkState } from "@/lib/workstream/sync-context-work-state";
 import {
+  readContextGoalState,
+  syncContextGoalState,
+} from "@/lib/workstream/context-goal-state";
+import {
   residueLayerForEventKind,
   type WorkstreamEvent,
   type WorkstreamState,
@@ -208,12 +212,20 @@ export function buildAgentExecutionState(input: {
     work,
   });
 
+  const goal =
+    readContextGoalState(contextEventId) ??
+    syncContextGoalState({
+      contextEventId,
+      event: input.event,
+      workstream: input.workstream,
+    });
+
   return {
     contextEventId,
     currentTaskKo: work.title,
-    goalKo: `${work.title} 완료`,
+    goalKo: goal.goalKo,
     status: workStatusToExec(work, session),
-    percent: work.percent,
+    percent: goal.percent,
     completedSteps,
     runningStep,
     nextSteps,

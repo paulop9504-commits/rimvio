@@ -277,8 +277,8 @@ export function openMapContextWorkspace(input: {
     lastChangeKo:
       nodes.length > 0
         ? pinnedCount > 0
-          ? `${label} 갱신 · 고정 ${pinnedCount}곳 유지`
-          : `${nodesIncoming.length}곳 추가`
+          ? `${label} 갱신 · 고정 ${pinnedCount}곳 유지 · 작업장에서 확인`
+          : `${nodesIncoming.length}곳 준비 · 작업장에서 확인`
         : null,
     lastWhy:
       nodes.length > 0

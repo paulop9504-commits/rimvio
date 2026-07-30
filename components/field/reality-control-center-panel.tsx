@@ -448,7 +448,10 @@ export function RealityControlCenterPanel({
       if (!result.ok) {
         if (result.reason === "blocked") {
           toast.message(field.realityCommitBlockedToast);
-        } else if (result.reason === "booking_failed") {
+        } else if (
+          result.reason === "booking_failed" ||
+          result.reason === "verification_blocked"
+        ) {
           toast.message(result.reasonKo ?? field.realityCommitFailedToast);
         } else if (result.reason === "persist_failed") {
           toast.message(field.realityCommitFailedToast);

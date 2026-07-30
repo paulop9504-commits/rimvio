@@ -9,6 +9,9 @@ import { ArrowUp } from "lucide-react";
 import { tryApplyWorkspacePromptTurn } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
+import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
+import { openWorkspaceForTripPrep } from "@/lib/agent/open-workspace-for-trip-prep";
+import { shouldPrepareTripWorkspaceDraft } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import { WorkspaceAgentStatusPanel } from "@/components/context-workspace/workspace-agent-status-panel";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { copy } from "@/lib/copy/human-ko";
@@ -24,6 +27,7 @@ import {
   finishAgentExecutionSession,
   pushAgentExecutionStep,
 } from "@/lib/workstream/agent-execution-session";
+import { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
 import { cn } from "@/lib/utils";
 
 export type WorkspacePromptBarProps = {
@@ -54,6 +58,12 @@ export function WorkspacePromptBar({
       }
       setBusy(true);
       onTurn?.();
+      spineIngressFromLegacy({
+        source: "workstream",
+        contextEventId: eventId,
+        utterance: text,
+        stage: "goal_state",
+      });
       beginAgentExecutionSession({
         contextEventId: eventId,
         headlineKo: copy.globe.agentBuildingContext,
@@ -97,6 +107,25 @@ export function WorkspacePromptBar({
           labelKo: copy.globe.activityWorkspaceTurn,
           status: "running",
         });
+
+        if (shouldPrepareTripWorkspaceDraft(text)) {
+          openWorkspaceForTripPrep({
+            utterance: text,
+            contextEventId: eventId,
+            skipUserChat: true,
+          });
+          completeAgentExecutionStep("turn-apply");
+          dispatchExecutionFeedStep({
+            graphId,
+            stepId: "apply",
+            labelKo: copy.globe.activityWorkspaceTurn,
+            status: "done",
+            resultKo: `✓ ${copy.globe.activityDone}`,
+          });
+          setValue("");
+          return;
+        }
+
         const result = await tryApplyWorkspacePromptTurn({
           utterance: text,
           contextEventId: eventId,
@@ -109,16 +138,25 @@ export function WorkspacePromptBar({
           status: "done",
           resultKo: result.handled ? `✓ ${copy.globe.activityDone}` : undefined,
         });
-        const reply = result.handled
-          ? (result.replyKo ??
-            readContextWorkspace(eventId)?.lastChangeKo ??
-            "반영했어요")
-          : copy.globe.workspacePromptUnhandled;
-        appendWorkspaceChatTurn({
-          contextEventId: eventId,
-          role: "assistant",
-          text: reply,
-        });
+        const ws = readContextWorkspace(eventId);
+        if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
+          appendWorkspaceSyncedAssistantTurn({
+            contextEventId: eventId,
+            state: ws,
+            textKo:
+              result.replyKo ??
+              ws.lastChangeKo ??
+              "Workspace에 반영했어요.",
+          });
+        } else {
+          appendWorkspaceChatTurn({
+            contextEventId: eventId,
+            role: "assistant",
+            text: result.handled
+              ? (result.replyKo ?? ws?.lastChangeKo ?? "반영했어요")
+              : copy.globe.workspacePromptUnhandled,
+          });
+        }
         setValue("");
       } finally {
         finishAgentExecutionSession({ keepMs: 5_000 });

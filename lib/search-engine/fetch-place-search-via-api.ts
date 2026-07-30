@@ -26,6 +26,8 @@ export async function fetchPlaceSearchViaApi(
         checkInIso: input.checkInIso ?? null,
         checkOutIso: input.checkOutIso ?? null,
         guestCount: input.guestCount ?? null,
+        contextLabelKo: input.contextLabelKo ?? null,
+        contextEventId: input.contextEventId ?? null,
       }),
     });
     if (!response.ok) {

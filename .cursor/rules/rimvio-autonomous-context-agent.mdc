@@ -49,6 +49,14 @@ Same operating principle as Cursor’s Agent + Project State + Execution History
 
 Always-on on Context Graph: **Execution State Manager** · **Verification→Repair** · **Intent→goal_state**. Scorecard: Context/Reality/Globe strong; Execution/Verify/Memory were the weak layers — close those, don’t rebuild the OS.
 
+## Goal State + Spine (ADR-043)
+
+```
+Goal State → Context Graph → Execution State → Verification → Commit
+```
+
+Converge action-chat / context-run / workstream / engine via `enterAgentSpine`. Preference Graph accumulates walk / quiet / no-wait / subway.
+
 ## PR reject
 
 - Chat transcript as Context SSOT  

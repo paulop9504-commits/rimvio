@@ -17,6 +17,7 @@ import {
 } from "@/lib/engine/team-collab/engine-pass-queue";
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
 import type { EventCandidate } from "@/lib/events/event-candidate";
+import { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
 
 const RIMVIO_ENGINE_PACKAGES: readonly RimvioEnginePackage[] = [
   ...RIMVIO_FIRST_PARTY_ENGINE_PACKAGES,
@@ -114,6 +115,14 @@ export function planRimvioEngineTurn(
   if (!message) {
     return null;
   }
+
+  spineIngressFromLegacy({
+    source: "engine",
+    contextEventId: input.event?.id?.trim() || "engine:session",
+    utterance: message,
+    event: input.event ?? null,
+    stage: "goal_state",
+  });
 
   const packages = activePackagesForContext({
     event: input.event,

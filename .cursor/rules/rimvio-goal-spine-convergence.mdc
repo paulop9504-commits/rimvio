@@ -1,0 +1,33 @@
+---
+description: Goal State top SSOT + Spine convergence (ADR-043)
+alwaysApply: true
+---
+
+# Goal State + Spine convergence (locked)
+
+**Canonical:** `docs/adr/043-goal-state-spine-convergence.md`
+
+## Stack
+
+```
+Goal State → Context Graph → Execution State → Verification → Repair → Reality Queue → Commit
+```
+
+Progress % = **Goal completion**, not chat turns.
+
+## Convergence
+
+`action-chat` · `context-run` · `workstream` · `engine` → **enterAgentSpine()** — no Agent D.
+
+## Priorities
+
+1. Goal State top SSOT  
+2. Spine unify  
+3. Verification → Repair → Commit mandatory  
+4. Preference Graph long memory  
+5. One Agent Status / Timeline everywhere  
+6. **Judgment Chain** (ADR-044) — Complexity → Scope → Reality Cost → Strategy before heavy Spine depth  
+
+## PR reject
+
+Parallel agent path · Commit without Verification stage · Preference only in transcript · Different Status UI per surface for same Context · Monolithic super-agent that skips judges
