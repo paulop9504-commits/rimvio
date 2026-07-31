@@ -99,7 +99,7 @@ async function ensureDomainCandidates(input: {
     contextEventId,
     lat,
     lng,
-    domain: kind,
+    domain: kind === "eatery" ? "eatery" : "lodging",
   });
 
   const raw = tool.candidates ?? [];
@@ -137,7 +137,7 @@ async function ensureDomainCandidates(input: {
   } else {
     openMapContextWorkspace({
       contextEventId,
-      domain: kind,
+      domain: kind === "amenity" ? "amenity" : kind === "poi" ? "poi" : "eatery",
       query,
       summaryKo: copy.globe.workspacePreviewReady(candidates.length),
       candidates,

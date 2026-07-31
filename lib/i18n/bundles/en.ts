@@ -575,6 +575,10 @@ export const copyEn: Copy = {
     workspaceToolSimulateRain: "If it rains?",
     workspaceToolOptimizeRoute: "Optimize route",
     workspacePreviewEyebrow: "Preview",
+    workspaceSlotExpandReady: (label: string, count: number) =>
+      `${count} ${label} options on the map · pick one to prep booking`,
+    workspaceSlotExpandEmpty: (label: string) =>
+      `No ${label} options yet · add a neighborhood or preference`,
     workspacePreviewPhotoHint: "Photos coming soon",
     workspacePreviewPhotoCount: (n: number) => `${n} photos`,
     workspacePreviewNearby: "Nearby",
