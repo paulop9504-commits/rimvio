@@ -84,7 +84,11 @@ import {
   isPendingContextCreateApprove,
   isPendingContextCreateCancel,
 } from "@/lib/globe-ingress/detect-pending-context-create-reply";
-import { readPendingContextCreate } from "@/lib/globe-ingress/pending-context-create-store";
+import {
+  readPendingContextCreate,
+  writePendingContextCreate,
+} from "@/lib/globe-ingress/pending-context-create-store";
+import { shouldAutoCommitContextCreate } from "@/lib/globe-ingress/should-auto-commit-context-create";
 import { tryPatchPendingContextCreate } from "@/lib/globe-ingress/try-patch-pending-context-create";
 import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
 import { parseTravelSlotsFromMessage } from "@/lib/experience-run/travel-context-slots";
@@ -1222,6 +1226,24 @@ async function executeContextRunPlan(
         compiled,
         profile: classified?.profile ?? null,
       });
+      // Clear destination + duration → Cursor-like auto apply (no 생성 chip).
+      if (shouldAutoCommitContextCreate(draft)) {
+        writePendingContextCreate(draft);
+        const committed = commitPendingContextCreate({
+          graphId: mintGraphId,
+          handlers,
+        });
+        if (committed) {
+          handlers.toastMessage?.(copy.globe.workspaceAgentAutoSetting);
+          refreshWorkQueue(handlers);
+          return {
+            graphId,
+            status: "done",
+            planKind: plan.kind,
+            globeIngress: committed.compiled,
+          };
+        }
+      }
       offerPendingContextCreate({ draft, skipUserEcho: true });
       handlers.toastMessage?.(
         forceNew

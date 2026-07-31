@@ -482,8 +482,8 @@ export const copy = {
     workspacePreviewEmptyMap: "지도를 펼쳐 보세요",
     workspacePreviewReady: (count: number) =>
       count > 0
-        ? `후보 ${count}곳 준비 · 펼치기로 작업장 열기`
-        : "후보 준비 중 · 펼치기로 작업장 열기",
+        ? `후보 ${count}곳 준비 · 작업장에서 확인 중`
+        : "후보 준비 중 · 작업장에서 맞추는 중",
     /** Intent → prepared Workspace (1-tap open). */
     workspacePrepEyebrow: "자원 준비됨",
     workspacePrepTravelTitle: "여행 작업장",
@@ -513,7 +513,17 @@ export const copy = {
       `지금 할 일 · ${focusLabel}`,
     workspaceFocusHeadline: (focusLabel: string) => `현재 작업 · ${focusLabel}`,
     workspaceFocusAsk: (focusLabel: string) =>
-      `다음으로 ${focusLabel} 하실래요?`,
+      `${focusLabel} 맞추는 중`,
+    workspaceAgentAutoSetting: "에이전트가 작업장을 세팅하는 중이에요",
+    workspaceCloseNameEyebrow: "맥락 저장",
+    workspaceCloseNameTitle: "이 맥락 이름을 정할까요?",
+    workspaceCloseNameHint:
+      "확인하면 저장되고 지구에 맥락으로 남겨요",
+    workspaceCloseNameLabel: "맥락 이름",
+    workspaceCloseNamePlaceholder: "예: 오사카 4박5일",
+    workspaceCloseNameConfirm: "저장하고 지구에 남기기",
+    workspaceCloseNameCollapseOnly: "이름만 두고 접기",
+    workspaceCloseNameStay: "작업장으로 돌아가기",
     workspaceFocusGhostDone: (label: string) => `✓ ${label} 완료`,
     workspaceFocusGhostWaiting: (label: string) => `${label} · 대기`,
     workspaceFocusGhostBackground: (label: string) => `${label} · 자동 계산 중`,

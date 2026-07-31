@@ -23,6 +23,7 @@ import {
 import {
   readWorkspaceSdkSession,
   subscribeWorkspaceSdkSession,
+  WORKSPACE_SDK_OPEN_EVENT,
 } from "@/lib/workspace-sdk/workspace-sdk-session-store";
 import {
   listRealityPrimitiveStrip,
@@ -83,8 +84,19 @@ export function WorkspaceSdkHost({
     refresh();
     const unsub = subscribeWorkspaceSdkSession((id) => {
       refresh(id);
-      setOpen(true);
     });
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ contextEventId: string }>).detail;
+      const id = detail?.contextEventId?.trim();
+      if (!id) {
+        return;
+      }
+      if (hubId && id !== hubId) {
+        return;
+      }
+      refresh(id);
+      setOpen(true);
+    };
     const unsubWs = subscribeContextWorkspaceUpdated((eventId) => {
       if (!hubId || eventId === hubId) {
         refresh(eventId);
@@ -92,12 +104,14 @@ export function WorkspaceSdkHost({
     });
     const onLinks = () => setLinkTick((n) => n + 1);
     if (typeof window !== "undefined") {
+      window.addEventListener(WORKSPACE_SDK_OPEN_EVENT, onOpen);
       window.addEventListener(CONTEXT_REFERENCE_LINKS_UPDATED, onLinks);
     }
     return () => {
       unsub();
       unsubWs();
       if (typeof window !== "undefined") {
+        window.removeEventListener(WORKSPACE_SDK_OPEN_EVENT, onOpen);
         window.removeEventListener(CONTEXT_REFERENCE_LINKS_UPDATED, onLinks);
       }
     };

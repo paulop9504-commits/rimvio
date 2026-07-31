@@ -30,6 +30,7 @@ export {
   type PendingContextCreateDraft,
 } from "@/lib/globe-ingress/pending-context-create-store";
 export { buildPendingContextCreateDraft } from "@/lib/globe-ingress/build-pending-context-create-draft";
+export { shouldAutoCommitContextCreate } from "@/lib/globe-ingress/should-auto-commit-context-create";
 export { offerPendingContextCreate } from "@/lib/globe-ingress/offer-pending-context-create";
 export {
   commitPendingContextCreate,

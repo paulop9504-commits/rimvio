@@ -76,6 +76,9 @@ export {
   commitLodgingWorkspaceToGlobe,
 } from "@/lib/context-workspace/commit-workspace-to-globe";
 
+export { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
+export { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
+
 export {
   buildAppleMapsDeepLink,
   buildGoogleMapsDeepLink,

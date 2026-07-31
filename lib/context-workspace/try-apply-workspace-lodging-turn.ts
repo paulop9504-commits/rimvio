@@ -364,7 +364,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: false,
+        autoRun: true,
         delayMs: 720,
       });
       return {
@@ -419,7 +419,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: false,
+        autoRun: true,
         delayMs: 720,
       });
       if (soft.continued && soft.replyKo) {

@@ -10,6 +10,8 @@ import { copy } from "@/lib/copy/human-ko";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
+import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace-store";
 import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
@@ -178,18 +180,22 @@ export function runWorkspaceIntentContinuum(input: {
       graphId: input.graphId,
       role: "assistant",
       text: [
-        prepared.card.eyebrowKo,
+        copy.globe.workspaceAgentAutoSetting,
         prepared.card.titleKo,
-        prepared.card.bodyKo,
-        prepared.card.focusHintKo,
-        focus.askKo,
-        `→ ${prepared.card.ctaKo}`,
+        focus.headlineKo,
+        openTogetherLine(kind, utterance),
       ].join("\n"),
     });
   }
 
   if (prepared.workspace) {
     appendWorkspacePreviewComposeTurn(contextEventId);
+    // Cursor IDE: open Workspace immediately — no 「작업장 열기」tap / Host modal.
+    writeContextWorkspaceExpanded(contextEventId, true);
+    dispatchContextWorkspaceExpand({
+      contextEventId,
+      source: "trip_prep",
+    });
   }
 
   seedContextRealityBundle({
@@ -202,14 +208,11 @@ export function runWorkspaceIntentContinuum(input: {
     card: prepared.card,
     focus,
   });
+  // Keep frame in session for dock/status — do not pop Host approval sheet.
   appendWorkspaceSdkComposeTurn({
     contextEventId,
     frame: sdkFrame,
-  });
-  appendGlobeChatTextMessage({
-    graphId: input.graphId,
-    role: "assistant",
-    text: openTogetherLine(kind, utterance),
+    openHost: false,
   });
 
   // Cross-Context (ADR-030): optional link chips — especially market ↔ travel.

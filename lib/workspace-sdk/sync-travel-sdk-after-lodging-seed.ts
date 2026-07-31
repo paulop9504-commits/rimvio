@@ -9,10 +9,11 @@ import {
   readContextRealityBundle,
   seedContextRealityBundle,
 } from "@/lib/reality-os";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
+import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace-store";
 import { buildWorkspaceSdkFrame } from "@/lib/workspace-sdk/build-workspace-sdk-frame";
 import type { WorkspaceSdkFrame } from "@/lib/workspace-sdk/types";
 import {
-  dispatchWorkspaceSdkOpen,
   readWorkspaceSdkSession,
   writeWorkspaceSdkSession,
 } from "@/lib/workspace-sdk/workspace-sdk-session-store";
@@ -31,11 +32,10 @@ export function syncTravelSdkFrameAfterLodgingSeed(input: {
     input.headerTitleKo?.trim() ||
     prev?.header.titleKo ||
     copy.globe.workspacePrepTravelTitle;
-  const ask = copy.globe.workspaceFocusAsk("숙소");
   const strip =
     input.candidateCount > 0
       ? copy.globe.workspacePreviewReady(input.candidateCount)
-      : ask;
+      : copy.globe.workspaceFocusAsk("숙소");
 
   if (!readContextRealityBundle(contextEventId)) {
     seedContextRealityBundle({
@@ -61,7 +61,11 @@ export function syncTravelSdkFrameAfterLodgingSeed(input: {
     lifecycle: "focused",
   });
   writeWorkspaceSdkSession(frame);
-  dispatchWorkspaceSdkOpen(contextEventId);
+  writeContextWorkspaceExpanded(contextEventId, true);
+  dispatchContextWorkspaceExpand({
+    contextEventId,
+    source: "scout_patch",
+  });
   return frame;
 }
-
+

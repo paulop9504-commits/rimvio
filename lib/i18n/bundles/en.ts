@@ -472,8 +472,8 @@ export const copyEn: Copy = {
     workspacePreviewEmptyMap: "Open the map",
     workspacePreviewReady: (count: number) =>
       count > 0
-        ? `${count} places ready · Open workspace`
-        : "Places ready · Open workspace",
+        ? `${count} places ready · reviewing in workspace`
+        : "Preparing places · setting up workspace",
     workspacePrepEyebrow: "Resources ready",
     workspacePrepTravelTitle: "Trip workspace",
     workspacePrepDriverTitle: "Driver workspace",
@@ -504,7 +504,17 @@ export const copyEn: Copy = {
     workspaceFocusHeadline: (focusLabel: string) =>
       `Current work · ${focusLabel}`,
     workspaceFocusAsk: (focusLabel: string) =>
-      `Next up — ${focusLabel}?`,
+      `Setting up ${focusLabel}`,
+    workspaceAgentAutoSetting: "Agent is setting up your workspace",
+    workspaceCloseNameEyebrow: "Save context",
+    workspaceCloseNameTitle: "Name this context?",
+    workspaceCloseNameHint:
+      "Confirm to save and commit it to the Globe",
+    workspaceCloseNameLabel: "Context name",
+    workspaceCloseNamePlaceholder: "e.g. Osaka 4N5D",
+    workspaceCloseNameConfirm: "Save & commit to Globe",
+    workspaceCloseNameCollapseOnly: "Collapse without committing",
+    workspaceCloseNameStay: "Back to workspace",
     workspaceFocusGhostDone: (label: string) => `✓ ${label} done`,
     workspaceFocusGhostWaiting: (label: string) => `${label} · waiting`,
     workspaceFocusGhostBackground: (label: string) =>

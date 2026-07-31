@@ -49,7 +49,10 @@ import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-conte
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
+import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspace-close-name-sheet";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
+import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
+import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
@@ -124,6 +127,7 @@ export function ContextWorkspaceShell({
   const [state, setState] = useState<ContextWorkspaceState | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [commitPreviewOpen, setCommitPreviewOpen] = useState(false);
+  const [closeNameOpen, setCloseNameOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
@@ -498,6 +502,18 @@ export function ContextWorkspaceShell({
     [state],
   );
 
+  const closeNameSuggested = useMemo(() => {
+    const id = contextEventId?.trim() ?? "";
+    if (!id) {
+      return copy.globe.workspaceOpenTitle;
+    }
+    return suggestWorkspaceCapsuleTitle({
+      contextEventId: id,
+      workspace: state,
+    });
+  }, [contextEventId, state, projectTitleKo]);
+
+
   const onSelect = useCallback(
     (nodeId: string) => {
       const id = contextEventId?.trim();
@@ -537,6 +553,7 @@ export function ContextWorkspaceShell({
     const result = commitContextWorkspaceToGlobe({ contextEventId: id });
     setCommitBusy(false);
     setCommitPreviewOpen(false);
+    setCloseNameOpen(false);
     setExpanded(false);
     writeContextWorkspaceExpanded(id, false);
     if (result.ok) {
@@ -559,15 +576,48 @@ export function ContextWorkspaceShell({
     }
   }, [contextEventId]);
 
-  const onClose = useCallback(() => {
+  const collapseWorkspace = useCallback(() => {
     const id = contextEventId?.trim();
     if (!id) {
       return;
     }
     setExpanded(false);
     setCommitPreviewOpen(false);
+    setCloseNameOpen(false);
     writeContextWorkspaceExpanded(id, false);
   }, [contextEventId]);
+
+  const onClose = useCallback(() => {
+    const id = contextEventId?.trim();
+    if (!id) {
+      return;
+    }
+    // Name → Confirm = Capsule Commit (Cursor close / save flow).
+    setCloseNameOpen(true);
+  }, [contextEventId]);
+
+  const onCloseNameConfirm = useCallback(
+    (titleKo: string) => {
+      const id = contextEventId?.trim();
+      if (!id) {
+        return;
+      }
+      renameContextEventTitle(id, titleKo);
+      setCommitBusy(true);
+      const result = commitContextWorkspaceToGlobe({ contextEventId: id });
+      setCommitBusy(false);
+      setCloseNameOpen(false);
+      setExpanded(false);
+      writeContextWorkspaceExpanded(id, false);
+      if (result.ok) {
+        toast.success(copy.globe.workspaceCommitDoneToast);
+      } else {
+        toast.success(copy.globe.workspaceAutoSaveOn);
+        collapseWorkspace();
+      }
+    },
+    [collapseWorkspace, contextEventId],
+  );
 
   const onDiscard = useCallback(() => {
     const id = contextEventId?.trim();
@@ -579,6 +629,7 @@ export function ContextWorkspaceShell({
     clearWorkspaceChat(id);
     setExpanded(false);
     setCommitPreviewOpen(false);
+    setCloseNameOpen(false);
   }, [contextEventId]);
 
   if (!expanded || !state || state.status === "closed") {
@@ -1009,6 +1060,22 @@ export function ContextWorkspaceShell({
           activeDraftNodeId={venueSelectedId}
         />
       </div>
+
+      {closeNameOpen ? (
+        <WorkspaceCloseNameSheet
+          suggestedTitleKo={closeNameSuggested}
+          busy={commitBusy}
+          onConfirm={onCloseNameConfirm}
+          onCollapseOnly={(titleKo) => {
+            const id = contextEventId?.trim();
+            if (id && titleKo.trim()) {
+              renameContextEventTitle(id, titleKo.trim());
+            }
+            collapseWorkspace();
+          }}
+          onCancel={() => setCloseNameOpen(false)}
+        />
+      ) : null}
 
       {commitPreviewOpen && commitPreview ? (
         <WorkspaceCommitPreviewSheet
