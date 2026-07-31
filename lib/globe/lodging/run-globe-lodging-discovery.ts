@@ -195,7 +195,7 @@ export async function runGlobeLodgingDiscovery(
   if (typeof window !== "undefined") {
     dispatchContextWorkspaceExpand({
       contextEventId: eventId,
-      source: "hotel_search",
+      source: "scout_patch",
     });
   }
   dispatchGlobeLodgingDiscoverySummary({

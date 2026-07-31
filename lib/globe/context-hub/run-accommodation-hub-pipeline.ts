@@ -194,7 +194,7 @@ export async function runAccommodationHubPipeline(
   if (typeof window !== "undefined") {
     dispatchContextWorkspaceExpand({
       contextEventId: eventId,
-      source: "hotel_search",
+      source: "scout_patch",
     });
   }
   dispatchGlobeLodgingDiscoverySummary({
