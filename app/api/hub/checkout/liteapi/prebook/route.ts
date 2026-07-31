@@ -4,6 +4,8 @@ import { isLiteApiConfigured, prebookLiteApiOffer } from "@/lib/globe/context-hu
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 /** LiteAPI prebook — server-side; returns Payment SDK credentials to client. */
 export async function POST(request: NextRequest) {

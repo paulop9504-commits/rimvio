@@ -38,11 +38,23 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86_400,
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "**.unsplash.com" },
+      { protocol: "https", hostname: "**.googleapis.com" },
+      { protocol: "https", hostname: "**.gstatic.com" },
+      { protocol: "https", hostname: "**.googleusercontent.com" },
+      { protocol: "https", hostname: "**.ggpht.com" },
+      { protocol: "https", hostname: "**.liteapi.travel" },
+      { protocol: "https", hostname: "**.cloudinary.com" },
+      { protocol: "https", hostname: "**.imgix.net" },
+      { protocol: "https", hostname: "**.amazonaws.com" },
+      { protocol: "https", hostname: "**.cloudfront.net" },
+      { protocol: "https", hostname: "**.supabase.co" },
+      { protocol: "https", hostname: "rimvio.com" },
+      { protocol: "https", hostname: "**.rimvio.com" },
     ],
   },
   async headers() {
@@ -52,11 +64,25 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        source: "/((?!_next/static|_next/image|icons|favicon).*)",
+        source: "/((?!_next/static|_next/image|icons|favicon|api/globe/tile).*)",
         headers: [
           {
             key: "Cache-Control",
             value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/api/globe/tile",
+        headers: [
+          {
+            key: "Cache-Control",
+            value:
+              "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=2592000",
           },
         ],
       },

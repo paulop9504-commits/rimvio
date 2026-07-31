@@ -34,6 +34,7 @@ import {
   type WorkspaceObjectLayerId,
 } from "@/lib/context-workspace/workspace-object-layer";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
+import { WorkspaceRemoteImage } from "@/components/context-workspace/workspace-remote-image";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -351,11 +352,10 @@ export function WorkspaceObjectCarousel({
                     >
                       <div className="relative m-2.5 h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[14px] bg-[#f2f4f6]">
                         {card.heroImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <WorkspaceRemoteImage
                             src={card.heroImage}
-                            alt=""
-                            className="h-full w-full object-cover"
+                            sizes="92px"
+                            priority={isActive}
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-[28px]">
@@ -405,11 +405,10 @@ export function WorkspaceObjectCarousel({
               <div className="relative shrink-0">
                 <div className="relative h-[200px] overflow-hidden bg-[#f2f4f6]">
                   {hero ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <WorkspaceRemoteImage
                       src={hero}
-                      alt=""
-                      className="h-full w-full object-cover"
+                      sizes="(max-width: 420px) 96vw, 420px"
+                      priority
                     />
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
@@ -420,25 +419,20 @@ export function WorkspaceObjectCarousel({
                     </div>
                   )}
                   {images.length > 1 ? (
-                    <div className="absolute inset-x-0 bottom-0 flex gap-1.5 overflow-x-auto px-3 pb-3 pt-10">
+                    <div className="absolute inset-x-0 bottom-0 z-[1] flex gap-1.5 overflow-x-auto px-3 pb-3 pt-10">
                       {images.map((url, i) => (
                         <button
                           key={`${url}-${i}`}
                           type="button"
                           className={cn(
-                            "h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-2",
+                            "relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-2",
                             i === galleryIndex
                               ? "ring-white"
                               : "ring-transparent opacity-80",
                           )}
                           onClick={() => setGalleryIndex(i)}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
+                          <WorkspaceRemoteImage src={url} sizes="48px" />
                         </button>
                       ))}
                     </div>

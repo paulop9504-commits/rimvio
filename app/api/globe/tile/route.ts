@@ -5,6 +5,30 @@ import {
   remapRimvioGlobeMapTilePng,
   shouldRemapRimvioGlobeMapTileStyle,
 } from "@/lib/globe/remap-rimvio-globe-map-tile-png";
+import {
+  RIMVIO_FUNCTION_MAX_DURATION_TILE,
+  RIMVIO_FUNCTION_REGION,
+} from "@/lib/server/rimvio-function-defaults";
+
+export const runtime = "nodejs";
+export const preferredRegion = RIMVIO_FUNCTION_REGION;
+export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_TILE;
+
+function tileCacheHeaders(input: {
+  readonly cacheHit: boolean;
+}): HeadersInit {
+  // Pro CDN: long s-maxage so edge serves tiles without origin / 429 storms.
+  const browser = 86_400;
+  const edge = 604_800;
+  const swr = 2_592_000;
+  return {
+    "Cache-Control": `public, max-age=${browser}, s-maxage=${edge}, stale-while-revalidate=${swr}`,
+    "CDN-Cache-Control": `public, s-maxage=${edge}, stale-while-revalidate=${swr}`,
+    "Vercel-CDN-Cache-Control": `public, s-maxage=${edge}, stale-while-revalidate=${swr}`,
+    "Cross-Origin-Resource-Policy": "cross-origin",
+    "X-Rimvio-Tile-Cache": input.cacheHit ? "hit" : "miss",
+  };
+}
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -20,11 +44,12 @@ export async function GET(request: NextRequest) {
   try {
     const fetched = await fetchGlobeTileUpstream({ z, x, y, style });
     if (!fetched) {
-      // Soft fail — avoid browser retry storms (429 loops)
       return new NextResponse(null, {
         status: 204,
         headers: {
-          "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+          "Cache-Control":
+            "public, max-age=30, s-maxage=60, stale-while-revalidate=120",
+          "CDN-Cache-Control": "public, s-maxage=60",
         },
       });
     }
@@ -40,18 +65,14 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": fetched.contentType,
-        "Cache-Control": fetched.cacheHit
-          ? "public, max-age=86400, stale-while-revalidate=604800"
-          : "public, max-age=3600, stale-while-revalidate=86400",
-        "Cross-Origin-Resource-Policy": "cross-origin",
-        "X-Rimvio-Tile-Cache": fetched.cacheHit ? "hit" : "miss",
+        ...tileCacheHeaders({ cacheHit: fetched.cacheHit }),
       },
     });
   } catch {
     return new NextResponse(null, {
       status: 204,
       headers: {
-        "Cache-Control": "public, max-age=15",
+        "Cache-Control": "public, max-age=15, s-maxage=30",
       },
     });
   }

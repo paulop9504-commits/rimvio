@@ -9,9 +9,15 @@ import {
   searchLiteApiLodgingNearby,
 } from "@/lib/globe/context-hub/providers/liteapi";
 import { GLOBE_DISCOVERY_FETCH_LIMIT } from "@/lib/globe/discovery/globe-discovery-feed";
+import {
+  RIMVIO_FUNCTION_MAX_DURATION_HOT,
+  RIMVIO_FUNCTION_REGION,
+} from "@/lib/server/rimvio-function-defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = RIMVIO_FUNCTION_REGION;
+export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_HOT;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {

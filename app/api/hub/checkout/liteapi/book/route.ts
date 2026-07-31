@@ -6,6 +6,8 @@ import { isLiteApiConfigured } from "@/lib/globe/context-hub/providers/liteapi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 /** LiteAPI book — after Payment SDK success on return URL. */
 export async function POST(request: NextRequest) {
