@@ -3,6 +3,8 @@ import { resolveAreaGeocodeCandidates } from "@/lib/event-commit-gate/resolve-ar
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {
@@ -30,9 +32,20 @@ export async function GET(request: NextRequest) {
     radiusKm: origin ? 60 : undefined,
   });
 
-  return NextResponse.json({
-    ok: true,
-    query: q,
-    suggestions,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      query: q,
+      suggestions,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "public, max-age=60, s-maxage=300, stale-while-revalidate=1800",
+        "CDN-Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+        "Vercel-CDN-Cache-Control":
+          "public, s-maxage=300, stale-while-revalidate=1800",
+      },
+    },
+  );
 }

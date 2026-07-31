@@ -3,6 +3,8 @@ import { resolveLocationFromCoords } from "@/lib/location-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {
@@ -31,11 +33,22 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    lat,
-    lng,
-    entity: result.entity,
-    providersTried: result.providersTried,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      lat,
+      lng,
+      entity: result.entity,
+      providersTried: result.providersTried,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "public, max-age=30, s-maxage=120, stale-while-revalidate=600",
+        "CDN-Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+        "Vercel-CDN-Cache-Control":
+          "public, s-maxage=120, stale-while-revalidate=600",
+      },
+    },
+  );
 }

@@ -4,8 +4,9 @@ import type { HybridRetrievalContext } from "@/lib/hybrid-retrieval/types";
 import { logApi } from "@/lib/server/logger";
 import { readRequestId } from "@/lib/server/request-context";
 
-export const maxDuration = 20;
 export const runtime = "nodejs";
+export const preferredRegion = "icn1";
+export const maxDuration = 120;
 
 type HybridRetrievalRequest = {
   user_query?: string;

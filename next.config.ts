@@ -62,7 +62,8 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        source: "/((?!_next/static|_next/image|icons|favicon|api/globe/tile|api/context/weather|api/context/traffic).*)",
+        source:
+          "/((?!_next/static|_next/image|icons|favicon|api/globe/tile|api/context/weather|api/context/traffic|api/location|api/apple-mapkit-token).*)",
         headers: [
           {
             key: "Cache-Control",
@@ -101,6 +102,33 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value:
               "public, max-age=30, s-maxage=120, stale-while-revalidate=600",
+          },
+        ],
+      },
+      {
+        source: "/api/location/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value:
+              "public, max-age=60, s-maxage=300, stale-while-revalidate=1800",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=1800",
+          },
+          {
+            key: "Vercel-CDN-Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=1800",
+          },
+        ],
+      },
+      {
+        source: "/api/apple-mapkit-token",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, max-age=60",
           },
         ],
       },

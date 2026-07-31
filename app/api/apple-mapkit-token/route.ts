@@ -4,6 +4,8 @@ import { signAppleMapKitJwt } from "@/lib/context-workspace/map/sign-mapkit-jwt"
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 30;
 
 /**
  * MapKit JS JWT issuer for Context Workspace 2D map.
@@ -28,11 +30,19 @@ export async function GET() {
       keyId: env.keyId,
       privateKeyPem: env.privateKeyPem,
     });
-    return NextResponse.json({
-      ok: true,
-      token,
-      expiresInSec: 30 * 60,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        token,
+        expiresInSec: 30 * 60,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=60",
+          "CDN-Cache-Control": "private, max-age=0",
+        },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "jwt_sign_failed";
     return NextResponse.json(

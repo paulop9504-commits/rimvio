@@ -7,8 +7,9 @@ import {
 import { logApi } from "@/lib/server/logger";
 import { readRequestId } from "@/lib/server/request-context";
 
-export const maxDuration = 60;
 export const runtime = "nodejs";
+export const preferredRegion = "icn1";
+export const maxDuration = 120;
 
 const MAX_SAMPLE_BYTES = 8 * 1024 * 1024;
 

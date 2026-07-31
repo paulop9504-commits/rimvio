@@ -6,6 +6,8 @@ import { resolveLodgingMockNearUser } from "@/lib/globe/context-hub/lodging-mock
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {
