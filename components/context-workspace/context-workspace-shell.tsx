@@ -953,46 +953,9 @@ export function ContextWorkspaceShell({
             </div>
           </div>
         ) : null}
-
-        {/* Object browser — GPT place sheet (prompt fused inside) */}
-        {selectedNode && !compareOpen && !commitPreviewOpen ? (
-          <WorkspaceObjectCarousel
-            open={showPeek}
-            contextEventId={eventId}
-            nodes={mapFocusNodes}
-            activeNodeId={selectedNode.id}
-            workspace={state}
-            sheetFooter={
-              <WorkspaceCursorDock
-                contextEventId={eventId}
-                embedded
-                onFocusNode={onSelect}
-                onBriefReplay={() => {
-                  setListOpen(false);
-                  setPeekClosed(true);
-                }}
-                briefReplayGroundIndex={briefReplayGroundIndex}
-                activeDraftNodeId={venueSelectedId}
-              />
-            }
-            onActiveNodeChange={(nodeId) => {
-              // Layer tabs only re-focus; never reopen a closed sheet.
-              setFocusedId(nodeId);
-            }}
-            onClose={() => {
-              peekOpenGenerationRef.current += 1;
-              setPeekClosed(true);
-            }}
-            onOpenCompare={() => setCompareOpen(true)}
-            onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
-            onOpenField={(nodeId) => onOpenField(nodeId)}
-            onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
-            awaitingField={selectedAwaitingField}
-          />
-        ) : null}
       </div>
 
-      {/* Agent dock — hide under place sheet or Commit Preview */}
+      {/* Agent dock — hide while place sheet / Commit Preview open */}
       {!showPeek && !commitPreviewOpen ? (
         <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
           <WorkspaceCursorDock
@@ -1006,6 +969,29 @@ export function ContextWorkspaceShell({
             activeDraftNodeId={venueSelectedId}
           />
         </div>
+      ) : null}
+
+      {/* Place sheet — fixed over full workspace (status bar inset only, GPT Maps) */}
+      {selectedNode && !compareOpen && !commitPreviewOpen ? (
+        <WorkspaceObjectCarousel
+          open={showPeek}
+          contextEventId={eventId}
+          nodes={mapFocusNodes}
+          activeNodeId={selectedNode.id}
+          workspace={state}
+          onActiveNodeChange={(nodeId) => {
+            setFocusedId(nodeId);
+          }}
+          onClose={() => {
+            peekOpenGenerationRef.current += 1;
+            setPeekClosed(true);
+          }}
+          onOpenCompare={() => setCompareOpen(true)}
+          onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
+          onOpenField={(nodeId) => onOpenField(nodeId)}
+          onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
+          awaitingField={selectedAwaitingField}
+        />
       ) : null}
 
       {closeNameOpen ? (

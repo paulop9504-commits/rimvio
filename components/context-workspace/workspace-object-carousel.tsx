@@ -307,7 +307,7 @@ export function WorkspaceObjectCarousel({
       {open ? (
         <motion.div
           key="object-browser"
-          className="pointer-events-none absolute inset-0 z-[6] flex flex-col pt-[max(0.35rem,env(safe-area-inset-top))]"
+          className="pointer-events-none fixed inset-0 z-[10160] flex flex-col pt-[env(safe-area-inset-top)]"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -319,15 +319,8 @@ export function WorkspaceObjectCarousel({
           }}
           data-workspace-object-carousel
         >
-          {/* Thin map peek — tap dismisses like GPT Maps */}
-          <button
-            type="button"
-            className="pointer-events-auto h-[min(7vh,52px)] w-full shrink-0"
-            aria-label="지도로 돌아가기"
-            onClick={onClose}
-          />
           <motion.div
-            className="pointer-events-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_40px_rgba(25,31,40,0.22)]"
+            className="pointer-events-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[20px] bg-white shadow-[0_-12px_40px_rgba(25,31,40,0.22)]"
             drag="y"
             dragControls={sheetDragControls}
             dragListener={false}
@@ -396,7 +389,7 @@ export function WorkspaceObjectCarousel({
                       {images.map((url, i) => (
                         <div
                           key={`${url}-${i}`}
-                          className="relative h-[min(28vw,148px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6] sm:h-[168px]"
+                          className="relative h-[min(48vh,420px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6]"
                           aria-label={`사진 ${i + 1} / ${images.length}`}
                         >
                           <WorkspaceRemoteImage
@@ -409,12 +402,12 @@ export function WorkspaceObjectCarousel({
                     </div>
 
                     {images.length > 1 ? (
-                      <div className="pointer-events-none absolute inset-x-0 bottom-2.5 flex justify-center gap-1">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
                         {images.map((_, i) => (
                           <span
                             key={i}
                             className={cn(
-                              "h-1 w-1 rounded-full transition-colors",
+                              "h-1.5 w-1.5 rounded-full transition-colors",
                               i === photoIndex
                                 ? "bg-white"
                                 : "bg-white/45",
@@ -426,17 +419,17 @@ export function WorkspaceObjectCarousel({
 
                     <button
                       type="button"
-                      className="absolute right-2.5 top-2.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-[2px]"
+                      className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-[2px]"
                       onClick={onClose}
                       aria-label="닫기"
                     >
-                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      <X className="h-4 w-4" strokeWidth={2.5} />
                     </button>
                   </div>
                 ) : (
-                  <div className="relative h-[min(28vw,148px)] overflow-hidden bg-[#f2f4f6] sm:h-[168px]">
+                  <div className="relative h-[min(48vh,420px)] overflow-hidden bg-[#f2f4f6]">
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
-                      <span className="text-[28px]">
+                      <span className="text-[44px]">
                         {layerEmoji(activeLayer)}
                       </span>
                       <span className="text-[11px] font-semibold">
