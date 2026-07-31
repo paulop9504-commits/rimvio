@@ -8,7 +8,6 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -106,7 +105,6 @@ export function WorkspaceObjectCarousel({
       ? resolveWorkspaceObjectLayer(activeNode)
       : (presentLayers[0] ?? "hotel"),
   );
-  const [galleryIndex, setGalleryIndex] = useState(0);
   const sheetDragControls = useDragControls();
 
   const layerNodes = useMemo(
@@ -126,10 +124,6 @@ export function WorkspaceObjectCarousel({
     const first = layerNodes[0];
     if (first) onActiveNodeChange(first.id);
   }, [layer, layerNodes, activeNode, onActiveNodeChange]);
-
-  useEffect(() => {
-    setGalleryIndex(0);
-  }, [activeNodeId, layer]);
 
   const preview = useMemo(
     () => (activeNode ? buildNodePreview(activeNode, workspace) : null),
@@ -280,222 +274,216 @@ export function WorkspaceObjectCarousel({
               <div className="mx-auto h-1 w-10 rounded-full bg-[#d1d6db]" />
             </div>
 
-            {/* GPT: large photos only — show as many as we have (horizontal snap) */}
-            <div className="relative shrink-0 pt-2">
-              {images.length > 0 ? (
-                <div className="relative">
-                  <div
+            {/* One scroll surface — photo + copy move together (ChatGPT Maps sheet). */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+              <div className="relative pt-2">
+                {images.length > 0 ? (
+                  <div className="relative px-3">
+                    {/* One large photo at a time — swipe only, no thumb strip. */}
+                    <div
+                      className={cn(
+                        "flex overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                        images.length > 1
+                          ? "snap-x snap-mandatory"
+                          : "snap-none",
+                      )}
+                    >
+                      {images.map((url, i) => (
+                        <div
+                          key={`${url}-${i}`}
+                          className="relative aspect-[16/10] w-full min-w-full shrink-0 snap-center overflow-hidden rounded-[18px] bg-[#f2f4f6]"
+                          aria-label={`사진 ${i + 1} / ${images.length}`}
+                        >
+                          <WorkspaceRemoteImage
+                            src={url}
+                            sizes="96vw"
+                            priority={i < 2}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="absolute right-5 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                      onClick={onClose}
+                      aria-label="닫기"
+                    >
+                      <X className="h-4 w-4" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-[18px] bg-[#f2f4f6]">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
+                      <span className="text-[44px]">
+                        {layerEmoji(activeLayer)}
+                      </span>
+                      <span className="text-[11px] font-semibold">
+                        {copy.globe.workspacePreviewPhotoHint}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                      onClick={onClose}
+                      aria-label="닫기"
+                    >
+                      <X className="h-4 w-4" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 px-4 pb-3 pt-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {draftDay ? (
+                      <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
+                        {draftDay.labelKo}
+                      </span>
+                    ) : null}
+                    <span className="text-[13px] font-medium text-[#8b95a1]">
+                      {preview.ratingLabel}
+                      <span className="mx-1.5 text-[#d1d6db]">·</span>
+                      {kindLabel}
+                    </span>
+                  </div>
+                  <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#191f28]">
+                    {preview.title}
+                  </h3>
+                  <p className="mt-1 text-[16px] font-bold tabular-nums text-[#191f28]">
+                    {preview.price}
+                    <span className="ml-2 text-[12px] font-medium text-[#8b95a1]">
+                      {preview.reviewSummary}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <button
+                    type="button"
                     className={cn(
-                      "flex gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                      images.length === 1
-                        ? "snap-none"
-                        : "snap-x snap-mandatory",
+                      "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold",
+                      preview.selected
+                        ? "bg-[#191f28] text-white"
+                        : "bg-[#3182f6] text-white",
                     )}
+                    onClick={confirmSelect}
                   >
-                    {images.map((url, i) => (
-                      <button
-                        key={`${url}-${i}`}
-                        type="button"
-                        className={cn(
-                          "relative shrink-0 overflow-hidden rounded-[18px] bg-[#f2f4f6]",
-                          images.length === 1
-                            ? "aspect-[16/10] w-full"
-                            : "aspect-[3/4] w-[min(46vw,200px)] snap-center",
-                        )}
-                        onClick={() => setGalleryIndex(i)}
-                        aria-label={`사진 ${i + 1}`}
-                      >
-                        <WorkspaceRemoteImage
-                          src={url}
-                          sizes={
-                            images.length === 1 ? "96vw" : "46vw"
-                          }
-                          priority={i < 2}
-                        />
-                      </button>
-                    ))}
-                  </div>
+                    {preview.selected
+                      ? copy.globe.workspacePreviewSelected
+                      : copy.globe.workspacePreviewSelect}
+                  </button>
                   <button
                     type="button"
-                    className="absolute right-5 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
-                    onClick={onClose}
-                    aria-label="닫기"
+                    className={cn(
+                      "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1",
+                      preview.inCompare
+                        ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
+                        : "bg-white text-[#191f28] ring-black/[0.08]",
+                    )}
+                    onClick={addToCompare}
                   >
-                    <X className="h-4 w-4" strokeWidth={2.5} />
+                    {preview.inCompare
+                      ? copy.globe.workspacePreviewInCompare
+                      : copy.globe.workspacePreviewAddCompare}
+                    {compareCount > 0 ? ` (${compareCount})` : ""}
                   </button>
-                </div>
-              ) : (
-                <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-[18px] bg-[#f2f4f6]">
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
-                    <span className="text-[44px]">
-                      {layerEmoji(activeLayer)}
-                    </span>
-                    <span className="text-[11px] font-semibold">
-                      {copy.globe.workspacePreviewPhotoHint}
-                    </span>
-                  </div>
                   <button
                     type="button"
-                    className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
-                    onClick={onClose}
-                    aria-label="닫기"
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1 ring-black/[0.08]",
+                      preview.bookmarked
+                        ? "bg-[#191f28] text-white ring-transparent"
+                        : "bg-white text-[#191f28]",
+                    )}
+                    onClick={() => {
+                      applyWorkspaceTransition({
+                        contextEventId,
+                        op: "bookmark",
+                        nodeIds: [activeNode.id],
+                        pin: !activeNode.bookmarked,
+                      });
+                    }}
                   >
-                    <X className="h-4 w-4" strokeWidth={2.5} />
+                    <Pin className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    {preview.bookmarked
+                      ? copy.globe.workspacePinDone
+                      : copy.globe.workspacePinCta}
                   </button>
                 </div>
-              )}
-            </div>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-2 pt-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {draftDay ? (
-                    <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
-                      {draftDay.labelKo}
-                    </span>
+                {layerNodes.length > 1 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {layerNodes.map((node) => {
+                      const card = buildNodePreview(node, workspace);
+                      const on = node.id === activeNode.id;
+                      return (
+                        <button
+                          key={node.id}
+                          type="button"
+                          className={cn(
+                            "max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold",
+                            on
+                              ? "bg-[#191f28] text-white"
+                              : "bg-[#f2f4f6] text-[#4e5968]",
+                          )}
+                          onClick={() => onActiveNodeChange(node.id)}
+                        >
+                          {card.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-[#f9fafb]">
+                  {preview.whyChosen ? (
+                    <li className="flex items-start gap-3 px-3.5 py-3">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                        {preview.whyChosen}
+                      </p>
+                    </li>
                   ) : null}
-                  <span className="text-[13px] font-medium text-[#8b95a1]">
-                    {preview.ratingLabel}
-                    <span className="mx-1.5 text-[#d1d6db]">·</span>
-                    {kindLabel}
-                  </span>
-                </div>
-                <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#191f28]">
-                  {preview.title}
-                </h3>
-                <p className="mt-1 text-[16px] font-bold tabular-nums text-[#191f28]">
-                  {preview.price}
-                  <span className="ml-2 text-[12px] font-medium text-[#8b95a1]">
-                    {preview.reviewSummary}
-                  </span>
-                </p>
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <button
-                  type="button"
-                  className={cn(
-                    "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold",
-                    preview.selected
-                      ? "bg-[#191f28] text-white"
-                      : "bg-[#3182f6] text-white",
-                  )}
-                  onClick={confirmSelect}
-                >
-                  {preview.selected
-                    ? copy.globe.workspacePreviewSelected
-                    : copy.globe.workspacePreviewSelect}
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1",
-                    preview.inCompare
-                      ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
-                      : "bg-white text-[#191f28] ring-black/[0.08]",
-                  )}
-                  onClick={addToCompare}
-                >
-                  {preview.inCompare
-                    ? copy.globe.workspacePreviewInCompare
-                    : copy.globe.workspacePreviewAddCompare}
-                  {compareCount > 0 ? ` (${compareCount})` : ""}
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1 ring-black/[0.08]",
-                    preview.bookmarked
-                      ? "bg-[#191f28] text-white ring-transparent"
-                      : "bg-white text-[#191f28]",
-                  )}
-                  onClick={() => {
-                    applyWorkspaceTransition({
-                      contextEventId,
-                      op: "bookmark",
-                      nodeIds: [activeNode.id],
-                      pin: !activeNode.bookmarked,
-                    });
-                  }}
-                >
-                  <Pin className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  {preview.bookmarked
-                    ? copy.globe.workspacePinDone
-                    : copy.globe.workspacePinCta}
-                </button>
-              </div>
-
-              {layerNodes.length > 1 ? (
-                <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {layerNodes.map((node) => {
-                    const card = buildNodePreview(node, workspace);
-                    const on = node.id === activeNode.id;
-                    return (
-                      <button
-                        key={node.id}
-                        type="button"
-                        className={cn(
-                          "max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold",
-                          on
-                            ? "bg-[#191f28] text-white"
-                            : "bg-[#f2f4f6] text-[#4e5968]",
-                        )}
-                        onClick={() => onActiveNodeChange(node.id)}
-                      >
-                        {card.title}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
-              <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-[#f9fafb]">
-                {preview.whyChosen ? (
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                      {preview.whyChosen}
-                    </p>
-                  </li>
-                ) : null}
-                {nodeBrief && nodeBrief.linesKo[0] ? (
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                      {nodeBrief.linesKo[0]}
-                    </p>
-                  </li>
-                ) : null}
-                {preview.amenities[0] ? (
-                  <li className="flex items-start gap-3 px-3.5 py-3">
-                    <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                      {preview.amenities.slice(0, 3).join(" · ")}
-                    </p>
-                  </li>
-                ) : null}
-              </ul>
-
-              {preview.canPrepare && primary.kind !== "done" ? (
-                <button
-                  type="button"
-                  className="w-full rounded-[16px] bg-[#3182f6] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
-                  onClick={() => {
-                    if (primary.kind === "confirm")
-                      onConfirmReady?.(activeNode.id);
-                    else if (primary.kind === "approve_pay")
-                      onOpenField?.(activeNode.id);
-                    else onPrepareReserve?.(activeNode.id);
-                  }}
-                >
-                  {primary.labelKo}
-                  {primary.hintKo ? (
-                    <span className="mt-0.5 block text-[11px] font-medium opacity-90">
-                      {primary.hintKo}
-                    </span>
+                  {nodeBrief && nodeBrief.linesKo[0] ? (
+                    <li className="flex items-start gap-3 px-3.5 py-3">
+                      <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                        {nodeBrief.linesKo[0]}
+                      </p>
+                    </li>
                   ) : null}
-                </button>
-              ) : null}
+                  {preview.amenities[0] ? (
+                    <li className="flex items-start gap-3 px-3.5 py-3">
+                      <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                        {preview.amenities.slice(0, 3).join(" · ")}
+                      </p>
+                    </li>
+                  ) : null}
+                </ul>
+
+                {preview.canPrepare && primary.kind !== "done" ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-[16px] bg-[#3182f6] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
+                    onClick={() => {
+                      if (primary.kind === "confirm")
+                        onConfirmReady?.(activeNode.id);
+                      else if (primary.kind === "approve_pay")
+                        onOpenField?.(activeNode.id);
+                      else onPrepareReserve?.(activeNode.id);
+                    }}
+                  >
+                    {primary.labelKo}
+                    {primary.hintKo ? (
+                      <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+                        {primary.hintKo}
+                      </span>
+                    ) : null}
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {sheetFooter ? (
