@@ -137,7 +137,8 @@ export function ContextWorkspaceShell({
   const [closeNameOpen, setCloseNameOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
+  /** Once closed, stay closed until user taps a pin again (avoids selectId fallback reopen loop). */
+  const [peekClosed, setPeekClosed] = useState(false);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   /** One Focus map layer — null = itinerary overview */
   const [mapFocusKind, setMapFocusKind] = useState<ContextWorkspaceDomain | null>(
@@ -172,6 +173,7 @@ export function ContextWorkspaceShell({
     refresh();
     setMapFocusKind(null);
     setFocusedId(null);
+    setPeekClosed(false);
     const id = contextEventId?.trim();
     if (id) {
       const draft = readContextWorkspace(id);
@@ -212,7 +214,7 @@ export function ContextWorkspaceShell({
       }
       setBriefReplayGroundIndex(detail.stepIndex);
       setFocusedId(detail.nodeId);
-      setPeekDismissedId(null);
+      setPeekClosed(false);
     });
     const unsubJump = subscribeRealityJump((detail) => {
       if (detail.contextEventId !== contextEventId?.trim()) return;
@@ -225,7 +227,7 @@ export function ContextWorkspaceShell({
       );
       if (!hit) return;
       setFocusedId(hit.id);
-      setPeekDismissedId(null);
+      setPeekClosed(false);
       setListOpen(false);
     });
     return () => {
@@ -407,7 +409,7 @@ export function ContextWorkspaceShell({
         return;
       }
       setFocusedId(nodeId);
-      setPeekDismissedId(null);
+      setPeekClosed(false);
       toast.success(copy.globe.actionReadyStateApproved);
     },
     [contextEventId],
@@ -533,12 +535,12 @@ export function ContextWorkspaceShell({
       if (!result.ok) {
         toast.message(result.reasonKo);
         setFocusedId(nodeId);
-        setPeekDismissedId(null);
+        setPeekClosed(false);
         return;
       }
       setPrepTick((n) => n + 1);
       setFocusedId(nodeId);
-      setPeekDismissedId(null);
+      setPeekClosed(false);
       toast.success(result.toastKo);
       // Stay in Workspace — next tap is human Approve · Pay (Article 0).
     },
@@ -604,7 +606,7 @@ export function ContextWorkspaceShell({
       // Soft focus immediately so chip/peek feels responsive.
       setFocusedId(nodeId);
       setListOpen(false);
-      setPeekDismissedId(null);
+      setPeekClosed(false);
 
       if (isWorkspaceContextMediaPinId(nodeId)) {
         setMapFocusKind(null);
@@ -619,7 +621,7 @@ export function ContextWorkspaceShell({
         });
         setMapFocusKind(result.mapFocusKind);
         setFocusedId(result.focusId);
-        setPeekDismissedId(null);
+        setPeekClosed(false);
         if (result.replyKo?.trim()) {
           appendWorkspaceChatTurn({
             contextEventId: id,
@@ -741,7 +743,7 @@ export function ContextWorkspaceShell({
     null;
   const showPeek =
     selectedNode != null &&
-    peekDismissedId !== selectedNode.id &&
+    !peekClosed &&
     selectedMediaPin == null;
 
   return (
@@ -755,7 +757,8 @@ export function ContextWorkspaceShell({
       aria-modal="true"
       data-context-workspace-open
     >
-      {/* Top chrome — one row, no mid-map float stack */}
+      {/* Top chrome — hide while place sheet is open so panel can rise (GPT Maps) */}
+      {!showPeek ? (
       <header className="relative z-[2] flex shrink-0 items-center gap-2 border-b border-black/[0.04] bg-white/95 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
         <button
           type="button"
@@ -805,6 +808,7 @@ export function ContextWorkspaceShell({
           {copy.globe.workspaceCommitCta}
         </button>
       </header>
+      ) : null}
 
       {/* Map — sole visual plane; soft hints float on map only */}
       <div className="relative min-h-0 flex-1">
@@ -959,19 +963,18 @@ export function ContextWorkspaceShell({
                 onFocusNode={onSelect}
                 onBriefReplay={() => {
                   setListOpen(false);
-                  setPeekDismissedId(selectedId);
+                  setPeekClosed(true);
                 }}
                 briefReplayGroundIndex={briefReplayGroundIndex}
                 activeDraftNodeId={venueSelectedId}
               />
             }
             onActiveNodeChange={(nodeId) => {
+              // Layer tabs only re-focus; never reopen a closed sheet.
               setFocusedId(nodeId);
-              setPeekDismissedId(null);
             }}
             onClose={() => {
-              setPeekDismissedId(selectedNode.id);
-              setFocusedId(null);
+              setPeekClosed(true);
             }}
             onOpenCompare={() => setCompareOpen(true)}
             onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
@@ -990,7 +993,7 @@ export function ContextWorkspaceShell({
             onFocusNode={onSelect}
             onBriefReplay={() => {
               setListOpen(false);
-              setPeekDismissedId(selectedId);
+              setPeekClosed(true);
             }}
             briefReplayGroundIndex={briefReplayGroundIndex}
             activeDraftNodeId={venueSelectedId}
@@ -1030,7 +1033,7 @@ export function ContextWorkspaceShell({
         onClose={() => setCompareOpen(false)}
         onSelect={(nodeId) => {
           setFocusedId(nodeId);
-          setPeekDismissedId(null);
+          setPeekClosed(false);
         }}
       />
     </div>

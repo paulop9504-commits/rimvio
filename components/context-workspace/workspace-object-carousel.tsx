@@ -14,8 +14,6 @@ import {
 } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import {
-  ChevronLeft,
-  ChevronRight,
   Globe,
   MapPin,
   Pin,
@@ -134,11 +132,12 @@ export function WorkspaceObjectCarousel({
   }, [activeNode]);
 
   useEffect(() => {
+    if (!open) return;
     if (layerNodes.length === 0) return;
     if (activeNode && resolveWorkspaceObjectLayer(activeNode) === layer) return;
     const first = layerNodes[0];
     if (first) onActiveNodeChange(first.id);
-  }, [layer, layerNodes, activeNode, onActiveNodeChange]);
+  }, [open, layer, layerNodes, activeNode, onActiveNodeChange]);
 
   const preview = useMemo(
     () => (activeNode ? buildNodePreview(activeNode, workspace) : null),
@@ -250,15 +249,6 @@ export function WorkspaceObjectCarousel({
   const compareCount = workspace.compareIds.length;
   const activeLayer = resolveWorkspaceObjectLayer(activeNode);
   const kindLabel = layerLabelKo(activeLayer);
-  const activeIndex = layerNodes.findIndex((n) => n.id === activeNode.id);
-  const hasSiblings = layerNodes.length > 1;
-
-  const goSibling = (dir: -1 | 1) => {
-    if (!hasSiblings || activeIndex < 0) return;
-    const next =
-      layerNodes[(activeIndex + dir + layerNodes.length) % layerNodes.length];
-    if (next) onActiveNodeChange(next.id);
-  };
 
   const confirmSelect = () => {
     applyWorkspaceTransition({
@@ -317,7 +307,7 @@ export function WorkspaceObjectCarousel({
       {open ? (
         <motion.div
           key="object-browser"
-          className="pointer-events-none absolute inset-0 z-[6] flex flex-col"
+          className="pointer-events-none absolute inset-0 z-[6] flex flex-col pt-[max(0.35rem,env(safe-area-inset-top))]"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -329,8 +319,15 @@ export function WorkspaceObjectCarousel({
           }}
           data-workspace-object-carousel
         >
+          {/* Thin map peek — tap dismisses like GPT Maps */}
+          <button
+            type="button"
+            className="pointer-events-auto h-[min(7vh,52px)] w-full shrink-0"
+            aria-label="지도로 돌아가기"
+            onClick={onClose}
+          />
           <motion.div
-            className="pointer-events-auto flex h-full min-h-0 w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_50px_rgba(25,31,40,0.28)]"
+            className="pointer-events-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_40px_rgba(25,31,40,0.22)]"
             drag="y"
             dragControls={sheetDragControls}
             dragListener={false}
@@ -346,14 +343,14 @@ export function WorkspaceObjectCarousel({
             data-workspace-place-sheet
           >
             <div
-              className="relative shrink-0 cursor-grab touch-none pt-2.5 active:cursor-grabbing"
+              className="relative shrink-0 cursor-grab touch-none pt-2 active:cursor-grabbing"
               onPointerDown={(e) => sheetDragControls.start(e)}
             >
-              <div className="mx-auto h-1 w-10 rounded-full bg-[#d1d6db]" />
+              <div className="mx-auto h-1 w-9 rounded-full bg-[#d1d6db]" />
             </div>
 
             {presentLayers.length > 1 ? (
-              <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-1.5 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {presentLayers.map((id) => {
                   const selected = id === layer;
                   return (
@@ -361,7 +358,7 @@ export function WorkspaceObjectCarousel({
                       key={id}
                       type="button"
                       className={cn(
-                        "shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold transition-colors",
+                        "shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
                         selected
                           ? "bg-[#191f28] text-white"
                           : "bg-[#f2f4f6] text-[#4e5968]",
@@ -383,7 +380,7 @@ export function WorkspaceObjectCarousel({
                     <div
                       ref={galleryRef}
                       className={cn(
-                        "flex overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                        "flex touch-pan-x overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                         images.length > 1
                           ? "snap-x snap-mandatory"
                           : "snap-none",
@@ -399,7 +396,7 @@ export function WorkspaceObjectCarousel({
                       {images.map((url, i) => (
                         <div
                           key={`${url}-${i}`}
-                          className="relative aspect-[4/5] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6] sm:aspect-[16/11]"
+                          className="relative h-[min(28vw,148px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6] sm:h-[168px]"
                           aria-label={`사진 ${i + 1} / ${images.length}`}
                         >
                           <WorkspaceRemoteImage
@@ -412,12 +409,12 @@ export function WorkspaceObjectCarousel({
                     </div>
 
                     {images.length > 1 ? (
-                      <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-2.5 flex justify-center gap-1">
                         {images.map((_, i) => (
                           <span
                             key={i}
                             className={cn(
-                              "h-1.5 w-1.5 rounded-full transition-colors",
+                              "h-1 w-1 rounded-full transition-colors",
                               i === photoIndex
                                 ? "bg-white"
                                 : "bg-white/45",
@@ -429,38 +426,17 @@ export function WorkspaceObjectCarousel({
 
                     <button
                       type="button"
-                      className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                      className="absolute right-2.5 top-2.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-[2px]"
                       onClick={onClose}
                       aria-label="닫기"
                     >
-                      <X className="h-4 w-4" strokeWidth={2.5} />
+                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                     </button>
-
-                    {hasSiblings ? (
-                      <>
-                        <button
-                          type="button"
-                          className="absolute left-2 top-1/2 z-[2] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
-                          onClick={() => goSibling(-1)}
-                          aria-label="이전 후보"
-                        >
-                          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
-                        </button>
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 z-[2] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
-                          onClick={() => goSibling(1)}
-                          aria-label="다음 후보"
-                        >
-                          <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
-                        </button>
-                      </>
-                    ) : null}
                   </div>
                 ) : (
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#f2f4f6] sm:aspect-[16/11]">
+                  <div className="relative h-[min(28vw,148px)] overflow-hidden bg-[#f2f4f6] sm:h-[168px]">
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
-                      <span className="text-[44px]">
+                      <span className="text-[28px]">
                         {layerEmoji(activeLayer)}
                       </span>
                       <span className="text-[11px] font-semibold">
@@ -469,28 +445,33 @@ export function WorkspaceObjectCarousel({
                     </div>
                     <button
                       type="button"
-                      className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                      className="absolute right-2.5 top-2.5 z-[2] flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-[2px]"
                       onClick={onClose}
                       aria-label="닫기"
                     >
-                      <X className="h-4 w-4" strokeWidth={2.5} />
+                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                     </button>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-3.5 px-4 pb-5 pt-3">
+              <div className="space-y-4 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5">
                 <div>
-                  <h3 className="text-[17px] font-semibold leading-[1.35] tracking-[-0.02em] text-[#191f28]">
+                  <h3 className="text-[19px] font-semibold leading-[1.3] tracking-[-0.025em] text-[#191f28]">
                     {preview.title}
                   </h3>
-                  <p className="mt-1 text-[13px] font-medium leading-snug text-[#6b7684]">
+                  <p className="mt-1.5 text-[14px] font-medium leading-snug text-[#6b7684]">
                     {preview.ratingLabel}
-                    <span className="mx-1 text-[#d1d6db]">·</span>
+                    <span className="mx-1.5 text-[#c4c9d0]">·</span>
                     {kindLabel}
-                  </p>
-                  <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-[#191f28]">
-                    {preview.price}
+                    {preview.price && preview.price !== "—" ? (
+                      <>
+                        <span className="mx-1.5 text-[#c4c9d0]">·</span>
+                        <span className="tabular-nums text-[#191f28]">
+                          {preview.price}
+                        </span>
+                      </>
+                    ) : null}
                   </p>
                 </div>
 
@@ -498,10 +479,10 @@ export function WorkspaceObjectCarousel({
                   <button
                     type="button"
                     className={cn(
-                      "min-w-0 flex-1 rounded-full px-2.5 py-2 text-[12px] font-semibold",
+                      "min-w-0 flex-1 rounded-full px-3 py-2.5 text-[14px] font-semibold",
                       preview.selected
                         ? "bg-[#191f28] text-white"
-                        : "bg-[#3182f6] text-white",
+                        : "bg-[#191f28] text-white",
                     )}
                     onClick={confirmSelect}
                   >
@@ -512,10 +493,10 @@ export function WorkspaceObjectCarousel({
                   <button
                     type="button"
                     className={cn(
-                      "min-w-0 flex-1 rounded-full px-2.5 py-2 text-[12px] font-semibold ring-1",
+                      "min-w-0 flex-1 rounded-full px-3 py-2.5 text-[14px] font-semibold ring-[1.5px]",
                       preview.inCompare
-                        ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
-                        : "bg-white text-[#191f28] ring-black/[0.08]",
+                        ? "bg-[#f2f4f6] text-[#191f28] ring-[#191f28]/15"
+                        : "bg-white text-[#191f28] ring-[#d1d6db]",
                     )}
                     onClick={addToCompare}
                   >
@@ -527,10 +508,10 @@ export function WorkspaceObjectCarousel({
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[12px] font-semibold ring-1 ring-black/[0.08]",
+                      "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-3 py-2.5 text-[14px] font-semibold ring-[1.5px]",
                       preview.bookmarked
                         ? "bg-[#191f28] text-white ring-transparent"
-                        : "bg-white text-[#191f28]",
+                        : "bg-white text-[#191f28] ring-[#d1d6db]",
                     )}
                     onClick={() => {
                       applyWorkspaceTransition({
@@ -549,20 +530,20 @@ export function WorkspaceObjectCarousel({
                 </div>
 
                 {factLines.length > 0 ? (
-                  <ul className="divide-y divide-black/[0.06]">
+                  <ul className="space-y-0">
                     {factLines.map((row) => (
                       <li
                         key={`${row.icon}-${row.text.slice(0, 24)}`}
-                        className="flex items-start gap-2.5 py-2.5 first:pt-0.5"
+                        className="flex items-start gap-3 py-2.5"
                       >
                         {row.icon === "pin" ? (
-                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
                         ) : row.icon === "globe" ? (
-                          <Globe className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                          <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
                         ) : (
-                          <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                          <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
                         )}
-                        <p className="min-w-0 flex-1 text-[13px] leading-[1.45] text-[#4e5968]">
+                        <p className="min-w-0 flex-1 text-[15px] leading-[1.45] text-[#4e5968]">
                           {row.text}
                         </p>
                       </li>
@@ -578,7 +559,7 @@ export function WorkspaceObjectCarousel({
                 {preview.canPrepare && primary.kind !== "done" ? (
                   <button
                     type="button"
-                    className="w-full rounded-[14px] bg-[#3182f6] px-3 py-3 text-[14px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
+                    className="w-full rounded-full bg-[#3182f6] px-4 py-3.5 text-[15px] font-semibold text-white"
                     onClick={() => {
                       if (primary.kind === "confirm")
                         onConfirmReady?.(activeNode.id);
@@ -589,7 +570,7 @@ export function WorkspaceObjectCarousel({
                   >
                     {primary.labelKo}
                     {primary.hintKo ? (
-                      <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+                      <span className="mt-0.5 block text-[12px] font-medium opacity-90">
                         {primary.hintKo}
                       </span>
                     ) : null}

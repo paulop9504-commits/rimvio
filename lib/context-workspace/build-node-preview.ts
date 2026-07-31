@@ -104,19 +104,10 @@ function amenityChips(node: ContextWorkspaceNode): readonly string[] {
 }
 
 function lodgingWhyChosen(node: ContextWorkspaceNode): string {
-  const bits: string[] = [];
-  if (node.summaryKo.trim()) bits.push(node.summaryKo.trim());
-  if (node.amountLabel?.trim()) bits.push(node.amountLabel.trim());
-  if (node.rating != null && Number.isFinite(node.rating)) {
-    bits.push(`평점 ${node.rating.toFixed(1)}`);
-  }
-  if (typeof node.reviewCount === "number" && node.reviewCount > 0) {
-    bits.push(`후기 ${node.reviewCount.toLocaleString("ko-KR")}개`);
-  }
-  if (bits.length === 0) {
-    return `${domainLabelKo(node.kind)} 후보 · ${formatPrice(node)}`;
-  }
-  return bits.slice(0, 3).join(" · ");
+  // Title block already shows rating · price — fact row stays place summary only.
+  const summary = node.summaryKo.trim();
+  if (summary) return summary;
+  return "";
 }
 
 function inferNearbyKind(

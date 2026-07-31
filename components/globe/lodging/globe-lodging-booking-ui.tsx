@@ -107,9 +107,25 @@ export function GlobeLodgingStaySummaryCard(input: {
   partnerLabel?: string | null;
   refundable?: boolean;
   liveRate?: boolean;
+  /** When set, schedule / guests tiles become editable. */
+  editable?: boolean;
+  onScheduleChange?: (next: {
+    checkInIso: string;
+    checkOutIso: string;
+  }) => void;
+  onOccupancyChange?: (next: {
+    adults: number;
+    rooms: number;
+  }) => void;
+  adults?: number;
+  rooms?: number;
 }) {
   const stayLabel = formatStayRangeKo(input.checkInIso, input.checkOutIso);
   const image = input.coverImageUrl?.trim();
+  const checkIn = input.checkInIso.slice(0, 10);
+  const checkOut = input.checkOutIso.slice(0, 10);
+  const adults = Math.max(1, input.adults ?? 2);
+  const rooms = Math.max(1, input.rooms ?? 1);
 
   return (
     <div className="overflow-hidden rounded-[1.25rem] bg-gradient-to-br from-[#fafafc] to-[#f3f4f8] p-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -155,27 +171,96 @@ export function GlobeLodgingStaySummaryCard(input: {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-white/80 px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+        <div className="rounded-xl bg-white/90 px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/[0.03]">
           <div className="flex items-center gap-1 text-[#8e8e93]">
             <CalendarRange className="size-3.5" aria-hidden />
             <span className="text-[10px] font-semibold uppercase tracking-wide">
               {copy.globe.lodgingBookingSchedule}
             </span>
           </div>
-          <p className="mt-1 text-[12px] font-medium leading-snug text-[#1d1d1f]">
-            {stayLabel || "—"}
-          </p>
+          {input.editable && input.onScheduleChange ? (
+            <div className="mt-1.5 space-y-1.5">
+              <label className="block">
+                <span className="sr-only">체크인</span>
+                <input
+                  type="date"
+                  value={checkIn}
+                  className="w-full rounded-lg border-0 bg-[#f2f2f7] px-2 py-1.5 text-[12px] font-semibold text-[#1d1d1f] outline-none"
+                  onChange={(e) => {
+                    const nextIn = e.target.value;
+                    const nextOut =
+                      nextIn >= checkOut
+                        ? addDaysYmd(nextIn, 1)
+                        : checkOut;
+                    input.onScheduleChange?.({
+                      checkInIso: nextIn,
+                      checkOutIso: nextOut,
+                    });
+                  }}
+                />
+              </label>
+              <label className="block">
+                <span className="sr-only">체크아웃</span>
+                <input
+                  type="date"
+                  value={checkOut}
+                  min={addDaysYmd(checkIn, 1)}
+                  className="w-full rounded-lg border-0 bg-[#f2f2f7] px-2 py-1.5 text-[12px] font-semibold text-[#1d1d1f] outline-none"
+                  onChange={(e) => {
+                    const nextOut = e.target.value;
+                    input.onScheduleChange?.({
+                      checkInIso: checkIn,
+                      checkOutIso:
+                        nextOut <= checkIn
+                          ? addDaysYmd(checkIn, 1)
+                          : nextOut,
+                    });
+                  }}
+                />
+              </label>
+              <p className="text-[11px] font-medium text-[#8e8e93]">
+                {stayLabel || "—"}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-[12px] font-medium leading-snug text-[#1d1d1f]">
+              {stayLabel || "—"}
+            </p>
+          )}
         </div>
-        <div className="rounded-xl bg-white/80 px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+        <div className="rounded-xl bg-white/90 px-2.5 py-2 shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/[0.03]">
           <div className="flex items-center gap-1 text-[#8e8e93]">
             <Users className="size-3.5" aria-hidden />
             <span className="text-[10px] font-semibold uppercase tracking-wide">
               {copy.globe.lodgingBookingGuests}
             </span>
           </div>
-          <p className="mt-1 text-[12px] font-medium leading-snug text-[#1d1d1f]">
-            {input.occupancyLabel}
-          </p>
+          {input.editable && input.onOccupancyChange ? (
+            <div className="mt-1.5 space-y-2">
+              <OccupancyStepper
+                label="성인"
+                value={adults}
+                min={1}
+                max={8}
+                onChange={(next) =>
+                  input.onOccupancyChange?.({ adults: next, rooms })
+                }
+              />
+              <OccupancyStepper
+                label="객실"
+                value={rooms}
+                min={1}
+                max={4}
+                onChange={(next) =>
+                  input.onOccupancyChange?.({ adults, rooms: next })
+                }
+              />
+            </div>
+          ) : (
+            <p className="mt-1 text-[12px] font-medium leading-snug text-[#1d1d1f]">
+              {input.occupancyLabel}
+            </p>
+          )}
         </div>
       </div>
 
@@ -192,6 +277,58 @@ export function GlobeLodgingStaySummaryCard(input: {
           <ShieldCheck className="size-3.5 text-[#34c759]" aria-hidden />
           {copy.globe.lodgingBookingSecurePay}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function addDaysYmd(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function OccupancyStepper(input: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] font-semibold text-[#6e6e73]">
+        {input.label}
+      </span>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f2f2f7] text-[14px] font-bold text-[#1d1d1f] disabled:opacity-35"
+          disabled={input.value <= input.min}
+          onClick={() =>
+            input.onChange(Math.max(input.min, input.value - 1))
+          }
+          aria-label={`${input.label} 줄이기`}
+        >
+          −
+        </button>
+        <span className="min-w-[1.25rem] text-center text-[13px] font-bold tabular-nums text-[#1d1d1f]">
+          {input.value}
+        </span>
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f2f2f7] text-[14px] font-bold text-[#1d1d1f] disabled:opacity-35"
+          disabled={input.value >= input.max}
+          onClick={() =>
+            input.onChange(Math.min(input.max, input.value + 1))
+          }
+          aria-label={`${input.label} 늘리기`}
+        >
+          +
+        </button>
       </div>
     </div>
   );

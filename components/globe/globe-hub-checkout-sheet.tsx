@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft, IdCard, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   GlobeLodgingCheckoutDoneHero,
@@ -18,8 +18,12 @@ import {
   type HubCheckoutPaymentMethod,
   type HubLodgingCheckoutSession,
 } from "@/lib/globe/hub-checkout";
-import { resolveLiteApiPaymentTargetId, resolveLiteApiPaymentTargetSelector } from "@/lib/globe/hub-checkout/liteapi/resolve-liteapi-payment-target";
+import {
+  resolveLiteApiPaymentTargetId,
+  resolveLiteApiPaymentTargetSelector,
+} from "@/lib/globe/hub-checkout/liteapi/resolve-liteapi-payment-target";
 import { buildHubBookingIdentity } from "@/lib/identity-vault/build-hub-booking-identity";
+import { openIdentityVaultSettings } from "@/lib/identity-vault/open-identity-vault-settings-bridge";
 import { readIdentityVaultBundleClient } from "@/lib/identity-vault/read-identity-vault-bundle-client";
 import type { IdentitySlotId } from "@/lib/identity-vault/types";
 import { cn } from "@/lib/utils";
@@ -49,6 +53,16 @@ function missingSlotMessage(slot: IdentitySlotId): string {
   }
 }
 
+function formatOccupancyKo(adults: number, rooms: number): string {
+  return `성인 ${adults}명 · 객실 ${rooms}개`;
+}
+
+function parseRoomsFromOccupancy(label: string | undefined): number {
+  const match = label?.match(/객실\s*(\d+)/);
+  const n = match ? Number(match[1]) : 1;
+  return Number.isFinite(n) && n >= 1 ? Math.min(4, Math.floor(n)) : 1;
+}
+
 const PAYMENT_METHODS: readonly {
   id: HubCheckoutPaymentMethod;
   label: string;
@@ -72,8 +86,13 @@ export function GlobeHubCheckoutSheet({
   const [paymentMethod, setPaymentMethod] =
     useState<HubCheckoutPaymentMethod>("in_app_card");
   const [maskedIdentityKo, setMaskedIdentityKo] = useState<string | null>(null);
+  const [identityReady, setIdentityReady] = useState(false);
   const [handoffHref, setHandoffHref] = useState<string | null>(null);
   const [confirmationCode, setConfirmationCode] = useState<string | null>(null);
+  const [checkInIso, setCheckInIso] = useState("");
+  const [checkOutIso, setCheckOutIso] = useState("");
+  const [adults, setAdults] = useState(2);
+  const [rooms, setRooms] = useState(1);
   const payInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -81,26 +100,74 @@ export function GlobeHubCheckoutSheet({
   }, []);
 
   useEffect(() => {
-    if (!open) {
-      setStep("review");
-      setBusy(false);
-      payInFlightRef.current = false;
-      setPaymentMethod("in_app_card");
-      setMaskedIdentityKo(null);
-      setHandoffHref(null);
-      setConfirmationCode(null);
+    if (!open || !session) {
+      return;
     }
-  }, [open]);
+    setStep("review");
+    setBusy(false);
+    payInFlightRef.current = false;
+    setPaymentMethod("in_app_card");
+    setMaskedIdentityKo(null);
+    setHandoffHref(null);
+    setConfirmationCode(null);
+    setCheckInIso(session.checkInIso.slice(0, 10));
+    setCheckOutIso(session.checkOutIso.slice(0, 10));
+    setAdults(Math.max(1, session.offer.guestCount || 2));
+    setRooms(parseRoomsFromOccupancy(session.offer.occupancyLabelKo));
+  }, [open, session]);
 
-  if (!mounted || !session) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const bundle = await readIdentityVaultBundleClient();
+      const built = buildHubBookingIdentity({ hubId: "lodging", bundle });
+      if (cancelled) {
+        return;
+      }
+      setIdentityReady(built.complete);
+      if (built.complete) {
+        setMaskedIdentityKo(built.maskedLabelKo);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, step]);
+
+  const workingSession = useMemo((): HubLodgingCheckoutSession | null => {
+    if (!session) {
+      return null;
+    }
+    return {
+      ...session,
+      checkInIso: checkInIso || session.checkInIso,
+      checkOutIso: checkOutIso || session.checkOutIso,
+      offer: {
+        ...session.offer,
+        guestCount: adults,
+        occupancyLabelKo: formatOccupancyKo(adults, rooms),
+      },
+    };
+  }, [session, checkInIso, checkOutIso, adults, rooms]);
+
+  if (!mounted || !session || !workingSession) {
     return null;
   }
 
-  const isLiteApiCheckout = session.checkoutProvider === "liteapi";
-  const liteApiPaymentTargetId = resolveLiteApiPaymentTargetId(session.sessionId);
-  const liteApiPaymentTargetSelector = resolveLiteApiPaymentTargetSelector(
-    session.sessionId,
+  const isLiteApiCheckout = workingSession.checkoutProvider === "liteapi";
+  const liteApiPaymentTargetId = resolveLiteApiPaymentTargetId(
+    workingSession.sessionId,
   );
+  const liteApiPaymentTargetSelector = resolveLiteApiPaymentTargetSelector(
+    workingSession.sessionId,
+  );
+
+  const openIdentity = () => {
+    (onOpenIdentitySettings ?? openIdentityVaultSettings)();
+  };
 
   const handleContinueToPay = async () => {
     const bundle = await readIdentityVaultBundleClient();
@@ -111,9 +178,10 @@ export function GlobeHubCheckoutSheet({
           ? missingSlotMessage(built.missingSlots[0])
           : copy.globe.lodgingRoomCardIdentityMissing,
       );
-      onOpenIdentitySettings?.();
+      openIdentity();
       return;
     }
+    setIdentityReady(true);
     setMaskedIdentityKo(built.maskedLabelKo);
     setStep("pay");
   };
@@ -127,7 +195,7 @@ export function GlobeHubCheckoutSheet({
     try {
       const bundle = await readIdentityVaultBundleClient();
       const result = await executeLodgingHubCheckout({
-        session,
+        session: workingSession,
         identityBundle: bundle,
         paymentMethod,
         paymentTargetSelector: isLiteApiCheckout
@@ -141,7 +209,7 @@ export function GlobeHubCheckoutSheet({
               ? missingSlotMessage(result.missingSlots[0])
               : copy.globe.lodgingRoomCardIdentityMissing,
           );
-          onOpenIdentitySettings?.();
+          openIdentity();
           setStep("review");
           payInFlightRef.current = false;
           return;
@@ -157,7 +225,9 @@ export function GlobeHubCheckoutSheet({
       }
       if (result.purchaseDeferred) {
         toast.message(
-          isLiteApiCheckout ? copy.hubCheckout.liteapiPayHint : copy.hubCheckout.pgRedirect,
+          isLiteApiCheckout
+            ? copy.hubCheckout.liteapiPayHint
+            : copy.hubCheckout.pgRedirect,
         );
         if (!isLiteApiCheckout) {
           onOpenChange(false);
@@ -187,16 +257,19 @@ export function GlobeHubCheckoutSheet({
         >
           <button
             type="button"
-            className="absolute inset-0"
+            className="absolute inset-0 z-0"
             aria-label={copy.common.close}
             onClick={() => onOpenChange(false)}
           />
           <motion.div
-            className="relative flex max-h-[min(92vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] bg-[#fbfbfd] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:rounded-[1.75rem]"
+            role="dialog"
+            aria-modal
+            className="relative z-10 flex max-h-[min(92vh,720px)] w-full max-w-md flex-col overflow-hidden rounded-t-[1.75rem] bg-[#fbfbfd] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:rounded-[1.75rem]"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            onClick={(e) => e.stopPropagation()}
             data-globe-hub-checkout-sheet
           >
             <div className="flex shrink-0 justify-center pt-2.5 sm:hidden">
@@ -249,18 +322,36 @@ export function GlobeHubCheckoutSheet({
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-4">
               {step !== "done" ? (
-                <GlobeLodgingStaySummaryCard
-                  propertyName={session.propertyName}
-                  roomTitle={session.offer.title}
-                  occupancyLabel={session.offer.occupancyLabelKo}
-                  checkInIso={session.checkInIso}
-                  checkOutIso={session.checkOutIso}
-                  amountKrw={session.amountKrw}
-                  coverImageUrl={session.coverImageUrl}
-                  partnerLabel={session.partnerLabel}
-                  refundable={session.refundable}
-                  liveRate={isLiteApiCheckout}
-                />
+                <>
+                  <GlobeLodgingStaySummaryCard
+                    propertyName={workingSession.propertyName}
+                    roomTitle={workingSession.offer.title}
+                    occupancyLabel={workingSession.offer.occupancyLabelKo}
+                    checkInIso={workingSession.checkInIso}
+                    checkOutIso={workingSession.checkOutIso}
+                    amountKrw={workingSession.amountKrw}
+                    coverImageUrl={workingSession.coverImageUrl}
+                    partnerLabel={workingSession.partnerLabel}
+                    refundable={workingSession.refundable}
+                    liveRate={isLiteApiCheckout}
+                    editable={step === "review"}
+                    adults={adults}
+                    rooms={rooms}
+                    onScheduleChange={(next) => {
+                      setCheckInIso(next.checkInIso);
+                      setCheckOutIso(next.checkOutIso);
+                    }}
+                    onOccupancyChange={(next) => {
+                      setAdults(next.adults);
+                      setRooms(next.rooms);
+                    }}
+                  />
+                  {step === "review" ? (
+                    <p className="px-0.5 text-[11px] leading-snug text-[#8e8e93]">
+                      {copy.hubCheckout.stayEditHint}
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <GlobeLodgingCheckoutDoneHero
                   confirmationCode={confirmationCode}
@@ -320,25 +411,40 @@ export function GlobeHubCheckoutSheet({
               ) : null}
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-black/[0.05] bg-white/80 px-4 py-3 backdrop-blur-md">
+            <div className="shrink-0 space-y-2.5 border-t border-black/[0.05] bg-gradient-to-t from-white via-white/95 to-white/80 px-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-3.5 backdrop-blur-md">
               {step === "review" ? (
                 <>
                   <button
                     type="button"
-                    className="w-full rounded-2xl bg-[#0071e3] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(0,113,227,0.28)] active:scale-[0.99]"
+                    className="w-full rounded-full bg-[#0071e3] px-4 py-[1.05rem] text-[16px] font-semibold tracking-tight text-white shadow-[0_12px_28px_rgba(0,113,227,0.32)] transition active:scale-[0.985] active:brightness-[0.97]"
                     onClick={() => void handleContinueToPay()}
                   >
                     {copy.hubCheckout.continuePay}
                   </button>
-                  {onOpenIdentitySettings ? (
-                    <button
-                      type="button"
-                      className="w-full rounded-2xl bg-[#f2f2f7] px-3 py-3 text-[13px] font-medium text-[#1d1d1f]"
-                      onClick={onOpenIdentitySettings}
-                    >
-                      {copy.identityVault.settingsTitle}
-                    </button>
-                  ) : null}
+                  <p className="-mt-0.5 text-center text-[11px] text-[#8e8e93]">
+                    {identityReady
+                      ? copy.hubCheckout.identityReady
+                      : copy.hubCheckout.continuePayHint}
+                  </p>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-full bg-white px-4 py-3.5 text-left shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-black/[0.06] transition active:scale-[0.985] active:bg-[#f7f7f8]"
+                    onClick={openIdentity}
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#eef5ff] text-[#0071e3]">
+                      <IdCard className="size-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-semibold text-[#1d1d1f]">
+                        {copy.hubCheckout.identityCta}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] leading-snug text-[#8e8e93]">
+                        {identityReady
+                          ? copy.hubCheckout.identityReady
+                          : copy.hubCheckout.identityCtaHint}
+                      </span>
+                    </span>
+                  </button>
                 </>
               ) : null}
 
@@ -346,18 +452,22 @@ export function GlobeHubCheckoutSheet({
                 <button
                   type="button"
                   disabled={busy}
-                  className="w-full rounded-2xl bg-[#1d1d1f] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.16)] disabled:opacity-50 active:scale-[0.99]"
+                  className="w-full rounded-full bg-[#1d1d1f] px-4 py-[1.05rem] text-[16px] font-semibold tracking-tight text-white shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition disabled:opacity-50 active:scale-[0.985]"
                   onClick={() => void handleConfirmPay()}
                   data-globe-hub-checkout-confirm
                 >
-                  {busy ? "…" : copy.hubCheckout.confirmPay(formatKrwCompact(session.amountKrw))}
+                  {busy
+                    ? "…"
+                    : copy.hubCheckout.confirmPay(
+                        formatKrwCompact(workingSession.amountKrw),
+                      )}
                 </button>
               ) : null}
 
               {step === "done" && handoffHref && !isLiteApiCheckout ? (
                 <button
                   type="button"
-                  className="w-full rounded-2xl bg-[#0071e3] px-3 py-3.5 text-[15px] font-semibold text-white"
+                  className="w-full rounded-full bg-[#0071e3] px-4 py-[1.05rem] text-[16px] font-semibold text-white"
                   onClick={() => {
                     window.open(handoffHref, "_blank", "noopener,noreferrer");
                   }}
@@ -369,7 +479,7 @@ export function GlobeHubCheckoutSheet({
               {step === "done" ? (
                 <button
                   type="button"
-                  className="w-full rounded-2xl bg-[#f2f2f7] px-3 py-3 text-[14px] font-semibold text-[#1d1d1f]"
+                  className="w-full rounded-full bg-[#f2f2f7] px-4 py-3.5 text-[14px] font-semibold text-[#1d1d1f]"
                   onClick={() => onOpenChange(false)}
                 >
                   {copy.common.close}

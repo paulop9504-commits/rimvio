@@ -196,13 +196,12 @@ function pinBounds(pins: readonly WorkspaceMapPin[]) {
 function venueCameraPins(
   pins: readonly WorkspaceMapPin[],
 ): readonly WorkspaceMapPin[] {
-  const venues = pins.filter(
+  return pins.filter(
     (p) =>
       !p.contextMedia &&
       Number.isFinite(p.lat) &&
       Number.isFinite(p.lng),
   );
-  return venues.length > 0 ? venues : pins;
 }
 
 /** Osaka Namba — safer trip fallback than Jeju when destination unknown. */

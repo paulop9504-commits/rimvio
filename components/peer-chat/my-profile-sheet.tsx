@@ -130,7 +130,7 @@ export function MyProfileSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/50"
+            className="fixed inset-0 z-[12050] bg-black/50"
             aria-label={ap.cancel}
             onClick={() => onOpenChange(false)}
           />
@@ -143,7 +143,7 @@ export function MyProfileSheet({
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
             className={cn(
-              "fixed inset-x-0 bottom-0 z-[61] max-h-[92dvh] overflow-y-auto rounded-t-[20px] bg-rimvio-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl",
+              "fixed inset-x-0 bottom-0 z-[12060] max-h-[92dvh] overflow-y-auto rounded-t-[20px] bg-rimvio-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl",
             )}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
