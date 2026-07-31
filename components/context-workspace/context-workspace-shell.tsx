@@ -53,6 +53,7 @@ import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspac
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
 import { enterWorkspaceSlotFocus } from "@/lib/context-workspace/enter-workspace-slot-focus";
 import { filterNodesForWorkspaceMapFocus } from "@/lib/context-workspace/workspace-map-focus";
+import { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
 import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
 import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
 import {
