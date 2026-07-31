@@ -124,6 +124,12 @@ export function placeHitToWorkspaceNode(
     domain,
     reasonKo: hit.reasonKo,
   });
+  const gallery = (hit.images ?? [])
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  const thumb =
+    hit.thumbnailUrl?.trim() || gallery[0] || null;
   return {
     id: `ws:${domain}:${placeId}`,
     kind: domain,
@@ -136,7 +142,8 @@ export function placeHitToWorkspaceNode(
     priceBand: hit.priceBand ?? null,
     amountLabel: hit.amountLabel ?? null,
     reviewCount,
-    thumbnailUrl: hit.thumbnailUrl?.trim() || null,
+    thumbnailUrl: thumb,
+    galleryUrls: gallery.length > 0 ? gallery : null,
     tags: inferTags(hit.labelKo, summary, {
       reservable: hit.reservable,
       localFavorite: hit.localFavorite,
@@ -167,6 +174,16 @@ export function candidateToWorkspaceNode(
     priceBand: candidate.priceBand ?? null,
     domain,
   });
+  const gallery = (candidate.images ?? [])
+    .map((u) => (typeof u === "string" ? u.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 8);
+  const thumb =
+    (typeof candidate.thumbnailUrl === "string"
+      ? candidate.thumbnailUrl.trim()
+      : "") ||
+    gallery[0] ||
+    null;
   return {
     id: `ws:${domain}:${placeId}`,
     kind: domain,
@@ -185,7 +202,8 @@ export function candidateToWorkspaceNode(
     priceBand: candidate.priceBand ?? null,
     amountLabel: candidate.amountLabel ?? null,
     reviewCount,
-    thumbnailUrl: null,
+    thumbnailUrl: thumb,
+    galleryUrls: gallery.length > 0 ? gallery : null,
     tags: inferTags(candidate.labelKo, summary, {
       reservable: candidate.reservable ?? undefined,
       localFavorite: candidate.localFavorite ?? undefined,

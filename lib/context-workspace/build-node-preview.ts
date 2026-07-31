@@ -22,6 +22,8 @@ export type NodePreviewModel = {
   readonly title: string;
   readonly kindLabelKo: string;
   readonly heroImage: string | null;
+  /** Gallery including hero — Peek swipe / strip. */
+  readonly galleryImages: readonly string[];
   readonly imageCountHint: number;
   readonly rating: number | null;
   readonly ratingLabel: string;
@@ -33,6 +35,7 @@ export type NodePreviewModel = {
   readonly selected: boolean;
   readonly bookmarked: boolean;
   readonly inCompare: boolean;
+  readonly canPrepare: boolean;
 };
 
 function formatPrice(node: ContextWorkspaceNode): string {
@@ -144,13 +147,21 @@ export function buildNodePreview(
 
   const reviewSummary = formatReviewSummary(node);
 
+  const galleryRaw = [
+    node.thumbnailUrl?.trim() || null,
+    ...(node.galleryUrls ?? []).map((u) => u.trim()),
+  ].filter((u): u is string => Boolean(u));
+  const galleryImages = [...new Set(galleryRaw)].slice(0, 8);
+  const heroImage = galleryImages[0] ?? null;
+
   return {
     nodeId: node.id,
     kind: node.kind,
     title: node.title,
     kindLabelKo: domainLabelKo(node.kind),
-    heroImage: node.thumbnailUrl,
-    imageCountHint: node.thumbnailUrl ? 5 : 0,
+    heroImage,
+    galleryImages,
+    imageCountHint: galleryImages.length,
     rating: node.rating,
     ratingLabel: formatRating(node.rating),
     price: formatPrice(node),
@@ -161,6 +172,11 @@ export function buildNodePreview(
     selected: node.selected || state.selectedIds.includes(node.id),
     bookmarked: node.bookmarked,
     inCompare: state.compareIds.includes(node.id),
+    canPrepare:
+      node.kind === "lodging" ||
+      node.kind === "eatery" ||
+      node.kind === "poi" ||
+      node.kind === "amenity",
   };
 }
 

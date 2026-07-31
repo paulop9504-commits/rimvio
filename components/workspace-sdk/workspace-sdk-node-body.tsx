@@ -169,14 +169,32 @@ export function WorkspaceSdkNodeBody({
             <button
               type="button"
               className={cn(
-                "w-full rounded-2xl px-3 py-3 text-left text-[13px] shadow-sm ring-1",
+                "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[13px] shadow-sm ring-1",
                 active
                   ? "bg-[#e8f3ff] ring-[#3182f6]/30"
                   : "bg-white ring-black/[0.04]",
               )}
               onClick={() => onSelectNode(node.id)}
             >
-              {formatNodeLine(node)}
+              {node.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={node.thumbnailUrl}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f2f4f6] text-[18px]">
+                  {node.kind === "lodging"
+                    ? "🏨"
+                    : node.kind === "eatery"
+                      ? "🍜"
+                      : "📍"}
+                </span>
+              )}
+              <span className="min-w-0 flex-1 truncate font-medium text-[#191f28]">
+                {formatNodeLine(node)}
+              </span>
             </button>
           </li>
         );

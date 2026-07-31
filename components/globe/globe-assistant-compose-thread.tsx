@@ -1,6 +1,8 @@
 "use client";
 
+import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
 import { GlobeTypewriterText } from "@/components/globe/globe-typewriter-text";
+import type { RealityJumpTarget } from "@/lib/globe/reality-jump";
 import { GlobeScoutFeedGateComposeCard } from "@/components/globe/globe-scout-feed-gate-compose-card";
 import { ContextWorkspacePreviewCard } from "@/components/context-workspace/context-workspace-preview-card";
 import { WorkspaceSdkPrepCard } from "@/components/workspace-sdk/workspace-sdk-prep-card";
@@ -54,6 +56,8 @@ export type GlobeAssistantComposeThreadProps = {
     chipId: string;
   }) => void;
   scoutFeedGateBusy?: boolean;
+  /** Reality Jump — entity tap in assistant prose. */
+  onRealityJump?: (target: RealityJumpTarget) => void;
 };
 
 /** Cursor-style thread — talk left, globe-apply right as diff line. */
@@ -77,6 +81,7 @@ export function GlobeAssistantComposeThread({
   onOpenScoutFeed,
   onScoutDomainCorrection,
   scoutFeedGateBusy = false,
+  onRealityJump,
 }: GlobeAssistantComposeThreadProps) {
   if (turns.length === 0) {
     return null;
@@ -288,7 +293,10 @@ export function GlobeAssistantComposeThread({
                   cursorClassName={rimvioAssistantTypewriterCursorClass()}
                 />
               ) : (
-                turn.text
+                <AssistantEntityRichText
+                  text={turn.text}
+                  onRealityJump={onRealityJump}
+                />
               )}
             </p>
           </div>

@@ -70,6 +70,10 @@ export type ToolInvokeInput = {
     readonly reviewCount?: number | null;
     /** Nightly / ticket price KRW when known. */
     readonly priceKrw?: number | null;
+    /** Venue photo URL when known. */
+    readonly thumbnailUrl?: string | null;
+    /** Extra gallery URLs (Peek). */
+    readonly images?: readonly string[] | null;
   }[];
   readonly contextEventId?: string;
   readonly contextLabelKo?: string | null;
@@ -179,6 +183,8 @@ function hitsToCandidates(
     amountLabel?: string | null;
     reviewCount?: number | null;
     priceKrw?: number | null;
+    thumbnailUrl?: string | null;
+    images?: readonly string[] | null;
   }[],
 ): NonNullable<ToolInvokeInput["candidates"]> {
   return hits.map((hit) => ({
@@ -197,6 +203,8 @@ function hitsToCandidates(
     amountLabel: hit.amountLabel ?? null,
     reviewCount: hit.reviewCount ?? null,
     priceKrw: hit.priceKrw ?? null,
+    thumbnailUrl: hit.thumbnailUrl ?? null,
+    images: hit.images ?? null,
   }));
 }
 

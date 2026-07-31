@@ -37,7 +37,13 @@ export function prepareWorkspaceNodeBooking(input: {
   const placeName = input.node.title.trim();
   const placeId = (input.node.placeId || input.node.id).trim();
   if (!placeName || !placeId) {
-    return { ok: false, reasonKo: "먼저 숙소를 골라 주세요" };
+    return {
+      ok: false,
+      reasonKo:
+        input.node.kind === "eatery"
+          ? "먼저 식당을 골라 주세요"
+          : "먼저 숙소를 골라 주세요",
+    };
   }
   const prepared = runBookingPrepareAgent({
     contextEventId: ctx,

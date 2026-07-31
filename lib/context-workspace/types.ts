@@ -37,6 +37,8 @@ export type ContextWorkspaceNode = {
   /** Live review volume (Google / providers) when known. */
   readonly reviewCount?: number | null;
   readonly thumbnailUrl: string | null;
+  /** Extra venue photos for Peek gallery (hero = thumbnailUrl). */
+  readonly galleryUrls?: readonly string[] | null;
   readonly tags: readonly string[];
   readonly visible: boolean;
   readonly selected: boolean;

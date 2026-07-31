@@ -298,26 +298,32 @@ export function ContextWorkspaceShell({
       if (!id) {
         return;
       }
-      const node =
+      let node =
         readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId) ??
         visibleNodes.find((n) => n.id === nodeId);
       if (!node) {
         return;
       }
+      // Continuous book flow — Select gate auto-fills on prepare tap.
       if (!node.selected) {
-        toast.message(copy.globe.workspacePreviewSelectFirstHint);
-        setFocusedId(nodeId);
-        setPeekDismissedId(null);
-        setChatOpen(false);
-        return;
+        applyWorkspaceTransition({
+          contextEventId: id,
+          op: "select",
+          nodeIds: [nodeId],
+        });
+        node =
+          readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId) ?? node;
       }
       const result = prepareWorkspaceNodeBooking({
         contextEventId: id,
-        node,
+        node: { ...node, selected: true },
         contextLabelKo: projectTitleKo ?? state?.query ?? null,
       });
       if (!result.ok) {
         toast.message(result.reasonKo);
+        setFocusedId(nodeId);
+        setPeekDismissedId(null);
+        setChatOpen(false);
         return;
       }
       setPrepTick((n) => n + 1);
@@ -325,6 +331,13 @@ export function ContextWorkspaceShell({
       setPeekDismissedId(null);
       setChatOpen(false);
       toast.success(result.toastKo);
+      // Continuity: Field queue → human approve → Hub pay (Article 0).
+      window.setTimeout(() => {
+        openFieldDashboardIngressForced({
+          tab: "queue",
+          primaryEventId: id,
+        });
+      }, 420);
     },
     [contextEventId, visibleNodes, projectTitleKo, state?.query],
   );

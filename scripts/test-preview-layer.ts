@@ -25,6 +25,7 @@ function fakeNode(
   id: string,
   title: string,
   kind: ContextWorkspaceNode["kind"] = "lodging",
+  thumb?: string | null,
 ): ContextWorkspaceNode {
   return {
     id,
@@ -37,7 +38,8 @@ function fakeNode(
     rating: 4.6,
     priceBand: 2,
     amountLabel: "1박 14만원",
-    thumbnailUrl: null,
+    thumbnailUrl: thumb ?? null,
+    galleryUrls: thumb ? [thumb, `${thumb}?2`] : null,
     tags: kind === "lodging" ? ["breakfast"] : ["signature"],
     visible: true,
     selected: false,
@@ -103,7 +105,7 @@ async function main() {
     "@/lib/context-workspace/workspace-store"
   );
   const nodes = [
-    fakeNode("n1", "리버뷰 호텔"),
+    fakeNode("n1", "리버뷰 호텔", "lodging", "https://example.com/hotel.jpg"),
     fakeNode("n2", "스테이 인"),
     fakeNode("n3", "시티 로지"),
   ];
@@ -124,6 +126,14 @@ async function main() {
   assert(preview.ratingLabel.includes("4.6"), "live rating label");
   assert(preview.nearby.length === 0, "no invented nearby chips");
   assert(!preview.selected, "not selected yet");
+  assert(preview.heroImage?.includes("hotel.jpg") === true, "hero image");
+  assert(preview.galleryImages.length >= 1, "gallery");
+  assert(preview.canPrepare === true, "lodging can prepare");
+  const eateryPreview = buildNodePreview(
+    fakeNode("e1", "라멘집", "eatery", "https://example.com/ramen.jpg"),
+    state,
+  );
+  assert(eateryPreview.canPrepare === true, "eatery can prepare");
   console.log("  ✅ preview model ok\n");
 
   // 2. Soft focus does NOT select — simulate by not calling select

@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Workspace Preview Layer (Peek) — photo · price · review · nearby · soft actions.
- * First tap opens Preview; Prepare/Commit stay behind explicit Select.
+ * Workspace Preview Layer (Peek) — photo gallery · price · review · book flow.
+ * Touch → see images → Select → Prepare → Field approve → Hub pay (Article 0).
  */
 
 import { useMemo, useState } from "react";
@@ -30,7 +30,7 @@ export type WorkspaceNodePeekProps = {
   onClose?: () => void;
   onOpenCompare?: () => void;
   onRecenterItinerary?: (nodeId: string) => void;
-  /** Soft prepare — lodging Select gate; never charges. */
+  /** Soft prepare — auto-selects if needed; never charges. */
   onPrepareReserve?: () => void;
   /** Prepared → Field 결재함 1탭. */
   onOpenField?: () => void;
@@ -39,18 +39,34 @@ export type WorkspaceNodePeekProps = {
   className?: string;
 };
 
-function Hero({ preview, expanded }: { preview: NodePreviewModel; expanded: boolean }) {
+function Hero({
+  preview,
+  expanded,
+  galleryIndex,
+  onGalleryIndex,
+}: {
+  preview: NodePreviewModel;
+  expanded: boolean;
+  galleryIndex: number;
+  onGalleryIndex: (i: number) => void;
+}) {
+  const images = preview.galleryImages;
+  const active =
+    images.length > 0
+      ? images[Math.min(galleryIndex, images.length - 1)]!
+      : null;
+
   return (
     <div
       className={cn(
         "relative w-full overflow-hidden bg-[#f2f4f6]",
-        expanded ? "h-40" : "h-28",
+        expanded ? "h-48" : "h-32",
       )}
     >
-      {preview.heroImage ? (
+      {active ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={preview.heroImage}
+          src={active}
           alt=""
           className="h-full w-full object-cover"
         />
@@ -68,12 +84,80 @@ function Hero({ preview, expanded }: { preview: NodePreviewModel; expanded: bool
           </span>
         </div>
       )}
-      {preview.imageCountHint > 0 ? (
+      {images.length > 1 ? (
+        <div className="absolute inset-x-0 bottom-0 flex gap-1 overflow-x-auto px-2 pb-2 pt-8 bg-gradient-to-t from-black/45 to-transparent">
+          {images.map((url, i) => (
+            <button
+              key={`${url}-${i}`}
+              type="button"
+              className={cn(
+                "h-10 w-10 shrink-0 overflow-hidden rounded-lg ring-2",
+                i === galleryIndex
+                  ? "ring-white"
+                  : "ring-transparent opacity-80",
+              )}
+              onClick={() => onGalleryIndex(i)}
+              aria-label={`사진 ${i + 1}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      ) : preview.imageCountHint > 0 ? (
         <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">
           {copy.globe.workspacePreviewPhotoCount(preview.imageCountHint)}
         </span>
       ) : null}
     </div>
+  );
+}
+
+function BookFlowSteps({
+  selected,
+  awaitingField,
+}: {
+  selected: boolean;
+  awaitingField: boolean;
+}) {
+  const step = awaitingField ? 3 : selected ? 2 : 1;
+  const labels = [
+    copy.globe.workspaceBookFlowStepPhoto,
+    copy.globe.workspaceBookFlowStepSelect,
+    copy.globe.workspaceBookFlowStepPrepare,
+    copy.globe.workspaceBookFlowStepPay,
+  ];
+  return (
+    <ol
+      className="mt-2 flex flex-wrap items-center gap-1"
+      data-workspace-book-flow
+      aria-label={copy.globe.workspaceBookFlowLabel}
+    >
+      {labels.map((label, i) => {
+        const n = i + 1;
+        const done = n < step;
+        const current = n === step;
+        return (
+          <li key={label} className="flex items-center gap-1">
+            {i > 0 ? (
+              <span className="text-[9px] text-[#d1d6db]">→</span>
+            ) : null}
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[9px] font-bold",
+                done
+                  ? "bg-[#e8f3ff] text-[#3182f6]"
+                  : current
+                    ? "bg-[#191f28] text-white"
+                    : "bg-[#f2f4f6] text-[#8b95a1]",
+              )}
+            >
+              {n}. {label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -89,7 +173,8 @@ export function WorkspaceNodePeek({
   awaitingField = false,
   className,
 }: WorkspaceNodePeekProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const preview = useMemo(
     () => buildNodePreview(node, workspace),
     [node, workspace],
@@ -131,6 +216,19 @@ export function WorkspaceNodePeek({
     });
   };
 
+  const prepareCta =
+    node.kind === "lodging"
+      ? copy.globe.workspacePrepareReserveCta
+      : node.kind === "eatery"
+        ? copy.globe.workspacePrepareEateryCta
+        : copy.globe.workspacePrepareTicketCta;
+  const prepareHint =
+    node.kind === "lodging"
+      ? copy.globe.workspacePrepareReserveHint
+      : node.kind === "eatery"
+        ? copy.globe.workspacePrepareEateryHint
+        : copy.globe.workspacePrepareTicketHint;
+
   return (
     <div
       className={cn(
@@ -140,7 +238,12 @@ export function WorkspaceNodePeek({
       data-workspace-node-peek
       data-preview-expanded={expanded ? "true" : "false"}
     >
-      <Hero preview={preview} expanded={expanded} />
+      <Hero
+        preview={preview}
+        expanded={expanded}
+        galleryIndex={galleryIndex}
+        onGalleryIndex={setGalleryIndex}
+      />
 
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
@@ -190,6 +293,13 @@ export function WorkspaceNodePeek({
             ) : null}
           </div>
         </div>
+
+        {preview.canPrepare ? (
+          <BookFlowSteps
+            selected={preview.selected}
+            awaitingField={awaitingField}
+          />
+        ) : null}
 
         <p className="mt-2 line-clamp-2 text-[12px] leading-snug text-[#4e5968]">
           {preview.whyChosen}
@@ -316,9 +426,7 @@ export function WorkspaceNodePeek({
           </button>
         ) : null}
 
-        {node.kind === "lodging" ||
-        node.kind === "poi" ||
-        node.kind === "amenity"
+        {preview.canPrepare
           ? awaitingField && onOpenField
             ? (
           <button
@@ -326,12 +434,11 @@ export function WorkspaceNodePeek({
             className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
             onClick={onOpenField}
             data-workspace-open-field
-            title={copy.globe.workspacePrepareAwaitingFieldHint}
+            title={copy.globe.workspacePreparePayFlowHint}
           >
             {copy.globe.workspacePrepareOpenFieldCta}
             <span className="mt-0.5 block text-[10px] font-semibold opacity-90">
-              {copy.globe.workspacePrepareAwaitingFieldCta} ·{" "}
-              {copy.globe.workspacePrepareAwaitingFieldHint}
+              {copy.globe.workspacePreparePayFlowHint}
             </span>
           </button>
               )
@@ -339,32 +446,17 @@ export function WorkspaceNodePeek({
               ? (
           <button
             type="button"
-            className={cn(
-              "mt-2 w-full rounded-xl px-3 py-2.5 text-[12px] font-extrabold text-white",
-              preview.selected ? "bg-[#3182f6]" : "bg-[#191f28]/80",
-            )}
+            className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
             onClick={onPrepareReserve}
             data-workspace-prepare-reserve
-            title={
-              node.kind === "lodging"
-                ? copy.globe.workspacePrepareReserveHint
-                : copy.globe.workspacePrepareTicketHint
-            }
+            title={prepareHint}
           >
-            {node.kind === "lodging"
-              ? copy.globe.workspacePrepareReserveCta
-              : copy.globe.workspacePrepareTicketCta}
-            {!preview.selected ? (
-              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
-                {copy.globe.workspacePreviewSelectFirstHint}
-              </span>
-            ) : (
-              <span className="mt-0.5 block text-[10px] font-semibold opacity-80">
-                {node.kind === "lodging"
-                  ? copy.globe.workspacePrepareReserveHint
-                  : copy.globe.workspacePrepareTicketHint}
-              </span>
-            )}
+            {prepareCta}
+            <span className="mt-0.5 block text-[10px] font-semibold opacity-90">
+              {preview.selected
+                ? prepareHint
+                : copy.globe.workspacePrepareAutoSelectHint}
+            </span>
           </button>
                 )
               : null

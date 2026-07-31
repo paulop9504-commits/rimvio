@@ -97,6 +97,10 @@ export function mapLodgingInventoryToPlaceHits(input: {
           ? row.priceKrw
           : null),
       thumbnailUrl: row.images?.[0]?.trim() || null,
+      images: (row.images ?? [])
+        .map((u) => u.trim())
+        .filter(Boolean)
+        .slice(0, 8),
       reasonKo: null,
     };
   });

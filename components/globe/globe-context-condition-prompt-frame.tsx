@@ -6,6 +6,7 @@ import type { RefObject } from "react";
 import { toast } from "sonner";
 import { GlobeBrainSurfaceFloatingFrame } from "@/components/globe/globe-brain-surface-floating-frame";
 import { GlobeAssistantComposeThread } from "@/components/globe/globe-assistant-compose-thread";
+import { dispatchRealityJump } from "@/lib/globe/reality-jump";
 import { GlobeContextAgentConditionQuestions } from "@/components/globe/globe-context-agent-condition-questions";
 import { GlobePalantirOperatorBrief } from "@/components/globe/globe-palantir-operator-brief";
 import { GlobePalantirOperatorCommitRail } from "@/components/globe/globe-palantir-operator-commit-rail";
@@ -934,6 +935,25 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     [anchorLat, anchorLng, event, globeRef],
   );
 
+  const handleRealityJump = useCallback(
+    (target: import("@/lib/globe/reality-jump").RealityJumpTarget) => {
+      const id = event?.id?.trim();
+      if (!id) {
+        toast.message(copy.globe.realityJumpNeedsContext);
+        return;
+      }
+      const ok = dispatchRealityJump({
+        contextEventId: id,
+        target,
+        source: "assistant_entity",
+      });
+      if (ok) {
+        toast.message(copy.globe.realityJumpToast(target.labelKo));
+      }
+    },
+    [event?.id],
+  );
+
   const handleScoutDomainCorrection = useCallback(
     (input: { turnId: string; batchId: string; chipId: string }) => {
       if (!event) {
@@ -1630,6 +1650,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
               onOpenScoutFeed={(input) => void handleOpenScoutFeed(input)}
               onScoutDomainCorrection={handleScoutDomainCorrection}
               scoutFeedGateBusy={scoutFeedGateBusy}
+              onRealityJump={handleRealityJump}
             />
           {composeThread.length === 0 && recommendations.length === 0 ? (
             <p className="px-1 text-[12px] leading-relaxed text-[#86868b]">

@@ -94,6 +94,8 @@ export function toolCandidatesToPlaceHits(
     amountLabel: c.amountLabel ?? null,
     reviewCount: c.reviewCount ?? null,
     priceKrw: c.priceKrw ?? null,
+    thumbnailUrl: c.thumbnailUrl ?? null,
+    images: c.images ?? null,
   }));
 }
 

@@ -7,12 +7,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
 import {
   readWorkspaceChat,
   subscribeWorkspaceChatUpdated,
   type WorkspaceChatObjectCard,
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
+import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
+import {
+  dispatchRealityJump,
+  type RealityJumpTarget,
+} from "@/lib/globe/reality-jump";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -58,14 +64,28 @@ function ObjectCardButton(props: {
 
 function AssistantBubble(props: {
   turn: WorkspaceChatTurn;
+  contextEventId: string;
   onFocusNode?: (nodeId: string) => void;
   onOpenLinkedWork?: () => void;
 }) {
-  const { turn } = props;
+  const { turn, contextEventId } = props;
+  const onRealityJump = (target: RealityJumpTarget) => {
+    const ok = dispatchRealityJump({
+      contextEventId,
+      target,
+      source: "workspace_chat",
+    });
+    if (ok) {
+      toast.message(copy.globe.realityJumpToast(target.labelKo));
+    }
+  };
   return (
     <div className="max-w-[92%] space-y-1.5">
-      <div className="rounded-2xl bg-[#f2f4f6] px-2.5 py-1.5 text-[11px] leading-snug text-[#191f28] whitespace-pre-wrap">
-        {turn.text}
+      <div className="rounded-2xl bg-[#f2f4f6] px-2.5 py-1.5 text-[11px] leading-snug text-[#191f28]">
+        <AssistantEntityRichText
+          text={turn.text}
+          onRealityJump={onRealityJump}
+        />
       </div>
       {turn.patch?.summaryKo ? (
         <p
@@ -192,6 +212,7 @@ export function WorkspaceChatPanel({
                   ) : (
                     <AssistantBubble
                       turn={turn}
+                      contextEventId={contextEventId}
                       onFocusNode={onFocusNode}
                       onOpenLinkedWork={onOpenLinkedWork}
                     />

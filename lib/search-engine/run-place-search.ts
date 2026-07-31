@@ -36,6 +36,8 @@ export type PlaceSearchHit = {
   /** Scout / inventory — why this place (photo spot etc.). */
   readonly reasonKo?: string | null;
   readonly thumbnailUrl?: string | null;
+  /** Extra photos when inventory provides a gallery. */
+  readonly images?: readonly string[] | null;
   readonly activitySubtype?: string | null;
 };
 

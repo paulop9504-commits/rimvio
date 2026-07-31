@@ -55,6 +55,7 @@ export function mapRestaurantCandidatesToPlaceHits(input: {
       priceKrw: null,
       reasonKo: candidate.specialReasonKo?.trim() || null,
       thumbnailUrl: candidate.images[0] ?? null,
+      images: (candidate.images ?? []).filter(Boolean).slice(0, 8),
     };
   });
 }
