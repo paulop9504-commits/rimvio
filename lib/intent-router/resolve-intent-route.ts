@@ -165,7 +165,8 @@ export function resolveIntentRoute(input: {
 
   // HARD CREATE — explicit make/prep
   if (HARD_CREATE.test(text) || verb === "create" || verb === "prepare") {
-    if (tripShaped || domain === "travel") {
+    const isTravelCreate = tripShaped || domain === "travel";
+    if (isTravelCreate) {
       return {
         mode: "create",
         domain: domain === "general" ? "travel" : domain,
