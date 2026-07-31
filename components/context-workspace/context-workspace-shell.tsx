@@ -52,6 +52,8 @@ import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/work
 import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspace-close-name-sheet";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
 import { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
+import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
+import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
 import {
   subscribeRealityJump,
 } from "@/lib/globe/reality-jump";
