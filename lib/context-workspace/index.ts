@@ -60,9 +60,13 @@ export {
 } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 export type { TripDraftStop } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 
+export { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
+
 export {
   stampTripDraftOntoContext,
   resolveWorkspaceMapCenter,
+  resolveWorkspaceContextDestinationKo,
+  resolveWorkspaceMapCenterFromContext,
 } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 
 export {
@@ -99,6 +103,7 @@ export {
 
 export {
   forcePinnedVisible,
+  listCartWorkspaceNodes,
   listPinnedWorkspaceNodes,
   mergePreservePinnedNodes,
 } from "@/lib/context-workspace/merge-preserve-pinned";

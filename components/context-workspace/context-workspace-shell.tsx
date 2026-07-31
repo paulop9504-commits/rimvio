@@ -51,8 +51,10 @@ import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspace-close-name-sheet";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
-import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
-import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
+import { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
+import {
+  subscribeRealityJump,
+} from "@/lib/globe/reality-jump";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
@@ -61,7 +63,7 @@ import {
   isWorkspaceContextMediaPinId,
   projectWorkspaceContextMediaPins,
 } from "@/lib/context-workspace/project-workspace-context-media-pins";
-import { resolveWorkspaceMapCenter } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
+import { resolveWorkspaceMapCenterFromContext } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 import type { WorkspaceMapPin } from "@/lib/context-workspace/map/workspace-map-provider";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
@@ -201,12 +203,27 @@ export function ContextWorkspaceShell({
       setFocusedId(detail.nodeId);
       setPeekDismissedId(null);
     });
+    const unsubJump = subscribeRealityJump((detail) => {
+      if (detail.contextEventId !== contextEventId?.trim()) return;
+      const live = readContextWorkspace(detail.contextEventId);
+      if (!live) return;
+      const hit = resolveWorkspaceFocusNode(
+        live.nodes,
+        detail.placeId,
+        detail.title,
+      );
+      if (!hit) return;
+      setFocusedId(hit.id);
+      setPeekDismissedId(null);
+      setListOpen(false);
+    });
     return () => {
       unsubUpdate();
       unsubOpen();
       unsubExpand();
       unsubPrep();
       unsubBriefStep();
+      unsubJump();
     };
   }, [contextEventId, refresh]);
 
@@ -391,6 +408,25 @@ export function ContextWorkspaceShell({
   const tripDraftReady = Boolean(
     state?.nodes.some((n) => n.source === "trip_prep_draft"),
   );
+  const preferredMapCenter = useMemo(
+    () =>
+      resolveWorkspaceMapCenterFromContext({
+        realityDraftDestinationKo: state?.realityDraft?.destinationKo,
+        query: state?.query,
+        projectTitleKo,
+        eventPlace: lifeEvent?.place,
+        eventTitle: lifeEvent?.title,
+        metadata: lifeEvent?.metadata ?? null,
+      }),
+    [
+      state?.realityDraft?.destinationKo,
+      state?.query,
+      projectTitleKo,
+      lifeEvent?.place,
+      lifeEvent?.title,
+      lifeEvent?.metadata,
+    ],
+  );
   const concierge = useMemo(
     () =>
       buildWorkspaceConciergeStatus({
@@ -515,21 +551,31 @@ export function ContextWorkspaceShell({
 
 
   const onSelect = useCallback(
-    (nodeId: string) => {
+    (nodeId: string, titleHint?: string | null) => {
       const id = contextEventId?.trim();
       if (!id) {
         return;
       }
+      const live = readContextWorkspace(id);
+      const resolved =
+        live != null
+          ? resolveWorkspaceFocusNode(live.nodes, nodeId, titleHint)
+          : null;
+      const focusId = resolved?.id ?? nodeId;
+
       // Soft focus only — Preview opens; explicit 「선택」 confirms for prepare/commit.
-      setFocusedId(nodeId);
+      setFocusedId(focusId);
       setListOpen(false);
       setPeekDismissedId(null);
 
-      if (isWorkspaceContextMediaPinId(nodeId)) {
+      if (isWorkspaceContextMediaPinId(focusId)) {
         return;
       }
 
-      const node = readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId);
+      const node =
+        resolved ??
+        live?.nodes.find((n) => n.id === focusId) ??
+        null;
       if (node) {
         const why =
           node.summaryKo.trim() ||
@@ -722,15 +768,7 @@ export function ContextWorkspaceShell({
           onOpenField={onOpenField}
           routeLineCoords={routeLineCoords}
           contextEventId={eventId}
-          preferredCenter={
-            state?.realityDraft?.destinationKo
-              ? resolveWorkspaceMapCenter(state.realityDraft.destinationKo)
-              : visibleNodes[0]
-                ? { lat: visibleNodes[0].lat, lng: visibleNodes[0].lng }
-                : resolveWorkspaceMapCenter(
-                    state?.query.replace(/\s*여행.*$/u, "").trim() || "오사카",
-                  )
-          }
+          preferredCenter={preferredMapCenter}
         />
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed

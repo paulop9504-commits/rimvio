@@ -208,6 +208,41 @@ function venueCameraPins(
 /** Osaka Namba — safer trip fallback than Jeju when destination unknown. */
 const WORKSPACE_MAP_FALLBACK_CENTER: [number, number] = [135.5023, 34.6937];
 
+/** ~120km — lodging wrongly geocoded to Seoul must not steal Osaka camera. */
+const PREFERRED_CAMERA_MAX_KM = 120;
+
+function haversineKm(
+  a: { readonly lat: number; readonly lng: number },
+  b: { readonly lat: number; readonly lng: number },
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function venuePinsNearPreferred(
+  pins: readonly WorkspaceMapPin[],
+  preferred: { readonly lat: number; readonly lng: number } | null,
+  maxKm = PREFERRED_CAMERA_MAX_KM,
+): boolean {
+  if (!preferred) return true;
+  const venues = venueCameraPins(pins);
+  if (venues.length === 0) return false;
+  let near = 0;
+  for (const p of venues) {
+    if (haversineKm({ lat: p.lat, lng: p.lng }, preferred) <= maxKm) {
+      near += 1;
+    }
+  }
+  return near > 0 && near >= Math.ceil(venues.length / 2);
+}
+
 function pinsGeometryKey(pins: readonly WorkspaceMapPin[]): string {
   return pins
     .filter((n) => Number.isFinite(n.lat) && Number.isFinite(n.lng))
@@ -461,7 +496,16 @@ function MapLibreWorkspaceMap({
         return;
       }
       const liveBounds = pinBounds(venueCameraPins(pinsRef.current));
-      const center = liveBounds
+      const preferred =
+        preferredCenter &&
+        Number.isFinite(preferredCenter.lat) &&
+        Number.isFinite(preferredCenter.lng)
+          ? preferredCenter
+          : null;
+      const usePinCamera =
+        Boolean(liveBounds) &&
+        venuePinsNearPreferred(pinsRef.current, preferred);
+      const center = usePinCamera && liveBounds
         ? ([liveBounds.centerLng, liveBounds.centerLat] as [number, number])
         : fallbackCenter;
       const created = new maplibregl.Map({
@@ -495,7 +539,16 @@ function MapLibreWorkspaceMap({
         applyTossWorkspaceMapCanvas(live);
         syncGlobeVectorMapSize(live, containerRef.current!);
         const loadBounds = pinBounds(venueCameraPins(pinsRef.current));
-        if (loadBounds) {
+        const preferredOnLoad =
+          preferredCenter &&
+          Number.isFinite(preferredCenter.lat) &&
+          Number.isFinite(preferredCenter.lng)
+            ? preferredCenter
+            : null;
+        if (
+          loadBounds &&
+          venuePinsNearPreferred(pinsRef.current, preferredOnLoad)
+        ) {
           live.fitBounds(
             [
               [loadBounds.minLng, loadBounds.minLat],
@@ -642,7 +695,17 @@ function MapLibreWorkspaceMap({
       const geometryKey = pinsGeometryKey(venueCameraPins(visible));
       if (geometryKey && geometryKey !== lastGeometryKeyRef.current) {
         const nextBounds = pinBounds(venueCameraPins(visible));
-        if (nextBounds && visible.length > 0) {
+        const preferred =
+          preferredCenter &&
+          Number.isFinite(preferredCenter.lat) &&
+          Number.isFinite(preferredCenter.lng)
+            ? preferredCenter
+            : null;
+        if (
+          nextBounds &&
+          visible.length > 0 &&
+          venuePinsNearPreferred(visible, preferred)
+        ) {
           map.fitBounds(
             [
               [nextBounds.minLng, nextBounds.minLat],
@@ -655,6 +718,12 @@ function MapLibreWorkspaceMap({
             },
           );
           lastGeometryKeyRef.current = geometryKey;
+        } else if (preferred) {
+          map.jumpTo({
+            center: [preferred.lng, preferred.lat],
+            zoom: compact ? 12.2 : 13.6,
+          });
+          lastGeometryKeyRef.current = geometryKey;
         }
       }
     })();
@@ -662,7 +731,7 @@ function MapLibreWorkspaceMap({
     return () => {
       cancelled = true;
     };
-  }, [ready, pins, selectedId, compact]);
+  }, [ready, pins, selectedId, compact, preferredCenter]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -746,6 +815,31 @@ function MapLibreWorkspaceMap({
       });
     });
   }, [contextEventId, ready]);
+
+  // Click / draft chip / Reality Jump → camera follows the Entity pin.
+  useEffect(() => {
+    if (!ready || !selectedId) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const pin = pinsRef.current.find((p) => p.id === selectedId);
+    if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
+      return;
+    }
+    const center = map.getCenter();
+    const distKm = haversineKm(
+      { lat: center.lat, lng: center.lng },
+      { lat: pin.lat, lng: pin.lng },
+    );
+    if (distKm < 0.12 && map.getZoom() >= 14.2) {
+      return;
+    }
+    map.easeTo({
+      center: [pin.lng, pin.lat],
+      zoom: Math.max(map.getZoom(), compact ? 14.2 : 14.8),
+      duration: 620,
+      essential: true,
+    });
+  }, [ready, selectedId, compact]);
 
   // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
   const mediaTourSignature = useMemo(

@@ -79,7 +79,8 @@ function stopToNode(
     tags: [...stop.tags],
     visible: true,
     selected: stop.kind === "lodging",
-    bookmarked: stop.kind === "lodging",
+    /** Keep all draft Entities on map through lodging/eatery rescout. */
+    bookmarked: true,
     source: "trip_prep_draft",
     /** Spatial Reality Draft — Action-Ready, not Committed. */
     actionReadyState: "ready",

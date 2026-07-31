@@ -33,21 +33,29 @@ const DEST_ANCHORS: Readonly<
   제주: { lat: 33.4996, lng: 126.5312 },
   도쿄: { lat: 35.6812, lng: 139.7671 },
   東京: { lat: 35.6812, lng: 139.7671 },
+  후쿠오카: { lat: 33.5902, lng: 130.4017 },
   부산: { lat: 35.1796, lng: 129.0756 },
   서울: { lat: 37.5665, lng: 126.978 },
+  교토: { lat: 35.0116, lng: 135.7681 },
 };
+
+/** Travel Workspace default hub — never silent Seoul. */
+const DEFAULT_TRAVEL_ANCHOR = DEST_ANCHORS.오사카;
 
 export function resolveDestinationAnchor(destinationKo: string): {
   readonly lat: number;
   readonly lng: number;
 } {
   const key = destinationKo.trim().toLowerCase();
+  if (!key) {
+    return DEFAULT_TRAVEL_ANCHOR;
+  }
   for (const [name, anchor] of Object.entries(DEST_ANCHORS)) {
     if (key.includes(name.toLowerCase()) || destinationKo.includes(name)) {
       return anchor;
     }
   }
-  return { lat: 37.5665, lng: 126.978 };
+  return DEFAULT_TRAVEL_ANCHOR;
 }
 
 export function resolveTripDayCount(input: {

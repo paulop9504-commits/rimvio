@@ -10,6 +10,7 @@ import { recordScheduleUpdated } from "@/lib/workstream/append-workstream-event"
 import { syncContextGoalState } from "@/lib/workstream/context-goal-state";
 import { syncContextWorkState } from "@/lib/workstream/sync-context-work-state";
 import { resolveDestinationAnchor } from "@/lib/context-workspace/reality-draft/compile-trip-entity-slots";
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 
 function addDaysYmd(ymd: string, days: number): string {
   const ms = Date.parse(`${ymd}T12:00:00.000Z`);
@@ -166,4 +167,65 @@ export function resolveWorkspaceMapCenter(
   destinationKo: string | null | undefined,
 ): { lat: number; lng: number } {
   return resolveDestinationAnchor(destinationKo?.trim() || "오사카");
+}
+
+/**
+ * Prefer Context Event / Reality Draft destination over first pin coords.
+ * Wrong lodging geocode (e.g. Seoul) must not steal Osaka Workspace camera.
+ */
+export function resolveWorkspaceContextDestinationKo(input: {
+  readonly realityDraftDestinationKo?: string | null;
+  readonly query?: string | null;
+  readonly projectTitleKo?: string | null;
+  readonly eventPlace?: string | null;
+  readonly eventTitle?: string | null;
+  readonly metadata?: Record<string, unknown> | null;
+}): string {
+  const meta = input.metadata ?? {};
+  const candidates: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value === "string" && value.trim()) {
+      candidates.push(value.trim());
+    }
+  };
+  push(input.realityDraftDestinationKo);
+  push(meta.travelDestination);
+  push(meta.tripDestinationKo);
+  push(meta.globePlaceLabel);
+  push(input.eventPlace);
+  push(input.projectTitleKo);
+  push(input.eventTitle);
+  push(input.query);
+
+  for (const raw of candidates) {
+    if (raw === "여행지") continue;
+    const extracted = extractTravelDestination(raw);
+    if (extracted?.trim()) {
+      return extracted.trim();
+    }
+  }
+
+  for (const raw of candidates) {
+    const cleaned = raw
+      .replace(/\s*여행$/u, "")
+      .replace(/\s*숙소.*$/u, "")
+      .replace(/\s*호텔.*$/u, "")
+      .trim();
+    if (!cleaned || cleaned.length < 2) continue;
+    if (/^(?:숙소|호텔|맛집|일정|맥락|여행)$/u.test(cleaned)) continue;
+    return cleaned;
+  }
+
+  return "오사카";
+}
+
+export function resolveWorkspaceMapCenterFromContext(input: {
+  readonly realityDraftDestinationKo?: string | null;
+  readonly query?: string | null;
+  readonly projectTitleKo?: string | null;
+  readonly eventPlace?: string | null;
+  readonly eventTitle?: string | null;
+  readonly metadata?: Record<string, unknown> | null;
+}): { lat: number; lng: number } {
+  return resolveWorkspaceMapCenter(resolveWorkspaceContextDestinationKo(input));
 }
