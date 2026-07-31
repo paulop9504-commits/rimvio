@@ -10,15 +10,11 @@ import {
   isGooglePlacesConfigured,
 } from "@/lib/locate/google-places-config";
 import { isLiteApiConfigured } from "@/lib/globe/context-hub/providers/liteapi/liteapi-config";
-import {
-  RIMVIO_FUNCTION_MAX_DURATION_HOT,
-  RIMVIO_FUNCTION_REGION,
-} from "@/lib/server/rimvio-function-defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const preferredRegion = RIMVIO_FUNCTION_REGION;
-export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_HOT;
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 const DOMAINS = new Set(["lodging", "eatery", "poi", "amenity"]);
 

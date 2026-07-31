@@ -5,14 +5,10 @@ import {
   remapRimvioGlobeMapTilePng,
   shouldRemapRimvioGlobeMapTileStyle,
 } from "@/lib/globe/remap-rimvio-globe-map-tile-png";
-import {
-  RIMVIO_FUNCTION_MAX_DURATION_TILE,
-  RIMVIO_FUNCTION_REGION,
-} from "@/lib/server/rimvio-function-defaults";
 
 export const runtime = "nodejs";
-export const preferredRegion = RIMVIO_FUNCTION_REGION;
-export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_TILE;
+export const preferredRegion = "icn1";
+export const maxDuration = 15;
 
 function tileCacheHeaders(input: {
   readonly cacheHit: boolean;

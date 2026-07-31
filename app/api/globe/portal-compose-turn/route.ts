@@ -5,15 +5,11 @@ import {
   type PortalComposeRunTurnResult,
 } from "@/lib/portal/resolve-portal-compose-run-turn";
 import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types";
-import {
-  RIMVIO_FUNCTION_MAX_DURATION_HOT,
-  RIMVIO_FUNCTION_REGION,
-} from "@/lib/server/rimvio-function-defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const preferredRegion = RIMVIO_FUNCTION_REGION;
-export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_HOT;
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 type PortalComposeTurnBody = {
   graphId?: string;

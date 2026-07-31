@@ -6,14 +6,10 @@ import { isChatAxis } from "@/lib/action-chat/chat-three-axis";
 import { normalizeActiveChains } from "@/lib/containers/container-types";
 import { observeAndLogLiveTurn } from "@/lib/self-learning/observe-and-log-turn";
 import { parseVitalityMemoryWire } from "@/lib/action-chat/adaptive-behavior/ux-guards/vitality-state-decay";
-import {
-  RIMVIO_FUNCTION_MAX_DURATION_HOT,
-  RIMVIO_FUNCTION_REGION,
-} from "@/lib/server/rimvio-function-defaults";
 
 export const runtime = "nodejs";
-export const preferredRegion = RIMVIO_FUNCTION_REGION;
-export const maxDuration = RIMVIO_FUNCTION_MAX_DURATION_HOT;
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 /** §6 — Must call `orchestrateUserMessage` → `runOrchestratorPipeline` only (no `buildGoalSnapshot` here). */
 
