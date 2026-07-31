@@ -313,7 +313,7 @@ async function rescoutWorkspace(input: {
         placeName:
           state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
           state.query ||
-          null,
+          undefined,
       });
     const candidates = (tool.candidates ?? []).filter((c) => {
       const id = c.id ?? "";
