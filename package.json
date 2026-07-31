@@ -120,6 +120,7 @@
     "test:trip-workspace-draft": "npx tsx scripts/test-trip-workspace-draft.ts && npx tsx scripts/test-osaka-auto-commit-trip-draft.ts && npx tsx scripts/test-trip-inventory-burst.ts && npx tsx scripts/test-trip-draft-refine.ts",
     "test:trip-inventory-burst": "npx tsx scripts/test-trip-inventory-burst.ts",
     "test:trip-draft-refine": "npx tsx scripts/test-trip-draft-refine.ts",
+    "test:workspace-lodging-checkout-ensure": "npx tsx scripts/test-workspace-lodging-checkout-ensure.ts",
     "test:open-workspace-utterance": "npx tsx scripts/test-open-workspace-utterance.ts",
     "test:workspace-rescout-review": "npx tsx scripts/test-workspace-rescout-review.ts",
     "test:soft-next-work-after-act": "npx tsx scripts/test-soft-next-work-after-act.ts",

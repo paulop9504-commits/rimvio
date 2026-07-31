@@ -70,10 +70,53 @@ function formatReviewSummary(node: ContextWorkspaceNode): string {
 }
 
 function amenityChips(node: ContextWorkspaceNode): readonly string[] {
-  return node.tags
-    .filter((t) => !/photo_spot|lodging|eatery|poi|amenity/i.test(t))
-    .slice(0, 4)
-    .map((t) => t.replace(/_/g, " "));
+  const TAG_KO: Record<string, string> = {
+    reservable: "예약 가능",
+    lodging: "숙소",
+    stay: "숙박",
+    local_favorite: "현지 추천",
+    live_burst: "후보",
+    rain_safe: "실내·우천",
+    indoor: "실내",
+  };
+  const out: string[] = [];
+  if (node.kind === "lodging") {
+    out.push("숙소 · 동선 중심");
+  }
+  for (const raw of node.tags) {
+    const t = raw.trim();
+    if (!t) continue;
+    if (
+      /^(photo_spot|lodging|eatery|poi|amenity|day_\d+|part_|cluster_|source_|ws-)/iu.test(
+        t,
+      )
+    ) {
+      continue;
+    }
+    const label = TAG_KO[t] ?? (/^[a-z0-9_:-]+$/iu.test(t) ? null : t);
+    if (label && !out.includes(label)) out.push(label);
+    if (out.length >= 4) break;
+  }
+  if (node.kind === "lodging" && !out.some((x) => /예약/u.test(x))) {
+    out.push("예약 가능");
+  }
+  return out.slice(0, 4);
+}
+
+function lodgingWhyChosen(node: ContextWorkspaceNode): string {
+  const bits: string[] = [];
+  if (node.summaryKo.trim()) bits.push(node.summaryKo.trim());
+  if (node.amountLabel?.trim()) bits.push(node.amountLabel.trim());
+  if (node.rating != null && Number.isFinite(node.rating)) {
+    bits.push(`평점 ${node.rating.toFixed(1)}`);
+  }
+  if (typeof node.reviewCount === "number" && node.reviewCount > 0) {
+    bits.push(`후기 ${node.reviewCount.toLocaleString("ko-KR")}개`);
+  }
+  if (bits.length === 0) {
+    return `${domainLabelKo(node.kind)} 후보 · ${formatPrice(node)}`;
+  }
+  return bits.slice(0, 3).join(" · ");
 }
 
 function inferNearbyKind(
@@ -149,8 +192,10 @@ export function buildNodePreview(
 
   // No invented nearby chips — only live relationship edges.
   const why =
-    node.summaryKo.trim() ||
-    `${domainLabelKo(node.kind)} 후보 · ${formatPrice(node)}`;
+    node.kind === "lodging"
+      ? lodgingWhyChosen(node)
+      : node.summaryKo.trim() ||
+        `${domainLabelKo(node.kind)} 후보 · ${formatPrice(node)}`;
 
   const reviewSummary = formatReviewSummary(node);
 

@@ -82,8 +82,22 @@ export function resolveLodgingRoomCardStep(
   event: EventCandidate,
   placeId: string,
 ): LodgingRoomCardStep | null {
+  const needle = placeId.trim();
+  const strip = (id: string) => {
+    if (id.startsWith("liteapi:")) return id.slice("liteapi:".length);
+    if (id.startsWith("maps:")) return id.slice("maps:".length);
+    return id;
+  };
+  const match = (rowPlaceId: string) => {
+    const a = rowPlaceId.trim();
+    if (!a || !needle) return false;
+    if (a === needle) return true;
+    return strip(a) === strip(needle);
+  };
   const row = readLodgingInventoryRows(event).find(
-    (entry) => entry.placeId === placeId.trim(),
+    (entry) =>
+      match(entry.placeId) ||
+      (entry.liteapiHotelId != null && match(entry.liteapiHotelId)),
   );
   if (!row) {
     return null;

@@ -8,8 +8,10 @@
 import { commitRealityQueueClient } from "@/lib/reality-queue/commit-reality-queue-client";
 import { asQueueItem } from "@/lib/reality-queue/types";
 import { readWorkspacePlacePreparedOperation } from "@/lib/context-workspace/workspace-place-prepare-status";
+import { ensureLodgingInventoryForWorkspaceCheckout } from "@/lib/context-workspace/ensure-lodging-inventory-for-checkout";
 import { openLodgingHubCheckout } from "@/lib/globe/hub-checkout/open-lodging-hub-checkout-bridge";
 import { copy } from "@/lib/copy/human-ko";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 
 export type ApproveWorkspacePlaceCheckoutResult =
   | { readonly ok: true; readonly openedCheckout: boolean; readonly toastKo: string }
@@ -39,6 +41,23 @@ export async function approveWorkspacePlaceCheckout(input: {
     return { ok: false, reasonKo: copy.globe.workspacePayNeedsPrepare };
   }
 
+  const node =
+    readContextWorkspace(contextEventId)?.nodes.find(
+      (n) => n.id === input.nodeId || n.placeId === placeId || n.id === placeId,
+    ) ?? null;
+  const checkoutPlaceId =
+    ensureLodgingInventoryForWorkspaceCheckout({
+      contextEventId,
+      placeId,
+      node,
+    }) ?? placeId;
+
+  const tryOpenCheckout = () =>
+    openLodgingHubCheckout({
+      contextEventId,
+      placeId: checkoutPlaceId,
+    });
+
   const commit = await commitRealityQueueClient({
     items: [asQueueItem(op)],
     canCommit: true,
@@ -46,11 +65,7 @@ export async function approveWorkspacePlaceCheckout(input: {
   });
 
   if (!commit.ok) {
-    // Soft fallback — open Hub pay sheet if inventory already allows (still needs Pay tap).
-    const opened = openLodgingHubCheckout({
-      contextEventId,
-      placeId,
-    });
+    const opened = tryOpenCheckout();
     if (opened) {
       return {
         ok: true,
@@ -68,17 +83,19 @@ export async function approveWorkspacePlaceCheckout(input: {
     };
   }
 
-  // commitRealityQueueClient opens Hub on pending_payment; ensure overlay if missed.
-  const opened =
-    openLodgingHubCheckout({
-      contextEventId,
-      placeId,
-    }) === true;
+  const opened = tryOpenCheckout() === true;
+
+  if (!opened) {
+    return {
+      ok: false,
+      reasonKo: copy.globe.workspacePayCommitFailed,
+    };
+  }
 
   return {
     ok: true,
-    openedCheckout: opened || commit.preparedCommittedCount > 0,
-    toastKo: copy.globe.workspacePayApproved(
+    openedCheckout: true,
+    toastKo: copy.globe.workspacePayCheckoutOpened(
       input.titleKo?.trim() || placeId,
     ),
   };

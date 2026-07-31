@@ -328,18 +328,29 @@ export function ContextWorkspaceShell({
     return mapPins.find((p) => p.id === selectedId) ?? null;
   }, [mapPins, selectedId]);
 
-  // Open with captures → focus first media once so pin + embed autoplay together.
+  // Open with captures → focus first media once — but never steal lodging/eatery peek.
   useEffect(() => {
     if (!expanded) {
       didAutoMediaFocusRef.current = false;
       return;
     }
     if (didAutoMediaFocusRef.current) return;
+    const hasVenueWork = mapFocusNodes.some(
+      (n) =>
+        n.kind === "lodging" ||
+        n.kind === "eatery" ||
+        n.kind === "poi" ||
+        n.source === "trip_prep_draft",
+    );
+    if (hasVenueWork || mapFocusKind != null) {
+      didAutoMediaFocusRef.current = true;
+      return;
+    }
     const firstMedia = mapPins.find((p) => isWorkspaceContextMediaPinId(p.id));
     if (!firstMedia) return;
     didAutoMediaFocusRef.current = true;
     setFocusedId(firstMedia.id);
-  }, [expanded, contextEventId, mediaTick, mapPins]);
+  }, [expanded, contextEventId, mediaTick, mapPins, mapFocusNodes, mapFocusKind]);
 
   const selectedAwaitingField = useMemo(() => {
     const ctx = contextEventId?.trim() ?? "";
@@ -947,9 +958,9 @@ export function ContextWorkspaceShell({
               setPeekDismissedId(null);
             }}
             onClose={() => {
+              // Keep mapFocusKind so lodging candidates stay on the map after peek close.
               setPeekDismissedId(selectedNode.id);
               setFocusedId(null);
-              setMapFocusKind(null);
             }}
             onOpenCompare={() => setCompareOpen(true)}
             onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}

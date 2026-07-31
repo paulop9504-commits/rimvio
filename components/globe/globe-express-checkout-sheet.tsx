@@ -144,7 +144,7 @@ export function GlobeExpressCheckoutSheet({
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[86] flex items-end justify-center bg-black/35 px-0 pb-0 pt-8 backdrop-blur-[2px] sm:px-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="fixed inset-0 z-[10201] flex items-end justify-center bg-black/35 px-0 pb-0 pt-8 backdrop-blur-[2px] sm:px-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

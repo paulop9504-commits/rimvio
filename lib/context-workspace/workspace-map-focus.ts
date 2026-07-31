@@ -60,6 +60,7 @@ export function filterNodesForWorkspaceMapFocus(input: {
   const visible = input.nodes.filter((n) => n.visible);
   if (input.focusKind == null) {
     // Itinerary + user pins only — scout candidates stay off until slot enter.
+    // Peek close keeps mapFocusKind so candidates remain; do not flood overview.
     return visible.filter(
       (n) =>
         n.source === "trip_prep_draft" ||
