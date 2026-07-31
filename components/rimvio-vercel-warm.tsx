@@ -40,12 +40,13 @@ export function RimvioVercelWarm() {
         });
     };
 
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(run, { timeout: 2500 });
-      return () => window.cancelIdleCallback(id);
+    const ric = window.requestIdleCallback?.bind(window);
+    if (typeof ric === "function") {
+      const id = ric(run, { timeout: 2500 });
+      return () => window.cancelIdleCallback?.(id);
     }
-    const t = window.setTimeout(run, 800);
-    return () => window.clearTimeout(t);
+    const t = globalThis.setTimeout(run, 800);
+    return () => globalThis.clearTimeout(t);
   }, []);
 
   return null;
