@@ -460,6 +460,7 @@
 body:has([data-capture-sheet]) [data-rimvio-bottom-nav-portal],
 body:has([data-opportunity-dashboard-sheet]) [data-rimvio-bottom-nav-portal],
 body:has([data-globe-chat-screen]) [data-rimvio-bottom-nav-portal],
+body:has([data-context-workspace-open]) [data-rimvio-bottom-nav-portal],
 body[data-rimvio-field-sheet-open] [data-rimvio-bottom-nav-portal] {
   visibility: hidden;
   pointer-events: none;

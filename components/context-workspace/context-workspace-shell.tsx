@@ -654,14 +654,64 @@ export function ContextWorkspaceShell({
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute inset-0 z-[46] bg-[#f7f8fa]",
+        "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#f7f8fa]",
         className,
       )}
       role="dialog"
       aria-label={copy.globe.workspaceOpenTitle}
+      aria-modal="true"
       data-context-workspace-open
     >
-      <div className="absolute inset-0">
+      {/* Top chrome — one row, no mid-map float stack */}
+      <header className="relative z-[2] flex shrink-0 items-center gap-2 border-b border-black/[0.04] bg-white/95 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
+        <button
+          type="button"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[#191f28]"
+          onClick={onClose}
+          aria-label={copy.globe.workspaceCollapse}
+        >
+          <X className="h-4 w-4" strokeWidth={2.25} />
+        </button>
+        <div className="min-w-0 flex-1 text-center">
+          <p className="truncate text-[13px] font-bold tracking-tight text-[#191f28]">
+            {title}
+          </p>
+          <p className="truncate text-[10px] tabular-nums text-[#8b95a1]">
+            {visibleNodes.length}곳 · {progress}%
+            {concierge.topWeatherKo
+              ? ` · ${concierge.topWeatherKo.replace(/^현재\s*/u, "")}`
+              : ""}
+            {concierge.congestionKo
+              ? ` · ${concierge.congestionKo.replace(/^전체\s*일정\s*/u, "")}`
+              : ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[#191f28]"
+          onClick={() => setListOpen((v) => !v)}
+          aria-label="목록"
+          aria-pressed={listOpen}
+        >
+          <List className="h-4 w-4" strokeWidth={2.25} />
+        </button>
+        <button
+          type="button"
+          className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-2 text-[10px] font-bold text-white disabled:opacity-40"
+          onClick={() => setCommitPreviewOpen(true)}
+          disabled={
+            visibleNodes.length === 0 ||
+            (state.selectedIds.length === 0 &&
+              !visibleNodes.some((n) => n.selected))
+          }
+          data-workspace-commit
+        >
+          {copy.globe.workspaceCommitCta}
+        </button>
+      </header>
+
+      {/* Map — sole visual plane */}
+      <div className="relative min-h-0 flex-1">
         <WorkspaceMapView
           pins={mapPins}
           selectedId={selectedId}
@@ -689,299 +739,71 @@ export function ContextWorkspaceShell({
             onClose={() => setFocusedId(null)}
           />
         ) : null}
-      </div>
 
-      {(showSoftRainChip || showSoftQuietChip || showSoftRouteChip) ? (
-        <div className="pointer-events-none absolute inset-x-0 top-[5.5rem] z-[2] flex flex-col items-center gap-1.5 px-3">
-          {showSoftRainChip ? (
-            <div className="pointer-events-auto flex max-w-[min(94vw,380px)] items-start gap-2 rounded-[20px] bg-white/98 px-3.5 py-2.5 shadow-[0_12px_32px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.05]">
-              <span className="mt-0.5 text-[16px] leading-none" aria-hidden>
-                🌧️
-              </span>
-              <p className="min-w-0 flex-1 text-[12px] font-bold leading-snug tracking-tight text-[#191f28]">
-                {concierge.opportunityTitleKo ??
-                  copy.globe.workspaceMapSoftRainHint}
+        {listOpen ? (
+          <div className="pointer-events-auto absolute inset-x-3 top-3 z-[2] max-h-[min(48%,360px)] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
+            <div className="flex items-center justify-between border-b border-black/[0.04] px-3 py-2">
+              <p className="text-[12px] font-bold text-[#191f28]">
+                {visibleNodes.length}개의 {kindLabel}
               </p>
               <button
                 type="button"
-                className="shrink-0 rounded-full bg-[#3182f6] px-3 py-1.5 text-[11px] font-extrabold text-white shadow-[0_4px_12px_rgba(49,130,246,0.35)]"
-                data-workspace-soft-rain-apply
-                onClick={() => {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "simulate",
-                    simulateScenarioKo: "비 오면 실내",
-                  });
-                  setSoftRainDismissed(true);
-                  toast.success(copy.globe.workspaceMapSoftRainApply);
-                }}
+                className="text-[11px] font-semibold text-[#8b95a1]"
+                onClick={() => setListOpen(false)}
               >
-                ⚡ {copy.globe.workspaceMapSoftRainApply}
-              </button>
-              <button
-                type="button"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
-                aria-label="닫기"
-                onClick={() => setSoftRainDismissed(true)}
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                닫기
               </button>
             </div>
-          ) : null}
-          {showSoftQuietChip ? (
-            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
-              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
-                {copy.globe.workspaceMapSoftQuietHint}
-              </p>
-              <button
-                type="button"
-                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
-                data-workspace-soft-quiet-apply
-                onClick={() => {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "simulate",
-                    simulateScenarioKo: "덜 붐비는 동선",
-                  });
-                  setSoftQuietDismissed(true);
-                  toast.success(copy.globe.workspaceMapSoftQuietApply);
-                }}
-              >
-                {copy.globe.workspaceMapSoftQuietApply}
-              </button>
-              <button
-                type="button"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
-                aria-label="닫기"
-                onClick={() => setSoftQuietDismissed(true)}
-              >
-                <X className="h-3 w-3" strokeWidth={2.5} />
-              </button>
-            </div>
-          ) : null}
-          {showSoftRouteChip && !showSoftRainChip ? (
-            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-1.5 rounded-2xl bg-white/96 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
-              <p className="min-w-0 flex-1 text-[11px] font-semibold leading-snug text-[#191f28]">
-                {copy.globe.workspaceMapSoftRouteHint}
-              </p>
-              <button
-                type="button"
-                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
-                data-workspace-soft-route-apply
-                onClick={() => {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "optimize_route",
-                  });
-                  setSoftRouteDismissed(true);
-                  toast.success(copy.globe.workspaceToolOptimizeRoute);
-                }}
-              >
-                {copy.globe.workspaceMapSoftRouteApply}
-              </button>
-              <button
-                type="button"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
-                aria-label="닫기"
-                onClick={() => setSoftRouteDismissed(true)}
-              >
-                <X className="h-3 w-3" strokeWidth={2.5} />
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-1.5 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-start justify-between gap-2">
-          <button
-            type="button"
-            className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
-            onClick={onClose}
-            aria-label={copy.globe.workspaceCollapse}
-          >
-            <X className="h-4 w-4" strokeWidth={2.25} />
-          </button>
-          <div className="pointer-events-auto min-w-0 max-w-[58%] space-y-1">
-            <div className="rounded-full bg-white/95 px-3 py-1 shadow-[0_2px_12px_rgba(25,31,40,0.1)]">
-              <p className="truncate text-center text-[11px] font-bold tracking-tight text-[#191f28]">
-                {title}
-              </p>
-              <p className="text-center text-[9px] tabular-nums text-[#8b95a1]">
-                {visibleNodes.length}곳 · {progress}%
-              </p>
-            </div>
-            {(concierge.congestionKo || concierge.topWeatherKo) && (
-              <div className="flex flex-wrap items-center justify-center gap-1">
-                {concierge.congestionKo ? (
-                  <span className="rounded-full bg-[#191f28]/88 px-2 py-0.5 text-[9px] font-semibold text-white shadow-sm">
-                    {concierge.congestionKo}
-                  </span>
-                ) : null}
-                {concierge.topWeatherKo ? (
-                  <span className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-semibold text-[#4e5968] shadow-sm ring-1 ring-black/[0.04]">
-                    {concierge.topWeatherKo}
-                  </span>
-                ) : null}
-              </div>
-            )}
-          </div>
-          <div className="pointer-events-auto flex flex-col items-end gap-1.5">
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#191f28] shadow-[0_2px_12px_rgba(25,31,40,0.12)]"
-              onClick={() => setListOpen((v) => !v)}
-              aria-label="목록"
-              aria-pressed={listOpen}
-            >
-              <List className="h-4 w-4" strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-[#3182f6] px-2.5 py-1.5 text-[10px] font-bold text-white shadow-[0_2px_12px_rgba(49,130,246,0.35)] disabled:opacity-40"
-              onClick={() => setCommitPreviewOpen(true)}
-              disabled={
-                visibleNodes.length === 0 ||
-                (state.selectedIds.length === 0 &&
-                  !visibleNodes.some((n) => n.selected))
-              }
-              data-workspace-commit
-              title={
-                state.selectedIds.length === 0 &&
-                !visibleNodes.some((n) => n.selected)
-                  ? copy.globe.workspacePreviewSelectFirstHint
-                  : undefined
-              }
-            >
-              {copy.globe.workspaceCommitCta}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {listOpen ? (
-        <div className="pointer-events-auto absolute inset-x-3 top-[5.25rem] z-[3] max-h-[42%] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
-          <div className="flex items-center justify-between border-b border-black/[0.04] px-3 py-2">
-            <p className="text-[12px] font-bold text-[#191f28]">
-              {visibleNodes.length}개의 {kindLabel}
-            </p>
-            <button
-              type="button"
-              className="text-[11px] font-semibold text-[#8b95a1]"
-              onClick={() => setListOpen(false)}
-            >
-              닫기
-            </button>
-          </div>
-          <div className="max-h-[min(40vh,300px)] space-y-0.5 overflow-y-auto p-1.5">
-            {visibleNodes.map((node, index) => (
-              <button
-                key={node.id}
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left",
-                  selectedId === node.id ? "bg-[#e8f3ff]" : "hover:bg-[#f9fafb]",
-                )}
-                onClick={() => onSelect(node.id)}
-              >
-                <span
+            <div className="max-h-[min(40vh,300px)] space-y-0.5 overflow-y-auto p-1.5">
+              {visibleNodes.map((node, index) => (
+                <button
+                  key={node.id}
+                  type="button"
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                    "flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left",
                     selectedId === node.id
-                      ? "bg-[#3182f6] text-white"
-                      : "bg-[#f2f4f6] text-[#191f28]",
+                      ? "bg-[#e8f3ff]"
+                      : "hover:bg-[#f9fafb]",
                   )}
+                  onClick={() => {
+                    onSelect(node.id);
+                    setListOpen(false);
+                  }}
                 >
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-bold text-[#191f28]">
-                    {node.bookmarked ? "📌 " : ""}
-                    {node.title}
-                  </span>
-                  <span className="block text-[10px] text-[#8b95a1]">
-                    ★ {formatRating(node.rating)} · {formatPrice(node)}
-                  </span>
-                </span>
-                {selectedId === node.id ? (
-                  <button
-                    type="button"
+                  <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold",
-                      node.bookmarked
-                        ? "bg-[#191f28] text-white"
-                        : "bg-[#3182f6] text-white",
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                      selectedId === node.id
+                        ? "bg-[#3182f6] text-white"
+                        : "bg-[#f2f4f6] text-[#191f28]",
                     )}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      applyWorkspaceTransition({
-                        contextEventId: eventId,
-                        op: "bookmark",
-                        nodeIds: [node.id],
-                        pin: !node.bookmarked,
-                      });
-                      if (!node.bookmarked) {
-                        toast.success(copy.globe.workspacePinToast(node.title));
-                      }
-                    }}
                   >
-                    {node.bookmarked
-                      ? copy.globe.workspacePinDone
-                      : copy.globe.workspacePinCta}
-                  </button>
-                ) : null}
-              </button>
-            ))}
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-bold text-[#191f28]">
+                      {node.bookmarked ? "📌 " : ""}
+                      {node.title}
+                    </span>
+                    <span className="block truncate text-[10px] text-[#8b95a1]">
+                      ★ {formatRating(node.rating)} · {formatPrice(node)}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
-      {/* Bottom: peek · chat · slim tools · prompt (pin lives on map markers) */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[3] flex flex-col gap-1.5 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-20">
-        {tripDraftReady || visibleNodes.some((n) => n.kind === "lodging") ? (
-          <div className="pointer-events-auto mx-auto flex max-w-xl gap-1.5">
-            <button
-              type="button"
-              className="rounded-full bg-white/96 px-3 py-1.5 text-[11px] font-bold text-[#191f28] shadow-[0_4px_16px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]"
-              onClick={() => {
-                const lodging =
-                  visibleNodes.find((n) => n.kind === "lodging" && n.selected) ??
-                  visibleNodes.find((n) => n.kind === "lodging");
-                if (lodging) onPrepareReserve(lodging.id);
-                else toast.message(copy.globe.workspacePreviewSelectFirstHint);
-              }}
-            >
-              {copy.globe.workspaceMapCapabilityHotel}
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-white/96 px-3 py-1.5 text-[11px] font-bold text-[#191f28] shadow-[0_4px_16px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]"
-              onClick={() => {
-                const poi =
-                  visibleNodes.find((n) => n.tags.includes("rain_safe")) ??
-                  visibleNodes.find((n) => n.kind === "poi");
-                if (poi) {
-                  onSelect(poi.id);
-                  toast.message(copy.globe.workspaceMapCapabilityTicketHint);
-                }
-              }}
-            >
-              {copy.globe.workspaceMapCapabilityTicket}
-            </button>
-          </div>
-        ) : null}
-        {concierge.bottomLiveKo || visibleNodes.length > 0 ? (
-          <div className="pointer-events-none mx-auto max-w-[min(92vw,340px)] rounded-full bg-[#191f28]/88 px-3 py-1 text-center shadow-[0_4px_16px_rgba(25,31,40,0.2)]">
-            <p className="truncate text-[10px] font-semibold tracking-tight text-white">
-              {concierge.bottomLiveKo ?? copy.globe.workspaceMapLiveFallback}
-            </p>
-          </div>
-        ) : null}
+      {/* Bottom chrome — reserved column: peek OR soft hint, then dock. No overlap. */}
+      <div className="relative z-[3] flex max-h-[min(58vh,520px)] shrink-0 flex-col gap-2 border-t border-black/[0.04] bg-white/98 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md">
         {showPeek && selectedNode && !compareOpen ? (
           <WorkspaceNodePeek
             contextEventId={eventId}
             node={selectedNode}
             workspace={state}
+            className="max-h-[min(28vh,240px)] overflow-y-auto"
             onClose={() => setPeekDismissedId(selectedNode.id)}
             onOpenCompare={() => setCompareOpen(true)}
             onPrepareReserve={() => onPrepareReserve(selectedNode.id)}
@@ -997,60 +819,66 @@ export function ContextWorkspaceShell({
               toast.success(copy.globe.workspacePreviewRecenter);
             }}
           />
-        ) : null}
-
-        <div className="pointer-events-auto mx-auto flex max-w-xl gap-1 overflow-x-auto">
-          {(
-            [
-              {
-                label: copy.globe.workspaceToolCompare,
-                run: () => {
-                  const ids =
-                    state.compareIds.length >= 2
-                      ? state.compareIds
-                      : state.selectedIds.length >= 2
-                        ? state.selectedIds
-                        : focusedId
-                          ? [focusedId, ...visibleNodes.map((n) => n.id).filter((id) => id !== focusedId)].slice(0, 2)
-                          : visibleNodes.slice(0, 2).map((n) => n.id);
+        ) : showSoftRainChip || showSoftQuietChip || showSoftRouteChip ? (
+          <div className="flex items-center gap-2 rounded-2xl bg-[#f2f4f6] px-3 py-2">
+            <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#191f28]">
+              {showSoftRainChip
+                ? (concierge.opportunityTitleKo ??
+                  copy.globe.workspaceMapSoftRainHint)
+                : showSoftQuietChip
+                  ? copy.globe.workspaceMapSoftQuietHint
+                  : copy.globe.workspaceMapSoftRouteHint}
+            </p>
+            <button
+              type="button"
+              className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+              onClick={() => {
+                if (showSoftRainChip) {
                   applyWorkspaceTransition({
                     contextEventId: eventId,
-                    op: "compare",
-                    nodeIds: ids,
+                    op: "simulate",
+                    simulateScenarioKo: "비 오면 실내",
                   });
-                  if (ids.length >= 2) setCompareOpen(true);
-                },
-              },
-              {
-                label: copy.globe.workspaceToolOptimizeRoute,
-                run: () =>
+                  setSoftRainDismissed(true);
+                  toast.success(copy.globe.workspaceMapSoftRainApply);
+                } else if (showSoftQuietChip) {
+                  applyWorkspaceTransition({
+                    contextEventId: eventId,
+                    op: "simulate",
+                    simulateScenarioKo: "덜 붐비는 동선",
+                  });
+                  setSoftQuietDismissed(true);
+                  toast.success(copy.globe.workspaceMapSoftQuietApply);
+                } else {
                   applyWorkspaceTransition({
                     contextEventId: eventId,
                     op: "optimize_route",
-                  }),
-              },
-            ] as const
-          ).map((tool) => (
-            <button
-              key={tool.label}
-              type="button"
-              className="shrink-0 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#191f28] shadow-[0_2px_8px_rgba(25,31,40,0.08)]"
-              onClick={tool.run}
+                  });
+                  setSoftRouteDismissed(true);
+                  toast.success(copy.globe.workspaceToolOptimizeRoute);
+                }
+              }}
             >
-              {tool.label}
+              {copy.globe.workspaceMapSoftQuietApply}
             </button>
-          ))}
-          <button
-            type="button"
-            className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-medium text-[#8b95a1]"
-            onClick={onDiscard}
-          >
-            닫기
-          </button>
-        </div>
+            <button
+              type="button"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1]"
+              aria-label="닫기"
+              onClick={() => {
+                setSoftRainDismissed(true);
+                setSoftQuietDismissed(true);
+                setSoftRouteDismissed(true);
+              }}
+            >
+              <X className="h-3 w-3" strokeWidth={2.5} />
+            </button>
+          </div>
+        ) : null}
 
         <WorkspaceCursorDock
           contextEventId={eventId}
+          compact={showPeek}
           onFocusNode={onSelect}
           onBriefReplay={() => {
             setListOpen(false);

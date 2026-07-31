@@ -211,7 +211,7 @@ export function WorkspaceNodePeek({
   awaitingField = false,
   className,
 }: WorkspaceNodePeekProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const preview = useMemo(
     () => buildNodePreview(node, workspace),
@@ -347,7 +347,7 @@ export function WorkspaceNodePeek({
                 </span>
               ) : null}
             </div>
-            <p className="mt-1.5 truncate text-[16px] font-semibold tracking-[-0.02em] text-[#191f28]">
+            <p className="mt-1.5 line-clamp-2 text-[16px] font-semibold tracking-[-0.02em] text-[#191f28]">
               {preview.title}
             </p>
             <p className="mt-1 text-[12px] leading-snug text-[#8b95a1]">

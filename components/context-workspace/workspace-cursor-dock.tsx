@@ -57,6 +57,8 @@ import { cn } from "@/lib/utils";
 
 export type WorkspaceCursorDockProps = {
   contextEventId: string;
+  /** Peek open — collapse transcript so nothing clips. */
+  compact?: boolean;
   onFocusNode?: (nodeId: string) => void;
   onBriefReplay?: () => void;
   briefReplayGroundIndex?: number | null;
@@ -117,16 +119,18 @@ function AssistantBubble(props: {
         </div>
       ) : null}
       {turn.objects && turn.objects.length > 0 ? (
-        <div className="flex gap-1.5 overflow-x-auto">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
           {turn.objects.slice(0, 4).map((card) => (
             <button
               key={card.nodeId}
               type="button"
-              className="min-w-[6.5rem] shrink-0 rounded-xl bg-white px-2 py-1.5 text-left ring-1 ring-black/[0.04]"
+              className="min-w-[8.75rem] max-w-[10rem] shrink-0 rounded-xl bg-white px-2.5 py-1.5 text-left ring-1 ring-black/[0.04]"
               onClick={() => props.onFocusNode?.(card.nodeId)}
             >
-              <p className="truncate text-[11px] font-semibold">{card.title}</p>
-              <p className="truncate text-[9px] text-[#8b95a1]">
+              <p className="line-clamp-2 text-[11px] font-semibold leading-snug">
+                {card.title}
+              </p>
+              <p className="mt-0.5 truncate text-[9px] text-[#8b95a1]">
                 {card.subtitleKo}
               </p>
             </button>
@@ -139,6 +143,7 @@ function AssistantBubble(props: {
 
 export function WorkspaceCursorDock({
   contextEventId,
+  compact = false,
   onFocusNode,
   onBriefReplay,
   briefReplayGroundIndex = null,
@@ -148,12 +153,21 @@ export function WorkspaceCursorDock({
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentExpanded, setAgentExpanded] = useState(false);
-  const [transcriptOpen, setTranscriptOpen] = useState(true);
+  const [transcriptOpen, setTranscriptOpen] = useState(!compact);
   const [turns, setTurns] = useState<readonly WorkspaceChatTurn[]>([]);
   const [agent, setAgent] = useState<AgentExecutionState | null>(null);
+  const autoContinueRef = useRef<string | null>(null);
+  const autoContinueCountRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
   const eventId = contextEventId.trim();
+
+  useEffect(() => {
+    if (compact) {
+      setTranscriptOpen(false);
+      setAgentExpanded(false);
+    }
+  }, [compact]);
 
   useEffect(() => {
     if (!eventId) return;
@@ -324,15 +338,35 @@ export function WorkspaceCursorDock({
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
 
+  // Cursor-like: auto-run next soft step once — no tap wall.
+  useEffect(() => {
+    if (!eventId || busy || !nextLabel) return;
+    if (autoContinueCountRef.current >= 1) return;
+    const key = `${eventId}:${nextLabel}`;
+    if (autoContinueRef.current === key) return;
+    autoContinueRef.current = key;
+    autoContinueCountRef.current += 1;
+    const timer = window.setTimeout(() => {
+      void runTurn("계속해");
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [busy, eventId, nextLabel, runTurn]);
+
+  useEffect(() => {
+    autoContinueCountRef.current = 0;
+    autoContinueRef.current = null;
+  }, [eventId]);
+
   return (
     <div
       className={cn(
-        "pointer-events-auto mx-auto w-full max-w-[min(96vw,400px)]",
+        "pointer-events-auto mx-auto w-full max-w-[min(96vw,400px)] shrink-0",
         className,
       )}
       data-workspace-cursor-dock
+      data-compact={compact ? "true" : "false"}
     >
-      <div className="overflow-hidden rounded-[20px] bg-white/96 shadow-[0_12px_36px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.06] backdrop-blur-md">
+      <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_8px_28px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.06]">
         <button
           type="button"
           className="flex w-full items-center gap-2 border-b border-black/[0.04] px-3 py-2 text-left"
@@ -379,30 +413,32 @@ export function WorkspaceCursorDock({
           </div>
         ) : null}
 
-        <div className="flex items-center justify-between px-3 pt-2">
-          <p className="text-[11px] font-semibold text-[#191f28]">
-            {copy.globe.workspaceChatTitle}
-          </p>
-          <button
-            type="button"
-            className="text-[10px] font-medium text-[#8b95a1]"
-            onClick={() => setTranscriptOpen((v) => !v)}
-          >
-            {transcriptOpen ? "접기" : `대화 ${turns.length}`}
-          </button>
-        </div>
+        {!compact ? (
+          <div className="flex items-center justify-between px-3 pt-2">
+            <p className="text-[11px] font-semibold text-[#191f28]">
+              {copy.globe.workspaceChatTitle}
+            </p>
+            <button
+              type="button"
+              className="text-[10px] font-medium text-[#8b95a1]"
+              onClick={() => setTranscriptOpen((v) => !v)}
+            >
+              {transcriptOpen ? "접기" : `대화 ${turns.length}`}
+            </button>
+          </div>
+        ) : null}
 
-        {transcriptOpen ? (
+        {transcriptOpen && !compact ? (
           <div
             ref={scrollerRef}
-            className="max-h-[min(26vh,200px)] space-y-2 overflow-y-auto px-3 py-2"
+            className="max-h-[min(22vh,168px)] space-y-2 overflow-y-auto px-3 py-2"
           >
             {turns.length === 0 ? (
               <p className="py-3 text-center text-[11px] text-[#8b95a1]">
                 {copy.globe.workspaceChatEmptyBody}
               </p>
             ) : (
-              turns.slice(-10).map((turn) => (
+              turns.slice(-8).map((turn) => (
                 <div
                   key={turn.id}
                   className={cn(
@@ -431,16 +467,13 @@ export function WorkspaceCursorDock({
         ) : null}
 
         <div className="space-y-1.5 border-t border-black/[0.04] px-2.5 py-2">
-          {nextLabel ? (
-            <button
-              type="button"
-              disabled={busy}
-              className="w-full rounded-xl bg-[#3182f6] px-3 py-2 text-[12px] font-extrabold text-white shadow-[0_4px_14px_rgba(49,130,246,0.3)] disabled:opacity-50"
-              onClick={() => void runTurn("계속해")}
-            >
-              {copy.globe.workspaceWorkContinue}
-              <span className="ml-1 font-semibold opacity-90">· {nextLabel}</span>
-            </button>
+          {nextLabel && busy ? (
+            <p className="px-1 text-center text-[11px] font-semibold text-[#3182f6]">
+              {copy.globe.workspaceAgentAutoSetting}
+              <span className="ml-1 font-medium text-[#8b95a1]">
+                · {nextLabel}
+              </span>
+            </p>
           ) : null}
           <form
             className="flex items-center gap-1.5 rounded-[18px] bg-[#f7f8fa] px-2.5 py-1 ring-1 ring-black/[0.04]"
