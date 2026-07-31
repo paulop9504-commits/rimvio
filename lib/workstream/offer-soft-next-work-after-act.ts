@@ -20,6 +20,9 @@ const SOFT_AUTO_PRIORITY = [
 ] as const;
 
 const lastEnqueueByContext = new Map<string, string>();
+/** Cap soft auto-runs per context — prevents lodging↔food↔route infinite scout. */
+const softAutoRunCount = new Map<string, number>();
+const MAX_SOFT_AUTO_RUNS = 1;
 
 export type SoftNextWorkOffer = {
   readonly continued: boolean;
@@ -152,7 +155,12 @@ export function offerSoftNextWorkAfterAct(input: {
   const progressKo = `이어서 「${action.labelKo}」`;
   const replyKo = `${progressKo}를 진행할게요.`;
 
-  if (input.autoRun !== false && typeof window !== "undefined") {
+  const priorAutos = softAutoRunCount.get(contextEventId) ?? 0;
+  const allowAuto =
+    input.autoRun !== false && priorAutos < MAX_SOFT_AUTO_RUNS;
+
+  if (allowAuto && typeof window !== "undefined") {
+    softAutoRunCount.set(contextEventId, priorAutos + 1);
     const delayMs =
       typeof input.delayMs === "number" && Number.isFinite(input.delayMs)
         ? Math.max(0, Math.round(input.delayMs))
@@ -183,7 +191,9 @@ export function clearSoftNextWorkContinueMemory(
   const id = contextEventId?.trim();
   if (!id) {
     lastEnqueueByContext.clear();
+    softAutoRunCount.clear();
     return;
   }
   lastEnqueueByContext.delete(id);
+  softAutoRunCount.delete(id);
 }

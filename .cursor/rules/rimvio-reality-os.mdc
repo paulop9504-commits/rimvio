@@ -1,0 +1,33 @@
+---
+description: Reality OS 4-layer lock — Globe → Context → Workspace → Entity
+alwaysApply: true
+---
+
+# Reality OS layers (locked)
+
+**Canonical:** `docs/RIMVIO_REALITY_OS.md` · ADR-022
+
+```
+Globe (macro) → Context → Workspace (micro) → Reality Entity
+Chat = work log only · Globe ≠ Workspace
+```
+
+| Layer | Owns | Never |
+|-------|------|-------|
+| **Globe** | Capsule · Forest after Commit | Lodging/eatery **search pins** before Commit · live street editor |
+| **Context** | Project identity · Resume | Folder/file L1 nouns |
+| **Workspace** | Entity edit · Peek · Prepare · Approve · Pay | Bridge first-paint · photo-wall · chat essay SSOT |
+| **Entity** | Media slot · capability CTAs | Per-domain Detail apps |
+
+## PR reject
+
+- Capsule resume → PinOpenSheet / Bridge instead of `resumeCapsuleWorkspace`
+- Search pins on 3D before Reality Commit
+- Day essay / inventory dump as chat SSOT
+- L1 「폴더」「파일」📁 as product IA
+- Treating Globe as Workspace
+
+## Cursor analogy (L3 only)
+
+Repo map→Globe · File→Context · IDE→Workspace · Symbol→Entity · Git Commit→Reality Commit  
+**Never teach folder trees in UI copy.**

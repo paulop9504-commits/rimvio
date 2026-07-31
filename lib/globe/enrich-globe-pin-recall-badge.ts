@@ -6,6 +6,8 @@ import {
 } from "@/lib/globe/context-hub/summarize-context-recall";
 import { readHubActionLogFromEvent } from "@/lib/globe/resource/context-hub-action-log-metadata";
 import { readHubActionLog } from "@/lib/globe/resource/hub-action-record-store";
+import { readContextAnchorProgressPercent } from "@/lib/context-workspace/try-open-context-anchor-workspace";
+
 function shouldShowRecallBadge(pin: ClassifiedGlobePin): boolean {
   if (
     pin.pinShape === "cluster" ||
@@ -53,9 +55,18 @@ export function enrichGlobePinRecallBadges(
     const hubActionLog = readRecallHubActionLog(event);
     const recallBadgeLabel = formatContextRecallBadgeLabel(
       summarizeContextRecall(event, hubActionLog),
-    );    if (!recallBadgeLabel) {
+    );
+    // Context Anchor chrome: Workspace progress when no Day-2 recall count.
+    const progress =
+      recallBadgeLabel == null
+        ? readContextAnchorProgressPercent(eventId)
+        : null;
+    const badge =
+      recallBadgeLabel ??
+      (progress != null ? `${progress}%` : null);
+    if (!badge) {
       return pin;
     }
-    return { ...pin, recallBadgeLabel };
+    return { ...pin, recallBadgeLabel: badge };
   });
 }

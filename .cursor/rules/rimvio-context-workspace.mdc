@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Context Workspace (locked)
 
-**Canonical:** `docs/adr/022-context-workspace-first.md` · **Workstream:** `docs/adr/036-work-becomes-context.md` · **Commit densify:** `docs/adr/037-reality-commit-confirms-context.md` · **Work Manager:** `docs/adr/038-context-work-manager.md` · **Reality IDE:** `docs/adr/039-reality-ide-agent-execution-state.md`
+**Canonical:** `docs/RIMVIO_REALITY_OS.md` · `docs/adr/022-context-workspace-first.md` · **Workstream:** `docs/adr/036-work-becomes-context.md` · **Commit densify:** `docs/adr/037-reality-commit-confirms-context.md` · **Work Manager:** `docs/adr/038-context-work-manager.md` · **Reality IDE:** `docs/adr/039-reality-ide-agent-execution-state.md`
 
 ## One sentence
 

@@ -8,6 +8,16 @@ export type WorkspaceMapProviderId =
   | "apple_mapkit"
   | "placeholder";
 
+/** Context capture embedded on Workspace 2D map (not Globe 3D replay). */
+export type WorkspaceMapContextMedia = {
+  readonly kind: "photo" | "video";
+  readonly imageUrl?: string | null;
+  readonly mediaContextId?: string | null;
+  readonly allowLocalBlob?: boolean;
+  readonly recallCaption?: string | null;
+  readonly capturedAtIso?: string | null;
+};
+
 export type WorkspaceMapPin = {
   readonly id: string;
   readonly title: string;
@@ -28,6 +38,8 @@ export type WorkspaceMapPin = {
   readonly awaitingField?: boolean;
   /** Optional leg cue under selected pin (e.g. 13분 · 3.2km). */
   readonly legHintKo?: string | null;
+  /** User photo/video saved in this Context — MapLibre embed. */
+  readonly contextMedia?: WorkspaceMapContextMedia | null;
 };
 
 export type WorkspaceMapCamera = {

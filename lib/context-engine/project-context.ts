@@ -107,7 +107,7 @@ export function tryRunMoveContextCommand(input: {
     graph: lastGraph,
     assistantReplyKo:
       folders.length > 0
-        ? `${folder} 맥락으로 옮겼어요 · 폴더 ${folders.join(" · ")}`
+        ? `${folder} 맥락으로 옮겼어요 · ${folders.join(" · ")}`
         : `${folder} 맥락으로 옮겼어요`,
     reservedOpIds: [],
   };

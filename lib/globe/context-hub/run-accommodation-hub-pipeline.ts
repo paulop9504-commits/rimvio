@@ -21,15 +21,17 @@ import type { LodgingRecommendScoreWire } from "@/lib/globe/context-hub/lodging-
 import { mapLodgingRowToContextResource } from "@/lib/globe/context-hub/read-lodging-resource-inventory";
 import {
   dispatchGlobeLodgingDiscoverySession,
-  dispatchGlobeLodgingDiscoveryStart,
   dispatchGlobeLodgingDiscoverySummary,
-  runStagedLodgingPinReveal,
 } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
 import { computeLodgingDiscoveryBounds } from "@/lib/globe/lodging/compute-lodging-discovery-bounds";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
 import { writeLodgingRecommendReasons } from "@/lib/globe/lodging/lodging-recommendation-reason-store";
 import { projectLodgingDiscoverySession } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
+import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { lodgingInventoryRowsToPlaceHits } from "@/lib/context-workspace/lodging-inventory-to-place-hits";
+import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace-store";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { copy } from "@/lib/copy/human-ko";
 
 export type RunAccommodationHubPipelineInput = {
@@ -69,7 +71,7 @@ function eventSignalsAccommodation(event: EventCandidate, message: string): bool
   return event.metadata?.[EVENT_SERVICE_TYPE_META_KEY] === EVENT_SERVICE_TYPE_ACCOMMODATION;
 }
 
-/** Context Hub Rail — accommodation intent → inventory → pins → staged reveal. */
+/** Context Hub Rail — accommodation intent → inventory → Workspace (not 3D pins). */
 export async function runAccommodationHubPipeline(
   input: RunAccommodationHubPipelineInput,
 ): Promise<AccommodationHubPipelineOutcome | null> {
@@ -155,6 +157,7 @@ export async function runAccommodationHubPipeline(
   });
 
   writeLodgingRecommendReasons(eventId, scoreWire);
+  // Reality OS: clear any leftover Globe search pins; inventory → Workspace.
   syncAccommodationSearchPins({ contextEvent: event, rows: sortedRows });
 
   const session = projectLodgingDiscoverySession({
@@ -179,8 +182,21 @@ export async function runAccommodationHubPipeline(
   const summaryKo = copy.globe.lodgingDiscoverySummary(top.row.name, top.reasonKo, priceLine);
 
   dispatchGlobeLodgingDiscoverySession(session);
-  dispatchGlobeLodgingDiscoveryStart({ eventId, resourceIds });
-  runStagedLodgingPinReveal({ eventId, resourceIds });
+  // No staged 3D pin reveal — Workspace owns search inventory until Commit.
+  openLodgingContextWorkspace({
+    contextEventId: eventId,
+    query: message || event.place || "숙소",
+    summaryKo,
+    hits: lodgingInventoryRowsToPlaceHits(sortedRows),
+    source: "hotel_search",
+  });
+  writeContextWorkspaceExpanded(eventId, true);
+  if (typeof window !== "undefined") {
+    dispatchContextWorkspaceExpand({
+      contextEventId: eventId,
+      source: "hotel_search",
+    });
+  }
   dispatchGlobeLodgingDiscoverySummary({
     eventId,
     summaryKo,

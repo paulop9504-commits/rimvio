@@ -14,9 +14,7 @@ import { detectLodgingSearchIntent } from "@/lib/globe/lodging/detect-lodging-se
 import { GLOBE_DISCOVERY_FETCH_LIMIT } from "@/lib/globe/discovery/globe-discovery-feed";
 import {
   dispatchGlobeLodgingDiscoverySession,
-  dispatchGlobeLodgingDiscoveryStart,
   dispatchGlobeLodgingDiscoverySummary,
-  runStagedLodgingPinReveal,
 } from "@/lib/globe/lodging/globe-lodging-discovery-bridge";
 import { dispatchGlobeEateryDiscoveryClose } from "@/lib/globe/eatery/globe-eatery-discovery-bridge";
 import { LODGING_DISCOVERY_RADIUS_M } from "@/lib/globe/lodging/lodging-discovery-constants";
@@ -27,6 +25,10 @@ import {
 } from "@/lib/globe/lodging/project-lodging-discovery-session";
 import { scoreLodgingRecommendations } from "@/lib/globe/lodging/score-lodging-recommendations";
 import { resolveContextLodgingSearchCoords } from "@/lib/globe/context-hub/resolve-context-lodging-search-coords";
+import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { lodgingInventoryRowsToPlaceHits } from "@/lib/context-workspace/lodging-inventory-to-place-hits";
+import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace-store";
+import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { copy } from "@/lib/copy/human-ko";
 
 export type RunGlobeLodgingDiscoveryInput = {
@@ -181,8 +183,21 @@ export async function runGlobeLodgingDiscovery(
 
   dispatchGlobeEateryDiscoveryClose();
   dispatchGlobeLodgingDiscoverySession(session);
-  dispatchGlobeLodgingDiscoveryStart({ eventId, resourceIds });
-  runStagedLodgingPinReveal({ eventId, resourceIds });
+  // Reality OS: no 3D staged pin reveal — open Workspace with inventory.
+  openLodgingContextWorkspace({
+    contextEventId: eventId,
+    query: input.message?.trim() || "숙소",
+    summaryKo,
+    hits: lodgingInventoryRowsToPlaceHits(sortedRows),
+    source: "hotel_search",
+  });
+  writeContextWorkspaceExpanded(eventId, true);
+  if (typeof window !== "undefined") {
+    dispatchContextWorkspaceExpand({
+      contextEventId: eventId,
+      source: "hotel_search",
+    });
+  }
   dispatchGlobeLodgingDiscoverySummary({
     eventId,
     summaryKo,

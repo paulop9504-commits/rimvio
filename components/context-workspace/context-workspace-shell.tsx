@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Context Workspace shell — GPT chat over map.
- * Full-bleed map · collapsible chat · bottom prompt. No place card.
+ * Context Workspace shell — Reality Execution Space (map + Entity Peek).
+ * Chat = Agent work log (not SSOT). ADR-022 · Reality OS 4-layer.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { List, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -40,15 +40,24 @@ import {
 } from "@/lib/context-workspace/workspace-chat-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { subscribePreparedRealityOperations } from "@/lib/reality-queue/prepared-operations-store";
+import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
+import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
-import { WorkspaceChatPanel } from "@/components/context-workspace/workspace-chat-panel";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
+import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
-import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
+import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
+import {
+  isWorkspaceContextMediaPinId,
+  projectWorkspaceContextMediaPins,
+} from "@/lib/context-workspace/project-workspace-context-media-pins";
+import { resolveWorkspaceMapCenter } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
+import type { WorkspaceMapPin } from "@/lib/context-workspace/map/workspace-map-provider";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -115,7 +124,6 @@ export function ContextWorkspaceShell({
   const [commitPreviewOpen, setCommitPreviewOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(true);
   const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -126,6 +134,8 @@ export function ContextWorkspaceShell({
   const [briefReplayGroundIndex, setBriefReplayGroundIndex] = useState<
     number | null
   >(null);
+  const [mediaTick, setMediaTick] = useState(0);
+  const didAutoMediaFocusRef = useRef(false);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -168,7 +178,6 @@ export function ContextWorkspaceShell({
       if (detail.contextEventId === contextEventId?.trim()) {
         refresh();
         setExpanded(true);
-        setChatOpen(true);
         writeContextWorkspaceExpanded(detail.contextEventId, true);
       }
     });
@@ -185,7 +194,6 @@ export function ContextWorkspaceShell({
       setBriefReplayGroundIndex(detail.stepIndex);
       setFocusedId(detail.nodeId);
       setPeekDismissedId(null);
-      setChatOpen(true);
     });
     return () => {
       unsubUpdate();
@@ -205,17 +213,31 @@ export function ContextWorkspaceShell({
     state?.selectedIds[0] ??
     visibleNodes.find((n) => n.selected)?.id ??
     null;
+  const venueSelectedId = isWorkspaceContextMediaPinId(selectedId)
+    ? null
+    : selectedId;
 
-  const mapPins = useMemo(() => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setMediaTick((n) => n + 1);
+    window.addEventListener(EVENT_CANDIDATES_UPDATED, bump);
+    window.addEventListener(MEDIA_SPACETIME_UPDATED, bump);
+    return () => {
+      window.removeEventListener(EVENT_CANDIDATES_UPDATED, bump);
+      window.removeEventListener(MEDIA_SPACETIME_UPDATED, bump);
+    };
+  }, []);
+
+  const mapPins = useMemo((): WorkspaceMapPin[] => {
     const ctx = contextEventId?.trim() ?? "";
-    return visibleNodes.map((n) => ({
+    const venuePins: WorkspaceMapPin[] = visibleNodes.map((n) => ({
       id: n.id,
       title: n.title,
       lat: n.lat,
       lng: n.lng,
       rating: n.rating,
       amountLabel: n.amountLabel,
-      selected: n.id === selectedId,
+      selected: n.id === venueSelectedId,
       bookmarked: n.bookmarked,
       kind: n.kind,
       explicitlySelected: n.selected,
@@ -230,20 +252,51 @@ export function ContextWorkspaceShell({
         n.tags.includes("photo_spot") ||
         /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
       legHintKo:
-        n.id === selectedId ? legHintForNode(visibleNodes, n.id) : null,
+        n.id === venueSelectedId ? legHintForNode(visibleNodes, n.id) : null,
     }));
-  }, [visibleNodes, selectedId, contextEventId, prepTick]);
+
+    const event = ctx
+      ? findLifeEventCandidate(ctx) ?? recoverGlobeContextEventFromPin(ctx)
+      : null;
+    const mediaPins = projectWorkspaceContextMediaPins({
+      event,
+      nodes: visibleNodes,
+    }).map((pin) => ({
+      ...pin,
+      selected: pin.id === selectedId,
+    }));
+
+    return [...venuePins, ...mediaPins];
+  }, [visibleNodes, selectedId, venueSelectedId, contextEventId, prepTick, mediaTick]);
+
+  const selectedMediaPin = useMemo(() => {
+    if (!isWorkspaceContextMediaPinId(selectedId)) return null;
+    return mapPins.find((p) => p.id === selectedId) ?? null;
+  }, [mapPins, selectedId]);
+
+  // Open with captures → focus first media once so pin + embed autoplay together.
+  useEffect(() => {
+    if (!expanded) {
+      didAutoMediaFocusRef.current = false;
+      return;
+    }
+    if (didAutoMediaFocusRef.current) return;
+    const firstMedia = mapPins.find((p) => isWorkspaceContextMediaPinId(p.id));
+    if (!firstMedia) return;
+    didAutoMediaFocusRef.current = true;
+    setFocusedId(firstMedia.id);
+  }, [expanded, contextEventId, mediaTick, mapPins]);
 
   const selectedAwaitingField = useMemo(() => {
     const ctx = contextEventId?.trim() ?? "";
-    const node = visibleNodes.find((n) => n.id === selectedId);
+    const node = visibleNodes.find((n) => n.id === venueSelectedId);
     if (!ctx || !node) return false;
     return isWorkspacePlaceAwaitingField({
       contextEventId: ctx,
       placeId: node.placeId || node.id,
       nodeId: node.id,
     });
-  }, [visibleNodes, selectedId, contextEventId, prepTick]);
+  }, [visibleNodes, venueSelectedId, contextEventId, prepTick]);
 
   const onApprovePay = useCallback(
     async (nodeId: string) => {
@@ -395,13 +448,11 @@ export function ContextWorkspaceShell({
         toast.message(result.reasonKo);
         setFocusedId(nodeId);
         setPeekDismissedId(null);
-        setChatOpen(false);
         return;
       }
       setPrepTick((n) => n + 1);
       setFocusedId(nodeId);
       setPeekDismissedId(null);
-      setChatOpen(false);
       toast.success(result.toastKo);
       // Stay in Workspace — next tap is human Approve · Pay (Article 0).
     },
@@ -455,7 +506,11 @@ export function ContextWorkspaceShell({
       setFocusedId(nodeId);
       setListOpen(false);
       setPeekDismissedId(null);
-      setChatOpen(false);
+
+      if (isWorkspaceContextMediaPinId(nodeId)) {
+        return;
+      }
+
       const node = readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId);
       if (node) {
         const why =
@@ -537,9 +592,11 @@ export function ContextWorkspaceShell({
   const progress = estimateWorkspaceProgressPercent(state);
   const eventId = contextEventId?.trim() ?? "";
   const selectedNode =
-    visibleNodes.find((n) => n.id === selectedId) ?? null;
+    visibleNodes.find((n) => n.id === venueSelectedId) ?? null;
   const showPeek =
-    selectedNode != null && peekDismissedId !== selectedNode.id;
+    selectedNode != null &&
+    peekDismissedId !== selectedNode.id &&
+    selectedMediaPin == null;
 
   return (
     <div
@@ -562,7 +619,23 @@ export function ContextWorkspaceShell({
           onOpenField={onOpenField}
           routeLineCoords={routeLineCoords}
           contextEventId={eventId}
+          preferredCenter={
+            state?.realityDraft?.destinationKo
+              ? resolveWorkspaceMapCenter(state.realityDraft.destinationKo)
+              : visibleNodes[0]
+                ? { lat: visibleNodes[0].lat, lng: visibleNodes[0].lng }
+                : resolveWorkspaceMapCenter(
+                    state?.query.replace(/\s*여행.*$/u, "").trim() || "오사카",
+                  )
+          }
         />
+        {selectedMediaPin?.contextMedia ? (
+          <WorkspaceMapMediaEmbed
+            title={selectedMediaPin.title}
+            media={selectedMediaPin.contextMedia}
+            onClose={() => setFocusedId(null)}
+          />
+        ) : null}
       </div>
 
       {(showSoftRainChip || showSoftQuietChip || showSoftRouteChip) ? (
@@ -873,32 +946,6 @@ export function ContextWorkspaceShell({
           />
         ) : null}
 
-        <WorkspaceChatPanel
-          contextEventId={eventId}
-          open={chatOpen}
-          onToggle={() => setChatOpen((v) => !v)}
-          onFocusNode={(nodeId) => {
-            onSelect(nodeId);
-            setChatOpen(true);
-          }}
-          onBriefReplay={() => {
-            setListOpen(false);
-            setPeekDismissedId(selectedId);
-            setChatOpen(true);
-          }}
-          briefReplayGroundIndex={briefReplayGroundIndex}
-          activeDraftNodeId={selectedId}
-          onOpenLinkedWork={() => {
-            setChatOpen(true);
-            setListOpen(false);
-            const first =
-              visibleNodes.find((n) => n.kind === "lodging") ??
-              visibleNodes[0];
-            if (first) onSelect(first.id);
-            toast.message(copy.globe.workspaceChatLinkedWorkToast);
-          }}
-        />
-
         <div className="pointer-events-auto mx-auto flex max-w-xl gap-1 overflow-x-auto">
           {(
             [
@@ -949,13 +996,16 @@ export function ContextWorkspaceShell({
           </button>
         </div>
 
-        <div className="pointer-events-auto mx-auto w-full max-w-xl">
-          <WorkspacePromptBar
-            contextEventId={eventId}
-            compact
-            onTurn={() => setChatOpen(true)}
-          />
-        </div>
+        <WorkspaceCursorDock
+          contextEventId={eventId}
+          onFocusNode={onSelect}
+          onBriefReplay={() => {
+            setListOpen(false);
+            setPeekDismissedId(selectedId);
+          }}
+          briefReplayGroundIndex={briefReplayGroundIndex}
+          activeDraftNodeId={venueSelectedId}
+        />
       </div>
 
       {commitPreviewOpen && commitPreview ? (

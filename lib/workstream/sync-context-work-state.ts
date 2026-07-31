@@ -5,6 +5,8 @@
 import type { EventCandidate } from "@/lib/events/event-candidate";
 import { readLodgingBookingSlots } from "@/lib/globe/context-hub/lodging-booking-slots";
 import { computeContextCompleteness } from "@/lib/workstream/compute-context-completeness";
+import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import {
   CONTEXT_WORK_SLOT_LABEL_KO,
   type ContextWorkNextAction,
@@ -117,7 +119,10 @@ export function buildContextWorkState(input: {
   const ws =
     input.workstream ??
     (contextEventId ? readWorkstream(contextEventId) : null);
-  const event = input.event ?? null;
+  const event =
+    input.event ??
+    (contextEventId ? findLifeEventCandidate(contextEventId) : null);
+  const draft = contextEventId ? readContextWorkspace(contextEventId) : null;
   const completeness = computeContextCompleteness({
     contextEventId,
     event,
@@ -132,12 +137,14 @@ export function buildContextWorkState(input: {
       (typeof event?.metadata?.globePlaceLabel === "string" &&
         event.metadata.globePlaceLabel.trim()) ||
       (typeof event?.metadata?.travelDestination === "string" &&
-        event.metadata.travelDestination.trim()),
+        event.metadata.travelDestination.trim()) ||
+      Boolean(draft?.realityDraft?.destinationKo?.trim()),
   );
   const datesOk = Boolean(
     period ||
       (slots.checkInIso && slots.checkOutIso) ||
-      kinds.has("ScheduleUpdated"),
+      kinds.has("ScheduleUpdated") ||
+      Boolean(draft?.realityDraft?.stayLabelKo?.trim()),
   );
   // Prefer in-memory workstream kinds so Agent snapshot works without storage.
   const lodgingOk =

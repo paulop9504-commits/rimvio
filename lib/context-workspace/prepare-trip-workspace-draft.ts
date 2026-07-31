@@ -37,6 +37,12 @@ import {
 import type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
 import { buildIntentPlan } from "@/lib/intent-router/build-intent-plan";
 import type { IntentRoute } from "@/lib/intent-router/types";
+import { writeGlobeResumeSession } from "@/lib/globe/globe-resume-session";
+import {
+  clearSoftNextWorkContinueMemory,
+  offerSoftNextWorkAfterAct,
+} from "@/lib/workstream/offer-soft-next-work-after-act";
+import { stampTripDraftOntoContext } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 
 export type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
 export { OSAKA_TRIP_DRAFT_STOPS } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
@@ -230,6 +236,35 @@ export function prepareTripWorkspaceDraft(input: {
     contextEventId,
     workspaceId,
     source: "trip_prep",
+  });
+
+  // Continuity chip on Globe — Resume opens Workspace (Reality OS).
+  if (typeof window !== "undefined") {
+    writeGlobeResumeSession({
+      eventId: contextEventId,
+      title: stay ? `${dest} · ${stay}` : `${dest} 여행`,
+      placeLabel: dest,
+      kind: "context",
+    });
+  }
+
+  // Stamp dest/dates onto Context so Agent % moves and 「계속 진행」 works.
+  stampTripDraftOntoContext({
+    contextEventId,
+    destinationKo: dest,
+    stayLabelKo: stay,
+    nights: nights ?? (stayMatch ? Number.parseInt(stayMatch[1]!, 10) : null),
+    days: days ?? (stayMatch ? Number.parseInt(stayMatch[2]!, 10) : null),
+    tripPrep: input.tripPrep ?? null,
+  });
+  clearSoftNextWorkContinueMemory(contextEventId);
+  // Auto-chain next soft scout (숙소 → …) without extra clicks.
+  offerSoftNextWorkAfterAct({
+    contextEventId,
+    lastAct: "open_workspace",
+    lastUtterance: utterance,
+    delayMs: 480,
+    autoRun: true,
   });
 
   observeWorldState({

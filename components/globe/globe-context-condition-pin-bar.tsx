@@ -1107,8 +1107,8 @@ export const GlobeContextConditionPinBar = memo(forwardRef<
           input.triggerMessage,
           resolveDiscoveryOriginForContext(contextEventId),
         ),
-        // Map pins land immediately — feed gate stays optional archive, not a blocker.
-        deferMapReveal: false,
+        // Reality OS: defer Globe lodging pins — Workspace owns inventory until Commit.
+        deferMapReveal: true,
         onProcessPhase: (phase) => {
           setContextAgentProcessPhase(phase);
           // Coalesce live narration to one publish per frame — phase bursts

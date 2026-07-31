@@ -66,8 +66,8 @@ export function listCapsuleProjections(): readonly CapsuleProjection[] {
 }
 
 /**
- * Resume Capsule → refresh IR against live nodes, expand Workspace.
- * Returns the same IR lineage (preference/weather preserved via priorIr).
+ * Resume Capsule → expand Workspace (Reality OS: Context → Workspace).
+ * Compiler IR preferred but not required when Entity nodes already exist.
  */
 export function resumeCapsuleWorkspace(input: {
   readonly contextEventId: string;
@@ -75,17 +75,18 @@ export function resumeCapsuleWorkspace(input: {
   readonly expand?: boolean;
 }): {
   readonly state: ContextWorkspaceState;
-  readonly compilerIr: ContextCompilerIrV1;
+  readonly compilerIr: ContextCompilerIrV1 | null;
 } | null {
   const key = input.contextEventId.trim();
   const prev = readContextWorkspace(key);
   if (!prev || prev.status === "closed") {
     return null;
   }
-  const next = withWorkspaceRelationships(prev, input.utterance);
-  if (!next.compilerIr) {
+  const hasEntities = prev.nodes.some((n) => n.visible);
+  if (!hasEntities && !prev.compilerIr) {
     return null;
   }
+  const next = withWorkspaceRelationships(prev, input.utterance);
   writeContextWorkspace(next);
   if (input.expand !== false) {
     writeContextWorkspaceExpanded(key, true);
@@ -94,5 +95,5 @@ export function resumeCapsuleWorkspace(input: {
       source: "capsule_resume",
     });
   }
-  return { state: next, compilerIr: next.compilerIr };
+  return { state: next, compilerIr: next.compilerIr ?? null };
 }

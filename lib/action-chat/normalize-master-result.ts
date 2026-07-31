@@ -63,8 +63,8 @@ function appendContainerAction(
 
   const label =
     container.action === "UPDATE"
-      ? `📁 ${container.title}에 추가`
-      : `📁 ${container.title} 만들기`;
+      ? `${container.title} 맥락에 추가`
+      : `${container.title} 맥락 만들기`;
 
   if (actions.some((action) => action.label.includes(container.title))) {
     return actions;

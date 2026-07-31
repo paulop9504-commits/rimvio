@@ -364,7 +364,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: true,
+        autoRun: false,
         delayMs: 720,
       });
       return {
@@ -419,7 +419,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: true,
+        autoRun: false,
         delayMs: 720,
       });
       if (soft.continued && soft.replyKo) {
@@ -566,8 +566,45 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
         committed: false,
       };
     }
+    const enqueue = next.enqueueUtterance.trim();
+    // Never recurse continue into another continue / dead quiz.
+    if (
+      isContinueWorkUtterance(enqueue) ||
+      enqueue === "목적지로 이어서" ||
+      enqueue === "4박5일로" ||
+      /^목적지로/u.test(enqueue)
+    ) {
+      const healed = resolveNextWorkAction({ contextEventId });
+      const healedEnqueue = healed.enqueueUtterance?.trim() ?? "";
+      if (
+        !healedEnqueue ||
+        isContinueWorkUtterance(healedEnqueue) ||
+        healedEnqueue === enqueue
+      ) {
+        return {
+          handled: true,
+          replyKo:
+            healed.replyKo ||
+            "목적·날짜는 반영했어요. 숙소·맛집·동선 중 말해 주세요.",
+          committed: false,
+        };
+      }
+      // One-shot soft act only — no nested continue.
+      const innerHeal = await tryApplyWorkspaceLodgingTurn({
+        utterance: healedEnqueue,
+        contextEventId,
+      });
+      const detail = innerHeal.replyKo?.trim();
+      return {
+        handled: true,
+        replyKo: detail
+          ? `${healed.replyKo} ${detail}`.trim()
+          : healed.replyKo,
+        committed: innerHeal.committed,
+      };
+    }
     const inner = await tryApplyWorkspaceLodgingTurn({
-      utterance: next.enqueueUtterance,
+      utterance: enqueue,
       contextEventId,
     });
     const detail = inner.replyKo?.trim();

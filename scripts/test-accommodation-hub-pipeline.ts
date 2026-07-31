@@ -53,10 +53,8 @@ function run() {
     contextEvent: stamped!,
     rows: DAEJEON_LODGING_MOCK.slice(0, 3),
   });
-  assert.equal(pins.length, 3);
-  assert.equal(pins[0]?.source, "accommodation_search");
-  assert.equal(pins[0]?.visibility, "private");
-  assert.equal(pins[0]?.parentContextEventId, event.id);
+  // Reality OS: lodging search does not paint 3D Globe pins before Commit.
+  assert.equal(pins.length, 0);
 
   let revealed = 0;
   if (typeof window !== "undefined") {

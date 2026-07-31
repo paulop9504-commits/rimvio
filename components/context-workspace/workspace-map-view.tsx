@@ -19,6 +19,7 @@ import {
   buildTossWorkspaceMarkerEl,
   syncTossWorkspaceMarkerEl,
 } from "@/lib/context-workspace/map/build-toss-workspace-marker-el";
+import { hydrateWorkspaceMediaAutoplayHost } from "@/lib/context-workspace/map/mount-workspace-media-autoplay";
 import {
   WORKSPACE_ITINERARY_LAYER_ID,
   WORKSPACE_ITINERARY_SOURCE_ID,
@@ -57,6 +58,8 @@ export type WorkspaceMapViewProps = {
   preferPlaceholder?: boolean;
   /** Scope Brief Replay subscription. */
   contextEventId?: string | null;
+  /** Destination-aware fallback when pins empty (avoid Jeju default). */
+  preferredCenter?: { readonly lat: number; readonly lng: number } | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -188,6 +191,22 @@ function pinBounds(pins: readonly WorkspaceMapPin[]) {
     centerLng: (minLng + maxLng) / 2,
   };
 }
+
+/** Itinerary / lodging pins only — ignore context media for camera. */
+function venueCameraPins(
+  pins: readonly WorkspaceMapPin[],
+): readonly WorkspaceMapPin[] {
+  const venues = pins.filter(
+    (p) =>
+      !p.contextMedia &&
+      Number.isFinite(p.lat) &&
+      Number.isFinite(p.lng),
+  );
+  return venues.length > 0 ? venues : pins;
+}
+
+/** Osaka Namba — safer trip fallback than Jeju when destination unknown. */
+const WORKSPACE_MAP_FALLBACK_CENTER: [number, number] = [135.5023, 34.6937];
 
 function pinsGeometryKey(pins: readonly WorkspaceMapPin[]): string {
   return pins
@@ -370,6 +389,7 @@ function MapLibreWorkspaceMap({
   compact,
   className,
   contextEventId,
+  preferredCenter = null,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -377,6 +397,7 @@ function MapLibreWorkspaceMap({
   const lastGeometryKeyRef = useRef<string>("");
   const pinsRef = useRef(pins);
   const replayCancelRef = useRef(false);
+  const mediaTourCancelRef = useRef(false);
   const onSelectRef = useRef(onSelectPin);
   const onPinToggleRef = useRef(onPinToggle);
   const onRemovePinRef = useRef(onRemovePin);
@@ -402,7 +423,20 @@ function MapLibreWorkspaceMap({
     onBackgroundActivate,
   ]);
   const [ready, setReady] = useState(false);
-  const bounds = useMemo(() => pinBounds(pins), [pins]);
+  const bounds = useMemo(
+    () => pinBounds(venueCameraPins(pins)),
+    [pins],
+  );
+  const fallbackCenter = useMemo((): [number, number] => {
+    if (
+      preferredCenter &&
+      Number.isFinite(preferredCenter.lat) &&
+      Number.isFinite(preferredCenter.lng)
+    ) {
+      return [preferredCenter.lng, preferredCenter.lat];
+    }
+    return WORKSPACE_MAP_FALLBACK_CENTER;
+  }, [preferredCenter]);
   const mobile = useMemo(() => isCoarsePointerDevice(), []);
   const routeKey = useMemo(
     () =>
@@ -426,9 +460,10 @@ function MapLibreWorkspaceMap({
       if (cancelled || !containerRef.current) {
         return;
       }
-      const center = bounds
-        ? ([bounds.centerLng, bounds.centerLat] as [number, number])
-        : ([126.5312, 33.4996] as [number, number]);
+      const liveBounds = pinBounds(venueCameraPins(pinsRef.current));
+      const center = liveBounds
+        ? ([liveBounds.centerLng, liveBounds.centerLat] as [number, number])
+        : fallbackCenter;
       const created = new maplibregl.Map({
         container: containerRef.current,
         style: GLOBE_VECTOR_MAP_STYLE_URL,
@@ -459,11 +494,12 @@ function MapLibreWorkspaceMap({
         const live = mapRef.current;
         applyTossWorkspaceMapCanvas(live);
         syncGlobeVectorMapSize(live, containerRef.current!);
-        if (bounds) {
+        const loadBounds = pinBounds(venueCameraPins(pinsRef.current));
+        if (loadBounds) {
           live.fitBounds(
             [
-              [bounds.minLng, bounds.minLat],
-              [bounds.maxLng, bounds.maxLat],
+              [loadBounds.minLng, loadBounds.minLat],
+              [loadBounds.maxLng, loadBounds.maxLat],
             ],
             {
               padding: compact ? 36 : 72,
@@ -471,7 +507,11 @@ function MapLibreWorkspaceMap({
               duration: 0,
             },
           );
-          lastGeometryKeyRef.current = pinsGeometryKey(pins);
+          lastGeometryKeyRef.current = pinsGeometryKey(
+            venueCameraPins(pinsRef.current),
+          );
+        } else {
+          live.jumpTo({ center: fallbackCenter, zoom: compact ? 12.2 : 13.6 });
         }
         try {
           syncWorkspaceItineraryLine(live, routeLineCoords ?? []);
@@ -505,7 +545,7 @@ function MapLibreWorkspaceMap({
     };
     // Mount once per compact mode — pins update in separate effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compact, mobile]);
+  }, [compact, mobile, fallbackCenter]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -563,6 +603,14 @@ function MapLibreWorkspaceMap({
             compact,
             actions,
           });
+          if (pin.contextMedia) {
+            const host = existing.el.querySelector<HTMLElement>(
+              "[data-workspace-media-host]",
+            );
+            if (host) {
+              void hydrateWorkspaceMediaAutoplayHost(host, pin.contextMedia);
+            }
+          }
           continue;
         }
         const el = buildTossWorkspaceMarkerEl({
@@ -581,11 +629,19 @@ function MapLibreWorkspaceMap({
           lat: pin.lat,
           lng: pin.lng,
         });
+        if (pin.contextMedia) {
+          const host = el.querySelector<HTMLElement>(
+            "[data-workspace-media-host]",
+          );
+          if (host) {
+            void hydrateWorkspaceMediaAutoplayHost(host, pin.contextMedia);
+          }
+        }
       }
 
-      const geometryKey = pinsGeometryKey(visible);
+      const geometryKey = pinsGeometryKey(venueCameraPins(visible));
       if (geometryKey && geometryKey !== lastGeometryKeyRef.current) {
-        const nextBounds = pinBounds(visible);
+        const nextBounds = pinBounds(venueCameraPins(visible));
         if (nextBounds && visible.length > 0) {
           map.fitBounds(
             [
@@ -690,6 +746,56 @@ function MapLibreWorkspaceMap({
       });
     });
   }, [contextEventId, ready]);
+
+  // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
+  const mediaTourSignature = useMemo(
+    () =>
+      pins
+        .filter((p) => p.contextMedia)
+        .map((p) => `${p.id}:${p.lat.toFixed(5)},${p.lng.toFixed(5)}`)
+        .join("|"),
+    [pins],
+  );
+
+  useEffect(() => {
+    if (!ready || compact || !mediaTourSignature) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const mediaPins = pinsRef.current.filter(
+      (p) =>
+        p.contextMedia &&
+        Number.isFinite(p.lat) &&
+        Number.isFinite(p.lng),
+    );
+    if (mediaPins.length === 0) return;
+
+    mediaTourCancelRef.current = false;
+    const pin = mediaPins[0]!;
+    const timer = window.setTimeout(() => {
+      if (mediaTourCancelRef.current || !mapRef.current) return;
+      map.easeTo({
+        center: [pin.lng, pin.lat],
+        zoom: Math.max(map.getZoom(), 14.8),
+        duration: 700,
+        essential: true,
+      });
+      window.setTimeout(() => {
+        const entry = markersByIdRef.current.get(pin.id);
+        const host = entry?.el.querySelector<HTMLElement>(
+          "[data-workspace-media-host]",
+        );
+        if (host && pin.contextMedia) {
+          void hydrateWorkspaceMediaAutoplayHost(host, pin.contextMedia);
+        }
+      }, 750);
+    }, 400);
+
+    return () => {
+      mediaTourCancelRef.current = true;
+      window.clearTimeout(timer);
+    };
+  }, [ready, compact, mediaTourSignature]);
 
   return (
     <div

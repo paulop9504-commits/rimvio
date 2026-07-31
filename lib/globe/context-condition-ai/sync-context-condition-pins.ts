@@ -100,33 +100,9 @@ export function syncContextConditionPins(input: {
     });
   }
 
-  for (const row of input.lodgingRows ?? []) {
-    const eventId = contextConditionPinEventId({
-      contextEventId,
-      batchId: input.batchId,
-      kind: "lodging",
-      placeId: row.placeId,
-    });
-    const pin: PersonalGlobePin = {
-      pinId: contextConditionPinId(eventId),
-      eventId,
-      lat: row.lat,
-      lng: row.lng,
-      placeLabel: toReadablePlaceLabel(row.name) || row.name,
-      experienceTitle: toReadablePlaceLabel(row.name) || row.name,
-      photoCount: row.images.length,
-      videoCount: row.videoUrl ? 1 : 0,
-      createdAtIso: nowIso,
-      acl: { viewerPeerThreadIds: [] },
-      visibility: GLOBE_CONTEXT_VISIBILITY_PRIVATE,
-      source: "context_condition_ai",
-      contextConditionBatchId: input.batchId,
-      contextConditionKind: "lodging",
-      parentContextEventId: contextEventId,
-    };
-    upsertPersonalGlobePin(pin);
-    pins.push(pin);
-  }
+  // Reality OS: lodging search pins stay off 3D Globe until Reality Commit.
+  // Inventory is Workspace / session-graph owned.
+  void input.lodgingRows;
 
   for (const row of input.eateryRows ?? []) {
     const eateryKind = input.eateryKind ?? "eatery";

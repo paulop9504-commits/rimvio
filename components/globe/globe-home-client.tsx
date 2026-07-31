@@ -51,6 +51,15 @@ import { GlobeResourceReelStage } from "@/components/globe/globe-resource-reel-s
 import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelligent-discovery-stage";
 import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
 import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
+import {
+  resumeCapsuleWorkspace,
+  tryOpenContextAnchorWorkspace,
+} from "@/lib/context-workspace";
+import {
+  CONTEXT_WORKSPACE_CLOSE,
+  readContextWorkspaceExpanded,
+} from "@/lib/context-workspace/workspace-store";
+import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { WorkspaceSdkHost } from "@/components/workspace-sdk/workspace-sdk-host";
 import { useIntelligentDiscoveryFeedFocus } from "@/lib/globe/intelligent-pin/use-intelligent-discovery-feed-focus";
 import { globeFamiliesHiddenByWorkspace } from "@/lib/context-workspace/should-project-lodging-to-globe";
@@ -689,12 +698,32 @@ function GlobeHomeBody() {
     useState<ContextMapTapPhase>("awaiting_replay");
   const [mapMediaReplayDismissedEventId, setMapMediaReplayDismissedEventId] =
     useState<string | null>(null);
+  /** Bumps when Workspace expand/collapse so 3D media ownership updates. */
+  const [workspaceMapOwnerTick, setWorkspaceMapOwnerTick] = useState(0);
   const contextTapPhaseRef = useRef<ContextMapTapPhase>("awaiting_replay");
   const clustersRef = useRef<readonly PinCluster[]>([]);
   const autoBrainSurfaceLaunchKeyRef = useRef<string | null>(null);
   const brainSurfaceBatchRef = useRef<BrainSurfaceProjectionBatch | null>(null);
   const brainSurfaceActiveCandidateIdRef = useRef<string | null>(null);
   const brainSurfaceLaunchInFlightRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const bumpOwner = () => setWorkspaceMapOwnerTick((n) => n + 1);
+    const unsubExpand = subscribeContextWorkspaceExpand((detail) => {
+      bumpOwner();
+      const id = detail.contextEventId.trim();
+      if (!id) return;
+      // Workspace MapLibre owns media while expanded — stop 3D autoplay.
+      setContextTapPhase("awaiting_replay");
+      setMapMediaReplayDismissedEventId(id);
+    });
+    const onClose = () => bumpOwner();
+    window.addEventListener(CONTEXT_WORKSPACE_CLOSE, onClose);
+    return () => {
+      unsubExpand();
+      window.removeEventListener(CONTEXT_WORKSPACE_CLOSE, onClose);
+    };
+  }, []);
 
   useEffect(() => {
     return subscribeContextConditionDiscoveryOverlay((next) => {
@@ -981,6 +1010,34 @@ function GlobeHomeBody() {
       const fromMapTap =
         options?.mapTap !== false && options?.openSheet !== true;
 
+      // Reality OS: Context Anchor → Workspace Resume (not Bridge / media first).
+      if (
+        fromMapTap &&
+        eventId &&
+        !isExternalPinCluster(cluster) &&
+        cluster.variant !== "bridge_ghost"
+      ) {
+        const opened = tryOpenContextAnchorWorkspace({
+          contextEventId: eventId,
+          utterance: cluster.title,
+        });
+        if (opened.ok) {
+          setSheetOpen(false);
+          setContextTapPhase("awaiting_replay");
+          toast.message(copy.globe.workspaceResumeToast);
+          const params = new URLSearchParams(window.location.search);
+          if (params.get("recallEvent") !== eventId) {
+            params.set("recallEvent", eventId);
+            window.history.replaceState(
+              null,
+              "",
+              `${window.location.pathname}?${params.toString()}`,
+            );
+          }
+          return;
+        }
+      }
+
       if (fromMapTap) {
         setSheetOpen(false);
         const volume = eventId ? resolveExperienceVolumeForEvent(eventId) : null;
@@ -1033,6 +1090,23 @@ function GlobeHomeBody() {
       bindContextAgentToEventIdRef.current(eventId);
       return;
     }
+
+    // Reality OS: retap Anchor → Workspace when draft Entities exist.
+    if (
+      !isExternalPinCluster(cluster) &&
+      cluster.variant !== "bridge_ghost"
+    ) {
+      const opened = tryOpenContextAnchorWorkspace({
+        contextEventId: eventId,
+        utterance: cluster.title,
+      });
+      if (opened.ok) {
+        setSheetOpen(false);
+        toast.message(copy.globe.workspaceResumeToast);
+        return;
+      }
+    }
+
     if (!shouldOpenGlobeBridgeSheet()) {
       dismissCompetingGlobeSurfaces();
       // Bind (not bare open) so dismiss-guard clears and PromptFrame stays coherent.
@@ -2239,6 +2313,12 @@ function GlobeHomeBody() {
     Boolean(activeCluster?.eventId) &&
     mapMediaReplayDismissedEventId === activeCluster?.eventId;
 
+  const workspaceOwnsMapMedia = Boolean(
+    workspaceMapOwnerTick >= 0 &&
+      activeCluster?.eventId &&
+      readContextWorkspaceExpanded(activeCluster.eventId),
+  );
+
   const showMapVideoReplay = Boolean(
     activeCluster?.eventId &&
       !sheetOpen &&
@@ -2247,7 +2327,8 @@ function GlobeHomeBody() {
       contextHasMapMedia &&
       !mapMediaReplaySuppressed &&
       !brainSurfaceVisible &&
-      !contextAgentSurfacesActive,
+      !contextAgentSurfacesActive &&
+      !workspaceOwnsMapMedia,
   );
 
   /** Map stays clean while a context is focused — hub lives in the pin sheet. */
@@ -4885,7 +4966,23 @@ function GlobeHomeBody() {
   const onResumeSession = useCallback(
     (session: GlobeResumeSession) => {
       setBrainProjectionEventId(null);
-      void focusContextByEventId(session.eventId, {
+      const eventId = session.eventId.trim();
+      if (!eventId) return;
+
+      // Reality OS: Context resume → Workspace (not PinOpenSheet / Bridge).
+      if (session.kind === "context") {
+        const resumed = resumeCapsuleWorkspace({
+          contextEventId: eventId,
+          utterance: session.title,
+          expand: true,
+        });
+        if (resumed) {
+          toast.message(copy.globe.workspaceResumeToast);
+          return;
+        }
+      }
+
+      void focusContextByEventId(eventId, {
         openSheet: session.kind === "market",
         mapTap: session.kind === "context",
       });

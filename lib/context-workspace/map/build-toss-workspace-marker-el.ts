@@ -101,6 +101,9 @@ export function tossWorkspaceMarkerChromeKey(
     pin.title,
     pin.rating ?? "",
     pin.amountLabel ?? "",
+    pin.contextMedia?.kind ?? "",
+    pin.contextMedia?.imageUrl ?? "",
+    pin.contextMedia?.mediaContextId ?? "",
     input.actionsHasPrepare ? 1 : 0,
     input.actionsHasOpenField ? 1 : 0,
   ].join("|");
@@ -127,10 +130,13 @@ function fillTossWorkspaceMarkerEl(
 
   const pinned = Boolean(pin.bookmarked);
   const photoSpot = Boolean(pin.photoSpot);
+  const contextMedia = pin.contextMedia ?? null;
   const awaitingField = Boolean(pin.awaitingField);
-  const showActions = !compact && (selected || pinned);
+  const showActions =
+    !compact && !contextMedia && (selected || pinned);
   const canPrepareKind =
-    pin.kind === "lodging" || pin.kind === "poi" || pin.kind === "amenity";
+    !contextMedia &&
+    (pin.kind === "lodging" || pin.kind === "poi" || pin.kind === "amenity");
   const showPrepare =
     !compact &&
     selected &&
@@ -256,6 +262,89 @@ function fillTossWorkspaceMarkerEl(
   chip.type = "button";
   chip.title = pin.title;
   chip.setAttribute("aria-label", pin.title);
+
+  if (contextMedia) {
+    const size = selected ? 96 : 72;
+    const thumb = document.createElement("span");
+    thumb.dataset.workspaceMediaHost = "1";
+    thumb.dataset.mediaKind = contextMedia.kind;
+    thumb.style.cssText = [
+      "display:block",
+      "position:relative",
+      `width:${size}px`,
+      `height:${Math.round(size * 1.2)}px`,
+      "border-radius:16px",
+      "overflow:hidden",
+      "background:#111827",
+      "box-shadow:0 4px 14px rgba(25,31,40,0.28), 0 0 0 2px #fff",
+      selected ? "outline:2px solid #3182f6;outline-offset:2px" : "",
+    ]
+      .filter(Boolean)
+      .join(";");
+
+    // Sync paint with remote URL; blob hydrated async from map-view.
+    const remote = contextMedia.imageUrl?.trim() || "";
+    if (remote) {
+      if (contextMedia.kind === "video") {
+        const video = document.createElement("video");
+        video.src = remote;
+        video.autoplay = true;
+        video.muted = true;
+        video.defaultMuted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.setAttribute("playsinline", "");
+        video.setAttribute("muted", "");
+        video.preload = "auto";
+        video.style.cssText =
+          "width:100%;height:100%;object-fit:cover;display:block;pointer-events:none";
+        thumb.appendChild(video);
+        void video.play().catch(() => {});
+      } else {
+        const img = document.createElement("img");
+        img.src = remote;
+        img.alt = "";
+        img.draggable = false;
+        img.style.cssText =
+          "width:100%;height:100%;object-fit:cover;display:block;pointer-events:none";
+        thumb.appendChild(img);
+      }
+    } else {
+      thumb.style.background =
+        contextMedia.kind === "video" ? "#191f28" : "#e8eef8";
+      const fallback = document.createElement("span");
+      fallback.textContent = contextMedia.kind === "video" ? "▶" : "🖼";
+      fallback.style.cssText = [
+        "position:absolute",
+        "inset:0",
+        "display:flex",
+        "align-items:center",
+        "justify-content:center",
+        "font-size:18px",
+        contextMedia.kind === "video" ? "color:#fff" : "color:#3182f6",
+      ].join(";");
+      thumb.appendChild(fallback);
+    }
+
+    chip.appendChild(thumb);
+    chip.style.cssText = [
+      "display:inline-flex",
+      "padding:0",
+      "border:0",
+      "background:transparent",
+      "cursor:pointer",
+      "touch-action:manipulation",
+      "-webkit-tap-highlight-color:transparent",
+    ].join(";");
+    chip.addEventListener("click", (event) => {
+      event.stopPropagation();
+      actions.onSelect(pin.id);
+    });
+    root.appendChild(chip);
+    root.dataset.contextMediaPin = "1";
+    return;
+  }
+
   const rating =
     pin.rating != null && Number.isFinite(pin.rating)
       ? pin.rating.toFixed(1)

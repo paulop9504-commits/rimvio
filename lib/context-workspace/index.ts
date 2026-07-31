@@ -51,12 +51,19 @@ export {
   placeHitToWorkspaceNode,
 } from "@/lib/context-workspace/open-map-workspace";
 
+export { lodgingInventoryRowsToPlaceHits } from "@/lib/context-workspace/lodging-inventory-to-place-hits";
+
 export {
-  OSAKA_TRIP_DRAFT_STOPS,
   prepareTripWorkspaceDraft,
   shouldPrepareTripWorkspaceDraft,
+  OSAKA_TRIP_DRAFT_STOPS,
 } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 export type { TripDraftStop } from "@/lib/context-workspace/prepare-trip-workspace-draft";
+
+export {
+  stampTripDraftOntoContext,
+  resolveWorkspaceMapCenter,
+} from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 
 export {
   applyWorkspaceTransition,
@@ -158,6 +165,20 @@ export {
   resumeCapsuleWorkspace,
   type CapsuleProjection,
 } from "@/lib/context-workspace/resume-capsule-workspace";
+
+export {
+  tryOpenContextAnchorWorkspace,
+  readContextAnchorProgressPercent,
+  readContextAnchorLastChangeKo,
+  type ContextAnchorWorkspaceOpenResult,
+} from "@/lib/context-workspace/try-open-context-anchor-workspace";
+
+export {
+  projectWorkspaceContextMediaPins,
+  isWorkspaceContextMediaPinId,
+  WORKSPACE_CONTEXT_MEDIA_PIN_PREFIX,
+  type WorkspaceContextMediaPayload,
+} from "@/lib/context-workspace/project-workspace-context-media-pins";
 
 export {
   CONTEXT_WORKSPACE_EXPAND,

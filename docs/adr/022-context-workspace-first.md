@@ -1,6 +1,6 @@
 # ADR-022: Context Workspace — Cursor-IDE of Context
 
-**Status:** accepted 2026-07  
+**Status:** accepted 2026-07 · **Experience lock:** [`docs/RIMVIO_REALITY_OS.md`](../RIMVIO_REALITY_OS.md) (2026-08)  
 **Wire:** `lib/context-workspace/` · `components/context-workspace/`  
 **Related:** ADR-001 · ADR-011 · ADR-021 · Article 0
 
@@ -8,6 +8,11 @@
 
 **Chat mutates the Workspace; Capsules live on the Globe; Commit roots Reality.**  
 Context Workspace = Cursor IDE. Globe = 개인 현실 OS 위의 **살아있는 Context 객체** 지도 (폴더/파일 UI 아님).
+
+### Four layers (locked — see Reality OS)
+
+`Globe (macro) → Context → Workspace (micro) → Reality Entity`  
+Globe ≠ Workspace. Chat = work log only.
 
 ## Cursor ↔ Rimvio (locked analogy)
 
