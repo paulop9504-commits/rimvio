@@ -148,11 +148,22 @@ export {
   compileTripEntitySlots,
   materializeTripDraftStops,
   resolveTripDayCount,
+  burstFillTripInventory,
+  burstFillTripInventoryAsync,
+  planTripDayClusters,
+  refineTripDraftStops,
+  refineTripDraftWeatherSwap,
+  estimateWalkMinutes,
+  TRIP_DRAFT_MAX_LEG_MINUTES,
+  utteranceSuggestsRain,
+  guideWebSeedHits,
   type RealityDraft,
   type RealityDraftDay,
   type RealityDraftEntityKind,
   type RealityDraftNodeRef,
   type TripEntitySlot,
+  type TripDayPart,
+  type TripSlotInventory,
 } from "@/lib/context-workspace/reality-draft";
 
 export {

@@ -1,6 +1,7 @@
 /**
  * Trip Workspace draft — Agent fills the map like a prepared itinerary (ADR-046).
- * Compiler: Intent slots → destination seed → Reality Draft (not Osaka-only control flow).
+ * Compiler: L1 dayPart slots → L2 burst inventory → L3 pick → L4 Reality Draft.
+ * Osaka hardcode is fallback seed only when burst leaves gaps.
  */
 
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
@@ -29,11 +30,13 @@ import {
   readWorkspaceChat,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { buildRealityDraft } from "@/lib/context-workspace/reality-draft/build-reality-draft";
+import { burstFillTripInventory } from "@/lib/context-workspace/reality-draft/burst-fill-trip-inventory";
 import {
   compileTripEntitySlots,
   materializeTripDraftStops,
   resolveTripDayCount,
 } from "@/lib/context-workspace/reality-draft/compile-trip-entity-slots";
+import { refineTripDraftStops } from "@/lib/context-workspace/reality-draft/refine-trip-draft-stops";
 import type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
 import { buildIntentPlan } from "@/lib/intent-router/build-intent-plan";
 import type { IntentRoute } from "@/lib/intent-router/types";
@@ -166,13 +169,30 @@ export function prepareTripWorkspaceDraft(input: {
     nights: nights ?? null,
     expectedEntities: plan.expectedEntities,
   });
-  const { stops, seededFrom } = materializeTripDraftStops({
+  // L2 + L3: parallel-style slot inventory → pick1 (sync Search Engine).
+  const inventories = burstFillTripInventory({
+    destinationKo: dest,
+    slots,
+    dayCount,
+  });
+  const materialized = materializeTripDraftStops({
     destinationKo: dest,
     utterance,
     slots,
     dayCount,
+    inventories,
   });
-  const osaka = seededFrom === "osaka_catalog";
+  const refined = refineTripDraftStops({
+    stops: materialized.stops,
+    slots,
+    inventories,
+    utterance,
+    destinationKo: dest,
+  });
+  const stops = refined.stops;
+  const seededFrom = materialized.seededFrom;
+  const osaka =
+    seededFrom === "osaka_catalog" || /오사카|osaka|大阪/iu.test(dest);
   const query = stay ? `${dest} ${stay} 여행` : `${dest} 여행 준비`;
   const summaryKo = stay
     ? `${dest} · ${stay} Reality Draft · READY`
@@ -207,8 +227,18 @@ export function prepareTripWorkspaceDraft(input: {
       actionKo: `${dest} 여행 Workspace 생성`,
       reasonsKo: [
         "Goal · Planning",
-        osaka ? "난바 중심 동선" : `${dest} Intent 슬롯`,
-        "실내·야외 균형",
+        seededFrom === "live_burst"
+          ? "Day×slot burst inventory"
+          : osaka
+            ? "난바 중심 fallback seed"
+            : `${dest} Intent 슬롯`,
+        "morning · lunch · afternoon · dinner",
+        refined.repairedLegs > 0
+          ? `동선 ${refined.repairedLegs}곳 재배치`
+          : "클러스터 동선",
+        refined.weatherSwapped > 0
+          ? `우천 실내 ${refined.weatherSwapped}곳`
+          : "날씨 관찰",
       ],
       impactsKo: ["지도 핀 · 동선 · Opportunity 준비"],
       nodeIds: nodes.slice(0, 3).map((n) => n.id),
@@ -324,6 +354,11 @@ export function prepareTripWorkspaceDraft(input: {
       destination: dest,
       seededFrom,
       slots: slots.length,
+      inventories: inventories.length,
+      picked: inventories.filter((i) => i.picked != null).length,
+      repairedLegs: refined.repairedLegs,
+      weatherSwapped: refined.weatherSwapped,
+      rainy: refined.rainy,
     },
   });
 

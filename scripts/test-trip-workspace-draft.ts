@@ -5,7 +5,6 @@
 
 import assert from "node:assert/strict";
 import {
-  OSAKA_TRIP_DRAFT_STOPS,
   buildWorkspaceConciergeStatus,
   buildWorkspaceObjectCards,
   buildWorkspacePatchStrip,
@@ -42,11 +41,20 @@ const state = prepareTripWorkspaceDraft({
 });
 
 assert.ok(state);
-assert.ok(state!.nodes.length >= OSAKA_TRIP_DRAFT_STOPS.length - 1);
-assert.ok(state!.nodes.some((n) => /쿠로몬/u.test(n.title)));
+assert.ok(state!.nodes.length >= 8, `expected dayPart burst pins, got ${state!.nodes.length}`);
+assert.ok(
+  state!.nodes.some((n) => /쿠로몬|난바|도톤|APA|유니버설/u.test(n.title)),
+);
 assert.ok(state!.nodes.some((n) => n.kind === "lodging"));
 assert.ok(state!.summaryKo.includes("4박5일") || state!.query.includes("4박5일"));
-
+assert.ok(
+  state!.nodes.some(
+    (n) =>
+      n.tags.includes("live_burst") ||
+      n.tags.includes("part_morning") ||
+      n.tags.includes("fallback_seed"),
+  ),
+);
 const stored = readContextWorkspace("ctx-trip-draft");
 assert.ok(stored && stored.nodes.length === state!.nodes.length);
 
