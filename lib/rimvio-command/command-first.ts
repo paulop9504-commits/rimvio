@@ -10,6 +10,8 @@
  * - between → patch / soft continue when possible, else ask
  */
 
+import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
+import { hasConcurrentMultiDomainSearchCues } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { isInstantEaterySearch } from "@/lib/globe/context-condition-ai/instant-eatery-search";
 import {
   isInstantLodgingSearch,
@@ -38,9 +40,32 @@ export type CommandFirstDecision = {
     | "booking_prepare"
     | "resume"
     | "open_workspace"
+    | "compound_plan"
     | null;
   readonly reason: string;
 };
+
+function detectKeepReplaceDomain(
+  text: string,
+): "search_eatery" | "search_hotel" | null {
+  const keepLodging =
+    /숙소.*(그대로|유지|안\s*바꿔|그냥|빼고)|숙소는.*두/u.test(text);
+  const keepEatery =
+    /맛집.*(그대로|유지|안\s*바꿔)|식당.*(그대로|유지)/u.test(text);
+  const replaceEatery =
+    /맛집.*(바꿔|교체|다시)|식당.*(바꿔|교체|다시)|저녁.*(바꿔|다시)|맛집만|식당만/u.test(
+      text,
+    );
+  const replaceLodging =
+    /숙소.*(바꿔|교체|다시)|숙소만|호텔만/u.test(text);
+  if (keepLodging && replaceEatery) {
+    return "search_eatery";
+  }
+  if (keepEatery && replaceLodging) {
+    return "search_hotel";
+  }
+  return null;
+}
 
 /**
  * High-confidence domain commands on an open travel-compatible Context.
@@ -75,6 +100,30 @@ export function resolveCommandFirstDecision(input: {
       confidence: active ? 0.99 : 0.45,
       commandId: "open_workspace",
       reason: active ? "explicit_open_workspace" : "open_needs_context",
+    };
+  }
+
+  // Keep/replace patch before single-domain collapse.
+  const keepReplace = detectKeepReplaceDomain(text);
+  if (keepReplace && scoutOk) {
+    return {
+      action: "execute",
+      confidence: 0.96,
+      commandId: keepReplace,
+      reason: "spatial_keep_replace_patch",
+    };
+  }
+
+  // Complex multi-intent → Action Planner (never collapse to one domain scout).
+  if (
+    isCompoundActionUtterance(text) ||
+    hasConcurrentMultiDomainSearchCues(text)
+  ) {
+    return {
+      action: scoutOk || active ? "execute" : "ask",
+      confidence: scoutOk || active ? 0.97 : 0.55,
+      commandId: "compound_plan",
+      reason: "compound_multi_intent",
     };
   }
 

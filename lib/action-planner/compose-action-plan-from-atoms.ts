@@ -20,7 +20,10 @@ import {
   ordinalRefFromGraph,
   selectionRefFromGraph,
 } from "@/lib/graph-command/resolve-selection-ref";
-import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
+import {
+  resolveLookupToolId,
+  resolvePlannerLookupDomain,
+} from "@/lib/rule-engine/resolve-tool-id";
 
 function rejectedFamilies(atoms: readonly IntentAtom[]): Set<string> {
   return new Set(
@@ -177,10 +180,11 @@ export function composeActionPlanFromAtoms(input: {
     }
 
     if (atom.family === "Navigate") {
+      const routeCue = /동선|루트|일정|최적화/iu.test(atom.cueSpan);
       steps.push({
         id: `step:nav:${stepI++}`,
         kind: "soft_navigate",
-        labelKo: `${prefix}길 열기`,
+        labelKo: routeCue ? `${prefix}동선 잡기` : `${prefix}길 열기`,
         status: "pending",
         diffPhase: "working_set",
         noteKo: atom.cueSpan,
@@ -189,11 +193,20 @@ export function composeActionPlanFromAtoms(input: {
     }
 
     if (atom.family === "Search") {
-      const toolId = resolveLookupToolId("lodging");
+      const domain = resolvePlannerLookupDomain(atom.cueSpan);
+      const toolId = resolveLookupToolId(domain);
+      const labelKo =
+        domain === "eatery"
+          ? "맛집 찾기"
+          : domain === "amenity"
+            ? "편의 찾기"
+            : domain === "poi"
+              ? "놀거리 찾기"
+              : "숙소 찾기";
       steps.push({
         id: `step:search:${stepI++}`,
         kind: "tool",
-        labelKo: "찾기",
+        labelKo,
         status: "pending",
         toolId,
         diffPhase: "working_set",
@@ -338,22 +351,30 @@ export function composeActionPlanFromAtoms(input: {
     return null;
   }
 
-  // Use search_payment kind as generic multi when mixed; filter_navigate for nav-only.
+  // Prefer search_multi_route when 2+ domain Search (+ optional Navigate).
+  const searchDomains = new Set(
+    dos
+      .filter((a) => a.family === "Search")
+      .map((a) => resolvePlannerLookupDomain(a.cueSpan)),
+  );
+  const hasNav = dos.some((a) => a.family === "Navigate");
   const planKind: ActionPlanV1["planKind"] =
-    dos.some((a) => a.family === "Purchase") &&
-    dos.some((a) => a.family === "Search")
-      ? "search_payment"
-      : dos.some((a) => a.family === "Navigate") &&
-          dos.some((a) => a.family === "Filter")
-        ? "filter_navigate"
-        : dos.some((a) => a.family === "Share") &&
-            dos.some((a) => a.family === "Move")
-          ? "move_share"
-          : dos.some((a) => a.family === "Purchase")
-            ? "search_payment"
-            : dos.some((a) => a.family === "Navigate")
-              ? "filter_navigate"
-              : "search_reserve";
+    searchDomains.size >= 2 || (searchDomains.size >= 1 && hasNav)
+      ? "search_multi_route"
+      : dos.some((a) => a.family === "Purchase") &&
+          dos.some((a) => a.family === "Search")
+        ? "search_payment"
+        : dos.some((a) => a.family === "Navigate") &&
+            dos.some((a) => a.family === "Filter")
+          ? "filter_navigate"
+          : dos.some((a) => a.family === "Share") &&
+              dos.some((a) => a.family === "Move")
+            ? "move_share"
+            : dos.some((a) => a.family === "Purchase")
+              ? "search_payment"
+              : dos.some((a) => a.family === "Navigate")
+                ? "filter_navigate"
+                : "search_reserve";
 
   return newShell({
     utterance: input.utterance,

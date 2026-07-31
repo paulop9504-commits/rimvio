@@ -7,8 +7,13 @@ const STORAGE_KEY = "rimvio.workstream.v1";
 
 type StoreShape = Record<string, WorkstreamState>;
 
+/** Node / SSR — keep Act residue so soft-next + tests work without window. */
+const memoryStore: StoreShape = {};
+
 function readStore(): StoreShape {
-  if (typeof window === "undefined") return {};
+  if (typeof window === "undefined") {
+    return memoryStore;
+  }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
@@ -20,7 +25,13 @@ function readStore(): StoreShape {
 }
 
 function writeStore(store: StoreShape): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    for (const key of Object.keys(memoryStore)) {
+      if (!(key in store)) delete memoryStore[key];
+    }
+    Object.assign(memoryStore, store);
+    return;
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   } catch {

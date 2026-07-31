@@ -120,6 +120,8 @@
     "test:trip-workspace-draft": "npx tsx scripts/test-trip-workspace-draft.ts",
     "test:open-workspace-utterance": "npx tsx scripts/test-open-workspace-utterance.ts",
     "test:workspace-rescout-review": "npx tsx scripts/test-workspace-rescout-review.ts",
+    "test:soft-next-work-after-act": "npx tsx scripts/test-soft-next-work-after-act.ts",
+    "test:complex-nl-commands": "npx tsx scripts/test-complex-nl-commands.ts",
     "test:spine-legacy-ingress": "npx tsx scripts/test-spine-legacy-ingress.ts",
     "test:context-compiler": "npx tsx scripts/test-context-compiler.ts",
     "test:value-consensus": "npx tsx scripts/test-value-consensus.ts",

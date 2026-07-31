@@ -15,7 +15,10 @@ import type { ContextEateryInventoryRow } from "@/lib/globe/eatery/eatery-resour
 import {
   CONTEXT_EATERY_PINNED_RESOURCE_ID_META_KEY,
 } from "@/lib/globe/eatery/eatery-resource-types";
-import { recordRestaurantAdded } from "@/lib/workstream";
+import {
+  offerSoftNextWorkAfterAct,
+  recordRestaurantAdded,
+} from "@/lib/workstream";
 
 function buildEateryResourceId(eventId: string, placeId: string): string {
   return `${eventId}:eatery:${placeId}`;
@@ -122,6 +125,14 @@ export function pinEaterySelectionToContext(input: {
       (typeof pinned.metadata?.globePlaceLabel === "string"
         ? pinned.metadata.globePlaceLabel
         : null),
+  });
+
+  offerSoftNextWorkAfterAct({
+    contextEventId: pinned.id,
+    lastAct: "select",
+    lastUtterance: "맛집 선택",
+    autoRun: true,
+    delayMs: 480,
   });
 
   // 3-layer: pin Commit → ContextResource file (not scout inventory).

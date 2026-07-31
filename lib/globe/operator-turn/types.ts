@@ -68,7 +68,8 @@ export type OperatorTurnPlan =
         | "confirmed_reality_skip_ask"
         | "intake_gap_without_chips"
         | "active_domain_scout_lodging"
-        | "active_domain_scout_eatery";
+        | "active_domain_scout_eatery"
+        | "express_soft_next_skip_ask";
     }
   | {
       readonly tool: "defer_classify";

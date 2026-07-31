@@ -29,6 +29,9 @@ import {
   isContinueWorkUtterance,
   resolveNextWorkAction,
 } from "@/lib/workstream/resolve-next-work-action";
+import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
+import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
+import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -347,20 +350,28 @@ async function rescoutWorkspace(input: {
       });
       expandWorkspaceForReview(input.contextEventId);
       const after = readContextWorkspace(input.contextEventId);
+      const baseReply =
+        next?.lastChangeKo ??
+        `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`;
       if (after) {
         appendWorkspaceSyncedAssistantTurn({
           contextEventId: input.contextEventId,
           state: after,
-          textKo:
-            next?.lastChangeKo ??
-            `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`,
+          textKo: baseReply,
         });
       }
+      const soft = offerSoftNextWorkAfterAct({
+        contextEventId: input.contextEventId,
+        lastAct: "search",
+        lastUtterance: input.utterance,
+        autoRun: true,
+        delayMs: 720,
+      });
       return {
         handled: true,
-        replyKo:
-          next?.lastChangeKo ??
-          `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`,
+        replyKo: soft.continued && soft.replyKo
+          ? `${baseReply}\n${soft.replyKo}`
+          : baseReply,
         committed: false,
         openedForReview: true,
       };
@@ -392,7 +403,7 @@ async function rescoutWorkspace(input: {
     const freshState = readContextWorkspace(input.contextEventId) ?? opened;
     const pinned = freshState.nodes.filter((n) => n.bookmarked).length;
     const fresh = freshState.nodes.filter((n) => !n.bookmarked && n.visible).length;
-    const replyKo =
+    let replyKo =
       fresh > 0
         ? pinned > 0
           ? `${label} ${fresh}곳 · 고정 ${pinned}곳 유지 · 작업장에서 확인`
@@ -404,6 +415,16 @@ async function rescoutWorkspace(input: {
         state: freshState,
         textKo: replyKo,
       });
+      const soft = offerSoftNextWorkAfterAct({
+        contextEventId: input.contextEventId,
+        lastAct: "search",
+        lastUtterance: input.utterance,
+        autoRun: true,
+        delayMs: 720,
+      });
+      if (soft.continued && soft.replyKo) {
+        replyKo = `${replyKo}\n${soft.replyKo}`;
+      }
     }
     return {
       handled: true,
@@ -561,6 +582,29 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
 
   if (!hasProvisionalContextWorkspace(contextEventId)) {
     return { handled: false, replyKo: null, committed: false };
+  }
+
+  // Complex multi-intent — Action Planner / NL pipeline (not first-match filter).
+  if (isCompoundActionUtterance(utterance)) {
+    const nl = await tryRunContextNlActionAsync({
+      utterance,
+      contextEventId,
+    });
+    if (nl?.ok) {
+      const replyKo =
+        "assistantReplyKo" in nl && typeof nl.assistantReplyKo === "string"
+          ? nl.assistantReplyKo
+          : "summaryKo" in nl && typeof (nl as { summaryKo?: string }).summaryKo === "string"
+            ? (nl as { summaryKo: string }).summaryKo
+            : "이렇게 진행할게요";
+      expandWorkspaceForReview(contextEventId);
+      return {
+        handled: true,
+        replyKo,
+        committed: false,
+        openedForReview: true,
+      };
+    }
   }
 
   const parsed = parseWorkspaceUtteranceTransition(utterance);

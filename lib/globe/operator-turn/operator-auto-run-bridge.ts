@@ -10,7 +10,7 @@ export const OPERATOR_AUTO_RUN_EVENT = "rimvio:operator-auto-run";
 export type OperatorAutoRunDetail = {
   readonly contextEventId: string;
   readonly text: string;
-  readonly source: "plan_step_auto_scout" | "ingress_domain_entry" | "scout_retry" | "reject_rescout";
+  readonly source: "plan_step_auto_scout" | "ingress_domain_entry" | "scout_retry" | "reject_rescout" | "soft_next_gap";
   readonly progressKo?: string | null;
   /**
    * Soft-fill intake on Act (sequencer / ingress) — do not bounce to chips
@@ -35,7 +35,8 @@ export function requestOperatorAutoRun(detail: OperatorAutoRunDetail): void {
   const expressReady =
     detail.expressReady === true ||
     detail.source === "plan_step_auto_scout" ||
-    detail.source === "ingress_domain_entry";
+    detail.source === "ingress_domain_entry" ||
+    detail.source === "soft_next_gap";
   pendingClaimKey = claimKey({ contextEventId, text });
   pendingClaimed = false;
   window.dispatchEvent(
@@ -90,7 +91,8 @@ export function subscribeOperatorAutoRun(
       expressReady:
         detail.expressReady === true ||
         detail.source === "plan_step_auto_scout" ||
-        detail.source === "ingress_domain_entry",
+        detail.source === "ingress_domain_entry" ||
+        detail.source === "soft_next_gap",
     });
   };
   window.addEventListener(OPERATOR_AUTO_RUN_EVENT, handler);

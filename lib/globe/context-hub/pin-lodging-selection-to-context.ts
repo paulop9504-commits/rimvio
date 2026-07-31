@@ -15,7 +15,10 @@ import { attachRealityObjectToPinMetadata } from "@/lib/reality-object/attach-on
 import { findLifeEventCandidate } from "@/lib/life-read-model";
 import { commitEventUpsert } from "@/lib/source-of-truth/commit-truth";
 import { markLodgingResourceSelected } from "@/lib/resource-operation";
-import { recordHotelSelected } from "@/lib/workstream";
+import {
+  offerSoftNextWorkAfterAct,
+  recordHotelSelected,
+} from "@/lib/workstream";
 
 function buildLodgingResourceId(eventId: string, placeId: string): string {
   return `${eventId}:lodging:${placeId}`;
@@ -130,6 +133,15 @@ export function pinLodgingSelectionToContext(input: {
       (typeof pinned.metadata?.globePlaceLabel === "string"
         ? pinned.metadata.globePlaceLabel
         : null),
+  });
+
+  // Cursor one-way — soft-continue next gap (맛집 …) without ask quiz.
+  offerSoftNextWorkAfterAct({
+    contextEventId: pinned.id,
+    lastAct: "select",
+    lastUtterance: "숙소 선택",
+    autoRun: true,
+    delayMs: 480,
   });
 
   // 3-layer: pin Commit → ContextResource file (not scout inventory).

@@ -17,6 +17,7 @@ import {
   type NodePreviewModel,
 } from "@/lib/context-workspace/build-node-preview";
 import { copy } from "@/lib/copy/human-ko";
+import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceNodePeekProps = {
@@ -114,6 +115,19 @@ export function WorkspaceNodePeek({
       contextEventId,
       op: "select",
       nodeIds: [node.id],
+    });
+    const domainCue =
+      node.kind === "eatery"
+        ? "맛집 선택"
+        : node.kind === "lodging"
+          ? "숙소 선택"
+          : "선택";
+    offerSoftNextWorkAfterAct({
+      contextEventId,
+      lastAct: "select",
+      lastUtterance: domainCue,
+      autoRun: true,
+      delayMs: 480,
     });
   };
 

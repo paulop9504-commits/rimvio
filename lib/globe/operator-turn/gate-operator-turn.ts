@@ -153,6 +153,20 @@ export function gateOperatorTurnSync(input: {
     }
   }
 
+  // Complex multi-intent → Context NL / Action Planner (not single-domain scout).
+  if (text) {
+    const cmd = resolveCommandFirstDecision({
+      utterance: text,
+      activeContextId: input.ssot.contextEventId,
+    });
+    if (
+      shouldExecuteWithoutAsk(cmd) &&
+      cmd.commandId === "compound_plan"
+    ) {
+      return { tool: "graph_command", reason: "action_first_graph" };
+    }
+  }
+
   // Mid-thread: open pins / lastBatch → filter · pin · compare before engine scout.
   const editFirst = tryEditBeforeScout({
     text,
@@ -200,23 +214,37 @@ export function gateOperatorTurnSync(input: {
         return { tool: "scout", reason: "confirmed_reality_skip_ask" };
       }
     }
-    // Command-first: high-confidence 숙소/맛집 search → execute, never quiz.
+    // Soft one-way Act (express) — never bounce mid-stream to intake chips.
+    if (
+      engineTurn.tool === "ask_chips" &&
+      input.expressReady === true &&
+      (engineTurn.reason === "trip_intake_gap" ||
+        engineTurn.reason === "trip_experience_gap")
+    ) {
+      return { tool: "scout", reason: "express_soft_next_skip_ask" };
+    }
+    // Command-first: high-confidence commands → execute, never quiz.
     if (engineTurn.tool === "ask_chips" && text) {
       const cmd = resolveCommandFirstDecision({
         utterance: text,
         activeContextId: input.ssot.contextEventId,
       });
-      if (
-        shouldExecuteWithoutAsk(cmd) &&
-        (cmd.commandId === "search_hotel" || cmd.commandId === "search_eatery")
-      ) {
-        return {
-          tool: "scout",
-          reason:
-            cmd.commandId === "search_eatery"
-              ? "active_domain_scout_eatery"
-              : "active_domain_scout_lodging",
-        };
+      if (shouldExecuteWithoutAsk(cmd)) {
+        if (cmd.commandId === "compound_plan") {
+          return { tool: "graph_command", reason: "action_first_graph" };
+        }
+        if (
+          cmd.commandId === "search_hotel" ||
+          cmd.commandId === "search_eatery"
+        ) {
+          return {
+            tool: "scout",
+            reason:
+              cmd.commandId === "search_eatery"
+                ? "active_domain_scout_eatery"
+                : "active_domain_scout_lodging",
+          };
+        }
       }
     }
     return engineTurn;

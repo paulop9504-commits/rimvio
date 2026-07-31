@@ -64,7 +64,8 @@ export type ActionPlanV1 = {
     | "compare_filter"
     | "move_share"
     | "short_tool"
-    | "trip_prep";
+    | "trip_prep"
+    | "search_multi_route";
   /** Reserve/Purchase prepare → Field; revise-research stays Globe Diff only. */
   readonly requiresFieldCommit: boolean;
   /** Present when planKind === trip_prep (stay slots for lodging tools). */

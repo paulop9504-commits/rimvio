@@ -13,6 +13,7 @@ import {
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 
 export type OpenWorkspaceFromUtteranceResult = {
   readonly ok: boolean;
@@ -25,6 +26,26 @@ function expandOnly(contextEventId: string): void {
     contextEventId,
     source: "nl_open",
   });
+}
+
+function withSoftNext(
+  contextEventId: string,
+  utterance: string,
+  baseReply: string,
+): string {
+  const soft = offerSoftNextWorkAfterAct({
+    contextEventId,
+    lastAct: "open_workspace",
+    lastUtterance: utterance,
+    autoRun: true,
+  });
+  if (soft.continued && soft.replyKo) {
+    return `${baseReply}\n${soft.replyKo}`;
+  }
+  if (soft.action?.labelKo) {
+    return `${baseReply} · 다음은 「${soft.action.labelKo}」`;
+  }
+  return baseReply;
 }
 
 export function tryOpenWorkspaceFromUtterance(input: {
@@ -44,12 +65,18 @@ export function tryOpenWorkspaceFromUtterance(input: {
       expand: true,
     });
     if (resumed) {
-      return { ok: true, replyKo: "작업장을 열었어요" };
+      return {
+        ok: true,
+        replyKo: withSoftNext(contextEventId, utterance, "작업장을 열었어요"),
+      };
     }
     const state = readContextWorkspace(contextEventId);
     if (state && state.status !== "closed") {
       expandOnly(contextEventId);
-      return { ok: true, replyKo: "작업장을 열었어요" };
+      return {
+        ok: true,
+        replyKo: withSoftNext(contextEventId, utterance, "작업장을 열었어요"),
+      };
     }
   }
 
@@ -75,6 +102,6 @@ export function tryOpenWorkspaceFromUtterance(input: {
   expandOnly(contextEventId);
   return {
     ok: true,
-    replyKo: "작업장을 열었어요 · 호텔·맛집을 말해 주세요",
+    replyKo: withSoftNext(contextEventId, utterance, "작업장을 열었어요"),
   };
 }

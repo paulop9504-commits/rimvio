@@ -88,6 +88,11 @@ export {
 } from "@/lib/workstream/resolve-next-work-action";
 export type { NextWorkActionResult } from "@/lib/workstream/resolve-next-work-action";
 export {
+  clearSoftNextWorkContinueMemory,
+  offerSoftNextWorkAfterAct,
+} from "@/lib/workstream/offer-soft-next-work-after-act";
+export type { SoftNextWorkOffer } from "@/lib/workstream/offer-soft-next-work-after-act";
+export {
   AGENT_EXECUTION_STATUS_LABEL_KO,
   buildAgentExecutionState,
   formatTimelineClock,

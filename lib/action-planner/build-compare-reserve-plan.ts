@@ -25,6 +25,7 @@ import {
 import { routeToolFamily } from "@/lib/rule-engine/route-tool-family";
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import { hasConcurrentMultiDomainSearchCues } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
 import { isSameProjectReSearchUtterance } from "@/lib/graph-command/is-same-project-re-search";
 
 function normalize(text: string): string {
@@ -103,7 +104,7 @@ function wantsFilter(text: string): boolean {
 }
 
 function wantsNavigate(text: string): boolean {
-  return /길\s*찾|내비|navigate|가는\s*길|가는\s*방법|지도로\s*가|길\s*알려|택시로|지하철로|도보로\s*가/iu.test(
+  return /길\s*찾|내비|navigate|가는\s*길|가는\s*방법|지도로\s*가|길\s*알려|택시로|지하철로|도보로\s*가|동선|루트|일정\s*(?:최적화|짜|잡아)|optimize\s*route/iu.test(
     text,
   );
 }
@@ -152,7 +153,8 @@ export type ActionPlanKind =
   | "compare_filter"
   | "move_share"
   | "short_tool"
-  | "trip_prep";
+  | "trip_prep"
+  | "search_multi_route";
 
 /**
  * True when utterance needs a multi-step plan (not a single Graph Command).
@@ -167,6 +169,17 @@ export function isCompoundActionUtterance(utterance: string): boolean {
   }
   const chain = parseNlIntentChain(text);
   if (shouldRunMultiIntentPlanner(chain)) {
+    return true;
+  }
+  // Multi-domain discovery (+ optional route) without clear conjunction.
+  if (hasConcurrentMultiDomainSearchCues(text)) {
+    return true;
+  }
+  if (
+    (hasLodgingDomainCue(text) || hasEateryDomainCue(text)) &&
+    /동선|루트|일정\s*(?:최적화|짜|잡아)|optimize\s*route/iu.test(text) &&
+    /찾|검색|넣고|추가|추천/iu.test(text)
+  ) {
     return true;
   }
   if (wantsCompare(text) && wantsReserve(text)) {
@@ -201,6 +214,13 @@ export function isCompoundActionUtterance(utterance: string): boolean {
     return true;
   }
   if (wantsMove(text) && wantsShare(text)) {
+    return true;
+  }
+  // Keep one domain · replace another.
+  if (
+    /(?:숙소|호텔).*(?:그대로|유지|안\s*바꿔)|그대로\s*두/iu.test(text) &&
+    /(?:맛집|식당).*(?:바꿔|교체|다시|만)/iu.test(text)
+  ) {
     return true;
   }
   return false;

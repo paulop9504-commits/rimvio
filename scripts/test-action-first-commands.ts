@@ -15,6 +15,8 @@ import {
   resetGraphCommandStoreForTests,
   tryRunGraphCommandOs,
   readSessionGraph,
+  ensureSessionGraph,
+  writeSessionGraph,
 } from "../lib/graph-command";
 import { clearPreparedRealityOperations } from "../lib/reality-queue";
 import { tryRunContextNlAction } from "../lib/action-planner";
@@ -150,7 +152,12 @@ for (const row of cases) {
     contextEventId: "evt-cmd",
   });
   assert.ok(pin);
-  assert.equal(pin!.via, "soft_confirm");
+  // Workspace-first (ADR-022): open provisional WS → pin mutates Workspace;
+  // otherwise soft_confirm chips on Graph.
+  assert.ok(
+    pin!.via === "soft_confirm" || pin!.via === "workspace",
+    `pin via: ${pin!.via}`,
+  );
   assert.equal(pin!.waitingCommit, false);
 
   const del = tryRunContextNlAction({
@@ -158,7 +165,10 @@ for (const row of cases) {
     contextEventId: "evt-cmd",
   });
   assert.ok(del);
-  assert.equal(del!.via, "soft_confirm");
+  assert.ok(
+    del!.via === "soft_confirm" || del!.via === "workspace",
+    `del via: ${del!.via}`,
+  );
   assert.equal(del!.waitingCommit, false);
 
   const walk = tryRunContextNlAction({
@@ -166,8 +176,40 @@ for (const row of cases) {
     contextEventId: "evt-cmd",
   });
   assert.ok(walk);
-  assert.equal(walk!.via, "soft_confirm");
+  assert.ok(
+    walk!.via === "soft_confirm" || walk!.via === "workspace",
+    `walk via: ${walk!.via}`,
+  );
   assert.equal(walk!.waitingCommit, false);
+
+  // Soft navigate/calendar need a place on Session Graph (search may live in Workspace only).
+  const navGraph = ensureSessionGraph({ contextEventId: "evt-cmd" });
+  writeSessionGraph({
+    ...navGraph,
+    nodes: [
+      {
+        id: "n:soft-nav",
+        labelKo: "유성온천역",
+        kind: "poi",
+        lat: 36.3621,
+        lng: 127.3446,
+        rating: null,
+        walkMinutes: null,
+        reservable: false,
+        localFavorite: false,
+        priceBand: null,
+        pinned: false,
+        visible: true,
+        alwaysVisible: false,
+        parentId: null,
+        groupId: null,
+        accent: "default",
+        projectFolderKo: null,
+        attrs: {},
+      },
+    ],
+    selectionIds: ["n:soft-nav"],
+  });
 
   const softNav = tryRunSoftSurfaceCommand({
     utterance: "길 찾아줘",
@@ -188,7 +230,10 @@ for (const row of cases) {
     contextEventId: "evt-cmd",
   });
   assert.ok(nlSoft);
-  assert.equal(nlSoft!.via, "soft_command");
+  assert.ok(
+    nlSoft!.via === "soft_command" || nlSoft!.via === "workspace",
+    `nl soft via: ${nlSoft!.via}`,
+  );
 }
 
 console.log("test-action-first-commands: ok");
