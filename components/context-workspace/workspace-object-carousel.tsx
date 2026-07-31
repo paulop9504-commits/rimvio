@@ -1,14 +1,12 @@
 "use client";
 
 /**
- * Object browser — layer pills + horizontal snap carousel + detail panel.
- * ChatGPT Maps–style: compact carousel docked just above Agent prompt.
+ * Object browser — ChatGPT Maps place sheet.
+ * Full-width bottom sheet + big photos + prompt fused into the sheet.
  */
 
 import {
-  useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -48,7 +46,6 @@ export type WorkspaceObjectCarouselProps = {
     ContextWorkspaceState,
     "nodes" | "relationshipEdges" | "compareIds" | "selectedIds" | "realityDraft"
   >;
-  dockClearancePx?: number;
   /** GPT-style: prompt fused into the bottom of the place sheet */
   sheetFooter?: ReactNode;
   onActiveNodeChange: (nodeId: string) => void;
@@ -83,7 +80,6 @@ export function WorkspaceObjectCarousel({
   nodes,
   activeNodeId,
   workspace,
-  dockClearancePx = 0,
   sheetFooter = null,
   onActiveNodeChange,
   onClose,
@@ -110,10 +106,7 @@ export function WorkspaceObjectCarousel({
       ? resolveWorkspaceObjectLayer(activeNode)
       : (presentLayers[0] ?? "hotel"),
   );
-  const [expanded, setExpanded] = useState(true);
   const [galleryIndex, setGalleryIndex] = useState(0);
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const scrollLockRef = useRef(false);
   const sheetDragControls = useDragControls();
 
   const layerNodes = useMemo(
@@ -121,14 +114,12 @@ export function WorkspaceObjectCarousel({
     [nodes, layer],
   );
 
-  // Pin / focus → layer follows
   useEffect(() => {
     if (!activeNode) return;
     const next = resolveWorkspaceObjectLayer(activeNode);
     setLayer((prev) => (prev === next ? prev : next));
   }, [activeNode]);
 
-  // Keep active inside current layer when layer changes via pill
   useEffect(() => {
     if (layerNodes.length === 0) return;
     if (activeNode && resolveWorkspaceObjectLayer(activeNode) === layer) return;
@@ -136,53 +127,9 @@ export function WorkspaceObjectCarousel({
     if (first) onActiveNodeChange(first.id);
   }, [layer, layerNodes, activeNode, onActiveNodeChange]);
 
-  // Always open the GPT-style detail sheet (not the floating card strip).
   useEffect(() => {
     setGalleryIndex(0);
-    setExpanded(true);
   }, [activeNodeId, layer]);
-
-  // Snap carousel to active card (peek strip only)
-  useLayoutEffect(() => {
-    if (!open || expanded || !activeNodeId || !scrollerRef.current) return;
-    const el = scrollerRef.current.querySelector<HTMLElement>(
-      `[data-carousel-node="${activeNodeId}"]`,
-    );
-    if (!el) return;
-    scrollLockRef.current = true;
-    el.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-    const t = window.setTimeout(() => {
-      scrollLockRef.current = false;
-    }, 380);
-    return () => window.clearTimeout(t);
-  }, [activeNodeId, open, expanded, layer]);
-
-  const onScrollerScroll = useCallback(() => {
-    if (scrollLockRef.current || expanded) return;
-    const root = scrollerRef.current;
-    if (!root) return;
-    const mid = root.scrollLeft + root.clientWidth / 2;
-    let bestId: string | null = null;
-    let bestDist = Infinity;
-    for (const child of Array.from(root.children)) {
-      if (!(child instanceof HTMLElement)) continue;
-      const id = child.dataset.carouselNode;
-      if (!id) continue;
-      const center = child.offsetLeft + child.offsetWidth / 2;
-      const dist = Math.abs(center - mid);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestId = id;
-      }
-    }
-    if (bestId && bestId !== activeNodeId) {
-      onActiveNodeChange(bestId);
-    }
-  }, [activeNodeId, expanded, onActiveNodeChange]);
 
   const preview = useMemo(
     () => (activeNode ? buildNodePreview(activeNode, workspace) : null),
@@ -228,10 +175,6 @@ export function WorkspaceObjectCarousel({
   });
 
   const images = preview.galleryImages;
-  const hero =
-    images.length > 0
-      ? images[Math.min(galleryIndex, images.length - 1)]!
-      : null;
   const compareCount = workspace.compareIds.length;
   const activeLayer = resolveWorkspaceObjectLayer(activeNode);
   const kindLabel = layerLabelKo(activeLayer);
@@ -277,23 +220,18 @@ export function WorkspaceObjectCarousel({
         <motion.div
           key="object-browser"
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex flex-col justify-end"
-          style={{
-            // Dock is a sibling below the map — only a tight GPT-style gap.
-            paddingBottom: `${dockClearancePx}px`,
-          }}
-          initial={{ y: 28, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 20, opacity: 0 }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
           transition={{
             type: "spring",
-            stiffness: 380,
+            stiffness: 300,
             damping: 34,
-            mass: 0.85,
+            mass: 0.95,
           }}
           data-workspace-object-carousel
         >
-          {/* Layer chips — tight above carousel */}
-          <div className="pointer-events-auto mb-1.5 flex max-w-full gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="pointer-events-auto mb-2 flex max-w-full gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {presentLayers.map((id) => {
               const selected = id === layer;
               return (
@@ -301,7 +239,7 @@ export function WorkspaceObjectCarousel({
                   key={id}
                   type="button"
                   className={cn(
-                    "shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold transition-colors",
+                    "shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors",
                     selected
                       ? "bg-[#191f28] text-white shadow-[0_4px_12px_rgba(25,31,40,0.2)]"
                       : "bg-white/95 text-[#4e5968] shadow-[0_2px_10px_rgba(25,31,40,0.08)] ring-1 ring-black/[0.04]",
@@ -315,332 +253,257 @@ export function WorkspaceObjectCarousel({
             })}
           </div>
 
-          <AnimatePresence mode="wait" initial={false}>
-            {!expanded ? (
-              <motion.div
-                key="carousel"
-                className="pointer-events-auto w-full"
-                initial={{ y: 24, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 16, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-              >
-                <div
-                  ref={scrollerRef}
-                  className={cn(
-                    // GPT: ~86% card + peek of next; docked above prompt
-                    "flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    layerNodes.length === 1 && "justify-center",
-                  )}
-                  onScroll={onScrollerScroll}
-                >
-                  {layerNodes.map((node) => {
-                    const card = buildNodePreview(node, workspace);
-                    const isActive = node.id === activeNode.id;
-                    const cardLayer = resolveWorkspaceObjectLayer(node);
-                    return (
+          <motion.div
+            className="pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_50px_rgba(25,31,40,0.28)]"
+            style={{
+              height: "min(84vh, 720px)",
+              maxHeight: "min(84vh, 720px)",
+            }}
+            drag="y"
+            dragControls={sheetDragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.04, bottom: 0.55 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 140 || info.velocity.y > 800) {
+                onClose();
+              }
+            }}
+            role="dialog"
+            aria-label={preview.title}
+            data-workspace-place-sheet
+          >
+            <div
+              className="relative shrink-0 cursor-grab touch-none pt-2.5 active:cursor-grabbing"
+              onPointerDown={(e) => sheetDragControls.start(e)}
+            >
+              <div className="mx-auto h-1 w-10 rounded-full bg-[#d1d6db]" />
+            </div>
+
+            {/* GPT: large photos only — show as many as we have (horizontal snap) */}
+            <div className="relative shrink-0 pt-2">
+              {images.length > 0 ? (
+                <div className="relative">
+                  <div
+                    className={cn(
+                      "flex gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                      images.length === 1
+                        ? "snap-none"
+                        : "snap-x snap-mandatory",
+                    )}
+                  >
+                    {images.map((url, i) => (
                       <button
-                        key={node.id}
+                        key={`${url}-${i}`}
                         type="button"
-                        data-carousel-node={node.id}
                         className={cn(
-                          "flex shrink-0 snap-center items-center gap-2.5 rounded-[22px] bg-white text-left shadow-[0_8px_28px_rgba(25,31,40,0.14)] ring-1 transition-[transform,box-shadow,ring-color]",
-                          layerNodes.length === 1
-                            ? "w-[min(92vw,400px)]"
-                            : "w-[min(86vw,340px)]",
-                          isActive
-                            ? "ring-[#3182f6]/40"
-                            : "scale-[0.985] opacity-92 ring-black/[0.05]",
+                          "relative shrink-0 overflow-hidden rounded-[18px] bg-[#f2f4f6]",
+                          images.length === 1
+                            ? "aspect-[16/10] w-full"
+                            : "aspect-[3/4] w-[min(46vw,200px)] snap-center",
                         )}
-                        onClick={() => {
-                          if (!isActive) {
-                            onActiveNodeChange(node.id);
-                            return;
-                          }
-                          setExpanded(true);
-                        }}
+                        onClick={() => setGalleryIndex(i)}
+                        aria-label={`사진 ${i + 1}`}
                       >
-                        <div className="relative m-2 h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[16px] bg-[#f2f4f6]">
-                          {card.heroImage ? (
-                            <WorkspaceRemoteImage
-                              src={card.heroImage}
-                              sizes="72px"
-                              priority={isActive}
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[26px]">
-                              {layerEmoji(cardLayer)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 py-2.5 pr-3">
-                          <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[#191f28]">
-                            {card.title}
-                          </p>
-                          <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">
-                            {card.ratingLabel}
-                            <span className="mx-1 text-[#d1d6db]">·</span>
-                            {layerLabelKo(cardLayer)}
-                          </p>
-                          <p className="mt-1 text-[15px] font-bold tabular-nums leading-none text-[#191f28]">
-                            {card.price}
-                          </p>
-                        </div>
+                        <WorkspaceRemoteImage
+                          src={url}
+                          sizes={
+                            images.length === 1 ? "96vw" : "46vw"
+                          }
+                          priority={i < 2}
+                        />
                       </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="detail"
-                className="pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_50px_rgba(25,31,40,0.28)] ring-1 ring-black/[0.06]"
-                style={{
-                  height: "min(78vh, 640px)",
-                  maxHeight: "min(78vh, 640px)",
-                }}
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 34,
-                  mass: 0.95,
-                }}
-                drag="y"
-                dragControls={sheetDragControls}
-                dragListener={false}
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={{ top: 0.04, bottom: 0.55 }}
-                onDragEnd={(_, info) => {
-                  if (info.offset.y > 120 || info.velocity.y > 700) {
-                    setExpanded(false);
-                  }
-                }}
-                role="dialog"
-                aria-label={preview.title}
-                data-workspace-place-sheet
-              >
-                {/* GPT-style grab + close — drag from handle only */}
-                <div
-                  className="relative shrink-0 cursor-grab touch-none pt-2 active:cursor-grabbing"
-                  onPointerDown={(e) => sheetDragControls.start(e)}
-                >
-                  <div className="mx-auto h-1 w-10 rounded-full bg-[#d1d6db]" />
+                    ))}
+                  </div>
                   <button
                     type="button"
-                    className="absolute right-3 top-1.5 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
+                    className="absolute right-5 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
                     onClick={onClose}
                     aria-label="닫기"
                   >
                     <X className="h-4 w-4" strokeWidth={2.5} />
                   </button>
                 </div>
-
-                <div className="relative shrink-0 px-0">
-                  <div className="relative mx-3 mt-2 h-[min(42vw,220px)] overflow-hidden rounded-[18px] bg-[#f2f4f6]">
-                    {hero ? (
-                      <WorkspaceRemoteImage
-                        src={hero}
-                        sizes="(max-width: 420px) 96vw, 420px"
-                        priority
-                      />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
-                        <span className="text-[40px]">
-                          {layerEmoji(activeLayer)}
-                        </span>
-                        <span className="text-[11px] font-semibold">
-                          {copy.globe.workspacePreviewPhotoHint}
-                        </span>
-                      </div>
-                    )}
-                    {images.length > 1 ? (
-                      <div className="absolute inset-x-0 bottom-0 z-[1] flex gap-1.5 overflow-x-auto px-3 pb-3 pt-10">
-                        {images.map((url, i) => (
-                          <button
-                            key={`${url}-${i}`}
-                            type="button"
-                            className={cn(
-                              "relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-2",
-                              i === galleryIndex
-                                ? "ring-white"
-                                : "ring-transparent opacity-80",
-                            )}
-                            onClick={() => setGalleryIndex(i)}
-                          >
-                            <WorkspaceRemoteImage src={url} sizes="48px" />
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+              ) : (
+                <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-[18px] bg-[#f2f4f6]">
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
+                    <span className="text-[44px]">
+                      {layerEmoji(activeLayer)}
+                    </span>
+                    <span className="text-[11px] font-semibold">
+                      {copy.globe.workspacePreviewPhotoHint}
+                    </span>
                   </div>
-                </div>
-
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-5 pt-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {draftDay ? (
-                        <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
-                          {draftDay.labelKo}
-                        </span>
-                      ) : null}
-                      <span className="text-[12px] font-medium text-[#8b95a1]">
-                        {preview.ratingLabel}
-                        <span className="mx-1.5 text-[#d1d6db]">·</span>
-                        {kindLabel}
-                      </span>
-                    </div>
-                    <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#191f28]">
-                      {preview.title}
-                    </h3>
-                    <p className="mt-1 text-[15px] font-bold tabular-nums text-[#191f28]">
-                      {preview.price}
-                      <span className="ml-2 text-[12px] font-medium text-[#8b95a1]">
-                        {preview.reviewSummary}
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <button
-                      type="button"
-                      className={cn(
-                        "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold",
-                        preview.selected
-                          ? "bg-[#191f28] text-white"
-                          : "bg-[#3182f6] text-white",
-                      )}
-                      onClick={confirmSelect}
-                    >
-                      {preview.selected
-                        ? copy.globe.workspacePreviewSelected
-                        : copy.globe.workspacePreviewSelect}
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1",
-                        preview.inCompare
-                          ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
-                          : "bg-white text-[#191f28] ring-black/[0.08]",
-                      )}
-                      onClick={addToCompare}
-                    >
-                      {preview.inCompare
-                        ? copy.globe.workspacePreviewInCompare
-                        : copy.globe.workspacePreviewAddCompare}
-                      {compareCount > 0 ? ` (${compareCount})` : ""}
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1 ring-black/[0.08]",
-                        preview.bookmarked
-                          ? "bg-[#191f28] text-white ring-transparent"
-                          : "bg-white text-[#191f28]",
-                      )}
-                      onClick={() => {
-                        applyWorkspaceTransition({
-                          contextEventId,
-                          op: "bookmark",
-                          nodeIds: [activeNode.id],
-                          pin: !activeNode.bookmarked,
-                        });
-                      }}
-                    >
-                      <Pin className="h-3.5 w-3.5" strokeWidth={2.5} />
-                      {preview.bookmarked
-                        ? copy.globe.workspacePinDone
-                        : copy.globe.workspacePinCta}
-                    </button>
-                  </div>
-
-                  {/* Sibling strip — GPT keeps exploring nearby cards */}
-                  {layerNodes.length > 1 ? (
-                    <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                      {layerNodes.map((node) => {
-                        const card = buildNodePreview(node, workspace);
-                        const on = node.id === activeNode.id;
-                        return (
-                          <button
-                            key={node.id}
-                            type="button"
-                            className={cn(
-                              "max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold",
-                              on
-                                ? "bg-[#191f28] text-white"
-                                : "bg-[#f2f4f6] text-[#4e5968]",
-                            )}
-                            onClick={() => onActiveNodeChange(node.id)}
-                          >
-                            {card.title}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-[#f9fafb]">
-                    {preview.whyChosen ? (
-                      <li className="flex items-start gap-3 px-3.5 py-3">
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                        <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                          {preview.whyChosen}
-                        </p>
-                      </li>
-                    ) : null}
-                    {nodeBrief && nodeBrief.linesKo[0] ? (
-                      <li className="flex items-start gap-3 px-3.5 py-3">
-                        <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                        <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                          {nodeBrief.linesKo[0]}
-                        </p>
-                      </li>
-                    ) : null}
-                    {preview.amenities[0] ? (
-                      <li className="flex items-start gap-3 px-3.5 py-3">
-                        <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                        <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                          {preview.amenities.slice(0, 3).join(" · ")}
-                        </p>
-                      </li>
-                    ) : null}
-                  </ul>
-
-                  {preview.canPrepare && primary.kind !== "done" ? (
-                    <button
-                      type="button"
-                      className="w-full rounded-[16px] bg-[#3182f6] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
-                      onClick={() => {
-                        if (primary.kind === "confirm")
-                          onConfirmReady?.(activeNode.id);
-                        else if (primary.kind === "approve_pay")
-                          onOpenField?.(activeNode.id);
-                        else onPrepareReserve?.(activeNode.id);
-                      }}
-                    >
-                      {primary.labelKo}
-                      {primary.hintKo ? (
-                        <span className="mt-0.5 block text-[11px] font-medium opacity-90">
-                          {primary.hintKo}
-                        </span>
-                      ) : null}
-                    </button>
-                  ) : null}
-
                   <button
                     type="button"
-                    className="w-full py-1 text-center text-[12px] font-semibold text-[#8b95a1]"
-                    onClick={() => setExpanded(false)}
+                    className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                    onClick={onClose}
+                    aria-label="닫기"
                   >
-                    후보 카드로 접기
+                    <X className="h-4 w-4" strokeWidth={2.5} />
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-2 pt-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {draftDay ? (
+                    <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
+                      {draftDay.labelKo}
+                    </span>
+                  ) : null}
+                  <span className="text-[13px] font-medium text-[#8b95a1]">
+                    {preview.ratingLabel}
+                    <span className="mx-1.5 text-[#d1d6db]">·</span>
+                    {kindLabel}
+                  </span>
+                </div>
+                <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#191f28]">
+                  {preview.title}
+                </h3>
+                <p className="mt-1 text-[16px] font-bold tabular-nums text-[#191f28]">
+                  {preview.price}
+                  <span className="ml-2 text-[12px] font-medium text-[#8b95a1]">
+                    {preview.reviewSummary}
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button
+                  type="button"
+                  className={cn(
+                    "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold",
+                    preview.selected
+                      ? "bg-[#191f28] text-white"
+                      : "bg-[#3182f6] text-white",
+                  )}
+                  onClick={confirmSelect}
+                >
+                  {preview.selected
+                    ? copy.globe.workspacePreviewSelected
+                    : copy.globe.workspacePreviewSelect}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1",
+                    preview.inCompare
+                      ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
+                      : "bg-white text-[#191f28] ring-black/[0.08]",
+                  )}
+                  onClick={addToCompare}
+                >
+                  {preview.inCompare
+                    ? copy.globe.workspacePreviewInCompare
+                    : copy.globe.workspacePreviewAddCompare}
+                  {compareCount > 0 ? ` (${compareCount})` : ""}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1 ring-black/[0.08]",
+                    preview.bookmarked
+                      ? "bg-[#191f28] text-white ring-transparent"
+                      : "bg-white text-[#191f28]",
+                  )}
+                  onClick={() => {
+                    applyWorkspaceTransition({
+                      contextEventId,
+                      op: "bookmark",
+                      nodeIds: [activeNode.id],
+                      pin: !activeNode.bookmarked,
+                    });
+                  }}
+                >
+                  <Pin className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  {preview.bookmarked
+                    ? copy.globe.workspacePinDone
+                    : copy.globe.workspacePinCta}
+                </button>
+              </div>
+
+              {layerNodes.length > 1 ? (
+                <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {layerNodes.map((node) => {
+                    const card = buildNodePreview(node, workspace);
+                    const on = node.id === activeNode.id;
+                    return (
+                      <button
+                        key={node.id}
+                        type="button"
+                        className={cn(
+                          "max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold",
+                          on
+                            ? "bg-[#191f28] text-white"
+                            : "bg-[#f2f4f6] text-[#4e5968]",
+                        )}
+                        onClick={() => onActiveNodeChange(node.id)}
+                      >
+                        {card.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-[#f9fafb]">
+                {preview.whyChosen ? (
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                      {preview.whyChosen}
+                    </p>
+                  </li>
+                ) : null}
+                {nodeBrief && nodeBrief.linesKo[0] ? (
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                      {nodeBrief.linesKo[0]}
+                    </p>
+                  </li>
+                ) : null}
+                {preview.amenities[0] ? (
+                  <li className="flex items-start gap-3 px-3.5 py-3">
+                    <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
+                    <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
+                      {preview.amenities.slice(0, 3).join(" · ")}
+                    </p>
+                  </li>
+                ) : null}
+              </ul>
+
+              {preview.canPrepare && primary.kind !== "done" ? (
+                <button
+                  type="button"
+                  className="w-full rounded-[16px] bg-[#3182f6] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
+                  onClick={() => {
+                    if (primary.kind === "confirm")
+                      onConfirmReady?.(activeNode.id);
+                    else if (primary.kind === "approve_pay")
+                      onOpenField?.(activeNode.id);
+                    else onPrepareReserve?.(activeNode.id);
+                  }}
+                >
+                  {primary.labelKo}
+                  {primary.hintKo ? (
+                    <span className="mt-0.5 block text-[11px] font-medium opacity-90">
+                      {primary.hintKo}
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+            </div>
+
+            {sheetFooter ? (
+              <div className="shrink-0 border-t border-black/[0.04] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5">
+                {sheetFooter}
+              </div>
+            ) : null}
+          </motion.div>
         </motion.div>
       ) : null}
     </AnimatePresence>

@@ -59,6 +59,11 @@ export type WorkspaceCursorDockProps = {
   contextEventId: string;
   /** Peek open — collapse transcript so nothing clips. */
   compact?: boolean;
+  /**
+   * GPT Maps place sheet — prompt only, no Agent/chat chrome.
+   * Renders flush inside the place bottom sheet.
+   */
+  embedded?: boolean;
   onFocusNode?: (nodeId: string) => void;
   onBriefReplay?: () => void;
   briefReplayGroundIndex?: number | null;
@@ -144,6 +149,7 @@ function AssistantBubble(props: {
 export function WorkspaceCursorDock({
   contextEventId,
   compact = false,
+  embedded = false,
   onFocusNode,
   onBriefReplay,
   briefReplayGroundIndex = null,
@@ -360,12 +366,43 @@ export function WorkspaceCursorDock({
   return (
     <div
       className={cn(
-        "pointer-events-auto mx-auto w-full max-w-[min(96vw,400px)] shrink-0",
+        "pointer-events-auto w-full shrink-0",
+        !embedded && "mx-auto max-w-[min(96vw,400px)]",
         className,
       )}
       data-workspace-cursor-dock
       data-compact={compact ? "true" : "false"}
+      data-embedded={embedded ? "true" : "false"}
     >
+      {embedded ? (
+        <form
+          className="flex items-center gap-1.5 rounded-full bg-[#f2f4f6] px-3 py-1.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void runTurn(value);
+          }}
+        >
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            disabled={busy}
+            className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-[14px] text-[#191f28] outline-none placeholder:text-[#8b95a1]"
+            aria-label={placeholder}
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            disabled={busy || !value.trim()}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40"
+            style={{ background: GLOBE_TOSS_THEME.blue }}
+            aria-label="보내기"
+          >
+            <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </form>
+      ) : (
       <div
         className={cn(
           "overflow-hidden bg-white ring-1 ring-black/[0.06]",
@@ -513,6 +550,7 @@ export function WorkspaceCursorDock({
           </form>
         </div>
       </div>
+      )}
     </div>
   );
 }

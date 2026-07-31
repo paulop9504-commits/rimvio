@@ -203,7 +203,7 @@ export function buildNodePreview(
     node.thumbnailUrl?.trim() || null,
     ...(node.galleryUrls ?? []).map((u) => u.trim()),
   ].filter((u): u is string => Boolean(u));
-  const galleryImages = [...new Set(galleryRaw)].slice(0, 8);
+  const galleryImages = [...new Set(galleryRaw)].slice(0, 36);
   const heroImage = galleryImages[0] ?? null;
 
   const capabilities = resolveWorkspaceNodeCapabilities(node);

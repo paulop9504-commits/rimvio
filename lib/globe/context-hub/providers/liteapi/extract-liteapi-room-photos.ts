@@ -7,8 +7,8 @@ import type {
   LiteApiRoomPhotoCatalogEntry,
 } from "@/lib/globe/context-hub/providers/liteapi/liteapi-hotel-details-types";
 
-const MAX_HOTEL_IMAGES = 12;
-const MAX_ROOM_IMAGES = 3;
+const MAX_HOTEL_IMAGES = 36;
+const MAX_ROOM_IMAGES = 16;
 
 function normalizeUrl(value: string | null | undefined): string | null {
   const trimmed = value?.trim();

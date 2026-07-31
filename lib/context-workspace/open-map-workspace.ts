@@ -127,7 +127,7 @@ export function placeHitToWorkspaceNode(
   const gallery = (hit.images ?? [])
     .map((u) => u.trim())
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, 36);
   const thumb =
     hit.thumbnailUrl?.trim() || gallery[0] || null;
   return {
@@ -178,7 +178,7 @@ export function candidateToWorkspaceNode(
   const gallery = (candidate.images ?? [])
     .map((u) => (typeof u === "string" ? u.trim() : ""))
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, 36);
   const thumb =
     (typeof candidate.thumbnailUrl === "string"
       ? candidate.thumbnailUrl.trim()

@@ -944,21 +944,32 @@ export function ContextWorkspaceShell({
           </div>
         ) : null}
 
-        {/* Object browser — layer pills + carousel + detail (above Agent) */}
-        {selectedNode && !compareOpen ? (
+        {/* Object browser — GPT place sheet (prompt fused inside) */}
+        {selectedNode && !compareOpen && !commitPreviewOpen ? (
           <WorkspaceObjectCarousel
             open={showPeek}
             contextEventId={eventId}
             nodes={mapFocusNodes}
             activeNodeId={selectedNode.id}
             workspace={state}
-            dockClearancePx={8}
+            sheetFooter={
+              <WorkspaceCursorDock
+                contextEventId={eventId}
+                embedded
+                onFocusNode={onSelect}
+                onBriefReplay={() => {
+                  setListOpen(false);
+                  setPeekDismissedId(selectedId);
+                }}
+                briefReplayGroundIndex={briefReplayGroundIndex}
+                activeDraftNodeId={venueSelectedId}
+              />
+            }
             onActiveNodeChange={(nodeId) => {
               setFocusedId(nodeId);
               setPeekDismissedId(null);
             }}
             onClose={() => {
-              // Keep mapFocusKind so lodging candidates stay on the map after peek close.
               setPeekDismissedId(selectedNode.id);
               setFocusedId(null);
             }}
@@ -971,20 +982,21 @@ export function ContextWorkspaceShell({
         ) : null}
       </div>
 
-      {/* Agent dock only — separate composer strip */}
-      <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
-        <WorkspaceCursorDock
-          contextEventId={eventId}
-          compact={showPeek}
-          onFocusNode={onSelect}
-          onBriefReplay={() => {
-            setListOpen(false);
-            setPeekDismissedId(selectedId);
-          }}
-          briefReplayGroundIndex={briefReplayGroundIndex}
-          activeDraftNodeId={venueSelectedId}
-        />
-      </div>
+      {/* Agent dock — hide under place sheet or Commit Preview */}
+      {!showPeek && !commitPreviewOpen ? (
+        <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
+          <WorkspaceCursorDock
+            contextEventId={eventId}
+            onFocusNode={onSelect}
+            onBriefReplay={() => {
+              setListOpen(false);
+              setPeekDismissedId(selectedId);
+            }}
+            briefReplayGroundIndex={briefReplayGroundIndex}
+            activeDraftNodeId={venueSelectedId}
+          />
+        </div>
+      ) : null}
 
       {closeNameOpen ? (
         <WorkspaceCloseNameSheet

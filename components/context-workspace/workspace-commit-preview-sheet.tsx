@@ -51,12 +51,21 @@ export function WorkspaceCommitPreviewSheet({
 
   return (
     <div
-      className="absolute inset-0 z-[3] flex items-end justify-center bg-black/35 p-4"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-black/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       data-workspace-commit-preview
       role="dialog"
+      aria-modal="true"
       aria-label={preview.titleKo}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !busy) {
+          onCancel();
+        }
+      }}
     >
-      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-black/8">
+      <div
+        className="pointer-events-auto w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-black/8"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="border-b border-black/5 px-4 py-3">
           <p className="text-[11px] font-medium text-muted-foreground">
             Commit Preview

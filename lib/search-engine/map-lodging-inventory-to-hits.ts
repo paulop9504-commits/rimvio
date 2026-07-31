@@ -100,7 +100,7 @@ export function mapLodgingInventoryToPlaceHits(input: {
       images: (row.images ?? [])
         .map((u) => u.trim())
         .filter(Boolean)
-        .slice(0, 8),
+        .slice(0, 36),
       reasonKo: null,
     };
   });
