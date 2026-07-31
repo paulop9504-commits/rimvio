@@ -41,8 +41,10 @@ import {
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { subscribePreparedRealityOperations } from "@/lib/reality-queue/prepared-operations-store";
 import { MEDIA_SPACETIME_UPDATED } from "@/lib/location-ping/media-context-store";
-import { EVENT_CANDIDATES_UPDATED } from "@/lib/events/event-store";
-import { findLifeEventCandidate } from "@/lib/life-read-model";
+import {
+  EVENT_CANDIDATES_UPDATED,
+  findLifeEventCandidate,
+} from "@/lib/life-read-model";
 import { recoverGlobeContextEventFromPin } from "@/lib/globe/recover-globe-context-event";
 import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { readWorldState } from "@/lib/workstream/world-state";
