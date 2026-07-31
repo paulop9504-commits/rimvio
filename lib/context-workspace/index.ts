@@ -167,6 +167,15 @@ export {
 } from "@/lib/context-workspace/reality-draft";
 
 export {
+  buildImmediatePlaceBrief,
+  buildPlaceBriefFromFacts,
+  buildPlaceBriefFactPack,
+  loadPlaceBriefAsync,
+  type PlaceBrief,
+  type PlaceBriefFactPack,
+} from "@/lib/context-workspace/place-brief";
+
+export {
   buildContextBrief,
   buildNodeContextBrief,
   buildBriefReplayNodeIds,

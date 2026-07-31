@@ -28,6 +28,12 @@ import {
 } from "@/lib/context-workspace";
 import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
 import { buildNodeContextBrief } from "@/lib/context-workspace/context-brief/build-node-brief";
+import {
+  buildImmediatePlaceBrief,
+  buildPlaceBriefFactPack,
+  resolveLodgingInventoryForNode,
+  type PlaceBrief,
+} from "@/lib/context-workspace/place-brief";
 import { resolvePeekPrimaryAction } from "@/lib/context-workspace/set-node-action-ready-state";
 import { prepareCopyFromCapabilities } from "@/lib/context-workspace/resolve-workspace-node-capabilities";
 import { hasRealityExecutionCapability } from "@/lib/reality-object/capabilities-for-type";
@@ -40,6 +46,7 @@ import {
 } from "@/lib/context-workspace/workspace-object-layer";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { WorkspaceRemoteImage } from "@/components/context-workspace/workspace-remote-image";
+import { WorkspacePlaceBriefSection } from "@/components/context-workspace/workspace-place-brief-section";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -137,6 +144,69 @@ export function WorkspaceObjectCarousel({
     () => (activeNode ? buildNodePreview(activeNode, workspace) : null),
     [activeNode, workspace],
   );
+
+  const destinationKo =
+    workspace.realityDraft?.destinationKo?.trim() || null;
+
+  const immediateBrief = useMemo(() => {
+    if (!activeNode) return null;
+    return buildImmediatePlaceBrief({
+      contextEventId,
+      node: activeNode,
+      destinationKo,
+    });
+  }, [activeNode, contextEventId, destinationKo]);
+
+  const [placeBrief, setPlaceBrief] = useState<PlaceBrief | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeNode || !open) {
+      setPlaceBrief(null);
+      return;
+    }
+    const facts = buildImmediatePlaceBrief({
+      contextEventId,
+      node: activeNode,
+      destinationKo,
+    });
+    setPlaceBrief(facts);
+    setBriefLoading(true);
+    const inventory = resolveLodgingInventoryForNode({
+      contextEventId,
+      node: activeNode,
+    });
+    const pack = buildPlaceBriefFactPack({
+      node: activeNode,
+      inventory,
+      destinationKo,
+    });
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/workspace/place-brief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pack, allowLlm: true }),
+        });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as {
+          ok?: boolean;
+          brief?: PlaceBrief;
+        };
+        if (!cancelled && json.ok && json.brief) {
+          setPlaceBrief(json.brief);
+        }
+      } catch {
+        // Keep deterministic facts brief.
+      } finally {
+        if (!cancelled) setBriefLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeNode, contextEventId, destinationKo, open]);
 
   const nodeBrief = useMemo(() => {
     if (!activeNode) return null;
@@ -499,6 +569,11 @@ export function WorkspaceObjectCarousel({
                     ))}
                   </ul>
                 ) : null}
+
+                <WorkspacePlaceBriefSection
+                  brief={placeBrief ?? immediateBrief}
+                  loading={briefLoading && !(placeBrief ?? immediateBrief)?.introKo}
+                />
 
                 {preview.canPrepare && primary.kind !== "done" ? (
                   <button
