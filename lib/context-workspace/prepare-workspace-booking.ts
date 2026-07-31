@@ -54,12 +54,13 @@ export function prepareWorkspaceNodeBooking(input: {
     lng: input.node.lng,
     contextLabelKo: input.contextLabelKo,
     amountLabel: input.node.amountLabel,
+    liteapiOfferId: input.node.liteapiOfferId ?? null,
   });
   if (!prepared.ok) {
     return { ok: false, reasonKo: prepared.reasonKo };
   }
   return {
     ok: true,
-    toastKo: copy.globe.workspaceSdkActionReadyHint(placeName),
+    toastKo: copy.globe.workspacePrepareReadyForPay(placeName),
   };
 }

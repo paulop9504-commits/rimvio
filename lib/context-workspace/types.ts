@@ -23,6 +23,20 @@ export type ContextWorkspaceNodeKind =
 
 export type ContextWorkspaceDomain = ContextWorkspaceNodeKind;
 
+/**
+ * Action-Ready lifecycle on spatial nodes (Prepared State).
+ * discover → prepare → ready → approved → committed
+ */
+export const ACTION_READY_STATES = [
+  "discover",
+  "prepare",
+  "ready",
+  "approved",
+  "committed",
+] as const;
+
+export type ActionReadyState = (typeof ACTION_READY_STATES)[number];
+
 export type ContextWorkspaceNode = {
   readonly id: string;
   readonly kind: ContextWorkspaceNodeKind;
@@ -39,11 +53,18 @@ export type ContextWorkspaceNode = {
   readonly thumbnailUrl: string | null;
   /** Extra venue photos for Peek gallery (hero = thumbnailUrl). */
   readonly galleryUrls?: readonly string[] | null;
+  /** LiteAPI offer when known — Workspace → prepare → Commit. */
+  readonly liteapiOfferId?: string | null;
   readonly tags: readonly string[];
   readonly visible: boolean;
   readonly selected: boolean;
   readonly bookmarked: boolean;
   readonly source: string;
+  /**
+   * Prepared State — AI-built Action-Ready (not Reality Commit).
+   * Default omitted ≈ discover for legacy nodes.
+   */
+  readonly actionReadyState?: ActionReadyState | null;
 };
 
 export type ContextWorkspaceStatus =
@@ -98,6 +119,10 @@ export type ContextWorkspaceRelationshipEdge = {
 /** Capsule Snapshot IR — same object Resume / pack / rank consume (ADR-023). */
 export type ContextWorkspaceCompilerIr = import("@/lib/context-compiler/types").ContextCompilerIrV1;
 
+/** Day-structured Reality Draft — Chat + Map share one Prepared graph. */
+export type ContextWorkspaceRealityDraft =
+  import("@/lib/context-workspace/reality-draft").RealityDraft;
+
 export type ContextWorkspaceState = {
   readonly version: typeof CONTEXT_WORKSPACE_VERSION;
   readonly workspaceId: string;
@@ -114,6 +139,8 @@ export type ContextWorkspaceState = {
    * Preference · Reality State · graph — not re-parsed from chat dump.
    */
   readonly compilerIr: ContextWorkspaceCompilerIr | null;
+  /** Prepared itinerary SSOT for Chat Day View ↔ Map pins. */
+  readonly realityDraft?: ContextWorkspaceRealityDraft | null;
   readonly filter: ContextWorkspaceFilter;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];

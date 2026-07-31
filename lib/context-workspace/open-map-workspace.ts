@@ -144,6 +144,7 @@ export function placeHitToWorkspaceNode(
     reviewCount,
     thumbnailUrl: thumb,
     galleryUrls: gallery.length > 0 ? gallery : null,
+    liteapiOfferId: hit.liteapiOfferId?.trim() || null,
     tags: inferTags(hit.labelKo, summary, {
       reservable: hit.reservable,
       localFavorite: hit.localFavorite,
@@ -204,6 +205,10 @@ export function candidateToWorkspaceNode(
     reviewCount,
     thumbnailUrl: thumb,
     galleryUrls: gallery.length > 0 ? gallery : null,
+    liteapiOfferId:
+      typeof candidate.liteapiOfferId === "string"
+        ? candidate.liteapiOfferId.trim() || null
+        : null,
     tags: inferTags(candidate.labelKo, summary, {
       reservable: candidate.reservable ?? undefined,
       localFavorite: candidate.localFavorite ?? undefined,

@@ -23,6 +23,11 @@ import {
   WORKSPACE_ITINERARY_LAYER_ID,
   WORKSPACE_ITINERARY_SOURCE_ID,
 } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
+import {
+  dispatchWorkspaceBriefReplayStep,
+  runWorkspaceBriefReplay,
+  subscribeWorkspaceBriefReplay,
+} from "@/lib/context-workspace/context-brief";
 import { TOSS_WORKSPACE_MAP_CANVAS } from "@/lib/context-workspace/map/toss-workspace-map-canvas-theme";
 import { GLOBE_VECTOR_MAP_STYLE_URL } from "@/lib/globe/globe-vector-map-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
@@ -41,7 +46,7 @@ export type WorkspaceMapViewProps = {
   onRemovePin?: (id: string) => void;
   /** Soft prepare on lodging marker — never charges. */
   onPrepareReserve?: (id: string) => void;
-  /** Prepared lodging → Field 결재함. */
+  /** Prepared lodging → in-Workspace approve · pay. */
   onOpenField?: (id: string) => void;
   onBackgroundActivate?: () => void;
   /** Primary itinerary LineString as [lng, lat][]. */
@@ -50,6 +55,8 @@ export type WorkspaceMapViewProps = {
   compact?: boolean;
   /** Skip WebGL — chat teaser / low-power path. */
   preferPlaceholder?: boolean;
+  /** Scope Brief Replay subscription. */
+  contextEventId?: string | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -362,17 +369,23 @@ function MapLibreWorkspaceMap({
   routeLineCoords,
   compact,
   className,
+  contextEventId,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
   const markersByIdRef = useRef<Map<string, MarkerEntry>>(new Map());
   const lastGeometryKeyRef = useRef<string>("");
+  const pinsRef = useRef(pins);
+  const replayCancelRef = useRef(false);
   const onSelectRef = useRef(onSelectPin);
   const onPinToggleRef = useRef(onPinToggle);
   const onRemovePinRef = useRef(onRemovePin);
   const onPrepareRef = useRef(onPrepareReserve);
   const onOpenFieldRef = useRef(onOpenField);
   const onBgRef = useRef(onBackgroundActivate);
+  useEffect(() => {
+    pinsRef.current = pins;
+  }, [pins]);
   useEffect(() => {
     onSelectRef.current = onSelectPin;
     onPinToggleRef.current = onPinToggle;
@@ -606,6 +619,77 @@ function MapLibreWorkspaceMap({
       /* style not ready */
     }
   }, [ready, routeKey, routeLineCoords]);
+
+  useEffect(() => {
+    const ctx = contextEventId?.trim() ?? "";
+    if (!ctx || !ready) return;
+
+    return subscribeWorkspaceBriefReplay((detail) => {
+      if (detail.contextEventId !== ctx) return;
+      const map = mapRef.current;
+      if (!map) return;
+
+      replayCancelRef.current = false;
+      const stopUser = () => {
+        replayCancelRef.current = true;
+      };
+      map.on("dragstart", stopUser);
+      map.on("zoomstart", stopUser);
+      map.on("rotatestart", stopUser);
+
+      const byId = new Map(
+        pinsRef.current.map((p) => [p.id, p] as const),
+      );
+      const stops = detail.nodeIds
+        .map((id) => {
+          const pin = byId.get(id);
+          if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
+            return null;
+          }
+          return { id: pin.id, lat: pin.lat, lng: pin.lng };
+        })
+        .filter((s): s is { id: string; lat: number; lng: number } => s != null);
+
+      void runWorkspaceBriefReplay({
+        stops,
+        stepMs: 1300,
+        shouldCancel: () => replayCancelRef.current,
+        onStep: (stepIndex, stop) => {
+          onSelectRef.current?.(stop.id);
+          dispatchWorkspaceBriefReplayStep({
+            contextEventId: ctx,
+            stepIndex,
+            total: stops.length,
+            nodeId: stop.id,
+            done: false,
+          });
+        },
+        flyTo: (stop) =>
+          new Promise<void>((resolve) => {
+            map.easeTo({
+              center: [stop.lng, stop.lat],
+              zoom: Math.max(map.getZoom(), 14.5),
+              duration: 1100,
+              essential: true,
+            });
+            map.once("moveend", () => resolve());
+            window.setTimeout(() => resolve(), 1200);
+          }),
+        onDone: () => {
+          map.off("dragstart", stopUser);
+          map.off("zoomstart", stopUser);
+          map.off("rotatestart", stopUser);
+          dispatchWorkspaceBriefReplayStep({
+            contextEventId: ctx,
+            stepIndex: Math.max(0, stops.length - 1),
+            total: stops.length,
+            nodeId: stops[stops.length - 1]?.id ?? null,
+            done: true,
+          });
+        },
+      });
+    });
+  }, [contextEventId, ready]);
 
   return (
     <div

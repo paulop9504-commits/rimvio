@@ -76,6 +76,7 @@ import { useGlobeEateryDiscoverySession } from "@/hooks/use-globe-eatery-discove
 import { useBrainSurfaceProjectionReveal } from "@/hooks/use-brain-surface-projection-reveal";
 import { extractYouTubeVideoId } from "@/lib/enrichers/youtube-url";
 import { useMediaSpatialTraceTour } from "@/hooks/use-media-spatial-trace-tour";
+import { useGlobeBriefReplay } from "@/hooks/use-globe-brief-replay";
 import { useContextMediaGuides } from "@/hooks/use-context-media-guides";
 import { useGlobeContextBrainActions } from "@/hooks/use-globe-context-brain-actions";
 import { useWorkQueue } from "@/hooks/use-work-queue";
@@ -1738,6 +1739,9 @@ function GlobeHomeBody() {
     stops: spatialTraceTourStops,
     advancePaused: spatialTraceTourAdvancePaused,
   });
+
+  /** Context Brief → 3D fly when Workspace (2D) is collapsed. */
+  useGlobeBriefReplay({ globeRef });
 
   const dismissBrainSurfacePreview = useCallback(() => {
     spatialTraceTourSuppressedRef.current = true;

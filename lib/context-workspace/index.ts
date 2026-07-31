@@ -4,6 +4,7 @@
  */
 
 export type {
+  ActionReadyState,
   ContextSurfaceKind,
   ContextWorkspaceDomain,
   ContextWorkspaceFilter,
@@ -18,6 +19,7 @@ export type {
   WorkspaceWhyEntry,
 } from "@/lib/context-workspace/types";
 export {
+  ACTION_READY_STATES,
   CONTEXT_WORKSPACE_VERSION,
   domainLabelKo,
 } from "@/lib/context-workspace/types";
@@ -115,6 +117,41 @@ export {
 } from "@/lib/context-workspace/build-workspace-chat-sync";
 
 export {
+  buildRealityDraft,
+  findRealityDraftDayForNode,
+  findRealityDraftNode,
+  compileTripEntitySlots,
+  materializeTripDraftStops,
+  resolveTripDayCount,
+  type RealityDraft,
+  type RealityDraftDay,
+  type RealityDraftEntityKind,
+  type RealityDraftNodeRef,
+  type TripEntitySlot,
+} from "@/lib/context-workspace/reality-draft";
+
+export {
+  buildContextBrief,
+  buildNodeContextBrief,
+  buildBriefReplayNodeIds,
+  buildBriefReplayStops,
+  dispatchWorkspaceBriefReplay,
+  dispatchWorkspaceBriefReplayStep,
+  subscribeWorkspaceBriefReplay,
+  subscribeWorkspaceBriefReplayStep,
+  runWorkspaceBriefReplay,
+  WORKSPACE_BRIEF_REPLAY,
+  WORKSPACE_BRIEF_REPLAY_STEP,
+  type BriefReplayStop,
+  type ContextBrief,
+  type ContextBriefRole,
+  type ContextBriefRoleKind,
+  type NodeContextBrief,
+  type WorkspaceBriefReplayDetail,
+  type WorkspaceBriefReplayStepDetail,
+} from "@/lib/context-workspace/context-brief";
+
+export {
   buildCapsuleProjection,
   listCapsuleProjections,
   readCapsuleCompilerIr,
@@ -151,6 +188,20 @@ export type {
 export { buildWorkspaceWhy } from "@/lib/context-workspace/build-workspace-why";
 export { optimizeWorkspaceNodeRoute } from "@/lib/context-workspace/optimize-workspace-route";
 export { prepareWorkspaceNodeBooking } from "@/lib/context-workspace/prepare-workspace-booking";
+export { approveWorkspacePlaceCheckout } from "@/lib/context-workspace/approve-workspace-place-checkout";
+export type { ApproveWorkspacePlaceCheckoutResult } from "@/lib/context-workspace/approve-workspace-place-checkout";
+export {
+  setWorkspaceNodeActionReadyState,
+  resolvePeekPrimaryAction,
+  canAdvanceActionReady,
+  type PeekPrimaryAction,
+} from "@/lib/context-workspace/set-node-action-ready-state";
+export {
+  resolveWorkspaceNodeCapabilities,
+  workspaceNodeCanPrepare,
+  prepareCopyFromCapabilities,
+  workspaceNodePinKind,
+} from "@/lib/context-workspace/resolve-workspace-node-capabilities";
 export { buildWorkspaceItineraryLineCoords } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
 export { buildWorkspaceConciergeStatus } from "@/lib/context-workspace/build-workspace-concierge-status";
 export {

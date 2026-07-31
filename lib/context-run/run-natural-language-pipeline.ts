@@ -75,6 +75,11 @@ import {
   type RuleEngineDecision,
 } from "@/lib/rule-engine";
 import { tryRunNlContextCreateOffer } from "@/lib/context-run/try-run-nl-context-create";
+import {
+  tryResolvePendingCreateProject,
+  tryRunIntentRouterHardCreateOpen,
+  tryRunIntentRouterSoftCreateOffer,
+} from "@/lib/intent-router";
 import { normalizeNlNegation } from "@/lib/context-run/normalize-nl-negation";
 import {
   parseNlIntentChain,
@@ -499,6 +504,55 @@ export function runNaturalLanguagePipeline(
           trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
         };
       }
+    }
+  }
+
+  {
+    const pendingCreate = tryResolvePendingCreateProject({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (pendingCreate) {
+      pushStage(visited, "intent_parser");
+      return {
+        result: pendingCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
+  }
+
+  {
+    const softCreate = tryRunIntentRouterSoftCreateOffer({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (softCreate) {
+      pushStage(visited, "intent_parser");
+      return {
+        result: softCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
+  }
+
+  {
+    const hardCreate = tryRunIntentRouterHardCreateOpen({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (hardCreate) {
+      pushStage(visited, "intent_parser");
+      pushStage(visited, "agent_runtime");
+      return {
+        result: hardCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
     }
   }
 
@@ -1060,6 +1114,55 @@ export async function runNaturalLanguagePipelineAsync(
           trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
         };
       }
+    }
+  }
+
+  {
+    const pendingCreate = tryResolvePendingCreateProject({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (pendingCreate) {
+      pushStage(visited, "intent_parser");
+      return {
+        result: pendingCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
+  }
+
+  {
+    const softCreate = tryRunIntentRouterSoftCreateOffer({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (softCreate) {
+      pushStage(visited, "intent_parser");
+      return {
+        result: softCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
+    }
+  }
+
+  {
+    const hardCreate = tryRunIntentRouterHardCreateOpen({
+      utterance: input.utterance,
+      contextEventId,
+      ruleDecision,
+      pack,
+    });
+    if (hardCreate) {
+      pushStage(visited, "intent_parser");
+      pushStage(visited, "agent_runtime");
+      return {
+        result: hardCreate,
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      };
     }
   }
 

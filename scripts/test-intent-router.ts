@@ -1,110 +1,149 @@
-#!/usr/bin/env npx tsx
+/**
+ * Intent Router — Soft / Draft Reality (spatial READY) / Hard Workspace.
+ */
 import assert from "node:assert/strict";
-import { orchestrateByRules } from "../lib/action-chat/rule-orchestrator";
 import {
-  applyContextIsolation,
-  applyIntentRouteToResult,
-  extractCurrentTopic,
+  buildIntentPlan,
+  clearPendingCreateProject,
+  readPendingCreateProject,
   resolveIntentRoute,
-  scoreTopicRelevance,
-  stripPriorTopicReferences,
-} from "../lib/action-chat/intent-router";
+  tryResolvePendingCreateProject,
+  tryRunIntentRouterHardCreateOpen,
+  tryRunIntentRouterSoftCreateOffer,
+} from "../lib/intent-router";
+import {
+  clearContextWorkspace,
+  clearWorkspaceChat,
+  readContextWorkspace,
+} from "../lib/context-workspace";
+import { evaluateUtteranceRules } from "../lib/rule-engine";
+import { buildContextPack } from "../lib/context-builder";
 
-const diningHistory = [
-  { role: "user" as const, content: "쿠우쿠우 도안점 정보 알려줘" },
-  { role: "assistant" as const, content: "쿠우쿠우 도안점 맛집" },
-];
+const CTX = "test:intent-router";
 
-const followUp = resolveIntentRoute({
-  message: "그럼 다른 날은?",
-  history: [...diningHistory, { role: "user", content: "그럼 다른 날은?" }],
-  linkTitle: "쿠우쿠우 도안점",
-});
-assert.equal(followUp.intent_type, "CONTINUE");
-assert.equal(followUp.requires_context_switch, false);
-assert.equal(followUp.micro_intent, "CONTINUE");
+function pack() {
+  return buildContextPack({
+    utterance: "test",
+    graph: null,
+  });
+}
 
-const priceFollowUp = resolveIntentRoute({
-  message: "가격은 얼마야?",
-  history: [...diningHistory, { role: "user", content: "가격은 얼마야?" }],
-  linkTitle: "쿠우쿠우 도안점",
-});
-assert.equal(priceFollowUp.micro_intent, "DIRECT_QUERY");
-assert.equal(priceFollowUp.intent_type, "NEW_TASK");
+function rules(utterance: string) {
+  return evaluateUtteranceRules({
+    utterance,
+    graph: null,
+  });
+}
 
-const thanks = resolveIntentRoute({
-  message: "고마워",
-  history: [...diningHistory, { role: "user", content: "고마워" }],
-  linkTitle: "쿠우쿠우 도안점",
-});
-assert.equal(thanks.micro_intent, "CLOSE");
-assert.equal(thanks.intent_type, "CONTINUE");
-assert.equal(thanks.continuity, "HOLD");
-assert.equal(thanks.requires_context_switch, false);
+clearWorkspaceChat(CTX);
+clearContextWorkspace(CTX);
+clearPendingCreateProject(CTX);
 
-const newTask = resolveIntentRoute({
-  message: "대전 월드컵 경기장 일정 잡아줘",
-  history: [...diningHistory, { role: "user", content: "대전 월드컵 경기장 일정 잡아줘" }],
-  linkTitle: "쿠우쿠우 도안점",
-});
-assert.equal(newTask.intent_type, "NEW_TASK");
-assert.equal(newTask.requires_context_switch, true);
+// 1) Declarative trip → DRAFT Reality on map (READY nodes, real coords)
+{
+  const u = "오사카 4박5일 여행 갈 거야";
+  const route = resolveIntentRoute({ utterance: u, contextEventId: CTX });
+  assert.equal(route.mode, "create");
+  assert.equal(route.confidence, "draft");
+  assert.equal(route.surface, "draft_preview");
 
-const isolated = applyContextIsolation(
-  {
-    message: "대전 월드컵 경기장 일정 잡아줘",
-    history: diningHistory,
-    linkTitle: "쿠우쿠우 도안점",
-    linkUrl: "https://example.com/kuukuu",
-    linkCategory: "place",
-  },
-  newTask
+  const offer = tryRunIntentRouterSoftCreateOffer({
+    utterance: u,
+    contextEventId: CTX,
+    ruleDecision: rules(u),
+    pack: pack(),
+  });
+  assert.ok(offer);
+  assert.match(offer!.assistantReplyKo, /지도에 준비|READY|후보/);
+
+  const ws = readContextWorkspace(CTX);
+  assert.ok(ws, "Workspace opened as Reality Draft");
+  assert.ok(ws!.nodes.length >= 4);
+  const ready = ws!.nodes.filter((n) => n.actionReadyState === "ready");
+  assert.ok(ready.length >= 4, "Action-Ready nodes");
+
+  const kix = ws!.nodes.find((n) => /간사이|kix/i.test(n.title));
+  assert.ok(kix);
+  assert.ok(Math.abs(kix!.lat - 34.4347) < 0.01);
+  assert.ok(Math.abs(kix!.lng - 135.2441) < 0.01);
+
+  const usj = ws!.nodes.find((n) => /유니버설|usj/i.test(n.title));
+  assert.ok(usj);
+  assert.ok(Number.isFinite(usj!.lat) && Number.isFinite(usj!.lng));
+
+  const lodging = ws!.nodes.find((n) => n.kind === "lodging");
+  assert.ok(lodging?.lat);
+
+  const pending = readPendingCreateProject(CTX);
+  assert.equal(pending?.stage, "draft");
+
+  const reviewed = tryResolvePendingCreateProject({
+    utterance: "확인했어요",
+    contextEventId: CTX,
+    ruleDecision: rules("확인했어요"),
+    pack: pack(),
+  });
+  assert.ok(reviewed);
+  assert.match(reviewed!.assistantReplyKo, /확인/);
+}
+
+clearWorkspaceChat(CTX);
+clearContextWorkspace(CTX);
+clearPendingCreateProject(CTX);
+
+// 2) Hard CREATE → Workspace
+{
+  const u = "오사카 4박5일 여행 만들어줘";
+  const route = resolveIntentRoute({ utterance: u, contextEventId: CTX });
+  assert.equal(route.confidence, "hard");
+  const hard = tryRunIntentRouterHardCreateOpen({
+    utterance: u,
+    contextEventId: CTX,
+    ruleDecision: rules(u),
+    pack: pack(),
+  });
+  assert.ok(hard);
+  assert.ok(readContextWorkspace(CTX)?.nodes.length);
+}
+
+clearWorkspaceChat(CTX);
+clearContextWorkspace(CTX);
+
+// 3) Soft (no map yet)
+{
+  const softRoute = resolveIntentRoute({
+    utterance: "오사카 4박5일 여행",
+    contextEventId: CTX,
+  });
+  assert.equal(softRoute.confidence, "soft");
+  const soft = tryRunIntentRouterSoftCreateOffer({
+    utterance: "오사카 4박5일 여행",
+    contextEventId: CTX,
+    ruleDecision: rules("오사카 4박5일 여행"),
+    pack: pack(),
+  });
+  assert.ok(soft);
+  assert.equal(readContextWorkspace(CTX), null);
+}
+
+// 4) Explore / Execute
+assert.equal(
+  resolveIntentRoute({ utterance: "오사카 맛집 알려줘", contextEventId: CTX })
+    .mode,
+  "explore",
 );
-assert.equal(isolated.linkTitle, null);
-assert.equal(isolated.history?.length ?? 0, 0);
-
-const topic = extractCurrentTopic({
-  history: diningHistory,
-  linkTitle: "쿠우쿠우 도안점",
-  currentMessage: "대전 월드컵 경기장 일정 잡아줘",
-});
-assert.match(topic ?? "", /쿠우쿠우/);
-
-const relevance = scoreTopicRelevance("쿠우쿠우 도안점", "대전 월드컵 경기장 일정 잡아줘");
-assert.ok(relevance < 0.2);
-
-const stripped = stripPriorTopicReferences(
-  "쿠우쿠우 도안점 일정도 같이 넣을까요?",
-  "쿠우쿠우 도안점"
+assert.equal(
+  resolveIntentRoute({ utterance: "이 호텔 예약해줘", contextEventId: CTX })
+    .mode,
+  "execute",
 );
-assert.ok(!stripped.includes("쿠우쿠우"));
 
-const ruleResult = orchestrateByRules({
-  message: "대전 월드컵 경기장 일정 잡아줘",
-  linkTitle: "쿠우쿠우 도안점",
-  intentRoute: newTask,
+const plan = buildIntentPlan({
+  route: resolveIntentRoute({
+    utterance: "오사카 4박5일 여행 갈 거야",
+    contextEventId: CTX,
+  }),
 });
-assert.ok(!ruleResult.summary.includes("쿠우쿠우"));
+assert.ok(plan.expectedEntities.length >= 3);
 
-const withMeta = applyIntentRouteToResult(
-  {
-    summary: "월드컵 경기장 일정",
-    actions: [],
-    source: "rules",
-  },
-  newTask
-);
-assert.equal(withMeta.meta?.intent_type, "NEW_TASK");
-assert.equal(withMeta.meta?.requires_context_switch, true);
-
-const continueAfterQuestion = resolveIntentRoute({
-  message: "응",
-  history: [
-    ...diningHistory,
-    { role: "assistant", content: "예약 도와드릴까요?" },
-    { role: "user", content: "응" },
-  ],
-});
-assert.equal(continueAfterQuestion.micro_intent, "ACK");
-
-console.log("test-intent-router: ok");
+console.log("ok: intent reality draft READY on map");

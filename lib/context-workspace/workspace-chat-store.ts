@@ -1,8 +1,11 @@
 /**
  * Workspace chat transcript — Cursor/GPT-style turns in one Workspace.
  * Rich turns carry Workspace patch + Object Cards (same nodeId as map SSOT).
+ * Context Brief replaces Day1 essay as graph-level summary.
  */
 
+import type { ContextBrief } from "@/lib/context-workspace/context-brief/types";
+import type { RealityDraft } from "@/lib/context-workspace/reality-draft";
 import type { ContextWorkspaceNodeKind } from "@/lib/context-workspace/types";
 
 export type WorkspaceChatRole = "user" | "assistant";
@@ -31,6 +34,9 @@ export type WorkspaceChatTurn = {
   readonly patch?: WorkspaceChatPatchStrip | null;
   readonly objects?: readonly WorkspaceChatObjectCard[];
   readonly dayPlanLines?: readonly string[];
+  readonly contextBrief?: ContextBrief | null;
+  /** Day itinerary SSOT — same nodes as map pins. */
+  readonly realityDraft?: RealityDraft | null;
   readonly showLinkedWorkCta?: boolean;
 };
 
@@ -72,10 +78,19 @@ export function appendWorkspaceChatTurn(input: {
   patch?: WorkspaceChatPatchStrip | null;
   objects?: readonly WorkspaceChatObjectCard[];
   dayPlanLines?: readonly string[];
+  contextBrief?: ContextBrief | null;
+  realityDraft?: RealityDraft | null;
   showLinkedWorkCta?: boolean;
 }): WorkspaceChatTurn | null {
   const key = input.contextEventId.trim();
-  const text = input.text.trim();
+  const brief = input.contextBrief ?? null;
+  const draft = input.realityDraft ?? null;
+  const text =
+    input.text.trim() ||
+    draft?.contextTitleKo?.trim() ||
+    brief?.thesisKo?.trim() ||
+    brief?.titleKo?.trim() ||
+    "";
   if (!key || !text) {
     return null;
   }
@@ -87,6 +102,8 @@ export function appendWorkspaceChatTurn(input: {
     patch: input.patch ?? null,
     objects: input.objects ?? [],
     dayPlanLines: input.dayPlanLines ?? [],
+    contextBrief: brief,
+    realityDraft: draft,
     showLinkedWorkCta: input.showLinkedWorkCta === true,
   };
   const prev = memory.get(key) ?? [];

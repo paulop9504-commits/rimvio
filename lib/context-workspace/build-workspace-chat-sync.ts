@@ -1,8 +1,12 @@
 /**
  * Chat ↔ Workspace sync — AI text becomes Workspace objects (ADR-022 / UX law).
  * Patch strip + Object Cards share nodeId with the map SSOT — no duplicate stores.
+ * Trip create prefers Context Brief over Day1 essay.
  */
 
+import { buildContextBrief } from "@/lib/context-workspace/context-brief/build-context-brief";
+import type { ContextBrief } from "@/lib/context-workspace/context-brief/types";
+import type { RealityDraft } from "@/lib/context-workspace/reality-draft";
 import type { ContextWorkspaceNode } from "@/lib/context-workspace/types";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import {
@@ -12,6 +16,7 @@ import {
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { readGoalSupervisor } from "@/lib/workstream/goal-supervisor";
+import { copy } from "@/lib/copy/human-ko";
 
 function countByKind(
   nodes: readonly ContextWorkspaceNode[],
@@ -98,37 +103,65 @@ export function buildTripDayPlanLines(
 
 /**
  * After Workspace mutates — append assistant turn that mirrors objects into chat.
+ * When `includeContextBrief` (default for trip day plan), emit Brief instead of Day essay.
  */
 export function appendWorkspaceSyncedAssistantTurn(input: {
   readonly contextEventId: string;
   readonly state: ContextWorkspaceState;
   readonly textKo?: string | null;
+  /** @deprecated Prefer Context Brief — kept for tests that assert Day lines. */
   readonly includeDayPlan?: boolean;
+  readonly includeContextBrief?: boolean;
+  readonly contextBrief?: ContextBrief | null;
+  readonly realityDraft?: RealityDraft | null;
 }): WorkspaceChatTurn | null {
   const contextEventId = input.contextEventId.trim();
   if (!contextEventId) return null;
 
   const patch = buildWorkspacePatchStrip(input.state);
   const objects = buildWorkspaceObjectCards(input.state);
-  const dayPlanLines = input.includeDayPlan
-    ? buildTripDayPlanLines(input.state)
-    : [];
+  const realityDraft =
+    input.realityDraft ?? input.state.realityDraft ?? null;
+  const wantBrief =
+    input.includeContextBrief === true ||
+    (input.includeContextBrief !== false &&
+      (input.includeDayPlan === true ||
+        input.contextBrief != null ||
+        realityDraft != null));
+  const contextBrief =
+    input.contextBrief ??
+    (wantBrief ? buildContextBrief(input.state) : null);
+  const dayPlanLines =
+    !contextBrief && !realityDraft && input.includeDayPlan
+      ? buildTripDayPlanLines(input.state)
+      : [];
   const supervisor = readGoalSupervisor({ contextEventId });
   const goalLine = supervisor
     ? `${supervisor.goalKo} · ${supervisor.percent}%`
     : null;
 
-  const body =
-    input.textKo?.trim() ||
-    [
-      goalLine ? `${goalLine} — 여행 Context를 만들었어요.` : null,
-      "항공·숙소·일정을 Workspace에 동시에 준비했어요.",
-      dayPlanLines.length > 0 ? "" : null,
-      ...dayPlanLines,
-    ]
-      .filter((line) => line != null)
-      .join("\n")
-      .trim();
+  const body = realityDraft
+    ? input.textKo?.trim() ||
+      copy.globe.realityDraftCreatedLine(
+        realityDraft.contextTitleKo,
+        realityDraft.days.length,
+      )
+    : contextBrief
+      ? input.textKo?.trim() ||
+        copy.globe.contextBriefCreatedLine(
+          contextBrief.titleKo,
+          contextBrief.roles.length,
+        )
+      : input.textKo?.trim() ||
+        [
+          goalLine ? `${goalLine} — 여행 Context를 만들었어요.` : null,
+          "항공·숙소·일정을 Workspace에 동시에 준비했어요.",
+          dayPlanLines.length > 0 ? "" : null,
+          ...dayPlanLines,
+        ]
+          .filter((line) => line != null)
+          .join("\n")
+          .trim();
 
   return appendWorkspaceChatTurn({
     contextEventId,
@@ -137,6 +170,8 @@ export function appendWorkspaceSyncedAssistantTurn(input: {
     patch,
     objects,
     dayPlanLines,
+    contextBrief,
+    realityDraft,
     showLinkedWorkCta: true,
   });
 }

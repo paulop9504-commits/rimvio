@@ -76,7 +76,6 @@ export function GlobeHomeMemoryRecallProvider({
   const [hydrated, setHydrated] = useState(false);
   const [resume, setResume] = useState<GlobeResumeSession | null>(null);
   const [pinnedOpen, setPinnedOpen] = useState(false);
-  const [composeFocused, setComposeFocused] = useState(false);
   const [globeDismissed, setGlobeDismissed] = useState(false);
 
   useEffect(() => {
@@ -103,18 +102,13 @@ export function GlobeHomeMemoryRecallProvider({
     setGlobeDismissed(true);
   }, [globeDismissToken]);
 
-  const onComposeFocus = useCallback(() => {
-    setComposeFocused(true);
-    setGlobeDismissed(false);
-  }, []);
-
-  const onComposeBlur = useCallback(() => {
-    setComposeFocused(false);
-  }, []);
-
+  // Compose focus must NOT open Instant Carry — Globe stays clean until explicit toggle.
   useEffect(() => {
-    registerComposeHandlers?.({ onFocus: onComposeFocus, onBlur: onComposeBlur });
-  }, [onComposeBlur, onComposeFocus, registerComposeHandlers]);
+    registerComposeHandlers?.({
+      onFocus: () => undefined,
+      onBlur: () => undefined,
+    });
+  }, [registerComposeHandlers]);
 
   const recallTriggers = useMemo(() => {
     if (!hydrated || !enabled || layerMode === "discovery") {
@@ -147,7 +141,8 @@ export function GlobeHomeMemoryRecallProvider({
   }, []);
 
   const hasContent = showResume || recallTriggers.length > 0;
-  const panelOpen = hasContent && (pinnedOpen || composeFocused) && !globeDismissed;
+  /** Explicit toggle only — never auto-open on compose / globe click. */
+  const panelOpen = hasContent && pinnedOpen && !globeDismissed;
 
   const onToggle = useCallback(() => {
     setGlobeDismissed(false);

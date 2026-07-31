@@ -18,6 +18,7 @@ import { decideNextAction } from "@/lib/agent/decision";
 import { buildAgentObservation } from "@/lib/agent/observation";
 import { createActionPlanWithMeta } from "@/lib/agent/create-action-plan";
 import { openWorkspaceForTripPrep } from "@/lib/agent/open-workspace-for-trip-prep";
+import { resolveIntentRoute } from "@/lib/intent-router/resolve-intent-route";
 import type {
   AgentControllerInput,
   AgentControllerMiss,
@@ -114,11 +115,18 @@ export async function runAgentController(
 
   let plan = planned.plan;
   let plannerSource: AgentControllerResult["plannerSource"] = planned.source;
-  openWorkspaceForTripPrep({
-    utterance,
-    contextEventId,
-    plan,
-  });
+  const intentRoute = resolveIntentRoute({ utterance, contextEventId });
+  // Soft / Draft CREATE must never hard-open Workspace from Agent.
+  if (
+    intentRoute.surface !== "soft_propose" &&
+    intentRoute.surface !== "draft_preview"
+  ) {
+    openWorkspaceForTripPrep({
+      utterance,
+      contextEventId,
+      plan,
+    });
+  }
   const decisions: AgentDecision[] = [];
   let observationTrail: AgentObservation[] = [
     ...(input.previousObservations ?? []),

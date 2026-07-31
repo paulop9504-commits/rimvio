@@ -1,9 +1,8 @@
 /**
  * Trip Workspace draft — Agent fills the map like a prepared itinerary (ADR-046).
- * One Focus: route + World chips + one Opportunity. Not a freeform LLM layout.
+ * Compiler: Intent slots → destination seed → Reality Draft (not Osaka-only control flow).
  */
 
-import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import type {
   ContextWorkspaceNode,
@@ -17,10 +16,6 @@ import {
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { haversineKm } from "@/lib/feed/spacetime-fit";
-import {
-  OSAKA_APA_NAMBA,
-  looksLikeOsakaContext,
-} from "@/lib/search-engine/osaka-demo-catalog";
 import { syncTravelSdkFrameAfterLodgingSeed } from "@/lib/workspace-sdk/sync-travel-sdk-after-lodging-seed";
 import {
   observeWorldState,
@@ -33,107 +28,18 @@ import {
   appendWorkspaceChatTurn,
   readWorkspaceChat,
 } from "@/lib/context-workspace/workspace-chat-store";
+import { buildRealityDraft } from "@/lib/context-workspace/reality-draft/build-reality-draft";
+import {
+  compileTripEntitySlots,
+  materializeTripDraftStops,
+  resolveTripDayCount,
+} from "@/lib/context-workspace/reality-draft/compile-trip-entity-slots";
+import type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
+import { buildIntentPlan } from "@/lib/intent-router/build-intent-plan";
+import type { IntentRoute } from "@/lib/intent-router/types";
 
-export type TripDraftStop = {
-  readonly id: string;
-  readonly kind: ContextWorkspaceNode["kind"];
-  readonly title: string;
-  readonly lat: number;
-  readonly lng: number;
-  readonly amountLabel: string | null;
-  readonly walkMinutes: number;
-  readonly tags: readonly string[];
-  readonly rating: number;
-  readonly indoor: boolean;
-};
-
-/** Osaka Namba-centered 4–5 day focus route (mockup-shaped). */
-export const OSAKA_TRIP_DRAFT_STOPS: readonly TripDraftStop[] = [
-  {
-    id: "poi:osaka:namba-parks",
-    kind: "poi",
-    title: "난바 파크스",
-    lat: 34.6615,
-    lng: 135.5022,
-    amountLabel: null,
-    walkMinutes: 0,
-    tags: ["anchor", "mall", "실내"],
-    rating: 4.4,
-    indoor: true,
-  },
-  {
-    id: OSAKA_APA_NAMBA.id,
-    kind: "lodging",
-    title: "APA 난바",
-    lat: OSAKA_APA_NAMBA.lat,
-    lng: OSAKA_APA_NAMBA.lng,
-    amountLabel: "₩12만/박",
-    walkMinutes: 4,
-    tags: ["lodging", "reservable", "실내"],
-    rating: 4.3,
-    indoor: true,
-  },
-  {
-    id: "poi:osaka:dotonbori",
-    kind: "poi",
-    title: "도톤보리",
-    lat: 34.6687,
-    lng: 135.5013,
-    amountLabel: null,
-    walkMinutes: 8,
-    tags: ["photo_spot", "야외", "landmark"],
-    rating: 4.6,
-    indoor: false,
-  },
-  {
-    id: "poi:osaka:kuromon",
-    kind: "poi",
-    title: "쿠로몬 시장",
-    lat: 34.6662,
-    lng: 135.5063,
-    amountLabel: "₩13k",
-    walkMinutes: 13,
-    tags: ["실내", "market", "food", "rain_safe"],
-    rating: 4.5,
-    indoor: true,
-  },
-  {
-    id: "poi:osaka:ebisu-bridge",
-    kind: "poi",
-    title: "에비스교",
-    lat: 34.6689,
-    lng: 135.501,
-    amountLabel: null,
-    walkMinutes: 10,
-    tags: ["photo_spot", "야외", "quiet_alt"],
-    rating: 4.3,
-    indoor: false,
-  },
-  {
-    id: "poi:osaka:shitennoji",
-    kind: "poi",
-    title: "사천왕사",
-    lat: 34.6534,
-    lng: 135.5064,
-    amountLabel: "입장료",
-    walkMinutes: 22,
-    tags: ["temple", "한적", "quiet"],
-    rating: 4.5,
-    indoor: false,
-  },
-  {
-    id: "eatery:osaka:endouroji",
-    kind: "eatery",
-    title: "엔도지로지",
-    lat: 34.6641,
-    lng: 135.4998,
-    amountLabel: "₩2만",
-    walkMinutes: 12,
-    tags: ["local_favorite", "실내", "reservable"],
-    rating: 4.7,
-    indoor: true,
-  },
-];
+export type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
+export { OSAKA_TRIP_DRAFT_STOPS } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
 
 function stopToNode(
   stop: TripDraftStop,
@@ -146,7 +52,7 @@ function stopToNode(
       : 0;
   const leg =
     index === 0
-      ? "출발 앵커"
+      ? "도착 · 이동"
       : `${stop.walkMinutes}분 · ${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
   const price = stop.amountLabel?.trim();
   const summaryKo = [price, leg].filter(Boolean).join(" · ") || leg;
@@ -166,20 +72,39 @@ function stopToNode(
     thumbnailUrl: null,
     tags: [...stop.tags],
     visible: true,
-    selected: index === 1 && stop.kind === "lodging",
-    bookmarked: index === 1 && stop.kind === "lodging",
+    selected: stop.kind === "lodging",
+    bookmarked: stop.kind === "lodging",
     source: "trip_prep_draft",
+    /** Spatial Reality Draft — Action-Ready, not Committed. */
+    actionReadyState: "ready",
   };
 }
 
-function buildOsakaNodes(): ContextWorkspaceNode[] {
+function stopsToNodes(stops: readonly TripDraftStop[]): ContextWorkspaceNode[] {
   const nodes: ContextWorkspaceNode[] = [];
-  for (let i = 0; i < OSAKA_TRIP_DRAFT_STOPS.length; i += 1) {
-    const stop = OSAKA_TRIP_DRAFT_STOPS[i]!;
-    const prev = i > 0 ? OSAKA_TRIP_DRAFT_STOPS[i - 1]! : null;
+  for (let i = 0; i < stops.length; i += 1) {
+    const stop = stops[i]!;
+    const prev = i > 0 ? stops[i - 1]! : null;
     nodes.push(stopToNode(stop, i, prev));
   }
   return nodes;
+}
+
+function stubIntentRoute(input: {
+  destinationKo: string;
+  stayLabelKo: string | null;
+}): IntentRoute {
+  return {
+    domain: "travel",
+    mode: "create",
+    confidence: "draft",
+    contextState: "none",
+    action: "create_project",
+    surface: "draft_preview",
+    destinationKo: input.destinationKo,
+    stayLabelKo: input.stayLabelKo,
+    reasonKo: "trip_entity_slots",
+  };
 }
 
 /**
@@ -200,9 +125,12 @@ export function prepareTripWorkspaceDraft(input: {
   const dest =
     input.tripPrep?.destinationKo?.trim() ||
     (/오사카|osaka|大阪/iu.test(utterance) ? "오사카" : null) ||
+    (/제주|jeju/iu.test(utterance) ? "제주" : null) ||
+    (/도쿄|tokyo|東京/iu.test(utterance) ? "도쿄" : null) ||
     "여행지";
   const nights = input.tripPrep?.nights;
   const days = input.tripPrep?.days;
+  const stayMatch = /(\d+)\s*박\s*(\d+)\s*일/u.exec(utterance);
   const stay =
     nights != null && days != null
       ? `${nights}박${days}일`
@@ -210,71 +138,99 @@ export function prepareTripWorkspaceDraft(input: {
         ? `${nights}박`
         : /4\s*박\s*5\s*일/iu.test(utterance)
           ? "4박5일"
-          : null;
+          : stayMatch
+            ? `${stayMatch[1]}박${stayMatch[2]}일`
+            : null;
 
-  const osaka = looksLikeOsakaContext({ query: `${dest} ${utterance}` });
+  const dayCount = resolveTripDayCount({
+    days: days ?? null,
+    nights: nights ?? null,
+    stayLabelKo: stay,
+  });
+  const plan = buildIntentPlan({
+    route: stubIntentRoute({ destinationKo: dest, stayLabelKo: stay }),
+    utterance,
+  });
+  const slots = compileTripEntitySlots({
+    destinationKo: dest,
+    stayLabelKo: stay,
+    days: days ?? dayCount,
+    nights: nights ?? null,
+    expectedEntities: plan.expectedEntities,
+  });
+  const { stops, seededFrom } = materializeTripDraftStops({
+    destinationKo: dest,
+    utterance,
+    slots,
+    dayCount,
+  });
+  const osaka = seededFrom === "osaka_catalog";
   const query = stay ? `${dest} ${stay} 여행` : `${dest} 여행 준비`;
   const summaryKo = stay
-    ? `${dest} · ${stay} 동선 준비 완료`
-    : `${dest} 여행 동선 초안`;
+    ? `${dest} · ${stay} Reality Draft · READY`
+    : `${dest} 여행 Reality Draft`;
 
-  let state: ContextWorkspaceState;
-
-  if (osaka) {
-    const nodes = buildOsakaNodes();
-    const now = new Date().toISOString();
-    const prev = readContextWorkspace(contextEventId);
-    const workspaceId =
-      prev && (prev.status === "editing" || prev.status === "committing")
-        ? prev.workspaceId
-        : `ws:${contextEventId}:${Date.now()}`;
-    const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
-    const draft: ContextWorkspaceState = {
-      version: 1,
-      workspaceId,
-      contextEventId,
-      domain: "poi",
-      status: "editing",
-      query,
-      summaryKo,
-      nodes,
-      filter: {},
-      selectedIds,
-      compareIds: [],
-      surfacePrimary: "embedded_preview",
-      openedAtIso: prev?.openedAtIso ?? now,
-      updatedAtIso: now,
-      committedAtIso: null,
-      lastChangeKo: `${nodes.length}곳 여행 초안 · 지도에 펼침`,
-      lastWhy: {
-        actionKo: `${dest} 여행 Workspace 생성`,
-        reasonsKo: ["Goal · Planning", "난바 중심 4–5일 동선", "실내·야외 균형"],
-        impactsKo: ["지도 핀 · 동선 · Opportunity 준비"],
-        nodeIds: nodes.slice(0, 3).map((n) => n.id),
-        atIso: now,
-      },
-      history: prev?.history ?? [],
-      future: [],
-      relationshipEdges: [],
-      compilerIr: prev?.compilerIr ?? null,
-    };
-    state = withWorkspaceRelationships(draft, query);
-    writeContextWorkspace(state);
-    dispatchContextWorkspaceOpen({
-      contextEventId,
-      workspaceId,
-      source: "trip_prep",
-    });
-  } else {
-    state = openMapContextWorkspace({
-      contextEventId,
-      domain: "lodging",
-      query,
-      summaryKo,
-      hits: [],
-      source: "trip_prep",
-    });
-  }
+  const nodes = stopsToNodes(stops);
+  const now = new Date().toISOString();
+  const prev = readContextWorkspace(contextEventId);
+  const workspaceId =
+    prev && (prev.status === "editing" || prev.status === "committing")
+      ? prev.workspaceId
+      : `ws:${contextEventId}:${Date.now()}`;
+  const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
+  const draft: ContextWorkspaceState = {
+    version: 1,
+    workspaceId,
+    contextEventId,
+    domain: "poi",
+    status: "editing",
+    query,
+    summaryKo,
+    nodes,
+    filter: {},
+    selectedIds,
+    compareIds: [],
+    surfacePrimary: "embedded_preview",
+    openedAtIso: prev?.openedAtIso ?? now,
+    updatedAtIso: now,
+    committedAtIso: null,
+    lastChangeKo: `${nodes.length}곳 여행 초안 · 지도에 펼침`,
+    lastWhy: {
+      actionKo: `${dest} 여행 Workspace 생성`,
+      reasonsKo: [
+        "Goal · Planning",
+        osaka ? "난바 중심 동선" : `${dest} Intent 슬롯`,
+        "실내·야외 균형",
+      ],
+      impactsKo: ["지도 핀 · 동선 · Opportunity 준비"],
+      nodeIds: nodes.slice(0, 3).map((n) => n.id),
+      atIso: now,
+    },
+    history: prev?.history ?? [],
+    future: [],
+    relationshipEdges: [],
+    compilerIr: prev?.compilerIr ?? null,
+  };
+  let state = withWorkspaceRelationships(draft, query);
+  const realityDraft = buildRealityDraft({
+    contextTitleKo: stay ? `${dest} ${stay}` : `${dest} 여행`,
+    destinationKo: dest,
+    stayLabelKo: stay,
+    nodes: state.nodes,
+  });
+  state = {
+    ...state,
+    realityDraft,
+    lastChangeKo: realityDraft
+      ? `${realityDraft.days.length}일 Reality Draft · Prepared`
+      : state.lastChangeKo,
+  };
+  writeContextWorkspace(state);
+  dispatchContextWorkspaceOpen({
+    contextEventId,
+    workspaceId,
+    source: "trip_prep",
+  });
 
   observeWorldState({
     contextEventId,
@@ -326,7 +282,12 @@ export function prepareTripWorkspaceDraft(input: {
     kind: "plan_built",
     contextEventId,
     labelKo: summaryKo,
-    payload: { stops: state.nodes.length, destination: dest },
+    payload: {
+      stops: state.nodes.length,
+      destination: dest,
+      seededFrom,
+      slots: slots.length,
+    },
   });
 
   const existing = readWorkspaceChat(contextEventId);
@@ -343,10 +304,13 @@ export function prepareTripWorkspaceDraft(input: {
   appendWorkspaceSyncedAssistantTurn({
     contextEventId,
     state: readContextWorkspace(contextEventId) ?? state,
-    includeDayPlan: osaka,
+    includeContextBrief: true,
+    includeDayPlan: false,
+    realityDraft:
+      (readContextWorkspace(contextEventId) ?? state).realityDraft ?? null,
     textKo: stay
-      ? `좋아요. ${dest} ${stay} Context를 만들고 항공·숙소·일정을 Workspace에 준비했어요.`
-      : `좋아요. ${dest} 여행 Context를 Workspace에 준비했어요.`,
+      ? `${dest} ${stay} Reality Draft · Prepared`
+      : `${dest} 여행 Reality Draft · Prepared`,
   });
 
   return readContextWorkspace(contextEventId) ?? state;
@@ -357,7 +321,7 @@ export function shouldPrepareTripWorkspaceDraft(utterance: string): boolean {
   const text = utterance.trim();
   if (!text) return false;
   return (
-    /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|일정\s*(?:짜|세워|만들)/iu.test(
+    /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|일정\s*(?:짜|세워|만들)|추천\s*일정/iu.test(
       text,
     ) &&
     (/여행|trip|4\s*박|3\s*박|5\s*일|놀러/iu.test(text) ||

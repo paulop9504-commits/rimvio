@@ -9,6 +9,11 @@ import type {
   ContextWorkspaceState,
 } from "@/lib/context-workspace/types";
 import { domainLabelKo } from "@/lib/context-workspace/types";
+import {
+  resolveWorkspaceNodeCapabilities,
+  workspaceNodeCanPrepare,
+} from "@/lib/context-workspace/resolve-workspace-node-capabilities";
+import type { RealityExecutionCapability } from "@/lib/reality-object/types";
 
 export type NodePreviewNearbyChip = {
   readonly kind: "eatery" | "cafe" | "poi" | "amenity" | "route" | "other";
@@ -36,6 +41,8 @@ export type NodePreviewModel = {
   readonly bookmarked: boolean;
   readonly inCompare: boolean;
   readonly canPrepare: boolean;
+  /** ADR-018 capabilities — Peek CTAs prefer this over kind forks. */
+  readonly capabilities: readonly RealityExecutionCapability[];
 };
 
 function formatPrice(node: ContextWorkspaceNode): string {
@@ -154,6 +161,8 @@ export function buildNodePreview(
   const galleryImages = [...new Set(galleryRaw)].slice(0, 8);
   const heroImage = galleryImages[0] ?? null;
 
+  const capabilities = resolveWorkspaceNodeCapabilities(node);
+
   return {
     nodeId: node.id,
     kind: node.kind,
@@ -172,11 +181,8 @@ export function buildNodePreview(
     selected: node.selected || state.selectedIds.includes(node.id),
     bookmarked: node.bookmarked,
     inCompare: state.compareIds.includes(node.id),
-    canPrepare:
-      node.kind === "lodging" ||
-      node.kind === "eatery" ||
-      node.kind === "poi" ||
-      node.kind === "amenity",
+    canPrepare: workspaceNodeCanPrepare(capabilities),
+    capabilities,
   };
 }
 

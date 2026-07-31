@@ -16,6 +16,13 @@ import {
   buildNodePreview,
   type NodePreviewModel,
 } from "@/lib/context-workspace/build-node-preview";
+import { buildNodeContextBrief } from "@/lib/context-workspace/context-brief/build-node-brief";
+import {
+  findRealityDraftDayForNode,
+} from "@/lib/context-workspace/reality-draft/build-reality-draft";
+import { resolvePeekPrimaryAction } from "@/lib/context-workspace/set-node-action-ready-state";
+import { prepareCopyFromCapabilities } from "@/lib/context-workspace/resolve-workspace-node-capabilities";
+import { hasRealityExecutionCapability } from "@/lib/reality-object/capabilities-for-type";
 import { copy } from "@/lib/copy/human-ko";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { cn } from "@/lib/utils";
@@ -25,16 +32,18 @@ export type WorkspaceNodePeekProps = {
   node: ContextWorkspaceNode;
   workspace: Pick<
     ContextWorkspaceState,
-    "nodes" | "relationshipEdges" | "compareIds" | "selectedIds"
+    "nodes" | "relationshipEdges" | "compareIds" | "selectedIds" | "realityDraft"
   >;
   onClose?: () => void;
   onOpenCompare?: () => void;
   onRecenterItinerary?: (nodeId: string) => void;
   /** Soft prepare — auto-selects if needed; never charges. */
   onPrepareReserve?: () => void;
-  /** Prepared → Field 결재함 1탭. */
+  /** Prepared → in-Workspace approve · pay. */
   onOpenField?: () => void;
-  /** Place already prepared and awaiting Field. */
+  /** ready → approved (human Confirm). */
+  onConfirmReady?: () => void;
+  /** Place already prepared and awaiting approve. */
   awaitingField?: boolean;
   className?: string;
 };
@@ -73,11 +82,13 @@ function Hero({
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1">
           <span className="text-[28px]">
-            {preview.kind === "lodging"
+            {hasRealityExecutionCapability(preview.capabilities, "book_room")
               ? "🏨"
-              : preview.kind === "eatery"
+              : hasRealityExecutionCapability(preview.capabilities, "reserve")
                 ? "🍜"
-                : "📍"}
+                : hasRealityExecutionCapability(preview.capabilities, "buy_ticket")
+                  ? "🎫"
+                  : "📍"}
           </span>
           <span className="text-[11px] font-semibold text-[#8b95a1]">
             {preview.kindLabelKo} · {copy.globe.workspacePreviewPhotoHint}
@@ -116,20 +127,32 @@ function Hero({
 function BookFlowSteps({
   selected,
   awaitingField,
+  actionReadyState,
 }: {
   selected: boolean;
   awaitingField: boolean;
+  actionReadyState?: string | null;
 }) {
-  const step = awaitingField ? 3 : selected ? 2 : 1;
+  // Confirm → Prepare → Approve·Pay (Article 0). Photo/Select stay soft.
+  const step =
+    actionReadyState === "committed"
+      ? 4
+      : awaitingField
+        ? 4
+        : actionReadyState === "approved"
+          ? 3
+          : selected || actionReadyState === "ready"
+            ? 2
+            : 1;
   const labels = [
     copy.globe.workspaceBookFlowStepPhoto,
-    copy.globe.workspaceBookFlowStepSelect,
+    copy.globe.workspaceConfirmNodeCta,
     copy.globe.workspaceBookFlowStepPrepare,
     copy.globe.workspaceBookFlowStepPay,
   ];
   return (
     <ol
-      className="mt-2 flex flex-wrap items-center gap-1"
+      className="mt-2.5 flex items-center gap-0"
       data-workspace-book-flow
       aria-label={copy.globe.workspaceBookFlowLabel}
     >
@@ -138,22 +161,36 @@ function BookFlowSteps({
         const done = n < step;
         const current = n === step;
         return (
-          <li key={label} className="flex items-center gap-1">
-            {i > 0 ? (
-              <span className="text-[9px] text-[#d1d6db]">→</span>
-            ) : null}
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[9px] font-bold",
-                done
-                  ? "bg-[#e8f3ff] text-[#3182f6]"
-                  : current
-                    ? "bg-[#191f28] text-white"
+          <li key={label} className="flex min-w-0 flex-1 items-center">
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <span
+                className={cn(
+                  "flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold transition-colors",
+                  done || current
+                    ? "bg-[#3182f6] text-white"
                     : "bg-[#f2f4f6] text-[#8b95a1]",
-              )}
-            >
-              {n}. {label}
-            </span>
+                )}
+              >
+                {done ? "✓" : n}
+              </span>
+              <span
+                className={cn(
+                  "w-full truncate text-center text-[9px] font-medium",
+                  current ? "text-[#191f28]" : "text-[#8b95a1]",
+                )}
+              >
+                {label}
+              </span>
+            </div>
+            {i < labels.length - 1 ? (
+              <span
+                className={cn(
+                  "mb-4 h-px w-2 shrink-0",
+                  done ? "bg-[#3182f6]/40" : "bg-[#e5e8eb]",
+                )}
+                aria-hidden
+              />
+            ) : null}
           </li>
         );
       })}
@@ -170,6 +207,7 @@ export function WorkspaceNodePeek({
   onRecenterItinerary,
   onPrepareReserve,
   onOpenField,
+  onConfirmReady,
   awaitingField = false,
   className,
 }: WorkspaceNodePeekProps) {
@@ -179,6 +217,23 @@ export function WorkspaceNodePeek({
     () => buildNodePreview(node, workspace),
     [node, workspace],
   );
+  const nodeBrief = useMemo(() => {
+    const poiIndex = workspace.nodes
+      .filter((n) => n.visible && (n.kind === "poi" || n.kind === "amenity"))
+      .findIndex((n) => n.id === node.id);
+    const lodging = workspace.nodes.find(
+      (n) => n.visible && n.kind === "lodging",
+    );
+    return buildNodeContextBrief(node, {
+      dayIndex: poiIndex >= 0 ? poiIndex : null,
+      anchorTitle: lodging?.title ?? null,
+    });
+  }, [node, workspace]);
+  const draftDay = useMemo(() => {
+    const draft = workspace.realityDraft;
+    if (!draft) return null;
+    return findRealityDraftDayForNode(draft, node.id);
+  }, [workspace.realityDraft, node.id]);
   const compareCount = workspace.compareIds.length;
 
   const addToCompare = () => {
@@ -201,12 +256,14 @@ export function WorkspaceNodePeek({
       op: "select",
       nodeIds: [node.id],
     });
-    const domainCue =
-      node.kind === "eatery"
+    const domainCue = hasRealityExecutionCapability(
+      preview.capabilities,
+      "book_room",
+    )
+      ? "숙소 선택"
+      : hasRealityExecutionCapability(preview.capabilities, "reserve")
         ? "맛집 선택"
-        : node.kind === "lodging"
-          ? "숙소 선택"
-          : "선택";
+        : "선택";
     offerSoftNextWorkAfterAct({
       contextEventId,
       lastAct: "select",
@@ -216,23 +273,28 @@ export function WorkspaceNodePeek({
     });
   };
 
-  const prepareCta =
-    node.kind === "lodging"
-      ? copy.globe.workspacePrepareReserveCta
-      : node.kind === "eatery"
-        ? copy.globe.workspacePrepareEateryCta
-        : copy.globe.workspacePrepareTicketCta;
-  const prepareHint =
-    node.kind === "lodging"
-      ? copy.globe.workspacePrepareReserveHint
-      : node.kind === "eatery"
-        ? copy.globe.workspacePrepareEateryHint
-        : copy.globe.workspacePrepareTicketHint;
+  const prepareCopy = prepareCopyFromCapabilities(preview.capabilities);
+  const prepareCta = prepareCopy.ctaKo;
+  const prepareHint = prepareCopy.hintKo;
+
+  const primary = resolvePeekPrimaryAction({
+    node,
+    awaitingPrepare: awaitingField,
+    prepareLabelKo: prepareCta,
+    prepareHintKo: preview.selected
+      ? prepareHint
+      : copy.globe.workspacePrepareAutoSelectHint,
+    approveLabelKo: copy.globe.workspacePrepareOpenFieldCta,
+    approveHintKo: copy.globe.workspacePreparePayFlowHint,
+    confirmLabelKo: copy.globe.workspaceConfirmNodeCta,
+    confirmHintKo: copy.globe.workspaceConfirmNodeHint,
+    doneLabelKo: copy.globe.workspaceNodeDoneCta,
+  });
 
   return (
     <div
       className={cn(
-        "pointer-events-auto mx-auto w-full max-w-xl overflow-hidden rounded-[18px] bg-white/98 shadow-[0_10px_28px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.04]",
+        "pointer-events-auto mx-auto w-full max-w-xl overflow-hidden rounded-[22px] bg-white/98 shadow-[0_12px_32px_rgba(25,31,40,0.12)]",
         className,
       )}
       data-workspace-node-peek
@@ -245,27 +307,61 @@ export function WorkspaceNodePeek({
         onGalleryIndex={setGalleryIndex}
       />
 
-      <div className="p-3">
+      <div className="p-3.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#8b95a1]">
-              {copy.globe.workspacePreviewEyebrow}
-            </p>
-            <p className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-[#191f28]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {draftDay ? (
+                <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
+                  {draftDay.labelKo}
+                </span>
+              ) : (
+                <span className="text-[10px] font-medium text-[#8b95a1]">
+                  {copy.globe.workspacePreviewEyebrow}
+                </span>
+              )}
+              {node.actionReadyState === "ready" ||
+              node.actionReadyState === "prepare" ||
+              node.actionReadyState === "approved" ||
+              node.actionReadyState === "committed" ? (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    node.actionReadyState === "committed"
+                      ? "bg-[#e8f8ef] text-[#1aa05a]"
+                      : node.actionReadyState === "approved"
+                        ? "bg-[#fff4e5] text-[#c27803]"
+                        : node.actionReadyState === "ready"
+                          ? "bg-[#e8f3ff] text-[#3182f6]"
+                          : "bg-[#f2f4f6] text-[#8b95a1]",
+                  )}
+                  data-action-ready-state={node.actionReadyState}
+                >
+                  {node.actionReadyState === "committed"
+                    ? copy.globe.actionReadyStateCommitted
+                    : node.actionReadyState === "approved"
+                      ? copy.globe.actionReadyStateApproved
+                      : node.actionReadyState === "ready"
+                        ? copy.globe.actionReadyStateReady
+                        : copy.globe.actionReadyStatePrepare}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1.5 truncate text-[16px] font-semibold tracking-[-0.02em] text-[#191f28]">
               {preview.title}
             </p>
-            <p className="mt-0.5 text-[12px] text-[#4e5968]">
+            <p className="mt-1 text-[12px] leading-snug text-[#8b95a1]">
               {preview.ratingLabel}
-              <span className="mx-1 text-[#d1d6db]">·</span>
+              <span className="mx-1.5 text-[#d1d6db]">·</span>
               {preview.price}
-              <span className="mx-1 text-[#d1d6db]">·</span>
+              <span className="mx-1.5 text-[#d1d6db]">·</span>
               {preview.reviewSummary}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[#8b95a1] transition hover:bg-[#f2f4f6]"
               onClick={() => setExpanded((v) => !v)}
               aria-label={
                 expanded
@@ -275,35 +371,48 @@ export function WorkspaceNodePeek({
             >
               <ChevronUp
                 className={cn(
-                  "h-4 w-4 transition-transform",
+                  "h-4 w-4 transition-transform duration-200",
                   expanded ? "rotate-0" : "rotate-180",
                 )}
-                strokeWidth={2.5}
+                strokeWidth={2.25}
               />
             </button>
             {onClose ? (
               <button
                 type="button"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8b95a1] hover:bg-[#f2f4f6]"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#8b95a1] transition hover:bg-[#f2f4f6]"
                 onClick={onClose}
                 aria-label="닫기"
               >
-                <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                <X className="h-3.5 w-3.5" strokeWidth={2.25} />
               </button>
             ) : null}
           </div>
         </div>
 
+        <ul className="mt-3 space-y-1 border-t border-black/[0.04] pt-3">
+          {nodeBrief.linesKo.map((line) => (
+            <li
+              key={line}
+              className="flex gap-2 text-[12px] leading-snug text-[#4e5968]"
+              data-node-brief-line
+            >
+              <span
+                className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#d1d6db]"
+                aria-hidden
+              />
+              {line}
+            </li>
+          ))}
+        </ul>
+
         {preview.canPrepare ? (
           <BookFlowSteps
             selected={preview.selected}
             awaitingField={awaitingField}
+            actionReadyState={node.actionReadyState}
           />
         ) : null}
-
-        <p className="mt-2 line-clamp-2 text-[12px] leading-snug text-[#4e5968]">
-          {preview.whyChosen}
-        </p>
 
         {preview.amenities.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -342,11 +451,7 @@ export function WorkspaceNodePeek({
               {copy.globe.workspacePreviewDetailTitle}
             </p>
             <p className="text-[11px] leading-relaxed text-[#4e5968]">
-              {preview.kind === "lodging"
-                ? copy.globe.workspacePreviewLodgingDetail
-                : preview.kind === "eatery"
-                  ? copy.globe.workspacePreviewEateryDetail
-                  : copy.globe.workspacePreviewGenericDetail}
+              {prepareCopy.detailKo}
             </p>
             {onRecenterItinerary ? (
               <button
@@ -426,41 +531,30 @@ export function WorkspaceNodePeek({
           </button>
         ) : null}
 
-        {preview.canPrepare
-          ? awaitingField && onOpenField
-            ? (
+        {preview.canPrepare && primary.kind !== "done" ? (
           <button
             type="button"
-            className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
-            onClick={onOpenField}
-            data-workspace-open-field
-            title={copy.globe.workspacePreparePayFlowHint}
+            className="mt-2 w-full rounded-[14px] bg-[#3182f6] px-3 py-2.5 text-[13px] font-semibold tracking-tight text-white shadow-[0_6px_16px_rgba(49,130,246,0.28)] transition active:scale-[0.99]"
+            onClick={() => {
+              if (primary.kind === "confirm") onConfirmReady?.();
+              else if (primary.kind === "approve_pay") onOpenField?.();
+              else onPrepareReserve?.();
+            }}
+            data-workspace-primary-action={primary.kind}
+            title={primary.hintKo || undefined}
           >
-            {copy.globe.workspacePrepareOpenFieldCta}
-            <span className="mt-0.5 block text-[10px] font-semibold opacity-90">
-              {copy.globe.workspacePreparePayFlowHint}
-            </span>
+            {primary.labelKo}
+            {primary.hintKo ? (
+              <span className="mt-0.5 block text-[10px] font-medium opacity-90">
+                {primary.hintKo}
+              </span>
+            ) : null}
           </button>
-              )
-            : onPrepareReserve
-              ? (
-          <button
-            type="button"
-            className="mt-2 w-full rounded-xl bg-[#3182f6] px-3 py-2.5 text-[12px] font-extrabold text-white"
-            onClick={onPrepareReserve}
-            data-workspace-prepare-reserve
-            title={prepareHint}
-          >
-            {prepareCta}
-            <span className="mt-0.5 block text-[10px] font-semibold opacity-90">
-              {preview.selected
-                ? prepareHint
-                : copy.globe.workspacePrepareAutoSelectHint}
-            </span>
-          </button>
-                )
-              : null
-          : null}
+        ) : primary.kind === "done" ? (
+          <p className="mt-2 rounded-[14px] bg-[#e8f8ef] px-3 py-2.5 text-center text-[12px] font-semibold text-[#1aa05a]">
+            {primary.labelKo}
+          </p>
+        ) : null}
       </div>
     </div>
   );

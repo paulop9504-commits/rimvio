@@ -56,7 +56,7 @@ export const NL_PIPELINE_MANIFEST: readonly NlPipelineStageMeta[] = [
   {
     stage: "intent_parser",
     labelKo: "의도 분류",
-    wire: "lib/rule-engine/classify-intent-family · lib/graph-command/parse-graph-commands",
+    wire: "lib/intent-router · lib/intent-router/build-intent-plan · lib/rule-engine/classify-intent-family · lib/graph-command/parse-graph-commands",
     llmEligible: false,
     mutatesReality: false,
   },

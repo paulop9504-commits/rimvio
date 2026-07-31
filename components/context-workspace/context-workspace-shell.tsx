@@ -26,7 +26,14 @@ import { buildWorkspaceCommitPreview } from "@/lib/context-workspace/build-commi
 import { buildWorkspaceConciergeStatus } from "@/lib/context-workspace/build-workspace-concierge-status";
 import { buildWorkspaceItineraryLineCoords } from "@/lib/context-workspace/map/build-workspace-itinerary-line";
 import { prepareWorkspaceNodeBooking } from "@/lib/context-workspace/prepare-workspace-booking";
+import { approveWorkspacePlaceCheckout } from "@/lib/context-workspace/approve-workspace-place-checkout";
+import { setWorkspaceNodeActionReadyState } from "@/lib/context-workspace/set-node-action-ready-state";
 import { isWorkspacePlaceAwaitingField } from "@/lib/context-workspace/workspace-place-prepare-status";
+import {
+  buildBriefReplayStops,
+  dispatchWorkspaceBriefReplay,
+  subscribeWorkspaceBriefReplayStep,
+} from "@/lib/context-workspace/context-brief";
 import {
   appendWorkspaceChatTurn,
   clearWorkspaceChat,
@@ -44,7 +51,6 @@ import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node
 import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
-import { openFieldDashboardIngressForced } from "@/lib/nav/field-dashboard-ingress";
 
 export type ContextWorkspaceShellProps = {
   contextEventId: string | null | undefined;
@@ -117,6 +123,9 @@ export function ContextWorkspaceShell({
   const [softRainDismissed, setSoftRainDismissed] = useState(false);
   const [softQuietDismissed, setSoftQuietDismissed] = useState(false);
   const [prepTick, setPrepTick] = useState(0);
+  const [briefReplayGroundIndex, setBriefReplayGroundIndex] = useState<
+    number | null
+  >(null);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -166,11 +175,24 @@ export function ContextWorkspaceShell({
     const unsubPrep = subscribePreparedRealityOperations(() => {
       setPrepTick((n) => n + 1);
     });
+    const unsubBriefStep = subscribeWorkspaceBriefReplayStep((detail) => {
+      if (detail.contextEventId !== contextEventId?.trim()) return;
+      if (detail.done) {
+        setBriefReplayGroundIndex(null);
+        toast.message(copy.globe.contextBriefReplayDone);
+        return;
+      }
+      setBriefReplayGroundIndex(detail.stepIndex);
+      setFocusedId(detail.nodeId);
+      setPeekDismissedId(null);
+      setChatOpen(true);
+    });
     return () => {
       unsubUpdate();
       unsubOpen();
       unsubExpand();
       unsubPrep();
+      unsubBriefStep();
     };
   }, [contextEventId, refresh]);
 
@@ -223,16 +245,66 @@ export function ContextWorkspaceShell({
     });
   }, [visibleNodes, selectedId, contextEventId, prepTick]);
 
-  const onOpenField = useCallback(
-    (_nodeId?: string) => {
+  const onApprovePay = useCallback(
+    async (nodeId: string) => {
       const id = contextEventId?.trim();
       if (!id) return;
-      openFieldDashboardIngressForced({
-        tab: "queue",
-        primaryEventId: id,
+      const node =
+        readContextWorkspace(id)?.nodes.find((n) => n.id === nodeId) ??
+        visibleNodes.find((n) => n.id === nodeId);
+      if (!node) return;
+      toast.message(copy.globe.workspacePayBusy);
+      const result = await approveWorkspacePlaceCheckout({
+        contextEventId: id,
+        placeId: node.placeId || node.id,
+        nodeId: node.id,
+        titleKo: node.title,
       });
+      setPrepTick((n) => n + 1);
+      if (!result.ok) {
+        toast.message(result.reasonKo);
+        return;
+      }
+      setWorkspaceNodeActionReadyState({
+        contextEventId: id,
+        nodeId: node.id,
+        state: "committed",
+      });
+      toast.success(result.toastKo);
+    },
+    [contextEventId, visibleNodes],
+  );
+
+  const onConfirmReady = useCallback(
+    (nodeId: string) => {
+      const id = contextEventId?.trim();
+      if (!id) return;
+      const next = setWorkspaceNodeActionReadyState({
+        contextEventId: id,
+        nodeId,
+        state: "approved",
+      });
+      if (!next) {
+        toast.message(copy.globe.workspacePayNeedsPlace);
+        return;
+      }
+      setFocusedId(nodeId);
+      setPeekDismissedId(null);
+      toast.success(copy.globe.actionReadyStateApproved);
     },
     [contextEventId],
+  );
+
+  const onOpenField = useCallback(
+    (nodeId?: string) => {
+      const id = nodeId?.trim();
+      if (id) {
+        void onApprovePay(id);
+        return;
+      }
+      toast.message(copy.globe.workspacePayNeedsPlace);
+    },
+    [onApprovePay],
   );
 
   const routeLineCoords = useMemo(
@@ -331,13 +403,7 @@ export function ContextWorkspaceShell({
       setPeekDismissedId(null);
       setChatOpen(false);
       toast.success(result.toastKo);
-      // Continuity: Field queue → human approve → Hub pay (Article 0).
-      window.setTimeout(() => {
-        openFieldDashboardIngressForced({
-          tab: "queue",
-          primaryEventId: id,
-        });
-      }, 420);
+      // Stay in Workspace — next tap is human Approve · Pay (Article 0).
     },
     [contextEventId, visibleNodes, projectTitleKo, state?.query],
   );
@@ -417,7 +483,22 @@ export function ContextWorkspaceShell({
     setExpanded(false);
     writeContextWorkspaceExpanded(id, false);
     if (result.ok) {
-      toast.success(copy.globe.workspaceCommitDoneToast);
+      toast.success(copy.globe.workspaceCommitDoneToast, {
+        action: {
+          label: copy.globe.contextBriefReplayCta,
+          onClick: () => {
+            const live = readContextWorkspace(id);
+            if (!live) return;
+            const stops = buildBriefReplayStops(live);
+            if (stops.length === 0) return;
+            toast.message(copy.globe.contextBriefReplayToast);
+            dispatchWorkspaceBriefReplay({
+              contextEventId: id,
+              nodeIds: stops.map((s) => s.id),
+            });
+          },
+        },
+      });
     }
   }, [contextEventId]);
 
@@ -480,6 +561,7 @@ export function ContextWorkspaceShell({
           onPrepareReserve={onPrepareReserve}
           onOpenField={onOpenField}
           routeLineCoords={routeLineCoords}
+          contextEventId={eventId}
         />
       </div>
 
@@ -778,6 +860,7 @@ export function ContextWorkspaceShell({
             onOpenCompare={() => setCompareOpen(true)}
             onPrepareReserve={() => onPrepareReserve(selectedNode.id)}
             onOpenField={() => onOpenField(selectedNode.id)}
+            onConfirmReady={() => onConfirmReady(selectedNode.id)}
             awaitingField={selectedAwaitingField}
             onRecenterItinerary={(nodeId) => {
               applyWorkspaceTransition({
@@ -798,6 +881,13 @@ export function ContextWorkspaceShell({
             onSelect(nodeId);
             setChatOpen(true);
           }}
+          onBriefReplay={() => {
+            setListOpen(false);
+            setPeekDismissedId(selectedId);
+            setChatOpen(true);
+          }}
+          briefReplayGroundIndex={briefReplayGroundIndex}
+          activeDraftNodeId={selectedId}
           onOpenLinkedWork={() => {
             setChatOpen(true);
             setListOpen(false);
