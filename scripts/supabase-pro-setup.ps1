@@ -31,18 +31,22 @@ Write-Host "`n[2/3] Sync Auth Site URL + redirect allow list..." -ForegroundColo
 npx tsx scripts/sync-supabase-auth-urls.ts
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-Write-Host "`n[3/3] Pro dashboard checklist (manual)..." -ForegroundColor Yellow
+Write-Host "`n[3/3] Pro performance checklist..." -ForegroundColor Yellow
 Write-Host @"
   Dashboard → https://supabase.com/dashboard/project/$ProjectRef
 
+  Auth / URLs
   [ ] Settings → General — project NOT paused (Pro)
-  [ ] Settings → Database — daily backups on
   [ ] Settings → Auth → Site URL = $ProdUrl
   [ ] Authentication → URL Configuration — redirect URLs include:
         $ProdUrl/auth/callback
         https://rimvio.vercel.app/auth/callback
-  [ ] Project Settings → API — confirm same URL/keys on Vercel env
-  [ ] (Optional) Database → Connection pooling — Session mode for serverless
+
+  Compute / Pool (use Pro capacity — don't stay on Micro forever)
+  [ ] Settings → Infrastructure → Compute ≥ Small (Medium recommended for travel Workspace)
+        or: powershell -File scripts/supabase-boost-performance.ps1 -Compute medium
+  [ ] Database → Connection pooling — Transaction mode · pool size ~40% of max_connections
+  [ ] Settings → API → PostgREST DB pool — raise with compute, leave headroom for Auth
 
   After rimvio.com DNS Valid on Vercel:
     `"$ProdUrl`" | npx vercel env add NEXT_PUBLIC_APP_URL production --force
