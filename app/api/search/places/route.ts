@@ -14,7 +14,7 @@ import { isLiteApiConfigured } from "@/lib/globe/context-hub/providers/liteapi/l
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const preferredRegion = "icn1";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const DOMAINS = new Set(["lodging", "eatery", "poi", "amenity"]);
 

@@ -4,6 +4,8 @@ import { resolveBridgeWeatherSnapshot } from "@/lib/globe/bridge-weather/resolve
 import type { BridgeEventTimeSource } from "@/lib/globe/bridge-weather/bridge-weather-types";
 
 export const runtime = "nodejs";
+export const preferredRegion = "icn1";
+export const maxDuration = 30;
 
 function readEventTimeSource(raw: string | null): BridgeEventTimeSource {
   const value = raw?.trim();
@@ -56,10 +58,22 @@ export async function GET(request: Request) {
     targetAt,
   });
 
-  return NextResponse.json({
-    prep_line,
-    weather: snapshot.weather,
-    bridge_weather: snapshot.bridgeWeather,
-    target_at: snapshot.target_at,
-  });
+  return NextResponse.json(
+    {
+      prep_line,
+      weather: snapshot.weather,
+      bridge_weather: snapshot.bridgeWeather,
+      target_at: snapshot.target_at,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "public, s-maxage=900, stale-while-revalidate=3600, max-age=120",
+        "CDN-Cache-Control":
+          "public, s-maxage=900, stale-while-revalidate=3600",
+        "Vercel-CDN-Cache-Control":
+          "public, s-maxage=900, stale-while-revalidate=3600",
+      },
+    },
+  );
 }

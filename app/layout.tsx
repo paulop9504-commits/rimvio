@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { RootShell } from "@/components/root-shell";
+import { RimvioVercelPerf } from "@/components/rimvio-vercel-perf";
 import { RIMVIO } from "@/lib/brand/rimvio";
 import { STORE_META, storeAbsoluteUrl } from "@/lib/pwa/store-meta";
 import { getServerLocale } from "@/lib/i18n/server-locale";
@@ -102,6 +103,7 @@ export default async function RootLayout({
       >
         <RootShell initialLocale={locale}>{children}</RootShell>
         <div id="rimvio-bottom-nav-anchor" aria-hidden />
+        <RimvioVercelPerf />
       </body>
     </html>
   );

@@ -3,6 +3,8 @@ import { resolveNearbyEateryAtCoords } from "@/lib/globe/resolve-nearby-eatery-a
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const preferredRegion = "icn1";
+export const maxDuration = 60;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {

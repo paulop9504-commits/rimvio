@@ -9,7 +9,7 @@ import type { PortalCategoryId, PortalIntentId } from "@/lib/portal/portal-types
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const preferredRegion = "icn1";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type PortalComposeTurnBody = {
   graphId?: string;

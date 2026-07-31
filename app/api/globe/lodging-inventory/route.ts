@@ -13,7 +13,7 @@ import { GLOBE_DISCOVERY_FETCH_LIMIT } from "@/lib/globe/discovery/globe-discove
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const preferredRegion = "icn1";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function parseCoord(value: string | null): number | null {
   if (!value?.trim()) {

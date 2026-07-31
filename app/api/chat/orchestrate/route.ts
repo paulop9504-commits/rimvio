@@ -9,7 +9,7 @@ import { parseVitalityMemoryWire } from "@/lib/action-chat/adaptive-behavior/ux-
 
 export const runtime = "nodejs";
 export const preferredRegion = "icn1";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** §6 — Must call `orchestrateUserMessage` → `runOrchestratorPipeline` only (no `buildGoalSnapshot` here). */
 

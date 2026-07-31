@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        source: "/((?!_next/static|_next/image|icons|favicon|api/globe/tile).*)",
+        source: "/((?!_next/static|_next/image|icons|favicon|api/globe/tile|api/context/weather|api/context/traffic).*)",
         headers: [
           {
             key: "Cache-Control",
@@ -81,6 +81,26 @@ const nextConfig: NextConfig = {
           {
             key: "CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=2592000",
+          },
+        ],
+      },
+      {
+        source: "/api/context/weather/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value:
+              "public, max-age=60, s-maxage=600, stale-while-revalidate=3600",
+          },
+        ],
+      },
+      {
+        source: "/api/context/traffic",
+        headers: [
+          {
+            key: "Cache-Control",
+            value:
+              "public, max-age=30, s-maxage=120, stale-while-revalidate=600",
           },
         ],
       },
