@@ -76,7 +76,6 @@ export function readAgentMemory(input: {
   const spine = readRimvioAgentSpineSnapshot({
     contextEventId,
     event,
-    workstream,
   });
   const session = readAgentExecutionSession();
   const execution = buildAgentExecutionState({
@@ -137,7 +136,7 @@ export function formatAgentMemoryBrief(memory: AgentMemory): string {
     `  Tasks: ${memory.context.taskGraph.tasks.length}`,
     `  Timeline: ${memory.timeline.length}`,
     `  Preference edges: ${memory.preference.edges.length}`,
-    `  Commits: ${memory.commit.committedCount}`,
+    `  Commits: ${memory.commit.committedEventCount}`,
     `  History: ${memory.history.length}`,
     memory.reflection ? `  Reflection: ${memory.reflection.lines[0]}` : null,
   ]
