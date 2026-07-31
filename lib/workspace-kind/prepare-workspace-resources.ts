@@ -4,6 +4,10 @@
  */
 
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import {
+  prepareTripWorkspaceDraft,
+  shouldPrepareTripWorkspaceDraft,
+} from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import { buildWorkspacePrepCard } from "@/lib/workspace-kind/build-workspace-prep-card";
@@ -40,13 +44,24 @@ export function prepareWorkspaceResources(input: {
       extractTravelDestination(utterance)?.trim() ||
       input.titleOverrideKo?.trim() ||
       "여행지";
-    workspace = openLodgingContextWorkspace({
-      contextEventId,
-      query: `${dest} 숙소`,
-      summaryKo: `${dest} 여행 자원 준비`,
-      hits: [],
-      source: "trip_prep",
-    });
+    // Clear trip (오사카 4박5일) → Reality Draft pins first, not empty lodging shell.
+    if (shouldPrepareTripWorkspaceDraft(utterance)) {
+      workspace = prepareTripWorkspaceDraft({
+        utterance,
+        contextEventId,
+        expand: true,
+        skipUserChat: true,
+      });
+    }
+    if (!workspace || workspace.nodes.length === 0) {
+      workspace = openLodgingContextWorkspace({
+        contextEventId,
+        query: `${dest} 숙소`,
+        summaryKo: `${dest} 여행 자원 준비`,
+        hits: [],
+        source: "trip_prep",
+      });
+    }
   }
 
   let preparedSlotIds: readonly string[];
@@ -74,4 +89,3 @@ export function prepareWorkspaceResources(input: {
 
   return { card, workspace };
 }
-

@@ -480,6 +480,9 @@ export const copy = {
     globeComposeGlobeApplyPrefix: "지구에 반영 ·",
     workspacePreviewExpand: "펼치기",
     workspacePreviewEmptyMap: "지도를 펼쳐 보세요",
+    workspaceMapLoadingTitle: "지도 불러오는 중",
+    workspaceMapLoadingBody: "후보가 준비되면 핀이 여기에 올라와요",
+    workspaceMapLoadingHint: "목적지를 정하면 지도가 열려요",
     workspacePreviewReady: (count: number) =>
       count > 0
         ? `후보 ${count}곳 준비 · 작업장에서 확인 중`

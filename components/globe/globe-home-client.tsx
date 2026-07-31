@@ -2315,8 +2315,10 @@ function GlobeHomeBody() {
 
   const workspaceOwnsMapMedia = Boolean(
     workspaceMapOwnerTick >= 0 &&
-      activeCluster?.eventId &&
-      readContextWorkspaceExpanded(activeCluster.eventId),
+      (hubEventId?.trim() || activeCluster?.eventId?.trim()) &&
+      readContextWorkspaceExpanded(
+        (hubEventId?.trim() || activeCluster?.eventId?.trim())!,
+      ),
   );
 
   const showMapVideoReplay = Boolean(
@@ -4915,7 +4917,9 @@ function GlobeHomeBody() {
     bridgeGhostOpen ||
     shareSheetOpen ||
     // Soft keyboard + IME — freeze WebGL only while the PromptFrame is actually up.
-    contextConditionPromptOpen;
+    contextConditionPromptOpen ||
+    // Context Workspace owns the map — pause 3D tile engine (stops 429 storms).
+    workspaceOwnsMapMedia;
 
   useBridgeMediaSync({
     enabled: Boolean(user?.id) && !globeRenderSuspended,

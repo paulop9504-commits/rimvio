@@ -59,7 +59,7 @@ import {
 } from "@/lib/globe/reality-jump";
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
-import { WorkspaceNodePeek } from "@/components/context-workspace/workspace-node-peek";
+import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
 import {
   isWorkspaceContextMediaPinId,
@@ -758,7 +758,7 @@ export function ContextWorkspaceShell({
         </button>
       </header>
 
-      {/* Map — sole visual plane */}
+      {/* Map — sole visual plane; soft hints float on map only */}
       <div className="relative min-h-0 flex-1">
         <WorkspaceMapView
           pins={mapPins}
@@ -778,6 +778,66 @@ export function ContextWorkspaceShell({
             media={selectedMediaPin.contextMedia}
             onClose={() => setFocusedId(null)}
           />
+        ) : null}
+
+        {!showPeek &&
+        (showSoftRainChip || showSoftQuietChip || showSoftRouteChip) ? (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[2] flex justify-center px-3">
+            <div className="pointer-events-auto flex max-w-[min(92vw,360px)] items-center gap-2 rounded-2xl bg-white/96 px-3 py-2 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]">
+              <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#191f28]">
+                {showSoftRainChip
+                  ? (concierge.opportunityTitleKo ??
+                    copy.globe.workspaceMapSoftRainHint)
+                  : showSoftQuietChip
+                    ? copy.globe.workspaceMapSoftQuietHint
+                    : copy.globe.workspaceMapSoftRouteHint}
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
+                onClick={() => {
+                  if (showSoftRainChip) {
+                    applyWorkspaceTransition({
+                      contextEventId: eventId,
+                      op: "simulate",
+                      simulateScenarioKo: "비 오면 실내",
+                    });
+                    setSoftRainDismissed(true);
+                    toast.success(copy.globe.workspaceMapSoftRainApply);
+                  } else if (showSoftQuietChip) {
+                    applyWorkspaceTransition({
+                      contextEventId: eventId,
+                      op: "simulate",
+                      simulateScenarioKo: "덜 붐비는 동선",
+                    });
+                    setSoftQuietDismissed(true);
+                    toast.success(copy.globe.workspaceMapSoftQuietApply);
+                  } else {
+                    applyWorkspaceTransition({
+                      contextEventId: eventId,
+                      op: "optimize_route",
+                    });
+                    setSoftRouteDismissed(true);
+                    toast.success(copy.globe.workspaceToolOptimizeRoute);
+                  }
+                }}
+              >
+                {copy.globe.workspaceMapSoftQuietApply}
+              </button>
+              <button
+                type="button"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1]"
+                aria-label="닫기"
+                onClick={() => {
+                  setSoftRainDismissed(true);
+                  setSoftQuietDismissed(true);
+                  setSoftRouteDismissed(true);
+                }}
+              >
+                <X className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {listOpen ? (
@@ -834,88 +894,35 @@ export function ContextWorkspaceShell({
             </div>
           </div>
         ) : null}
+
+        {/* Object browser — layer pills + carousel + detail (above Agent) */}
+        {selectedNode && !compareOpen ? (
+          <WorkspaceObjectCarousel
+            open={showPeek}
+            contextEventId={eventId}
+            nodes={visibleNodes}
+            activeNodeId={selectedNode.id}
+            workspace={state}
+            dockClearancePx={76}
+            onActiveNodeChange={(nodeId) => {
+              setFocusedId(nodeId);
+              setPeekDismissedId(null);
+            }}
+            onClose={() => {
+              setPeekDismissedId(selectedNode.id);
+              setFocusedId(null);
+            }}
+            onOpenCompare={() => setCompareOpen(true)}
+            onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
+            onOpenField={(nodeId) => onOpenField(nodeId)}
+            onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
+            awaitingField={selectedAwaitingField}
+          />
+        ) : null}
       </div>
 
-      {/* Bottom chrome — reserved column: peek OR soft hint, then dock. No overlap. */}
-      <div className="relative z-[3] flex max-h-[min(58vh,520px)] shrink-0 flex-col gap-2 border-t border-black/[0.04] bg-white/98 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md">
-        {showPeek && selectedNode && !compareOpen ? (
-          <WorkspaceNodePeek
-            contextEventId={eventId}
-            node={selectedNode}
-            workspace={state}
-            className="max-h-[min(28vh,240px)] overflow-y-auto"
-            onClose={() => setPeekDismissedId(selectedNode.id)}
-            onOpenCompare={() => setCompareOpen(true)}
-            onPrepareReserve={() => onPrepareReserve(selectedNode.id)}
-            onOpenField={() => onOpenField(selectedNode.id)}
-            onConfirmReady={() => onConfirmReady(selectedNode.id)}
-            awaitingField={selectedAwaitingField}
-            onRecenterItinerary={(nodeId) => {
-              applyWorkspaceTransition({
-                contextEventId: eventId,
-                op: "optimize_route",
-                nodeIds: [nodeId],
-              });
-              toast.success(copy.globe.workspacePreviewRecenter);
-            }}
-          />
-        ) : showSoftRainChip || showSoftQuietChip || showSoftRouteChip ? (
-          <div className="flex items-center gap-2 rounded-2xl bg-[#f2f4f6] px-3 py-2">
-            <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#191f28]">
-              {showSoftRainChip
-                ? (concierge.opportunityTitleKo ??
-                  copy.globe.workspaceMapSoftRainHint)
-                : showSoftQuietChip
-                  ? copy.globe.workspaceMapSoftQuietHint
-                  : copy.globe.workspaceMapSoftRouteHint}
-            </p>
-            <button
-              type="button"
-              className="shrink-0 rounded-full bg-[#3182f6] px-2.5 py-1 text-[10px] font-extrabold text-white"
-              onClick={() => {
-                if (showSoftRainChip) {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "simulate",
-                    simulateScenarioKo: "비 오면 실내",
-                  });
-                  setSoftRainDismissed(true);
-                  toast.success(copy.globe.workspaceMapSoftRainApply);
-                } else if (showSoftQuietChip) {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "simulate",
-                    simulateScenarioKo: "덜 붐비는 동선",
-                  });
-                  setSoftQuietDismissed(true);
-                  toast.success(copy.globe.workspaceMapSoftQuietApply);
-                } else {
-                  applyWorkspaceTransition({
-                    contextEventId: eventId,
-                    op: "optimize_route",
-                  });
-                  setSoftRouteDismissed(true);
-                  toast.success(copy.globe.workspaceToolOptimizeRoute);
-                }
-              }}
-            >
-              {copy.globe.workspaceMapSoftQuietApply}
-            </button>
-            <button
-              type="button"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#8b95a1]"
-              aria-label="닫기"
-              onClick={() => {
-                setSoftRainDismissed(true);
-                setSoftQuietDismissed(true);
-                setSoftRouteDismissed(true);
-              }}
-            >
-              <X className="h-3 w-3" strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : null}
-
+      {/* Agent dock only — separate composer strip */}
+      <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2">
         <WorkspaceCursorDock
           contextEventId={eventId}
           compact={showPeek}

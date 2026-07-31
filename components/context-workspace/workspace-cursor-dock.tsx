@@ -366,30 +366,39 @@ export function WorkspaceCursorDock({
       data-workspace-cursor-dock
       data-compact={compact ? "true" : "false"}
     >
-      <div className="overflow-hidden rounded-[20px] bg-white shadow-[0_8px_28px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.06]">
-        <button
-          type="button"
-          className="flex w-full items-center gap-2 border-b border-black/[0.04] px-3 py-2 text-left"
-          onClick={() => setAgentExpanded((v) => !v)}
-          aria-expanded={agentExpanded}
-        >
-          <span className="text-[10px] font-bold tracking-wide text-[#3182f6]">
-            Agent
-          </span>
-          <span className="tabular-nums text-[11px] font-extrabold text-[#191f28]">
-            {percent}%
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#8b95a1]">
-            {statusLabel} · {taskLine}
-          </span>
-          {agentExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
-          ) : (
-            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
-          )}
-        </button>
+      <div
+        className={cn(
+          "overflow-hidden bg-white ring-1 ring-black/[0.06]",
+          compact
+            ? "rounded-[22px] shadow-[0_4px_20px_rgba(25,31,40,0.1)]"
+            : "rounded-[20px] shadow-[0_8px_28px_rgba(25,31,40,0.12)]",
+        )}
+      >
+        {!compact ? (
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 border-b border-black/[0.04] px-3 py-2 text-left"
+            onClick={() => setAgentExpanded((v) => !v)}
+            aria-expanded={agentExpanded}
+          >
+            <span className="text-[10px] font-bold tracking-wide text-[#3182f6]">
+              Agent
+            </span>
+            <span className="tabular-nums text-[11px] font-extrabold text-[#191f28]">
+              {percent}%
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#8b95a1]">
+              {statusLabel} · {taskLine}
+            </span>
+            {agentExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+            )}
+          </button>
+        ) : null}
 
-        {agentExpanded && agent ? (
+        {!compact && agentExpanded && agent ? (
           <div className="space-y-1 border-b border-black/[0.04] px-3 py-2 text-[11px] leading-snug text-[#4e5968]">
             <p className="font-semibold text-[#191f28]">{agent.goalKo}</p>
             <div className="h-1.5 overflow-hidden rounded-full bg-[#eef2f7]">
@@ -466,9 +475,9 @@ export function WorkspaceCursorDock({
           </div>
         ) : null}
 
-        <div className="space-y-1.5 border-t border-black/[0.04] px-2.5 py-2">
-          {nextLabel && busy ? (
-            <p className="px-1 text-center text-[11px] font-semibold text-[#3182f6]">
+        <div className={cn("px-2.5", compact ? "py-2" : "space-y-1.5 border-t border-black/[0.04] py-2")}>
+          {nextLabel && busy && !compact ? (
+            <p className="px-1 pb-1 text-center text-[11px] font-semibold text-[#3182f6]">
               {copy.globe.workspaceAgentAutoSetting}
               <span className="ml-1 font-medium text-[#8b95a1]">
                 · {nextLabel}

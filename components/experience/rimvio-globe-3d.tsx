@@ -25,7 +25,7 @@ import { buildDiscoveryLensLabelRows } from "@/lib/globe/discovery-lens/build-di
 import type { DiscoveryLensLabelRow } from "@/lib/globe/discovery-lens/build-discovery-lens-label-rows";
 import { resolveLocalDiscoveryRouteArcAltitude } from "@/lib/globe/context-condition-ai/build-context-condition-discovery-overlay";
 import type { ContextConditionDiscoveryOverlay } from "@/lib/globe/context-condition-ai/context-condition-discovery-overlay-types";
-import { GLOBE_TILE_MAX_ZOOM } from "@/lib/globe/globe-tile-constants";
+import { GLOBE_TILE_ENGINE_MAX_LEVEL } from "@/lib/globe/globe-tile-constants";
 import { globeTileEngineUrl } from "@/lib/globe/globe-tile-engine-url";
 import { applyRimvioGlobeTileTextureFiltering } from "@/lib/globe/apply-rimvio-globe-tile-texture-filtering";
 import { disposeGlobeGpuResources } from "@/lib/globe/dispose-globe-gpu-resources";
@@ -664,7 +664,7 @@ export const RimvioGlobe3D = memo(
       })
         .backgroundColor("rgba(0,0,0,0)")
         .globeTileEngineUrl(globeTileEngineUrl)
-        .globeTileEngineMaxLevel(GLOBE_TILE_MAX_ZOOM)
+        .globeTileEngineMaxLevel(GLOBE_TILE_ENGINE_MAX_LEVEL)
         .showGraticules(false)
         .showAtmosphere(true)
         .atmosphereColor(GLOBE_TOSS_THEME.atmosphere)
@@ -1153,6 +1153,23 @@ export const RimvioGlobe3D = memo(
       suspended: renderSuspended,
       enabled: globeReady,
     });
+
+    // Workspace / sheets open — stop CARTO tile floods (429) and free bandwidth for MapLibre.
+    useEffect(() => {
+      const globe = globeRef.current;
+      if (!globe || !globeReady) {
+        return;
+      }
+      if (renderSuspended) {
+        const empty =
+          "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        globe.globeTileEngineUrl(() => empty);
+        globe.globeTileEngineMaxLevel(0);
+        return;
+      }
+      globe.globeTileEngineUrl(globeTileEngineUrl);
+      globe.globeTileEngineMaxLevel(GLOBE_TILE_ENGINE_MAX_LEVEL);
+    }, [renderSuspended, globeReady]);
 
     useGlobeFocalPinch({
       shellRef,

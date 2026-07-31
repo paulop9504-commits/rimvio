@@ -356,11 +356,37 @@ export function prepareTripWorkspaceDraft(input: {
 export function shouldPrepareTripWorkspaceDraft(utterance: string): boolean {
   const text = utterance.trim();
   if (!text) return false;
-  return (
+
+  // Explicit prep verbs (legacy)
+  if (
     /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|일정\s*(?:짜|세워|만들)|추천\s*일정/iu.test(
       text,
     ) &&
     (/여행|trip|4\s*박|3\s*박|5\s*일|놀러/iu.test(text) ||
       /오사카|제주|도쿄|osaka|jeju/iu.test(text))
-  );
+  ) {
+    return true;
+  }
+
+  // Clear trip Intent (same bar as shouldAutoCommitContextCreate) —
+  // 「오사카 4박5일」 must stamp Reality Draft, not an empty lodging shell.
+  const hasDest =
+    Boolean(
+      /오사카|제주|도쿄|후쿠오카|나고야|삿포로|osaka|jeju|tokyo|fukuoka/iu.test(
+        text,
+      ),
+    ) || /여행/iu.test(text);
+  const hasDuration =
+    /\d{1,2}\s*박\s*\d{1,2}\s*일|\d{1,2}\s*박|\d{1,2}\s*일/iu.test(text);
+  if (hasDest && hasDuration) {
+    // Prefer known destinations so vague 「여행 3일」 alone does not stamp Osaka draft.
+    if (
+      /오사카|제주|도쿄|후쿠오카|나고야|삿포로|osaka|jeju|tokyo|fukuoka/iu.test(
+        text,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }

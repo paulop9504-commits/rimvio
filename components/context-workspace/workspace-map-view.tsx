@@ -260,6 +260,7 @@ function PlaceholderPinMap({
   onOpenField,
   onBackgroundActivate,
   compact,
+  preferredCenter = null,
 }: WorkspaceMapViewProps) {
   const visible = useMemo(
     () => pins.filter((n) => Number.isFinite(n.lat) && Number.isFinite(n.lng)),
@@ -270,13 +271,23 @@ function PlaceholderPinMap({
   if (!bounds || visible.length === 0) {
     return (
       <div
-        className="flex h-full items-center justify-center text-[12px]"
+        className="flex h-full flex-col items-center justify-center gap-1.5 px-6 text-center"
         style={{
           background: TOSS_WORKSPACE_MAP_CANVAS.background,
           color: GLOBE_TOSS_THEME.inkMuted,
         }}
+        data-workspace-map-empty
       >
-        지도를 펼쳐 보세요
+        <p className="text-[13px] font-semibold text-[#191f28]/90">
+          {preferredCenter
+            ? copy.globe.workspaceMapLoadingTitle
+            : copy.globe.workspacePreviewEmptyMap}
+        </p>
+        <p className="text-[11px] font-medium text-[#8b95a1]">
+          {preferredCenter
+            ? copy.globe.workspaceMapLoadingBody
+            : copy.globe.workspaceMapLoadingHint}
+        </p>
       </div>
     );
   }
@@ -906,6 +917,7 @@ function MapLibreWorkspaceMap({
             pins={pins}
             selectedId={selectedId}
             compact={compact}
+            preferredCenter={preferredCenter}
           />
         </div>
       ) : null}

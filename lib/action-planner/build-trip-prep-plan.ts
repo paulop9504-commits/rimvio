@@ -77,6 +77,10 @@ export function isTripPrepUtterance(utterance: string): boolean {
   if (hasTrip && hasDest && hasDuration && /준비|계획|짜/iu.test(text)) {
     return true;
   }
+  // Clear dest + stay — auto-commit Continuum stamps Reality Draft without 「준비해」.
+  if (hasDest && hasDuration) {
+    return true;
+  }
   return false;
 }
 

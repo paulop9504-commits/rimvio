@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import type { GlobeMapTileStyle } from "@/lib/experience-graph/build-globe-map-tiles";
-import { resolveGlobeTileUpstreamUrl } from "@/lib/experience-graph/resolve-globe-tile-upstream";
+import { fetchGlobeTileUpstream } from "@/lib/globe/fetch-globe-tile-upstream";
 import {
   remapRimvioGlobeMapTilePng,
   shouldRemapRimvioGlobeMapTileStyle,
@@ -17,37 +17,42 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "invalid_tile_coords" }, { status: 400 });
   }
 
-  const upstream = resolveGlobeTileUpstreamUrl({ z, x, y, style });
-  if (!upstream) {
-    return NextResponse.json({ error: "invalid_tile_style" }, { status: 400 });
-  }
-
   try {
-    const response = await fetch(upstream, {
-      headers: { "User-Agent": "RimvioGlobe/1.0" },
-      next: { revalidate: 86_400 },
-    });
-    if (!response.ok) {
-      return NextResponse.json({ error: "tile_upstream_failed" }, { status: 502 });
+    const fetched = await fetchGlobeTileUpstream({ z, x, y, style });
+    if (!fetched) {
+      // Soft fail — avoid browser retry storms (429 loops)
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+        },
+      });
     }
-    const raw = Buffer.from(await response.arrayBuffer());
-    let body: Buffer = raw;
+    let body: Buffer = fetched.body;
     if (shouldRemapRimvioGlobeMapTileStyle(style)) {
       try {
-        body = remapRimvioGlobeMapTilePng(raw);
+        body = remapRimvioGlobeMapTilePng(fetched.body);
       } catch {
-        body = raw;
+        body = fetched.body;
       }
     }
     return new NextResponse(new Uint8Array(body), {
       status: 200,
       headers: {
-        "Content-Type": response.headers.get("content-type") ?? "image/png",
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Content-Type": fetched.contentType,
+        "Cache-Control": fetched.cacheHit
+          ? "public, max-age=86400, stale-while-revalidate=604800"
+          : "public, max-age=3600, stale-while-revalidate=86400",
         "Cross-Origin-Resource-Policy": "cross-origin",
+        "X-Rimvio-Tile-Cache": fetched.cacheHit ? "hit" : "miss",
       },
     });
   } catch {
-    return NextResponse.json({ error: "tile_fetch_failed" }, { status: 502 });
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Cache-Control": "public, max-age=15",
+      },
+    });
   }
 }

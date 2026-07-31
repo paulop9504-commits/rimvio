@@ -466,6 +466,12 @@ body[data-rimvio-field-sheet-open] [data-rimvio-bottom-nav-portal] {
   pointer-events: none;
 }
 
+/* Workspace owns the map — freeze 3D globe (stops tile 429 + frees GPU). */
+body:has([data-context-workspace-open]) [data-rimvio-globe-3d] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .rimvio-nav-bar::before {
   content: "";
   position: absolute;

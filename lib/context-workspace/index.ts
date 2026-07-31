@@ -248,3 +248,12 @@ export {
   readAppleMapKitClientConfig,
   readAppleMapKitServerEnv,
 } from "@/lib/context-workspace/map/apple-mapkit-config";
+export {
+  WORKSPACE_OBJECT_LAYERS,
+  WORKSPACE_OBJECT_LAYER_LABEL_KO,
+  resolveWorkspaceObjectLayer,
+  filterNodesByObjectLayer,
+  listPresentObjectLayers,
+  layerLabelKo,
+} from "@/lib/context-workspace/workspace-object-layer";
+export type { WorkspaceObjectLayerId } from "@/lib/context-workspace/workspace-object-layer";

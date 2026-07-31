@@ -1,7 +1,10 @@
 #!/usr/bin/env npx tsx
 
 import assert from "node:assert/strict";
-import { GLOBE_TILE_MAX_ZOOM } from "../lib/globe/globe-tile-constants";
+import {
+  GLOBE_TILE_ENGINE_MAX_LEVEL,
+  GLOBE_TILE_MAX_ZOOM,
+} from "../lib/globe/globe-tile-constants";
 import {
   buildGlobeTileEngineUrl,
   globeTileEngineUrl,
@@ -15,8 +18,9 @@ import {
 } from "../lib/globe/globe-zoom-levels";
 import { accuracyMetersToRingDegrees } from "../lib/globe/accuracy-ring-degrees";
 
-assert.equal(GLOBE_TILE_MAX_ZOOM, 20);
-assert.match(buildGlobeTileEngineUrl(120, 210, 21, "light"), /z=20/);
+assert.equal(GLOBE_TILE_ENGINE_MAX_LEVEL, 11);
+assert.equal(GLOBE_TILE_MAX_ZOOM, 14);
+assert.match(buildGlobeTileEngineUrl(120, 210, 21, "light"), /z=14/);
 assert.equal(resolveGlobeTileStyleForLevel(0), "voyager");
 assert.equal(resolveGlobeTileStyleForLevel(8), "voyager");
 assert.match(globeTileEngineUrl(120, 210, 8), /style=voyager/);

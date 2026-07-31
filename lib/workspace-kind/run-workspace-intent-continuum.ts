@@ -11,7 +11,10 @@ import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/appen
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
-import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace-store";
+import {
+  readContextWorkspace,
+  writeContextWorkspaceExpanded,
+} from "@/lib/context-workspace/workspace-store";
 import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
@@ -242,6 +245,7 @@ export function runWorkspaceIntentContinuum(input: {
 
 /**
  * Fill lodging Workspace candidates so Hotel Focus → reserve → Commit → pay is reachable.
+ * Never wipe Reality Draft pins (USJ · 도톤보리 · APA) when live lodging is empty.
  */
 export async function seedTravelLodgingForContinuum(input: {
   readonly contextEventId: string;
@@ -255,6 +259,7 @@ export async function seedTravelLodgingForContinuum(input: {
     return null;
   }
   const dest = extractTravelDestination(utterance)?.trim() || "여행지";
+  const prev = readContextWorkspace(contextEventId);
   const tool = await invokeRimvioToolAsync("hotel.lookup", {
     query: `${dest} 숙소`,
     utterance,
@@ -263,23 +268,53 @@ export async function seedTravelLodgingForContinuum(input: {
     lng: input.lng,
     domain: "lodging",
   });
-  const candidates = (tool.candidates ?? []).filter((c) => {
+  const raw = tool.candidates ?? [];
+  const live = raw.filter((c) => {
     const id = c.id ?? "";
     if (id.startsWith("search:")) return false;
     if (c.source === "seed") return false;
     return true;
   });
+  // Live empty → keep Osaka/catalog lodging seeds so Hotel Focus still has candidates.
+  const candidates =
+    live.length > 0
+      ? live
+      : raw.filter((c) => {
+          const id = c.id ?? "";
+          if (id.startsWith("search:")) return false;
+          return c.source === "seed" || id.startsWith("lodging:");
+        });
+
+  // No new lodging and draft already has places — leave Reality Draft intact.
+  if (
+    candidates.length === 0 &&
+    prev &&
+    prev.nodes.some((n) => n.visible)
+  ) {
+    syncTravelSdkFrameAfterLodgingSeed({
+      contextEventId,
+      candidateCount: prev.nodes.filter((n) => n.kind === "lodging").length,
+      headerTitleKo: dest,
+    });
+    return prev;
+  }
+
   const workspace = openLodgingContextWorkspace({
     contextEventId,
     query: `${dest} 숙소`,
-    summaryKo: copy.globe.workspacePreviewReady(candidates.length),
+    summaryKo: copy.globe.workspacePreviewReady(
+      Math.max(
+        candidates.length,
+        prev?.nodes.filter((n) => n.visible).length ?? 0,
+      ),
+    ),
     candidates,
     source: "trip_prep",
   });
   appendWorkspacePreviewComposeTurn(contextEventId);
   syncTravelSdkFrameAfterLodgingSeed({
     contextEventId,
-    candidateCount: candidates.length,
+    candidateCount: workspace.nodes.filter((n) => n.kind === "lodging").length,
     headerTitleKo: dest,
   });
   return workspace;

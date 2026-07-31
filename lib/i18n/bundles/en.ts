@@ -470,6 +470,9 @@ export const copyEn: Copy = {
     globeComposeGlobeApplyPrefix: "On globe ·",
     workspacePreviewExpand: "Open",
     workspacePreviewEmptyMap: "Open the map",
+    workspaceMapLoadingTitle: "Loading map",
+    workspaceMapLoadingBody: "Pins appear here when places are ready",
+    workspaceMapLoadingHint: "Set a destination to open the map",
     workspacePreviewReady: (count: number) =>
       count > 0
         ? `${count} places ready · reviewing in workspace`

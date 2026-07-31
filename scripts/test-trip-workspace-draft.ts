@@ -21,6 +21,11 @@ assert.equal(
   shouldPrepareTripWorkspaceDraft("오사카 여행 4박5일 준비해놔"),
   true,
 );
+assert.equal(
+  shouldPrepareTripWorkspaceDraft("오사카 4박5일"),
+  true,
+  "clear trip Intent stamps draft without 준비해",
+);
 assert.equal(shouldPrepareTripWorkspaceDraft("날씨 어때"), false);
 
 const state = prepareTripWorkspaceDraft({
