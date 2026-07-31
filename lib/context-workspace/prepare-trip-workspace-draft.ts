@@ -78,9 +78,10 @@ function stopToNode(
     thumbnailUrl: null,
     tags: [...stop.tags],
     visible: true,
-    selected: stop.kind === "lodging",
-    /** Keep all draft Entities on map through lodging/eatery rescout. */
-    bookmarked: true,
+    // Soft focus only — do not pre-select or pin every skeleton
+    // (map ✓/✗ chrome was firing on all bookmarked draft pins).
+    selected: false,
+    bookmarked: false,
     source: "trip_prep_draft",
     /** Spatial Reality Draft — Action-Ready, not Committed. */
     actionReadyState: "ready",

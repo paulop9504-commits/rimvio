@@ -63,6 +63,16 @@ export type { TripDraftStop } from "@/lib/context-workspace/prepare-trip-workspa
 export { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
 
 export {
+  filterNodesForWorkspaceMapFocus,
+  isWorkspacePlaceCandidateNode,
+  isWorkspaceReadySlotNode,
+  resolveExpandableSlotKind,
+} from "@/lib/context-workspace/workspace-map-focus";
+
+export { enterWorkspaceSlotFocus } from "@/lib/context-workspace/enter-workspace-slot-focus";
+export type { EnterWorkspaceSlotFocusResult } from "@/lib/context-workspace/enter-workspace-slot-focus";
+
+export {
   stampTripDraftOntoContext,
   resolveWorkspaceMapCenter,
   resolveWorkspaceContextDestinationKo,

@@ -584,6 +584,10 @@ export const copy = {
     workspaceToolSimulateRain: "비 오면?",
     workspaceToolOptimizeRoute: "동선 최적화",
     workspacePreviewEyebrow: "미리보기",
+    workspaceSlotExpandReady: (label: string, count: number) =>
+      `${label} 후보 ${count}곳을 지도에 펼쳤어요 · 고른 뒤 예약 준비하세요`,
+    workspaceSlotExpandEmpty: (label: string) =>
+      `${label} 후보를 아직 못 찾았어요 · 동네나 조건을 더 말해 주세요`,
     workspacePreviewPhotoHint: "사진 준비 중",
     workspacePreviewPhotoCount: (n: number) => `사진 ${n}장`,
     workspacePreviewNearby: "주변",

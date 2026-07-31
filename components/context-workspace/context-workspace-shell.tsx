@@ -51,7 +51,8 @@ import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspace-close-name-sheet";
 import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
-import { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
+import { enterWorkspaceSlotFocus } from "@/lib/context-workspace/enter-workspace-slot-focus";
+import { filterNodesForWorkspaceMapFocus } from "@/lib/context-workspace/workspace-map-focus";
 import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
 import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
 import {
@@ -67,6 +68,7 @@ import {
 } from "@/lib/context-workspace/project-workspace-context-media-pins";
 import { resolveWorkspaceMapCenterFromContext } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 import type { WorkspaceMapPin } from "@/lib/context-workspace/map/workspace-map-provider";
+import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -136,6 +138,10 @@ export function ContextWorkspaceShell({
   const [listOpen, setListOpen] = useState(false);
   const [peekDismissedId, setPeekDismissedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  /** One Focus map layer — null = itinerary overview */
+  const [mapFocusKind, setMapFocusKind] = useState<ContextWorkspaceDomain | null>(
+    null,
+  );
   const [compareOpen, setCompareOpen] = useState(false);
   const [softRouteDismissed, setSoftRouteDismissed] = useState(false);
   const [softRainDismissed, setSoftRainDismissed] = useState(false);
@@ -163,6 +169,8 @@ export function ContextWorkspaceShell({
 
   useEffect(() => {
     refresh();
+    setMapFocusKind(null);
+    setFocusedId(null);
     const id = contextEventId?.trim();
     if (id) {
       const draft = readContextWorkspace(id);
@@ -233,10 +241,18 @@ export function ContextWorkspaceShell({
     () => state?.nodes.filter((n) => n.visible) ?? [],
     [state],
   );
+  const mapFocusNodes = useMemo(
+    () =>
+      filterNodesForWorkspaceMapFocus({
+        nodes: visibleNodes,
+        focusKind: mapFocusKind,
+      }),
+    [visibleNodes, mapFocusKind],
+  );
   const selectedId =
     focusedId ??
     state?.selectedIds[0] ??
-    visibleNodes.find((n) => n.selected)?.id ??
+    mapFocusNodes.find((n) => n.selected)?.id ??
     null;
   const venueSelectedId = isWorkspaceContextMediaPinId(selectedId)
     ? null
@@ -255,7 +271,7 @@ export function ContextWorkspaceShell({
 
   const mapPins = useMemo((): WorkspaceMapPin[] => {
     const ctx = contextEventId?.trim() ?? "";
-    const venuePins: WorkspaceMapPin[] = visibleNodes.map((n) => ({
+    const venuePins: WorkspaceMapPin[] = mapFocusNodes.map((n) => ({
       id: n.id,
       title: n.title,
       lat: n.lat,
@@ -277,22 +293,34 @@ export function ContextWorkspaceShell({
         n.tags.includes("photo_spot") ||
         /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
       legHintKo:
-        n.id === venueSelectedId ? legHintForNode(visibleNodes, n.id) : null,
+        n.id === venueSelectedId ? legHintForNode(mapFocusNodes, n.id) : null,
     }));
 
     const event = ctx
       ? findLifeEventCandidate(ctx) ?? recoverGlobeContextEventFromPin(ctx)
       : null;
-    const mediaPins = projectWorkspaceContextMediaPins({
-      event,
-      nodes: visibleNodes,
-    }).map((pin) => ({
-      ...pin,
-      selected: pin.id === selectedId,
-    }));
+    // Media pins only on itinerary overview — avoid clutter in candidate focus.
+    const mediaPins =
+      mapFocusKind == null
+        ? projectWorkspaceContextMediaPins({
+            event,
+            nodes: mapFocusNodes,
+          }).map((pin) => ({
+            ...pin,
+            selected: pin.id === selectedId,
+          }))
+        : [];
 
     return [...venuePins, ...mediaPins];
-  }, [visibleNodes, selectedId, venueSelectedId, contextEventId, prepTick, mediaTick]);
+  }, [
+    mapFocusNodes,
+    selectedId,
+    venueSelectedId,
+    contextEventId,
+    prepTick,
+    mediaTick,
+    mapFocusKind,
+  ]);
 
   const selectedMediaPin = useMemo(() => {
     if (!isWorkspaceContextMediaPinId(selectedId)) return null;
@@ -385,14 +413,16 @@ export function ContextWorkspaceShell({
     [onApprovePay],
   );
 
-  const routeLineCoords = useMemo(
-    () => buildWorkspaceItineraryLineCoords(visibleNodes),
-    [visibleNodes],
-  );
+  const routeLineCoords = useMemo(() => {
+    // Candidate focus — no itinerary spaghetti across hotels.
+    if (mapFocusKind != null) return [];
+    return buildWorkspaceItineraryLineCoords(mapFocusNodes);
+  }, [mapFocusNodes, mapFocusKind]);
 
   const showSoftRouteChip =
+    mapFocusKind == null &&
     !softRouteDismissed &&
-    visibleNodes.length >= 2 &&
+    mapFocusNodes.length >= 2 &&
     !(state?.lastChangeKo && /동선|가까운\s*순/.test(state.lastChangeKo));
 
   const lifeEvent = useMemo(() => {
@@ -558,36 +588,37 @@ export function ContextWorkspaceShell({
       if (!id) {
         return;
       }
-      const live = readContextWorkspace(id);
-      const resolved =
-        live != null
-          ? resolveWorkspaceFocusNode(live.nodes, nodeId, titleHint)
-          : null;
-      const focusId = resolved?.id ?? nodeId;
 
-      // Soft focus only — Preview opens; explicit 「선택」 confirms for prepare/commit.
-      setFocusedId(focusId);
+      // Soft focus immediately so chip/peek feels responsive.
+      setFocusedId(nodeId);
       setListOpen(false);
       setPeekDismissedId(null);
 
-      if (isWorkspaceContextMediaPinId(focusId)) {
+      if (isWorkspaceContextMediaPinId(nodeId)) {
+        setMapFocusKind(null);
         return;
       }
 
-      const node =
-        resolved ??
-        live?.nodes.find((n) => n.id === focusId) ??
-        null;
-      if (node) {
-        const why =
-          node.summaryKo.trim() ||
-          `${domainLabelKo(node.kind)} 후보`;
-        appendWorkspaceChatTurn({
+      void (async () => {
+        const result = await enterWorkspaceSlotFocus({
           contextEventId: id,
-          role: "assistant",
-          text: `${copy.globe.workspacePreviewEyebrow} · ${node.title}\n${why}`,
+          nodeId,
+          titleHint,
         });
-      }
+        setMapFocusKind(result.mapFocusKind);
+        setFocusedId(result.focusId);
+        setPeekDismissedId(null);
+        if (result.replyKo?.trim()) {
+          appendWorkspaceChatTurn({
+            contextEventId: id,
+            role: "assistant",
+            text: result.replyKo,
+          });
+        }
+        if (result.mode === "slot_expand" && result.candidateCount > 0) {
+          toast.message(result.replyKo ?? copy.globe.workspacePreviewEyebrow);
+        }
+      })();
     },
     [contextEventId],
   );
@@ -693,7 +724,9 @@ export function ContextWorkspaceShell({
   const progress = estimateWorkspaceProgressPercent(state);
   const eventId = contextEventId?.trim() ?? "";
   const selectedNode =
-    visibleNodes.find((n) => n.id === venueSelectedId) ?? null;
+    mapFocusNodes.find((n) => n.id === venueSelectedId) ??
+    visibleNodes.find((n) => n.id === venueSelectedId) ??
+    null;
   const showPeek =
     selectedNode != null &&
     peekDismissedId !== selectedNode.id &&
@@ -725,11 +758,14 @@ export function ContextWorkspaceShell({
             {title}
           </p>
           <p className="truncate text-[10px] tabular-nums text-[#8b95a1]">
-            {visibleNodes.length}곳 · {progress}%
-            {concierge.topWeatherKo
+            {mapFocusNodes.length}곳 · {progress}%
+            {mapFocusKind
+              ? ` · ${domainLabelKo(mapFocusKind)}`
+              : ""}
+            {!mapFocusKind && concierge.topWeatherKo
               ? ` · ${concierge.topWeatherKo.replace(/^현재\s*/u, "")}`
               : ""}
-            {concierge.congestionKo
+            {!mapFocusKind && concierge.congestionKo
               ? ` · ${concierge.congestionKo.replace(/^전체\s*일정\s*/u, "")}`
               : ""}
           </p>
@@ -844,7 +880,8 @@ export function ContextWorkspaceShell({
           <div className="pointer-events-auto absolute inset-x-3 top-3 z-[2] max-h-[min(48%,360px)] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
             <div className="flex items-center justify-between border-b border-black/[0.04] px-3 py-2">
               <p className="text-[12px] font-bold text-[#191f28]">
-                {visibleNodes.length}개의 {kindLabel}
+                {mapFocusNodes.length}개의{" "}
+                {mapFocusKind ? domainLabelKo(mapFocusKind) : kindLabel}
               </p>
               <button
                 type="button"
@@ -855,7 +892,7 @@ export function ContextWorkspaceShell({
               </button>
             </div>
             <div className="max-h-[min(40vh,300px)] space-y-0.5 overflow-y-auto p-1.5">
-              {visibleNodes.map((node, index) => (
+              {mapFocusNodes.map((node, index) => (
                 <button
                   key={node.id}
                   type="button"
@@ -900,7 +937,7 @@ export function ContextWorkspaceShell({
           <WorkspaceObjectCarousel
             open={showPeek}
             contextEventId={eventId}
-            nodes={visibleNodes}
+            nodes={mapFocusNodes}
             activeNodeId={selectedNode.id}
             workspace={state}
             dockClearancePx={76}
@@ -911,6 +948,7 @@ export function ContextWorkspaceShell({
             onClose={() => {
               setPeekDismissedId(selectedNode.id);
               setFocusedId(null);
+              setMapFocusKind(null);
             }}
             onOpenCompare={() => setCompareOpen(true)}
             onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
