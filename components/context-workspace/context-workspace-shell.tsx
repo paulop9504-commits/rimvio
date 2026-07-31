@@ -137,9 +137,11 @@ export function ContextWorkspaceShell({
   const [closeNameOpen, setCloseNameOpen] = useState(false);
   const [commitBusy, setCommitBusy] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  /** Once closed, stay closed until user taps a pin again (avoids selectId fallback reopen loop). */
-  const [peekClosed, setPeekClosed] = useState(false);
+  /** Place sheet stays closed until an explicit user open (pin / list / jump). */
+  const [peekClosed, setPeekClosed] = useState(true);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  /** Invalidates in-flight slot focus so async lookup cannot reopen a closed sheet. */
+  const peekOpenGenerationRef = useRef(0);
   /** One Focus map layer — null = itinerary overview */
   const [mapFocusKind, setMapFocusKind] = useState<ContextWorkspaceDomain | null>(
     null,
@@ -173,7 +175,8 @@ export function ContextWorkspaceShell({
     refresh();
     setMapFocusKind(null);
     setFocusedId(null);
-    setPeekClosed(false);
+    setPeekClosed(true);
+    peekOpenGenerationRef.current += 1;
     const id = contextEventId?.trim();
     if (id) {
       const draft = readContextWorkspace(id);
@@ -214,7 +217,7 @@ export function ContextWorkspaceShell({
       }
       setBriefReplayGroundIndex(detail.stepIndex);
       setFocusedId(detail.nodeId);
-      setPeekClosed(false);
+      // Map focus only — do not force place sheet open during brief replay.
     });
     const unsubJump = subscribeRealityJump((detail) => {
       if (detail.contextEventId !== contextEventId?.trim()) return;
@@ -604,6 +607,7 @@ export function ContextWorkspaceShell({
       }
 
       // Soft focus immediately so chip/peek feels responsive.
+      const openGen = ++peekOpenGenerationRef.current;
       setFocusedId(nodeId);
       setListOpen(false);
       setPeekClosed(false);
@@ -619,9 +623,11 @@ export function ContextWorkspaceShell({
           nodeId,
           titleHint,
         });
+        if (openGen !== peekOpenGenerationRef.current) {
+          return;
+        }
         setMapFocusKind(result.mapFocusKind);
         setFocusedId(result.focusId);
-        setPeekClosed(false);
         if (result.replyKo?.trim()) {
           appendWorkspaceChatTurn({
             contextEventId: id,
@@ -974,6 +980,7 @@ export function ContextWorkspaceShell({
               setFocusedId(nodeId);
             }}
             onClose={() => {
+              peekOpenGenerationRef.current += 1;
               setPeekClosed(true);
             }}
             onOpenCompare={() => setCompareOpen(true)}
