@@ -2,17 +2,25 @@
 
 /**
  * Object browser — ChatGPT Maps place sheet.
- * Full-width bottom sheet + big photos + prompt fused into the sheet.
+ * Full-bleed bottom sheet (no prompt). Prompt stays on the dock when sheet is closed.
  */
 
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { Globe, MapPin, Pin, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  MapPin,
+  Pin,
+  X,
+} from "lucide-react";
 import {
   applyWorkspaceTransition,
   type ContextWorkspaceNode,
@@ -20,7 +28,6 @@ import {
 } from "@/lib/context-workspace";
 import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
 import { buildNodeContextBrief } from "@/lib/context-workspace/context-brief/build-node-brief";
-import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
 import { resolvePeekPrimaryAction } from "@/lib/context-workspace/set-node-action-ready-state";
 import { prepareCopyFromCapabilities } from "@/lib/context-workspace/resolve-workspace-node-capabilities";
 import { hasRealityExecutionCapability } from "@/lib/reality-object/capabilities-for-type";
@@ -45,7 +52,7 @@ export type WorkspaceObjectCarouselProps = {
     ContextWorkspaceState,
     "nodes" | "relationshipEdges" | "compareIds" | "selectedIds" | "realityDraft"
   >;
-  /** GPT-style: prompt fused into the bottom of the place sheet */
+  /** @deprecated Prompt is not fused into the place sheet (GPT Maps style). */
   sheetFooter?: ReactNode;
   onActiveNodeChange: (nodeId: string) => void;
   onClose: () => void;
@@ -79,7 +86,6 @@ export function WorkspaceObjectCarousel({
   nodes,
   activeNodeId,
   workspace,
-  sheetFooter = null,
   onActiveNodeChange,
   onClose,
   onOpenCompare,
@@ -106,6 +112,8 @@ export function WorkspaceObjectCarousel({
       : (presentLayers[0] ?? "hotel"),
   );
   const sheetDragControls = useDragControls();
+  const galleryRef = useRef<HTMLDivElement | null>(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   const layerNodes = useMemo(
     () => filterNodesByObjectLayer(nodes, layer),
@@ -144,10 +152,10 @@ export function WorkspaceObjectCarousel({
     });
   }, [activeNode, workspace]);
 
-  const draftDay = useMemo(() => {
-    if (!activeNode || !workspace.realityDraft) return null;
-    return findRealityDraftDayForNode(workspace.realityDraft, activeNode.id);
-  }, [activeNode, workspace.realityDraft]);
+  useEffect(() => {
+    setPhotoIndex(0);
+    galleryRef.current?.scrollTo({ left: 0 });
+  }, [activeNode?.id]);
 
   if (!open || !activeNode || !preview || presentLayers.length === 0) {
     return null;
@@ -172,6 +180,15 @@ export function WorkspaceObjectCarousel({
   const compareCount = workspace.compareIds.length;
   const activeLayer = resolveWorkspaceObjectLayer(activeNode);
   const kindLabel = layerLabelKo(activeLayer);
+  const activeIndex = layerNodes.findIndex((n) => n.id === activeNode.id);
+  const hasSiblings = layerNodes.length > 1;
+
+  const goSibling = (dir: -1 | 1) => {
+    if (!hasSiblings || activeIndex < 0) return;
+    const next =
+      layerNodes[(activeIndex + dir + layerNodes.length) % layerNodes.length];
+    if (next) onActiveNodeChange(next.id);
+  };
 
   const confirmSelect = () => {
     applyWorkspaceTransition({
@@ -208,51 +225,42 @@ export function WorkspaceObjectCarousel({
     if (nextIds.length >= 2) onOpenCompare?.();
   };
 
+  const factLines: { icon: "pin" | "globe" | "tag"; text: string }[] = [];
+  const summaryOnly = activeNode.summaryKo.trim();
+  if (summaryOnly) {
+    factLines.push({ icon: "pin", text: summaryOnly });
+  } else if (preview.nearby[0]) {
+    factLines.push({ icon: "pin", text: preview.nearby[0].labelKo });
+  }
+  if (nodeBrief?.linesKo[0]) {
+    factLines.push({ icon: "globe", text: nodeBrief.linesKo[0] });
+  }
+  if (preview.amenities[0]) {
+    factLines.push({
+      icon: "tag",
+      text: preview.amenities.slice(0, 3).join(" · "),
+    });
+  }
+
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
           key="object-browser"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex flex-col justify-end"
+          className="pointer-events-none absolute inset-0 z-[6] flex flex-col"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{
             type: "spring",
-            stiffness: 300,
-            damping: 34,
-            mass: 0.95,
+            stiffness: 320,
+            damping: 36,
+            mass: 0.9,
           }}
           data-workspace-object-carousel
         >
-          <div className="pointer-events-auto mb-2 flex max-w-full gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {presentLayers.map((id) => {
-              const selected = id === layer;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className={cn(
-                    "shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors",
-                    selected
-                      ? "bg-[#191f28] text-white shadow-[0_4px_12px_rgba(25,31,40,0.2)]"
-                      : "bg-white/95 text-[#4e5968] shadow-[0_2px_10px_rgba(25,31,40,0.08)] ring-1 ring-black/[0.04]",
-                  )}
-                  onClick={() => setLayer(id)}
-                  aria-pressed={selected}
-                >
-                  {layerLabelKo(id)}
-                </button>
-              );
-            })}
-          </div>
-
           <motion.div
-            className="pointer-events-auto flex w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_50px_rgba(25,31,40,0.28)]"
-            style={{
-              height: "min(84vh, 720px)",
-              maxHeight: "min(84vh, 720px)",
-            }}
+            className="pointer-events-auto flex h-full min-h-0 w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_50px_rgba(25,31,40,0.28)]"
             drag="y"
             dragControls={sheetDragControls}
             dragListener={false}
@@ -274,45 +282,113 @@ export function WorkspaceObjectCarousel({
               <div className="mx-auto h-1 w-10 rounded-full bg-[#d1d6db]" />
             </div>
 
-            {/* One scroll surface — photo + copy move together (ChatGPT Maps sheet). */}
+            {presentLayers.length > 1 ? (
+              <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {presentLayers.map((id) => {
+                  const selected = id === layer;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={cn(
+                        "shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold transition-colors",
+                        selected
+                          ? "bg-[#191f28] text-white"
+                          : "bg-[#f2f4f6] text-[#4e5968]",
+                      )}
+                      onClick={() => setLayer(id)}
+                      aria-pressed={selected}
+                    >
+                      {layerLabelKo(id)}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-              <div className="relative pt-2">
+              <div className="relative">
                 {images.length > 0 ? (
-                  <div className="relative px-3">
-                    {/* One large photo at a time — swipe only, no thumb strip. */}
+                  <div className="relative">
                     <div
+                      ref={galleryRef}
                       className={cn(
                         "flex overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                         images.length > 1
                           ? "snap-x snap-mandatory"
                           : "snap-none",
                       )}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const w = el.clientWidth || 1;
+                        setPhotoIndex(
+                          Math.round(el.scrollLeft / w),
+                        );
+                      }}
                     >
                       {images.map((url, i) => (
                         <div
                           key={`${url}-${i}`}
-                          className="relative aspect-[16/10] w-full min-w-full shrink-0 snap-center overflow-hidden rounded-[18px] bg-[#f2f4f6]"
+                          className="relative aspect-[4/5] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6] sm:aspect-[16/11]"
                           aria-label={`사진 ${i + 1} / ${images.length}`}
                         >
                           <WorkspaceRemoteImage
                             src={url}
-                            sizes="96vw"
+                            sizes="100vw"
                             priority={i < 2}
                           />
                         </div>
                       ))}
                     </div>
+
+                    {images.length > 1 ? (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                        {images.map((_, i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full transition-colors",
+                              i === photoIndex
+                                ? "bg-white"
+                                : "bg-white/45",
+                            )}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+
                     <button
                       type="button"
-                      className="absolute right-5 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                      className="absolute right-3 top-3 z-[2] flex h-9 w-9 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
                       onClick={onClose}
                       aria-label="닫기"
                     >
                       <X className="h-4 w-4" strokeWidth={2.5} />
                     </button>
+
+                    {hasSiblings ? (
+                      <>
+                        <button
+                          type="button"
+                          className="absolute left-2 top-1/2 z-[2] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                          onClick={() => goSibling(-1)}
+                          aria-label="이전 후보"
+                        >
+                          <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
+                        </button>
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 z-[2] flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/92 text-[#191f28] shadow-sm"
+                          onClick={() => goSibling(1)}
+                          aria-label="다음 후보"
+                        >
+                          <ChevronRight className="h-5 w-5" strokeWidth={2.25} />
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 ) : (
-                  <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-[18px] bg-[#f2f4f6]">
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#f2f4f6] sm:aspect-[16/11]">
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
                       <span className="text-[44px]">
                         {layerEmoji(activeLayer)}
@@ -333,36 +409,26 @@ export function WorkspaceObjectCarousel({
                 )}
               </div>
 
-              <div className="space-y-3 px-4 pb-3 pt-3">
+              <div className="space-y-3.5 px-4 pb-5 pt-3">
                 <div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {draftDay ? (
-                      <span className="rounded-full bg-[#f2f4f6] px-2 py-0.5 text-[10px] font-semibold text-[#4e5968]">
-                        {draftDay.labelKo}
-                      </span>
-                    ) : null}
-                    <span className="text-[13px] font-medium text-[#8b95a1]">
-                      {preview.ratingLabel}
-                      <span className="mx-1.5 text-[#d1d6db]">·</span>
-                      {kindLabel}
-                    </span>
-                  </div>
-                  <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.03em] text-[#191f28]">
+                  <h3 className="text-[17px] font-semibold leading-[1.35] tracking-[-0.02em] text-[#191f28]">
                     {preview.title}
                   </h3>
-                  <p className="mt-1 text-[16px] font-bold tabular-nums text-[#191f28]">
+                  <p className="mt-1 text-[13px] font-medium leading-snug text-[#6b7684]">
+                    {preview.ratingLabel}
+                    <span className="mx-1 text-[#d1d6db]">·</span>
+                    {kindLabel}
+                  </p>
+                  <p className="mt-0.5 text-[14px] font-semibold tabular-nums text-[#191f28]">
                     {preview.price}
-                    <span className="ml-2 text-[12px] font-medium text-[#8b95a1]">
-                      {preview.reviewSummary}
-                    </span>
                   </p>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-2">
                   <button
                     type="button"
                     className={cn(
-                      "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold",
+                      "min-w-0 flex-1 rounded-full px-2.5 py-2 text-[12px] font-semibold",
                       preview.selected
                         ? "bg-[#191f28] text-white"
                         : "bg-[#3182f6] text-white",
@@ -376,7 +442,7 @@ export function WorkspaceObjectCarousel({
                   <button
                     type="button"
                     className={cn(
-                      "shrink-0 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1",
+                      "min-w-0 flex-1 rounded-full px-2.5 py-2 text-[12px] font-semibold ring-1",
                       preview.inCompare
                         ? "bg-[#e8f3ff] text-[#3182f6] ring-[#3182f6]/25"
                         : "bg-white text-[#191f28] ring-black/[0.08]",
@@ -391,7 +457,7 @@ export function WorkspaceObjectCarousel({
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold ring-1 ring-black/[0.08]",
+                      "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[12px] font-semibold ring-1 ring-black/[0.08]",
                       preview.bookmarked
                         ? "bg-[#191f28] text-white ring-transparent"
                         : "bg-white text-[#191f28]",
@@ -405,68 +471,39 @@ export function WorkspaceObjectCarousel({
                       });
                     }}
                   >
-                    <Pin className="h-3.5 w-3.5" strokeWidth={2.5} />
+                    <Pin className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
                     {preview.bookmarked
                       ? copy.globe.workspacePinDone
                       : copy.globe.workspacePinCta}
                   </button>
                 </div>
 
-                {layerNodes.length > 1 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {layerNodes.map((node) => {
-                      const card = buildNodePreview(node, workspace);
-                      const on = node.id === activeNode.id;
-                      return (
-                        <button
-                          key={node.id}
-                          type="button"
-                          className={cn(
-                            "max-w-[9.5rem] shrink-0 truncate rounded-full px-3 py-1.5 text-[11px] font-semibold",
-                            on
-                              ? "bg-[#191f28] text-white"
-                              : "bg-[#f2f4f6] text-[#4e5968]",
-                          )}
-                          onClick={() => onActiveNodeChange(node.id)}
-                        >
-                          {card.title}
-                        </button>
-                      );
-                    })}
-                  </div>
+                {factLines.length > 0 ? (
+                  <ul className="divide-y divide-black/[0.06]">
+                    {factLines.map((row) => (
+                      <li
+                        key={`${row.icon}-${row.text.slice(0, 24)}`}
+                        className="flex items-start gap-2.5 py-2.5 first:pt-0.5"
+                      >
+                        {row.icon === "pin" ? (
+                          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                        ) : row.icon === "globe" ? (
+                          <Globe className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                        ) : (
+                          <Pin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
+                        )}
+                        <p className="min-w-0 flex-1 text-[13px] leading-[1.45] text-[#4e5968]">
+                          {row.text}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
-
-                <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-[#f9fafb]">
-                  {preview.whyChosen ? (
-                    <li className="flex items-start gap-3 px-3.5 py-3">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                        {preview.whyChosen}
-                      </p>
-                    </li>
-                  ) : null}
-                  {nodeBrief && nodeBrief.linesKo[0] ? (
-                    <li className="flex items-start gap-3 px-3.5 py-3">
-                      <Globe className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                        {nodeBrief.linesKo[0]}
-                      </p>
-                    </li>
-                  ) : null}
-                  {preview.amenities[0] ? (
-                    <li className="flex items-start gap-3 px-3.5 py-3">
-                      <Pin className="mt-0.5 h-4 w-4 shrink-0 text-[#8b95a1]" />
-                      <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#4e5968]">
-                        {preview.amenities.slice(0, 3).join(" · ")}
-                      </p>
-                    </li>
-                  ) : null}
-                </ul>
 
                 {preview.canPrepare && primary.kind !== "done" ? (
                   <button
                     type="button"
-                    className="w-full rounded-[16px] bg-[#3182f6] px-3 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
+                    className="w-full rounded-[14px] bg-[#3182f6] px-3 py-3 text-[14px] font-semibold text-white shadow-[0_8px_20px_rgba(49,130,246,0.28)]"
                     onClick={() => {
                       if (primary.kind === "confirm")
                         onConfirmReady?.(activeNode.id);
@@ -485,12 +522,6 @@ export function WorkspaceObjectCarousel({
                 ) : null}
               </div>
             </div>
-
-            {sheetFooter ? (
-              <div className="shrink-0 border-t border-black/[0.04] bg-white px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5">
-                {sheetFooter}
-              </div>
-            ) : null}
           </motion.div>
         </motion.div>
       ) : null}
