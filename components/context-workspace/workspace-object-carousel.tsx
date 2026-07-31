@@ -2,7 +2,7 @@
 
 /**
  * Object browser — layer pills + horizontal snap carousel + detail panel.
- * ChatGPT Maps–style: carousel above Agent; tap card → bottom detail sheet.
+ * ChatGPT Maps–style: compact carousel docked just above Agent prompt.
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { Globe, MapPin, Pin, X } from "lucide-react";
@@ -48,6 +49,8 @@ export type WorkspaceObjectCarouselProps = {
     "nodes" | "relationshipEdges" | "compareIds" | "selectedIds" | "realityDraft"
   >;
   dockClearancePx?: number;
+  /** GPT-style: prompt fused into the bottom of the place sheet */
+  sheetFooter?: ReactNode;
   onActiveNodeChange: (nodeId: string) => void;
   onClose: () => void;
   onOpenCompare?: () => void;
@@ -80,7 +83,8 @@ export function WorkspaceObjectCarousel({
   nodes,
   activeNodeId,
   workspace,
-  dockClearancePx = 72,
+  dockClearancePx = 0,
+  sheetFooter = null,
   onActiveNodeChange,
   onClose,
   onOpenCompare,
@@ -106,7 +110,7 @@ export function WorkspaceObjectCarousel({
       ? resolveWorkspaceObjectLayer(activeNode)
       : (presentLayers[0] ?? "hotel"),
   );
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const scrollLockRef = useRef(false);
@@ -132,16 +136,11 @@ export function WorkspaceObjectCarousel({
     if (first) onActiveNodeChange(first.id);
   }, [layer, layerNodes, activeNode, onActiveNodeChange]);
 
-  // GPT Maps: stay on detail sheet when switching pins — don't collapse to carousel.
+  // Always open the GPT-style detail sheet (not the floating card strip).
   useEffect(() => {
     setGalleryIndex(0);
     setExpanded(true);
-  }, [activeNodeId]);
-
-  useEffect(() => {
-    setGalleryIndex(0);
-    setExpanded(true);
-  }, [layer]);
+  }, [activeNodeId, layer]);
 
   // Snap carousel to active card (peek strip only)
   useLayoutEffect(() => {
@@ -279,21 +278,22 @@ export function WorkspaceObjectCarousel({
           key="object-browser"
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[6] flex flex-col justify-end"
           style={{
-            paddingBottom: `calc(${dockClearancePx}px + env(safe-area-inset-bottom, 0px))`,
+            // Dock is a sibling below the map — only a tight GPT-style gap.
+            paddingBottom: `${dockClearancePx}px`,
           }}
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
+          initial={{ y: 28, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 20, opacity: 0 }}
           transition={{
             type: "spring",
-            stiffness: 320,
-            damping: 36,
-            mass: 0.92,
+            stiffness: 380,
+            damping: 34,
+            mass: 0.85,
           }}
           data-workspace-object-carousel
         >
-          {/* Layer chips — float just above sheet like GPT map filters */}
-          <div className="pointer-events-auto mb-2 flex max-w-full gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Layer chips — tight above carousel */}
+          <div className="pointer-events-auto mb-1.5 flex max-w-full gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {presentLayers.map((id) => {
               const selected = id === layer;
               return (
@@ -301,7 +301,7 @@ export function WorkspaceObjectCarousel({
                   key={id}
                   type="button"
                   className={cn(
-                    "shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors",
+                    "shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold transition-colors",
                     selected
                       ? "bg-[#191f28] text-white shadow-[0_4px_12px_rgba(25,31,40,0.2)]"
                       : "bg-white/95 text-[#4e5968] shadow-[0_2px_10px_rgba(25,31,40,0.08)] ring-1 ring-black/[0.04]",
@@ -328,8 +328,9 @@ export function WorkspaceObjectCarousel({
                 <div
                   ref={scrollerRef}
                   className={cn(
-                    "flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-[7.5%] pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-                    layerNodes.length === 1 && "justify-center px-3",
+                    // GPT: ~86% card + peek of next; docked above prompt
+                    "flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3 pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                    layerNodes.length === 1 && "justify-center",
                   )}
                   onScroll={onScrollerScroll}
                 >
@@ -343,13 +344,13 @@ export function WorkspaceObjectCarousel({
                         type="button"
                         data-carousel-node={node.id}
                         className={cn(
-                          "flex shrink-0 snap-center items-stretch gap-3 rounded-[20px] bg-white text-left shadow-[0_10px_32px_rgba(25,31,40,0.16)] ring-1 transition-[transform,box-shadow,ring-color]",
+                          "flex shrink-0 snap-center items-center gap-2.5 rounded-[22px] bg-white text-left shadow-[0_8px_28px_rgba(25,31,40,0.14)] ring-1 transition-[transform,box-shadow,ring-color]",
                           layerNodes.length === 1
-                            ? "w-full max-w-[min(92vw,400px)]"
-                            : "w-[min(78vw,300px)]",
+                            ? "w-[min(92vw,400px)]"
+                            : "w-[min(86vw,340px)]",
                           isActive
-                            ? "ring-[#3182f6]/35"
-                            : "scale-[0.97] opacity-90 ring-black/[0.05]",
+                            ? "ring-[#3182f6]/40"
+                            : "scale-[0.985] opacity-92 ring-black/[0.05]",
                         )}
                         onClick={() => {
                           if (!isActive) {
@@ -359,51 +360,35 @@ export function WorkspaceObjectCarousel({
                           setExpanded(true);
                         }}
                       >
-                        <div className="relative m-2.5 h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[14px] bg-[#f2f4f6]">
+                        <div className="relative m-2 h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[16px] bg-[#f2f4f6]">
                           {card.heroImage ? (
                             <WorkspaceRemoteImage
                               src={card.heroImage}
-                              sizes="92px"
+                              sizes="72px"
                               priority={isActive}
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[28px]">
+                            <div className="flex h-full w-full items-center justify-center text-[26px]">
                               {layerEmoji(cardLayer)}
                             </div>
                           )}
                         </div>
-                        <div className="min-w-0 flex-1 py-3 pr-3">
-                          <p className="line-clamp-2 text-[15px] font-semibold tracking-[-0.02em] text-[#191f28]">
+                        <div className="min-w-0 flex-1 py-2.5 pr-3">
+                          <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[#191f28]">
                             {card.title}
                           </p>
-                          <p className="mt-1 truncate text-[12px] text-[#8b95a1]">
+                          <p className="mt-0.5 truncate text-[12px] text-[#8b95a1]">
                             {card.ratingLabel}
                             <span className="mx-1 text-[#d1d6db]">·</span>
                             {layerLabelKo(cardLayer)}
                           </p>
-                          <p className="mt-1.5 text-[15px] font-bold tabular-nums text-[#191f28]">
+                          <p className="mt-1 text-[15px] font-bold tabular-nums leading-none text-[#191f28]">
                             {card.price}
                           </p>
                         </div>
                       </button>
                     );
                   })}
-                </div>
-                <div className="mt-1 flex justify-center gap-2 pb-1">
-                  <button
-                    type="button"
-                    className="rounded-full bg-[#191f28] px-3.5 py-1.5 text-[11px] font-semibold text-white"
-                    onClick={() => setExpanded(true)}
-                  >
-                    자세히
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full bg-black/5 px-3 py-1.5 text-[11px] font-semibold text-[#8b95a1]"
-                    onClick={onClose}
-                  >
-                    닫기
-                  </button>
                 </div>
               </motion.div>
             ) : (

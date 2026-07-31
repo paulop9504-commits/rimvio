@@ -952,7 +952,7 @@ export function ContextWorkspaceShell({
             nodes={mapFocusNodes}
             activeNodeId={selectedNode.id}
             workspace={state}
-            dockClearancePx={76}
+            dockClearancePx={8}
             onActiveNodeChange={(nodeId) => {
               setFocusedId(nodeId);
               setPeekDismissedId(null);
@@ -972,7 +972,7 @@ export function ContextWorkspaceShell({
       </div>
 
       {/* Agent dock only — separate composer strip */}
-      <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
         <WorkspaceCursorDock
           contextEventId={eventId}
           compact={showPeek}
