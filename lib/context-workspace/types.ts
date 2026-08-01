@@ -142,6 +142,11 @@ export type ContextWorkspaceState = {
   /** Prepared itinerary SSOT for Chat Day View ↔ Map pins. */
   readonly realityDraft?: ContextWorkspaceRealityDraft | null;
   readonly filter: ContextWorkspaceFilter;
+  /**
+   * Accumulated Reality Patch plan — stay / budget / distance constraints.
+   * Soft edits patch this; Scout/Rank consume it. Not a user-facing "filter".
+   */
+  readonly realityPlan?: import("@/lib/context-workspace/workspace-reality-patch").WorkspaceRealityPlan | null;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];
   readonly surfacePrimary: ContextSurfaceKind;

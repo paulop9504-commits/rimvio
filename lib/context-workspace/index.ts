@@ -107,6 +107,22 @@ export {
 } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
 
 export {
+  applyWorkspaceRealityPatch,
+  parseWorkspaceRealityPatch,
+} from "@/lib/context-workspace/apply-workspace-reality-patch";
+export type { ApplyWorkspaceRealityPatchResult } from "@/lib/context-workspace/apply-workspace-reality-patch";
+export {
+  describeWorkspaceRealityPatch,
+  emptyWorkspaceRealityPlan,
+  mergeWorkspaceRealityPlan,
+  stayTypeTag,
+} from "@/lib/context-workspace/workspace-reality-patch";
+export type {
+  WorkspaceRealityPatch,
+  WorkspaceRealityPlan,
+} from "@/lib/context-workspace/workspace-reality-patch";
+
+export {
   withWorkspaceRelationships,
   buildWorkspaceRelationshipEdges,
 } from "@/lib/context-workspace/sync-workspace-relationships";

@@ -40,6 +40,24 @@ function inferTags(
   if (/luxury|럭셔리|고급|5성|five\s*star/i.test(blob)) {
     tags.push("luxury");
   }
+  if (/캡슐|capsule|カプセル/i.test(blob)) {
+    tags.push("stay:capsule");
+  }
+  if (/료칸|ryokan|旅館/i.test(blob)) {
+    tags.push("stay:ryokan");
+  }
+  if (/게스트\s*하우스|guesthouse|ゲストハウス/i.test(blob)) {
+    tags.push("stay:guesthouse");
+  }
+  if (/호스텔|hostel|ドミトリー|도미토리/i.test(blob)) {
+    tags.push("stay:hostel");
+  }
+  if (/한옥|hanok/i.test(blob)) {
+    tags.push("stay:hanok");
+  }
+  if (/온천|onsen|노천|温泉/i.test(blob)) {
+    tags.push("onsen");
+  }
   if (flags?.reservable) {
     tags.push("reservable");
   }

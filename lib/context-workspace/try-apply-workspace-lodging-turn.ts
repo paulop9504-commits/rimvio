@@ -10,6 +10,7 @@ import { commitContextWorkspaceToGlobe } from "@/lib/context-workspace/commit-wo
 import {
   hasProvisionalContextWorkspace,
   readContextWorkspace,
+  writeContextWorkspace,
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { domainLabelKo } from "@/lib/context-workspace/types";
@@ -32,6 +33,10 @@ import {
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
+import {
+  applyWorkspaceRealityPatch,
+  parseWorkspaceRealityPatch,
+} from "@/lib/context-workspace/apply-workspace-reality-patch";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -641,6 +646,56 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
         committed: false,
         openedForReview: true,
       };
+    }
+  }
+
+  // Reality Patch — NL edits Accommodation Plan (not a user-facing filter).
+  {
+    const patch = parseWorkspaceRealityPatch(utterance);
+    if (patch) {
+      const applied = applyWorkspaceRealityPatch({
+        contextEventId,
+        utterance,
+        patch,
+      });
+      if (applied.handled) {
+        expandWorkspaceForReview(contextEventId);
+        if (applied.needsRescout && applied.scoutQuery) {
+          const scouted = await rescoutWorkspace({
+            contextEventId,
+            utterance: applied.scoutQuery,
+            mode: "replace",
+          });
+          const after = readContextWorkspace(contextEventId);
+          if (after && applied.plan) {
+            writeContextWorkspace({
+              ...after,
+              realityPlan: applied.plan,
+              lastChangeKo: applied.replyKo,
+            });
+          }
+          return {
+            handled: true,
+            replyKo: applied.replyKo,
+            committed: scouted.committed,
+            openedForReview: true,
+          };
+        }
+        const after = readContextWorkspace(contextEventId);
+        if (after) {
+          appendWorkspaceSyncedAssistantTurn({
+            contextEventId,
+            state: after,
+            textKo: applied.replyKo ?? "작업을 수정했어요",
+          });
+        }
+        return {
+          handled: true,
+          replyKo: applied.replyKo,
+          committed: false,
+          openedForReview: true,
+        };
+      }
     }
   }
 
