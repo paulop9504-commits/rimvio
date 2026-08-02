@@ -931,12 +931,15 @@ export function ContextWorkspaceShell({
         setPeekClosed(true);
         toast.success("Draft에 적용했어요 · Commit 아님");
       },
-      onCreatePrepareDraft: () => {
+      onCreatePrepareDraft: (id) => {
         assertPrepareDoesNotCommit("prepare");
+        const node =
+          state.nodes.find((n) => n.id === id) ?? selectedNode;
+        if (!node) return;
         const object = buildRimvioObjectFromWorkspace({
           contextId: eventId,
           state,
-          node: selectedNode,
+          node,
         });
         const draft = createReservationDraft({
           contextId: eventId,
@@ -946,13 +949,13 @@ export function ContextWorkspaceShell({
           price: buildReservationPriceFromObject(object),
         });
         writeReservationDraft(draft);
-        void onPrepareReserve(nodeId);
+        void onPrepareReserve(node.id);
         toast.message("ReservationDraft", {
           description: `${reservationDraftSummaryKo(draft)} · Commit 아님`,
         });
       },
-      onHandoffField: () => {
-        onOpenField(nodeId);
+      onHandoffField: (id) => {
+        onOpenField(id);
       },
       onConnect: (_id, targetId) => {
         toast.message(`연결 · ${targetId}`, {
