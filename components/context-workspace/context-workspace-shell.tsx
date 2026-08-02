@@ -88,6 +88,7 @@ import {
   reservationDraftSummaryKo,
   writeReservationDraft,
 } from "@/lib/callout/prepare";
+import { runObjectScopedPrompt } from "@/lib/callout/scoped-prompt";
 import {
   assertSimulationDoesNotCommit,
   buildCurrentRealityFromWorkspace,
@@ -963,17 +964,99 @@ export function ContextWorkspaceShell({
         });
       },
       onAskObject: (id, text) => {
+        const node = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        if (!node) return null;
+        const object = buildRimvioObjectFromWorkspace({
+          contextId: eventId,
+          state,
+          node,
+        });
+        const proposals = buildCalloutAlternativesFromWorkspace(state, id).map(
+          (alt) => ({
+            objectId: alt.objectId,
+            title: alt.title,
+            priceWon: alt.priceWon,
+            priceLabelKo: alt.priceLabelKo,
+            lat: alt.lat,
+            lng: alt.lng,
+          }),
+        );
+
+        const result = runObjectScopedPrompt({
+          request: {
+            object,
+            utterance: text,
+            contextId: eventId,
+          },
+          proposals,
+          anchors: buildSimulationAnchorsFromWorkspace(state),
+          dateRange: buildReservationDateRangeFromWorkspace(state),
+          guestCount: defaultGuestCountFromWorkspace(state),
+          price: buildReservationPriceFromObject(object),
+        });
+
+        if (!result.ok) {
+          toast.message(result.reasonKo, {
+            description: result.escapedScope
+              ? "Object Scope만 유지합니다"
+              : undefined,
+          });
+          return null;
+        }
+
         appendWorkspaceChatTurn({
           contextEventId: eventId,
           role: "user",
-          text: `@${selectedNode.title}: ${text}`,
+          text: `@${result.scope.title}: ${text}`,
         });
-        applyWorkspaceTransition({
+        appendWorkspaceChatTurn({
           contextEventId: eventId,
-          op: "find_similar",
-          nodeIds: [id],
+          role: "assistant",
+          text: result.replyKo,
         });
-        toast.success("이 객체 기준으로 반영했어요");
+
+        if (result.simulationDraft) {
+          writeSimulationDraft(result.simulationDraft);
+        }
+        if (result.reservationDraft) {
+          writeReservationDraft(result.reservationDraft);
+        }
+
+        const hint = result.workspaceHint;
+        if (hint.op === "find_similar") {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "select",
+            nodeIds: [id],
+          });
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "find_similar",
+            nodeIds: [id],
+          });
+        } else if (hint.op === "simulate") {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "simulate",
+            nodeIds: [id],
+            simulateScenarioKo: hint.simulateScenarioKo,
+          });
+        } else if (hint.op === "compare") {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "compare",
+            nodeIds: [id],
+          });
+        } else if (hint.op === "select") {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "select",
+            nodeIds: [id],
+          });
+        }
+
+        toast.success(result.replyKo);
+        return result;
       },
       onHighlightEvidence: (_id, evidence: Evidence) => {
         const ref = evidence.graphRef;

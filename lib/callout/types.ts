@@ -230,7 +230,10 @@ export type CalloutHandlers = {
   onCreatePrepareDraft?: (objectId: string) => void;
   onHandoffField?: (objectId: string) => void;
   onConnect?: (objectId: string, targetId: string) => void;
-  onAskObject?: (objectId: string, text: string) => void;
+  onAskObject?: (
+    objectId: string,
+    text: string,
+  ) => void | import("@/lib/callout/scoped-prompt/types").ObjectScopedPromptResult | null;
 };
 
 /** Registry descriptor — new Object types extend here; Callout Core stays closed. */

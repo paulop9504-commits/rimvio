@@ -57,7 +57,7 @@ const HOTEL: CalloutObjectTypeDescriptor = {
     { id: "schedule", type: "schedule", labelKo: "일정" },
     { id: "budget", type: "budget", labelKo: "예산" },
   ],
-  askPlaceholderKo: "이 숙소에 대해 물어보세요",
+  askPlaceholderKo: "예: 조식 좋은 곳으로 바꿔",
   prepareCtaKo: "예약 검토 생성",
   commitCtaKo: "Field에서 검토",
   simulateEmptyKo: "비교 후보가 있으면 변경 영향을 보여 줘요",

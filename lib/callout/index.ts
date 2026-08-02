@@ -133,3 +133,13 @@ export {
   type CalloutRegistryActionId,
   type RegisterCalloutActionInput,
 } from "@/lib/callout/action-registry";
+
+export {
+  looksLikeGeneralChatEscape,
+  parseObjectScopedIntent,
+  runObjectScopedPrompt,
+  OBJECT_SCOPED_PROMPT_STAGES,
+  type ObjectScopedIntent,
+  type ObjectScopedPromptResult,
+  type ObjectScopedPromptReject,
+} from "@/lib/callout/scoped-prompt";

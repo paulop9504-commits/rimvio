@@ -11,6 +11,7 @@ import { CalloutExplore } from "@/lib/callout/CalloutExplore";
 import { CalloutHeader } from "@/lib/callout/CalloutHeader";
 import { CalloutObserve } from "@/lib/callout/CalloutObserve";
 import { CalloutPrepare } from "@/lib/callout/CalloutPrepare";
+import { CalloutScopedPromptStatus } from "@/lib/callout/CalloutScopedPrompt";
 import { CalloutSimulation } from "@/lib/callout/CalloutSimulation";
 import { CalloutTabs } from "@/lib/callout/CalloutTabs";
 import { invokeRegisteredAction } from "@/lib/callout/action-registry";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/callout/callout-session";
 import { useCalloutState } from "@/lib/callout/hooks/useCalloutState";
 import type { ObjectRelationType } from "@/lib/callout/object-relation";
+import type { ObjectScopedPromptResult } from "@/lib/callout/scoped-prompt/types";
 import type {
   CalloutAction as CalloutActionModel,
   CalloutHandlers,
@@ -106,6 +108,8 @@ export function Callout({
   const ui = useCalloutState(initialMode);
   const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
   const [exploreType, setExploreType] = useState<ObjectRelationType>("nearby");
+  const [scopedResult, setScopedResult] =
+    useState<ObjectScopedPromptResult | null>(null);
 
   const modeActions = useMemo(() => {
     if (!model) return [];
@@ -135,7 +139,17 @@ export function Callout({
   const submitAsk = () => {
     const text = ui.askText.trim();
     if (!text) return;
-    handlers.onAskObject?.(objectId, text);
+    const result = handlers.onAskObject?.(objectId, text);
+    if (result && typeof result === "object" && "ok" in result && result.ok) {
+      setScopedResult(result);
+      if (result.intent.kind === "simulate" || result.intent.kind === "change") {
+        ui.setMode("simulate");
+      } else if (result.intent.kind === "prepare") {
+        ui.setMode("prepare");
+      }
+    } else {
+      setScopedResult(null);
+    }
     ui.clearAsk();
   };
 
@@ -240,6 +254,10 @@ export function Callout({
         />
       ) : null}
 
+      {scopedResult ? (
+        <CalloutScopedPromptStatus result={scopedResult} />
+      ) : null}
+
       <form
         className="flex gap-2"
         onSubmit={(e) => {
@@ -252,13 +270,14 @@ export function Callout({
           onChange={(e) => ui.setAskText(e.target.value)}
           placeholder={model.askPlaceholderKo}
           className="min-w-0 flex-1 rounded-full bg-[#f2f4f6] px-3 py-2 text-[12px] text-[#191f28] outline-none ring-1 ring-transparent placeholder:text-[#c4c9d0] focus:bg-white focus:ring-[#3182f6]/30"
-          aria-label="Ask this object"
+          aria-label="Object scoped prompt"
+          data-object-scoped-prompt-input
         />
         <button
           type="submit"
           className="shrink-0 rounded-full bg-[#191f28] px-3 py-2 text-[11px] font-semibold text-white"
         >
-          Ask
+          이 객체에게
         </button>
       </form>
     </div>
