@@ -107,7 +107,7 @@ assert.ok(model!.observe.aiScore >= 70);
 assert.ok(model!.observe.evidence.length >= 3);
 assert.deepEqual(
   [...model!.modes],
-  ["observe", "explore", "simulate", "prepare", "commit"],
+  ["observe", "explore", "simulate", "prepare"],
 );
 assert.ok(model!.explore.edges.some((e) => e.relationId === "restaurant"));
 assert.ok(model!.explore.buckets);
@@ -116,13 +116,15 @@ assert.ok(model!.prepare.steps.length >= 3);
 assert.ok(model!.prepare.steps.some((s) => s.id === "info"));
 assert.equal(model!.prepare.draft, null);
 assert.ok(model!.prepare.commitHintKo.includes("Commit"));
-assert.equal(model!.commit.ctaKo.includes("Field"), true);
+assert.equal(model!.fieldHandoff.ctaKo, "예약 확정");
+assert.ok(!model!.modes.includes("commit" as never));
 
 /** Extensibility: register new type without touching Callout Core. */
 const custom: CalloutObjectTypeDescriptor = {
   type: "product",
   labelKo: "커스텀상품",
-  modes: ["observe", "prepare", "commit"],
+  // commit in input is stripped at register (Reality Commit Boundary)
+  modes: ["observe", "prepare", "commit"] as CalloutObjectTypeDescriptor["modes"],
   intentAxes: [{ id: "price", labelKo: "가격", nudge: "down" }],
   exploreRelations: [],
   prepareStepDefs: [
@@ -141,7 +143,7 @@ const custom: CalloutObjectTypeDescriptor = {
 registerCalloutObjectType(custom);
 const overridden = getCalloutObjectTypeDescriptor("product");
 assert.equal(overridden?.labelKo, "커스텀상품");
-assert.deepEqual([...overridden!.modes], ["observe", "prepare", "commit"]);
+assert.deepEqual([...overridden!.modes], ["observe", "prepare"]);
 
 console.log(
   "ok object-callout",

@@ -2,7 +2,7 @@
 
 /**
  * Object Callout — Agent Control Surface keyed by objectId only.
- * Modes: Observe · Explore · Simulate · Prepare · Commit (Field handoff).
+ * Modes: Observe · Explore · Simulate · Prepare (Commit = Field only).
  */
 
 import { useMemo, useState } from "react";
@@ -10,6 +10,7 @@ import { CalloutAction } from "@/lib/callout/CalloutAction";
 import { CalloutExplore } from "@/lib/callout/CalloutExplore";
 import { CalloutHeader } from "@/lib/callout/CalloutHeader";
 import { CalloutObserve } from "@/lib/callout/CalloutObserve";
+import { CalloutFieldHandoff } from "@/lib/callout/CalloutFieldHandoff";
 import { CalloutPrepare } from "@/lib/callout/CalloutPrepare";
 import { CalloutScopedPromptStatus } from "@/lib/callout/CalloutScopedPrompt";
 import { CalloutSimulation } from "@/lib/callout/CalloutSimulation";
@@ -216,31 +217,18 @@ export function Callout({
         ) : null}
 
         {ui.mode === "prepare" ? (
-          <CalloutPrepare
-            model={model.prepare}
-            onCreateDraft={() => handlers.onCreatePrepareDraft?.(objectId)}
-            onHandoffCommit={() => handlers.onHandoffField?.(objectId)}
-          />
-        ) : null}
-
-        {ui.mode === "commit" ? (
           <div className="space-y-3">
-            <p className="text-[13px] leading-snug text-[#4e5968]">
-              {model.commit.summaryKo}
-            </p>
-            <button
-              type="button"
-              disabled={!model.commit.enabled}
-              className={cn(
-                "w-full rounded-full px-3 py-2.5 text-[12px] font-semibold",
-                model.commit.enabled
-                  ? "bg-[#191f28] text-white"
-                  : "cursor-not-allowed bg-[#e8ebef] text-[#c4c9d0]",
-              )}
-              onClick={() => handlers.onHandoffField?.(objectId)}
-            >
-              {model.commit.ctaKo}
-            </button>
+            <CalloutPrepare
+              model={model.prepare}
+              onCreateDraft={() => handlers.onCreatePrepareDraft?.(objectId)}
+              onHandoffCommit={() => handlers.onHandoffField?.(objectId)}
+            />
+            <CalloutFieldHandoff
+              summaryKo={model.fieldHandoff.summaryKo}
+              ctaKo={model.fieldHandoff.ctaKo}
+              enabled={model.fieldHandoff.enabled}
+              onFieldAction={() => handlers.onHandoffField?.(objectId)}
+            />
           </div>
         ) : null}
       </div>

@@ -143,3 +143,16 @@ export {
   type ObjectScopedPromptResult,
   type ObjectScopedPromptReject,
 } from "@/lib/callout/scoped-prompt";
+
+export {
+  assertCalloutCannotCommit,
+  buildFieldHandoffFromCallout,
+  CALLOUT_ALLOWED_MODES,
+  FIELD_REALITY_COMMIT_STAGES,
+  filterCalloutModes,
+  isCalloutAllowedMode,
+  listCommitLedgerEntries,
+  runFieldRealityCommit,
+  type CommitLedgerEntry,
+  type FieldRealityCommitResult,
+} from "@/lib/callout/commit-boundary";

@@ -1,6 +1,7 @@
 /**
  * Rimvio Object Callout — Agent Control Surface on a Reality Entity.
- * Not an info card: Observe → Explore → Simulate → Prepare → Commit (Field).
+ * Not an info card: Observe → Explore → Simulate → Prepare.
+ * Commit is forbidden in Callout — Field Reality Action only.
  * @see docs/adr/022-context-workspace-first.md (Article 0: Commit ≠ auto-pay)
  */
 
@@ -29,7 +30,6 @@ export const CALLOUT_MODES = [
   "explore",
   "simulate",
   "prepare",
-  "commit",
 ] as const;
 
 export type CalloutMode = (typeof CALLOUT_MODES)[number];
@@ -181,8 +181,11 @@ export type CalloutViewModel = {
     readonly canCreateDraft: boolean;
     readonly draft: import("@/lib/callout/prepare/types").ReservationDraft | null;
     readonly commitHintKo: string;
+    /** Field Action CTA — never Commits inside Callout */
+    readonly fieldActionCtaKo: string;
   };
-  readonly commit: {
+  /** @deprecated Commit lives in Field only — kept for handoff copy */
+  readonly fieldHandoff: {
     readonly summaryKo: string;
     readonly ctaKo: string;
     readonly enabled: boolean;

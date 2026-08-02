@@ -8,6 +8,7 @@ import {
   getCalloutObjectTypeDescriptor,
   OBJECT_STATE_LABEL_KO,
 } from "@/lib/callout/callout-registry";
+import { filterCalloutModes } from "@/lib/callout/commit-boundary";
 import { scoreObserveAiScore } from "@/lib/callout/build-observe-evidence";
 import type {
   ObjectRelation,
@@ -222,7 +223,7 @@ export function buildCalloutViewModel(input: {
       labelKo: OBJECT_STATE_LABEL_KO[state],
       reached: stateReached(object.state, state),
     })),
-    modes: desc.modes,
+    modes: filterCalloutModes(desc.modes),
     observe: {
       whyLinesKo: object.facts.whyLinesKo,
       evidence: object.evidence,
@@ -252,14 +253,13 @@ export function buildCalloutViewModel(input: {
       canCreateDraft,
       draft: input.prepareDraft ?? null,
       commitHintKo:
-        "Prepare는 Commit하지 않아요 · 실행은 Field Reality Action",
+        "Prepare는 Commit하지 않아요 · 확정은 Field「예약 확정」",
+      fieldActionCtaKo: "예약 확정",
     },
-    commit: {
+    fieldHandoff: {
       summaryKo:
-        object.state === "committed"
-          ? "이미 확정된 객체예요"
-          : "실행·결제·전송은 Field에서만 합니다",
-      ctaKo: desc.commitCtaKo,
+        "Callout에서는 Commit할 수 없어요. Field에서 예약 확정 → 승인 → Ledger.",
+      ctaKo: "예약 확정",
       enabled: object.state !== "committed" && canCreateDraft,
     },
     intentAxes: desc.intentAxes,

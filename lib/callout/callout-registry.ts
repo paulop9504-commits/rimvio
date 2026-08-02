@@ -3,6 +3,7 @@
  * Add a type here; Callout modes compose from descriptors.
  */
 
+import { filterCalloutModes } from "@/lib/callout/commit-boundary";
 import type {
   CalloutObjectTypeDescriptor,
   RimvioObjectType,
@@ -256,7 +257,10 @@ const extraDescriptors = new Map<string, CalloutObjectTypeDescriptor>();
 export function registerCalloutObjectType(
   descriptor: CalloutObjectTypeDescriptor,
 ): void {
-  extraDescriptors.set(descriptor.type, descriptor);
+  extraDescriptors.set(descriptor.type, {
+    ...descriptor,
+    modes: filterCalloutModes(descriptor.modes),
+  });
 }
 
 export function getCalloutObjectTypeDescriptor(
@@ -301,5 +305,4 @@ export const CALLOUT_MODE_LABEL_KO: Record<
   explore: "탐색",
   simulate: "시험",
   prepare: "준비",
-  commit: "확정",
 };

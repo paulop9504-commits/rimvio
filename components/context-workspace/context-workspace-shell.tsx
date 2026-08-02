@@ -88,6 +88,10 @@ import {
   reservationDraftSummaryKo,
   writeReservationDraft,
 } from "@/lib/callout/prepare";
+import {
+  buildFieldHandoffFromCallout,
+  runFieldRealityCommit,
+} from "@/lib/callout/commit-boundary";
 import { runObjectScopedPrompt } from "@/lib/callout/scoped-prompt";
 import {
   assertSimulationDoesNotCommit,
@@ -426,6 +430,21 @@ export function ContextWorkspaceShell({
       if (!result.ok) {
         toast.message(result.reasonKo);
         return;
+      }
+      // Field human gate passed → Reality Transaction → Commit Ledger
+      const boundary = runFieldRealityCommit({
+        request: buildFieldHandoffFromCallout({
+          contextId: id,
+          objectId: node.id,
+          title: node.title,
+        }).request,
+        userApproved: true,
+        source: "field",
+      });
+      if (boundary.ok) {
+        toast.message(boundary.summaryKo, {
+          description: `Saga ${boundary.sagaId}`,
+        });
       }
       setWorkspaceNodeActionReadyState({
         contextEventId: id,
@@ -771,17 +790,15 @@ export function ContextWorkspaceShell({
     setCloseNameOpen(false);
   }, [contextEventId]);
 
-  if (!expanded || !state || state.status === "closed") {
-    return null;
-  }
-
-  const kindLabel = domainLabelKo(state.domain);
+  // Derived values + hooks must run every render (Rules of Hooks).
+  // Early return after hooks — otherwise expand→open throws React #310.
+  const kindLabel = state ? domainLabelKo(state.domain) : "";
   const title =
     projectTitleKo?.trim() ||
-    state.query.trim() ||
-    state.summaryKo.trim() ||
+    state?.query.trim() ||
+    state?.summaryKo.trim() ||
     copy.globe.workspaceOpenTitle;
-  const progress = estimateWorkspaceProgressPercent(state);
+  const progress = state ? estimateWorkspaceProgressPercent(state) : 0;
   const eventId = contextEventId?.trim() ?? "";
   const selectedNode =
     mapFocusNodes.find((n) => n.id === venueSelectedId) ??
@@ -956,6 +973,7 @@ export function ContextWorkspaceShell({
         });
       },
       onHandoffField: (id) => {
+        // Callout → Field Action only. Commit Ledger after Approve·Pay succeeds.
         onOpenField(id);
       },
       onConnect: (_id, targetId) => {
@@ -1210,6 +1228,10 @@ export function ContextWorkspaceShell({
     onPinToggle,
     onOpenField,
   ]);
+
+  if (!expanded || !state || state.status === "closed") {
+    return null;
+  }
 
   return (
     <div

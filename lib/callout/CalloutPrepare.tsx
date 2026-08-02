@@ -119,7 +119,7 @@ export function CalloutPrepare({
           className="w-full rounded-full bg-[#191f28] px-3 py-2 text-[11px] font-semibold text-white"
           onClick={onHandoffCommit}
         >
-          Commit은 Field에서
+          {model.fieldActionCtaKo}
         </button>
       ) : null}
 

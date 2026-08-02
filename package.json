@@ -153,6 +153,7 @@
     "test:reservation-draft": "npx tsx scripts/test-reservation-draft.ts",
     "test:callout-action-registry": "npx tsx scripts/test-callout-action-registry.ts",
     "test:object-scoped-prompt": "npx tsx scripts/test-object-scoped-prompt.ts",
+    "test:reality-commit-boundary": "npx tsx scripts/test-reality-commit-boundary.ts",
     "test:context-command-bar": "npx tsx scripts/test-context-command-bar.ts",
     "test:rimvio-command": "npx tsx scripts/test-rimvio-command.ts",
     "test:new-intent-new-context": "npx tsx scripts/test-new-intent-new-context.ts",

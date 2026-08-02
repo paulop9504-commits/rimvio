@@ -2,8 +2,8 @@
   "kind": "rimvio_mvp_verify",
   "version": 1,
   "project": "rimvio",
-  "startedAt": "2026-07-29T21:36:39.880Z",
-  "finishedAt": "2026-07-29T21:38:18.311Z",
+  "startedAt": "2026-07-31T22:08:21.306Z",
+  "finishedAt": "2026-07-31T22:11:11.972Z",
   "ok": true,
   "summary": "All MVP boundary checks passed.",
   "steps": [
@@ -11,7 +11,7 @@
       "id": "routing-patches",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 8809,
+      "durationMs": 10795,
       "stdout": "test-routing-patches: ok",
       "stderr": ""
     },
@@ -19,7 +19,7 @@
       "id": "ux-guards",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 5823,
+      "durationMs": 6840,
       "stdout": "test-ux-guards: ok",
       "stderr": ""
     },
@@ -27,7 +27,7 @@
       "id": "turn-os-boundary",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 5989,
+      "durationMs": 7238,
       "stdout": "test-turn-os-boundary: ok",
       "stderr": ""
     },
@@ -35,7 +35,7 @@
       "id": "data-model-catalog",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2738,
+      "durationMs": 3218,
       "stdout": "test-data-model-catalog: ok",
       "stderr": ""
     },
@@ -43,7 +43,7 @@
       "id": "client-turn-route",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2274,
+      "durationMs": 2951,
       "stdout": "test-client-turn-route: ok",
       "stderr": ""
     },
@@ -51,7 +51,7 @@
       "id": "write-path-boundary",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2256,
+      "durationMs": 2496,
       "stdout": "test-write-path-boundary: ok",
       "stderr": ""
     },
@@ -59,7 +59,7 @@
       "id": "event-kernel-schema-lock",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2391,
+      "durationMs": 2799,
       "stdout": "test-event-kernel-schema-lock: ok (1.0.0 · 7c8bf2c92c053c61)",
       "stderr": ""
     },
@@ -67,15 +67,15 @@
       "id": "life-read-allowlist",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 3859,
-      "stdout": "[life-read-allowlist] OK — scanned 5160 files, 0 violations",
+      "durationMs": 62008,
+      "stdout": "[life-read-allowlist] OK — scanned 5246 files, 0 violations",
       "stderr": ""
     },
     {
       "id": "surface-engine",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2495,
+      "durationMs": 6614,
       "stdout": "test-surface-engine: ok",
       "stderr": ""
     },
@@ -83,7 +83,7 @@
       "id": "surface-ux-stability",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2594,
+      "durationMs": 2612,
       "stdout": "test-surface-ux-stability: ok",
       "stderr": ""
     },
@@ -91,7 +91,7 @@
       "id": "surface-composition",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2540,
+      "durationMs": 2610,
       "stdout": "[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.06,\n  salience: 0.5,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.12,\n  salience: 1,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.18,\n  salience: 1.5,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.24,\n  salience: 2,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.3,\n  salience: 2.5,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\ntest-surface-composition: ok",
       "stderr": ""
     },
@@ -99,15 +99,15 @@
       "id": "surface-adoption",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2586,
-      "stdout": "[surface-adoption] OK — 846 UI files scanned, integrations verified",
+      "durationMs": 2741,
+      "stdout": "[surface-adoption] OK — 857 UI files scanned, integrations verified",
       "stderr": ""
     },
     {
       "id": "capability-registry",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2798,
+      "durationMs": 4940,
       "stdout": "test-capability-registry: ok",
       "stderr": ""
     },
@@ -115,7 +115,7 @@
       "id": "execution-plane",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2828,
+      "durationMs": 3051,
       "stdout": "test-execution-plane: ok",
       "stderr": ""
     },
@@ -123,7 +123,7 @@
       "id": "learning-layer",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2810,
+      "durationMs": 3267,
       "stdout": "[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'strengthen',\n  id: 'surface:ec:ec-osaka-1:NAVIGATE',\n  weight: 0.14,\n  salience: 1,\n  reason: 'learning_success'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'strengthen',\n  id: 'surface:ec:ec-test-1:NAVIGATE',\n  weight: 0.14,\n  salience: 1,\n  reason: 'learning_success'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'weaken',\n  id: 'surface:ec:ec-osaka-1:NAVIGATE',\n  weight: 0.02,\n  salience: 2,\n  reason: 'ignore'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'strengthen',\n  id: 'surface:ec:ec-test-1:NAVIGATE',\n  weight: 0.28,\n  salience: 2,\n  reason: 'learning_success'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'weaken',\n  id: 'surface:ec:test:CALL',\n  weight: -0.12,\n  salience: 1,\n  reason: 'fail'\n}\ntest-learning-layer: ok",
       "stderr": ""
     },
@@ -131,7 +131,7 @@
       "id": "loop-wiring",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2636,
+      "durationMs": 2401,
       "stdout": "test-loop-wiring: ok",
       "stderr": ""
     },
@@ -139,7 +139,7 @@
       "id": "realtime-behavioral-os",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2579,
+      "durationMs": 2563,
       "stdout": "[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.06,\n  salience: 0.5,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\ntest-realtime: ok",
       "stderr": ""
     },
@@ -155,7 +155,7 @@
       "id": "platform-layer",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 3098,
+      "durationMs": 3356,
       "stdout": "[Rimvio] SURFACE_ACTIVE_SELECTED {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  selectionScore: 52,\n  uxState: 'empty',\n  primaryCapabilityId: 'CALENDAR'\n}\n[Rimvio Synapse] SYNAPSE_PLASTICITY {\n  kind: 'expand',\n  id: 'surface:rimvio:start-here:CALENDAR',\n  weight: 0.06,\n  salience: 0.5,\n  reason: 'active_surface_selected'\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\n[Rimvio] SURFACE_COLLAPSED_LIST {\n  activeSurfaceId: 'surface:rimvio:start-here',\n  latentSurfaceIds: [],\n  latentCount: 0,\n  selectionScore: 52\n}\ntest-platform: ok",
       "stderr": ""
     },
@@ -163,7 +163,7 @@
       "id": "marketplace-layer",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 3652,
+      "durationMs": 4250,
       "stdout": "test-marketplace: ok",
       "stderr": ""
     },
@@ -171,7 +171,7 @@
       "id": "market-trade-regression",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2247,
+      "durationMs": 2338,
       "stdout": "test-market-trade-pipeline: ok",
       "stderr": ""
     },
@@ -179,7 +179,7 @@
       "id": "market-trade-session-view",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2330,
+      "durationMs": 2298,
       "stdout": "test-market-trade-session-view: ok",
       "stderr": ""
     },
@@ -187,7 +187,7 @@
       "id": "timeline-read-only",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2230,
+      "durationMs": 2305,
       "stdout": "test-timeline-read-only-boundary: ok",
       "stderr": ""
     },
@@ -195,7 +195,7 @@
       "id": "cursor-os-spine",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 3477,
+      "durationMs": 4026,
       "stdout": "ok — cursor-os-spine",
       "stderr": ""
     },
@@ -203,7 +203,7 @@
       "id": "rule-engine",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 4256,
+      "durationMs": 4027,
       "stdout": "ok — rule-engine",
       "stderr": ""
     },
@@ -211,7 +211,7 @@
       "id": "solo-stage",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2231,
+      "durationMs": 2225,
       "stdout": "test-enter-context-solo-stage: ok",
       "stderr": ""
     },
@@ -219,7 +219,7 @@
       "id": "scout-chip-stage-refine",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2704,
+      "durationMs": 2623,
       "stdout": "test-scout-chip-stage-refine: ok",
       "stderr": ""
     },
@@ -227,7 +227,7 @@
       "id": "personal-memory-step5",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2644,
+      "durationMs": 2545,
       "stdout": "test-personal-memory-step5: ok",
       "stderr": ""
     },
@@ -235,7 +235,7 @@
       "id": "short-tool-plan",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 4307,
+      "durationMs": 4135,
       "stdout": "test-short-tool-plan: ok",
       "stderr": ""
     },
@@ -243,7 +243,7 @@
       "id": "compose-focus-storm-guards",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2378,
+      "durationMs": 2364,
       "stdout": "test-compose-focus-storm-guards: ok",
       "stderr": ""
     },
@@ -251,7 +251,7 @@
       "id": "merge-lodging-inventory",
       "ok": true,
       "exitCode": 0,
-      "durationMs": 2278,
+      "durationMs": 2434,
       "stdout": "test-merge-lodging-inventory-rows: ok",
       "stderr": ""
     }
