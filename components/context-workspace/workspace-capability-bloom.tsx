@@ -28,6 +28,8 @@ export type WorkspaceCapabilityBloomProps = {
   hubLabelKo: string;
   className?: string;
   onAction?: () => void;
+  /** Tighter layout for map-anchored bloom. */
+  compact?: boolean;
 };
 
 function CapIcon({
@@ -103,6 +105,7 @@ export function WorkspaceCapabilityBloom({
   hubLabelKo,
   className,
   onAction,
+  compact = false,
 }: WorkspaceCapabilityBloomProps) {
   const [activeId, setActiveId] = useState<string | null>(
     () => callouts[0]?.id ?? null,
@@ -129,7 +132,12 @@ export function WorkspaceCapabilityBloom({
 
       {callouts.length > 0 && active ? (
         <>
-          <div className="relative mx-auto h-[168px] w-full max-w-[340px]">
+          <div
+            className={cn(
+              "relative mx-auto w-full max-w-[340px]",
+              compact ? "h-[132px]" : "h-[168px]",
+            )}
+          >
             {callouts.length >= 3 ? (
               <>
                 <div

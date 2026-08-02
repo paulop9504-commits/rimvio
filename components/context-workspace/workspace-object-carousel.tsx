@@ -26,7 +26,6 @@ import {
 } from "@/lib/context-workspace";
 import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
 import { buildNodeContextBrief } from "@/lib/context-workspace/context-brief/build-node-brief";
-import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
 import {
   buildImmediatePlaceBrief,
   buildPlaceBriefFactPack,
@@ -46,8 +45,6 @@ import {
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { WorkspaceRemoteImage } from "@/components/context-workspace/workspace-remote-image";
 import { WorkspacePlaceBriefSection } from "@/components/context-workspace/workspace-place-brief-section";
-import { WorkspaceCapabilityBloom } from "@/components/context-workspace/workspace-capability-bloom";
-import { buildWorkspaceCapabilityBundle } from "@/lib/context-workspace/capability-callout";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -224,21 +221,6 @@ export function WorkspaceObjectCarousel({
     });
   }, [activeNode, workspace]);
 
-  const draftDay = useMemo(() => {
-    if (!activeNode || !workspace.realityDraft) return null;
-    return findRealityDraftDayForNode(workspace.realityDraft, activeNode.id);
-  }, [activeNode, workspace.realityDraft]);
-
-  const capabilityBundle = useMemo(() => {
-    if (!preview) return { callouts: [], liveSignals: [] };
-    return buildWorkspaceCapabilityBundle({
-      preview,
-      brief: placeBrief ?? immediateBrief,
-      draftDayLabelKo: draftDay?.labelKo ?? null,
-      recipe: "travel",
-    });
-  }, [preview, placeBrief, immediateBrief, draftDay]);
-
   useEffect(() => {
     setPhotoIndex(0);
     galleryRef.current?.scrollTo({ left: 0 });
@@ -323,20 +305,20 @@ export function WorkspaceObjectCarousel({
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div
-          key="object-browser"
-          className="pointer-events-none fixed inset-0 z-[10160] flex flex-col pt-[env(safe-area-inset-top)]"
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{
-            type: "spring",
-            stiffness: 320,
-            damping: 36,
-            mass: 0.9,
-          }}
-          data-workspace-object-carousel
-        >
+          <motion.div
+            key="object-browser"
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-[10160] flex max-h-[min(58vh,560px)] flex-col pt-0"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{
+              type: "spring",
+              stiffness: 320,
+              damping: 36,
+              mass: 0.9,
+            }}
+            data-workspace-object-carousel
+          >
           <motion.div
             className="pointer-events-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[20px] bg-white shadow-[0_-12px_40px_rgba(25,31,40,0.22)]"
             drag="y"
@@ -407,7 +389,7 @@ export function WorkspaceObjectCarousel({
                       {images.map((url, i) => (
                         <div
                           key={`${url}-${i}`}
-                          className="relative h-[min(48vh,420px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6]"
+                          className="relative h-[min(28vh,240px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6]"
                           aria-label={`사진 ${i + 1} / ${images.length}`}
                         >
                           <WorkspaceRemoteImage
@@ -445,7 +427,7 @@ export function WorkspaceObjectCarousel({
                     </button>
                   </div>
                 ) : (
-                  <div className="relative h-[min(48vh,420px)] overflow-hidden bg-[#f2f4f6]">
+                  <div className="relative h-[min(28vh,240px)] overflow-hidden bg-[#f2f4f6]">
                     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[#8b95a1]">
                       <span className="text-[44px]">
                         {layerEmoji(activeLayer)}
@@ -485,24 +467,6 @@ export function WorkspaceObjectCarousel({
                     ) : null}
                   </p>
                 </div>
-
-                {capabilityBundle.callouts.length > 0 ||
-                capabilityBundle.liveSignals.length > 0 ? (
-                  <WorkspaceCapabilityBloom
-                    callouts={capabilityBundle.callouts}
-                    liveSignals={capabilityBundle.liveSignals}
-                    hubLabelKo={preview.ratingLabel}
-                    onAction={() => {
-                      if (preview.canPrepare && primary.kind !== "done") {
-                        if (primary.kind === "confirm")
-                          onConfirmReady?.(activeNode.id);
-                        else if (primary.kind === "approve_pay")
-                          onOpenField?.(activeNode.id);
-                        else onPrepareReserve?.(activeNode.id);
-                      }
-                    }}
-                  />
-                ) : null}
 
                 <div className="flex gap-2">
                   <button

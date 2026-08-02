@@ -63,6 +63,10 @@ import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-v
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
+import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
+import { buildWorkspaceCapabilityBundle } from "@/lib/context-workspace/capability-callout";
+import { buildImmediatePlaceBrief } from "@/lib/context-workspace/place-brief";
+import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
 import {
   isWorkspaceContextMediaPinId,
   projectWorkspaceContextMediaPins,
@@ -752,6 +756,45 @@ export function ContextWorkspaceShell({
     !peekClosed &&
     selectedMediaPin == null;
 
+  const mapCapabilityBloom = useMemo(() => {
+    if (!selectedNode || !state || !eventId) return null;
+    if (
+      selectedNode.kind !== "lodging" &&
+      selectedNode.kind !== "eatery" &&
+      selectedNode.kind !== "poi" &&
+      selectedNode.kind !== "amenity"
+    ) {
+      return null;
+    }
+    const preview = buildNodePreview(selectedNode, state);
+    const draftDay = state.realityDraft
+      ? findRealityDraftDayForNode(state.realityDraft, selectedNode.id)
+      : null;
+    const brief = buildImmediatePlaceBrief({
+      contextEventId: eventId,
+      node: selectedNode,
+      destinationKo: state.realityDraft?.destinationKo ?? null,
+    });
+    const bundle = buildWorkspaceCapabilityBundle({
+      preview,
+      brief,
+      draftDayLabelKo: draftDay?.labelKo ?? null,
+      recipe: "travel",
+    });
+    if (bundle.callouts.length === 0 && bundle.liveSignals.length === 0) {
+      return null;
+    }
+    return {
+      callouts: bundle.callouts,
+      liveSignals: bundle.liveSignals,
+      hubLabelKo: preview.ratingLabel,
+      onAction: () => {
+        if (!preview.canPrepare) return;
+        void onPrepareReserve(selectedNode.id);
+      },
+    };
+  }, [selectedNode, state, eventId, onPrepareReserve]);
+
   return (
     <div
       className={cn(
@@ -829,6 +872,7 @@ export function ContextWorkspaceShell({
           routeLineCoords={routeLineCoords}
           contextEventId={eventId}
           preferredCenter={preferredMapCenter}
+          capabilityBloom={mapCapabilityBloom}
         />
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed

@@ -38,6 +38,18 @@ import {
 } from "@/lib/globe/sync-globe-vector-map-size";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
+import { WorkspaceMapCapabilityBloom } from "@/components/context-workspace/workspace-map-capability-bloom";
+import type {
+  CapabilityLiveSignal,
+  WorkspaceCapabilityCallout,
+} from "@/lib/context-workspace/capability-callout";
+
+export type WorkspaceMapCapabilityBloomModel = {
+  readonly callouts: readonly WorkspaceCapabilityCallout[];
+  readonly liveSignals: readonly CapabilityLiveSignal[];
+  readonly hubLabelKo: string;
+  readonly onAction?: () => void;
+};
 
 export type WorkspaceMapViewProps = {
   pins: readonly WorkspaceMapPin[];
@@ -60,6 +72,8 @@ export type WorkspaceMapViewProps = {
   contextEventId?: string | null;
   /** Destination-aware fallback when pins empty (avoid Jeju default). */
   preferredCenter?: { readonly lat: number; readonly lng: number } | null;
+  /** Capability bloom for the selected object — rendered on the map. */
+  capabilityBloom?: WorkspaceMapCapabilityBloomModel | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -435,6 +449,7 @@ function MapLibreWorkspaceMap({
   className,
   contextEventId,
   preferredCenter = null,
+  capabilityBloom = null,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -447,6 +462,10 @@ function MapLibreWorkspaceMap({
   const onPinToggleRef = useRef(onPinToggle);
   const onRemovePinRef = useRef(onRemovePin);
   const onPrepareRef = useRef(onPrepareReserve);
+  const [bloomAnchor, setBloomAnchor] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const onOpenFieldRef = useRef(onOpenField);
   const onBgRef = useRef(onBackgroundActivate);
   useEffect(() => {
@@ -851,6 +870,36 @@ function MapLibreWorkspaceMap({
     });
   }, [ready, selectedId, compact]);
 
+  // Project selected pin → screen for Capability bloom (object-anchored).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !selectedId || !capabilityBloom) {
+      setBloomAnchor(null);
+      return;
+    }
+    const pin = pinsRef.current.find((p) => p.id === selectedId);
+    if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
+      setBloomAnchor(null);
+      return;
+    }
+
+    const update = () => {
+      const pt = map.project([pin.lng, pin.lat]);
+      setBloomAnchor({ x: pt.x, y: pt.y });
+    };
+    update();
+    map.on("move", update);
+    map.on("zoom", update);
+    map.on("rotate", update);
+    map.on("pitch", update);
+    return () => {
+      map.off("move", update);
+      map.off("zoom", update);
+      map.off("rotate", update);
+      map.off("pitch", update);
+    };
+  }, [ready, selectedId, capabilityBloom, pins]);
+
   // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
   const mediaTourSignature = useMemo(
     () =>
@@ -919,6 +968,16 @@ function MapLibreWorkspaceMap({
             preferredCenter={preferredCenter}
           />
         </div>
+      ) : null}
+      {capabilityBloom ? (
+        <WorkspaceMapCapabilityBloom
+          open={Boolean(selectedId && bloomAnchor)}
+          anchor={bloomAnchor}
+          callouts={capabilityBloom.callouts}
+          liveSignals={capabilityBloom.liveSignals}
+          hubLabelKo={capabilityBloom.hubLabelKo}
+          onAction={capabilityBloom.onAction}
+        />
       ) : null}
     </div>
   );
