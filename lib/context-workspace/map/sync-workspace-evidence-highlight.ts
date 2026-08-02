@@ -1,5 +1,5 @@
 /**
- * MapLibre Evidence highlight — edge / route line while Observe Evidence is active.
+ * MapLibre Evidence / Explore highlight — edge spokes + optional multi-node fit.
  */
 
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -12,31 +12,49 @@ export type WorkspaceEvidenceHighlight = {
   readonly focusNodeId: string | null;
   /** LineString [lng, lat][] — distance / route edge */
   readonly lineCoords: readonly [number, number][] | null;
-  readonly mode: "edge" | "node" | "route" | "self";
+  /** Explore: multiple spokes from object */
+  readonly lineCoordsList?: readonly (readonly [number, number][])[] | null;
+  /** Nodes to emphasize (camera fit / marker ring) */
+  readonly highlightNodeIds?: readonly string[] | null;
+  readonly mode: "edge" | "node" | "route" | "self" | "explore";
 };
+
+function collectLines(
+  highlight: WorkspaceEvidenceHighlight | null,
+): [number, number][][] {
+  if (!highlight) return [];
+  const list: [number, number][][] = [];
+  if (highlight.lineCoordsList) {
+    for (const line of highlight.lineCoordsList) {
+      if (line.length >= 2) {
+        list.push(line.map(([lng, lat]) => [lng, lat]));
+      }
+    }
+  }
+  if (highlight.lineCoords && highlight.lineCoords.length >= 2) {
+    list.push(highlight.lineCoords.map(([lng, lat]) => [lng, lat]));
+  }
+  return list;
+}
 
 export function syncWorkspaceEvidenceHighlight(
   map: MapLibreMap,
   highlight: WorkspaceEvidenceHighlight | null,
 ): void {
-  const coords = highlight?.lineCoords ?? [];
+  const lines = collectLines(highlight);
   const geojson: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
-    features:
-      coords.length >= 2
-        ? [
-            {
-              type: "Feature",
-              properties: {
-                evidenceId: highlight?.evidenceId ?? "",
-              },
-              geometry: {
-                type: "LineString",
-                coordinates: coords.map(([lng, lat]) => [lng, lat]),
-              },
-            },
-          ]
-        : [],
+    features: lines.map((coordinates, i) => ({
+      type: "Feature",
+      properties: {
+        evidenceId: highlight?.evidenceId ?? "",
+        i,
+      },
+      geometry: {
+        type: "LineString",
+        coordinates,
+      },
+    })),
   };
 
   const source = map.getSource(WORKSPACE_EVIDENCE_SOURCE_ID) as
@@ -69,18 +87,18 @@ export function syncWorkspaceEvidenceHighlight(
     }
   }
 
-  if (coords.length >= 2) {
+  const pts: [number, number][] = [];
+  for (const line of lines) {
+    for (const c of line) pts.push(c);
+  }
+  if (pts.length >= 2) {
     try {
-      const lngs = coords.map((c) => c[0]);
-      const lats = coords.map((c) => c[1]);
-      const minLng = Math.min(...lngs);
-      const maxLng = Math.max(...lngs);
-      const minLat = Math.min(...lats);
-      const maxLat = Math.max(...lats);
+      const lngs = pts.map((c) => c[0]);
+      const lats = pts.map((c) => c[1]);
       map.fitBounds(
         [
-          [minLng, minLat],
-          [maxLng, maxLat],
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
         ],
         { padding: 72, maxZoom: 16, duration: 650 },
       );

@@ -4,11 +4,12 @@
  */
 
 import {
-  CALLOUT_MODE_LABEL_KO,
-  getCalloutObjectTypeDescriptor,
-  OBJECT_STATE_LABEL_KO,
-} from "@/lib/callout/callout-registry";
-import { scoreObserveAiScore } from "@/lib/callout/build-observe-evidence";
+  scoreObserveAiScore,
+} from "@/lib/callout/build-observe-evidence";
+import type {
+  ObjectRelation,
+  ObjectRelationType,
+} from "@/lib/callout/object-relation";
 import type {
   CalloutExploreEdge,
   CalloutPrepareStep,
@@ -18,6 +19,11 @@ import type {
   RimvioObjectState,
 } from "@/lib/callout/types";
 import { RIMVIO_OBJECT_STATES } from "@/lib/callout/types";
+import {
+  CALLOUT_MODE_LABEL_KO,
+  getCalloutObjectTypeDescriptor,
+  OBJECT_STATE_LABEL_KO,
+} from "@/lib/callout/callout-registry";
 
 export type CalloutGraphNeighbor = {
   readonly objectId: string;
@@ -131,6 +137,11 @@ export function buildCalloutViewModel(input: {
   object: RimvioObject;
   neighbors?: readonly CalloutGraphNeighbor[];
   alternatives?: readonly CalloutGraphAlternative[];
+  /** Prefetched Explore buckets from getRelations */
+  relationBuckets?: Record<
+    ObjectRelationType,
+    readonly ObjectRelation[]
+  > | null;
 }): CalloutViewModel | null {
   const desc = getCalloutObjectTypeDescriptor(input.object.type);
   if (!desc) return null;
@@ -151,6 +162,14 @@ export function buildCalloutViewModel(input: {
     object.facts.canPrepare ||
     prepareSteps.filter((s) => s.done).length >= 2;
 
+  const emptyBuckets: Record<ObjectRelationType, readonly ObjectRelation[]> = {
+    nearby: [],
+    similar: [],
+    connected: [],
+    route: [],
+  };
+  const buckets = input.relationBuckets ?? emptyBuckets;
+
   return {
     object,
     typeLabelKo: desc.labelKo,
@@ -168,6 +187,8 @@ export function buildCalloutViewModel(input: {
     },
     explore: {
       edges: buildExploreEdges(object, neighbors),
+      buckets,
+      connectTargets: desc.connectTargets,
     },
     simulate: {
       currentTitle: object.title,

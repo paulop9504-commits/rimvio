@@ -65,3 +65,16 @@ export {
   buildCalloutNeighborsFromWorkspace,
   buildRimvioObjectFromWorkspace,
 } from "@/lib/callout/from-workspace";
+
+export {
+  buildObjectRelationContextFromWorkspace,
+  getAllRelationBuckets,
+  getRelations,
+  OBJECT_RELATION_TYPE_LABEL_KO,
+  OBJECT_RELATION_TYPES,
+  resolveObjectRelationRole,
+  type ObjectRelation,
+  type ObjectRelationContext,
+  type ObjectRelationRole,
+  type ObjectRelationType,
+} from "@/lib/callout/object-relation";

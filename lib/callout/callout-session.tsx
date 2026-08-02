@@ -20,6 +20,10 @@ import {
   type CalloutGraphAlternative,
   type CalloutGraphNeighbor,
 } from "@/lib/callout/build-callout-model";
+import type {
+  ObjectRelation,
+  ObjectRelationType,
+} from "@/lib/callout/object-relation";
 
 export type CalloutSessionValue = {
   readonly contextId: string;
@@ -28,6 +32,9 @@ export type CalloutSessionValue = {
   readonly getAlternatives: (
     objectId: string,
   ) => readonly CalloutGraphAlternative[];
+  readonly getRelationBuckets: (
+    objectId: string,
+  ) => Record<ObjectRelationType, readonly ObjectRelation[]>;
   readonly handlers: CalloutHandlers;
 };
 
@@ -61,6 +68,7 @@ export function useCalloutViewModel(objectId: string): CalloutViewModel | null {
       object,
       neighbors: session.getNeighbors(objectId),
       alternatives: session.getAlternatives(objectId),
+      relationBuckets: session.getRelationBuckets(objectId),
     });
   }, [session, objectId]);
 }

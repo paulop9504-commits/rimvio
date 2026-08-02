@@ -148,6 +148,7 @@
     "test:workspace-sdk-host-actions": "npx tsx scripts/test-workspace-sdk-host-actions.ts",
     "test:workspace-sdk-golden-path": "npx tsx scripts/test-workspace-sdk-golden-path.ts",
     "test:object-callout": "npx tsx scripts/test-object-callout.ts",
+    "test:object-relation": "npx tsx scripts/test-object-relation.ts",
     "test:context-command-bar": "npx tsx scripts/test-context-command-bar.ts",
     "test:rimvio-command": "npx tsx scripts/test-rimvio-command.ts",
     "test:new-intent-new-context": "npx tsx scripts/test-new-intent-new-context.ts",

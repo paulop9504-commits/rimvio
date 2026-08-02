@@ -107,6 +107,7 @@ assert.deepEqual(
   ["observe", "explore", "simulate", "prepare", "commit"],
 );
 assert.ok(model!.explore.edges.some((e) => e.relationId === "restaurant"));
+assert.ok(model!.explore.buckets);
 assert.equal(model!.simulate.deltas.length, 1);
 assert.ok(model!.prepare.steps.length >= 3);
 assert.equal(model!.commit.ctaKo.includes("Field"), true);

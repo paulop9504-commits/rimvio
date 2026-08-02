@@ -687,7 +687,11 @@ function MapLibreWorkspaceMap({
       }
 
       for (const [index, pin] of visible.entries()) {
-        const selected = pin.id === selectedId || Boolean(pin.selected);
+        const exploreHit = Boolean(
+          evidenceHighlight?.highlightNodeIds?.includes(pin.id),
+        );
+        const selected =
+          pin.id === selectedId || Boolean(pin.selected) || exploreHit;
         const existing = markersByIdRef.current.get(pin.id);
         if (existing) {
           if (existing.lat !== pin.lat || existing.lng !== pin.lng) {
@@ -777,7 +781,7 @@ function MapLibreWorkspaceMap({
     return () => {
       cancelled = true;
     };
-  }, [ready, pins, selectedId, compact, preferredCenter]);
+  }, [ready, pins, selectedId, compact, preferredCenter, evidenceHighlight]);
 
   useEffect(() => {
     const map = mapRef.current;

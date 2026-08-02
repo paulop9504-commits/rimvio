@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { CalloutAction } from "@/lib/callout/CalloutAction";
+import { CalloutExplore } from "@/lib/callout/CalloutExplore";
 import { CalloutHeader } from "@/lib/callout/CalloutHeader";
 import { CalloutObserve } from "@/lib/callout/CalloutObserve";
 import { CalloutPrepare } from "@/lib/callout/CalloutPrepare";
@@ -17,6 +18,7 @@ import {
   useCalloutViewModel,
 } from "@/lib/callout/callout-session";
 import { useCalloutState } from "@/lib/callout/hooks/useCalloutState";
+import type { ObjectRelationType } from "@/lib/callout/object-relation";
 import type {
   CalloutAction as CalloutActionModel,
   CalloutHandlers,
@@ -102,6 +104,7 @@ export function Callout({
   const handlers = handlersProp ?? sessionHandlers;
   const ui = useCalloutState(initialMode);
   const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
+  const [exploreType, setExploreType] = useState<ObjectRelationType>("nearby");
 
   const modeActions = useMemo(() => {
     if (!model) return [];
@@ -186,54 +189,22 @@ export function Callout({
         ) : null}
 
         {ui.mode === "explore" ? (
-          <div className="space-y-2.5">
-            <p className="text-[11px] font-semibold text-[#8b95a1]">
-              객체 기준 Context 확장
-            </p>
-            <ul className="space-y-1.5">
-              {model.explore.edges.map((edge) => (
-                <li key={edge.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-2 rounded-[14px] bg-white px-3 py-2.5 text-left ring-1 ring-black/[0.04]"
-                    disabled={!edge.targetObjectId}
-                    onClick={() => {
-                      if (edge.targetObjectId) {
-                        handlers.onFocusRelated?.(edge.targetObjectId);
-                      }
-                    }}
-                  >
-                    <span className="text-[12px] font-semibold text-[#191f28]">
-                      {edge.labelKo}
-                      {edge.count != null ? (
-                        <span className="ml-1 text-[#3182f6]">+{edge.count}</span>
-                      ) : null}
-                    </span>
-                    <span className="truncate text-[11px] text-[#8b95a1]">
-                      {edge.hintKo ?? "연결 대기"}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="pt-1">
-              <p className="mb-1.5 text-[10px] font-semibold text-[#8b95a1]">
-                연결하기
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {model.connectTargets.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className="rounded-full bg-[#f2f4f6] px-2.5 py-1 text-[11px] font-semibold text-[#4e5968]"
-                    onClick={() => handlers.onConnect?.(objectId, t.id)}
-                  >
-                    + {t.labelKo}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CalloutExplore
+            model={model.explore}
+            activeRelationType={exploreType}
+            onSelectRelationType={(type) => {
+              setExploreType(type);
+              handlers.onExploreRelationType?.(
+                objectId,
+                type,
+                model.explore.buckets[type] ?? [],
+              );
+            }}
+            onSelectRelation={(rel) => {
+              handlers.onExploreRelation?.(objectId, rel);
+            }}
+            onConnect={(targetId) => handlers.onConnect?.(objectId, targetId)}
+          />
         ) : null}
 
         {ui.mode === "simulate" ? (

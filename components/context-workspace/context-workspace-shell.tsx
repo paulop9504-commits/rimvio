@@ -71,6 +71,13 @@ import {
   buildRimvioObjectFromWorkspace,
 } from "@/lib/callout/from-workspace";
 import { evidenceHighlightLineCoords } from "@/lib/callout/build-observe-evidence";
+import {
+  buildObjectRelationContextFromWorkspace,
+  getAllRelationBuckets,
+  OBJECT_RELATION_TYPE_LABEL_KO,
+  type ObjectRelation,
+  type ObjectRelationType,
+} from "@/lib/callout/object-relation";
 import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import {
   isWorkspaceContextMediaPinId,
@@ -906,6 +913,44 @@ export function ContextWorkspaceShell({
 
         setPeekClosed(true);
       },
+      onExploreRelationType: (
+        _id,
+        relationType: ObjectRelationType,
+        relations: readonly ObjectRelation[],
+      ) => {
+        setPeekClosed(true);
+        if (relations.length === 0) {
+          setEvidenceHighlight(null);
+          toast.message(OBJECT_RELATION_TYPE_LABEL_KO[relationType], {
+            description: "연결된 노드가 없어요",
+          });
+          return;
+        }
+        setEvidenceHighlight({
+          evidenceId: `explore:${relationType}`,
+          focusNodeId: relations[0]?.toObjectId ?? null,
+          lineCoords: null,
+          lineCoordsList: relations.map((r) => r.lineCoords),
+          highlightNodeIds: relations.map((r) => r.toObjectId),
+          mode: "explore",
+        });
+        toast.message(OBJECT_RELATION_TYPE_LABEL_KO[relationType], {
+          description: `${relations.length}개 노드 · Edge 탐색`,
+        });
+      },
+      onExploreRelation: (_id, relation: ObjectRelation) => {
+        setPeekClosed(true);
+        setEvidenceHighlight({
+          evidenceId: relation.id,
+          focusNodeId: relation.toObjectId,
+          lineCoords: [...relation.lineCoords],
+          highlightNodeIds: [relation.toObjectId],
+          mode: "edge",
+        });
+        toast.message(relation.roleLabelKo, {
+          description: relation.title,
+        });
+      },
     };
 
     const session: CalloutSessionValue = {
@@ -923,6 +968,18 @@ export function ContextWorkspaceShell({
         buildCalloutNeighborsFromWorkspace(state, objectId),
       getAlternatives: (objectId) =>
         buildCalloutAlternativesFromWorkspace(state, objectId),
+      getRelationBuckets: (objectId) => {
+        const ctx = buildObjectRelationContextFromWorkspace(state, objectId);
+        if (!ctx) {
+          return {
+            nearby: [],
+            similar: [],
+            connected: [],
+            route: [],
+          };
+        }
+        return getAllRelationBuckets(objectId, ctx);
+      },
       handlers,
     };
 

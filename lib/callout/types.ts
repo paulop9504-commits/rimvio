@@ -149,7 +149,13 @@ export type CalloutViewModel = {
     readonly aiScore: number;
   };
   readonly explore: {
+    /** @deprecated prefer buckets — registry ontology chips */
     readonly edges: readonly CalloutExploreEdge[];
+    readonly buckets: Record<
+      import("@/lib/callout/object-relation").ObjectRelationType,
+      readonly import("@/lib/callout/object-relation").ObjectRelation[]
+    >;
+    readonly connectTargets: readonly CalloutConnectTarget[];
   };
   readonly simulate: {
     readonly currentTitle: string;
@@ -178,6 +184,17 @@ export type CalloutHandlers = {
   onFocusRelated?: (objectId: string) => void;
   /** Observe Evidence click — highlight graph ref on map */
   onHighlightEvidence?: (objectId: string, evidence: Evidence) => void;
+  /** Explore relation type — expand graph edges + map highlight */
+  onExploreRelationType?: (
+    objectId: string,
+    relationType: import("@/lib/callout/object-relation").ObjectRelationType,
+    relations: readonly import("@/lib/callout/object-relation").ObjectRelation[],
+  ) => void;
+  /** Explore result node — camera + node highlight */
+  onExploreRelation?: (
+    objectId: string,
+    relation: import("@/lib/callout/object-relation").ObjectRelation,
+  ) => void;
   onChangeIntent?: (
     objectId: string,
     axes: readonly { id: string; nudge: "up" | "down" | "neutral" }[],
