@@ -73,6 +73,13 @@ import {
 } from "@/lib/callout/from-workspace";
 import { evidenceHighlightLineCoords } from "@/lib/callout/build-observe-evidence";
 import {
+  clearAllCalloutWindows,
+  openCalloutWindow,
+} from "@/lib/callout/windows";
+import { useCalloutWindows } from "@/lib/callout/windows/use-callout-windows";
+import { MobileWorkspace } from "@/components/mobile-workspace/MobileWorkspace";
+import { usePreferMobileWorkspace } from "@/lib/mobile-workspace/use-mobile-workspace";
+import {
   buildObjectRelationContextFromWorkspace,
   getAllRelationBuckets,
   OBJECT_RELATION_TYPE_LABEL_KO,
@@ -199,6 +206,8 @@ export function ContextWorkspaceShell({
   const [evidenceHighlight, setEvidenceHighlight] =
     useState<WorkspaceEvidenceHighlight | null>(null);
   const didAutoMediaFocusRef = useRef(false);
+  const { windows: calloutWindows, focusedWindowId } = useCalloutWindows();
+  const preferMobileWorkspace = usePreferMobileWorkspace();
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -220,6 +229,7 @@ export function ContextWorkspaceShell({
     setFocusedId(null);
     setPeekClosed(true);
     setEvidenceHighlight(null);
+    clearAllCalloutWindows();
     peekOpenGenerationRef.current += 1;
     const id = contextEventId?.trim();
     if (id) {
@@ -669,12 +679,29 @@ export function ContextWorkspaceShell({
       const openGen = ++peekOpenGenerationRef.current;
       setFocusedId(nodeId);
       setListOpen(false);
-      setPeekClosed(false);
       setEvidenceHighlight(null);
 
       if (isWorkspaceContextMediaPinId(nodeId)) {
         setMapFocusKind(null);
+        setPeekClosed(false);
         return;
+      }
+
+      const live = readContextWorkspace(id);
+      const node = live?.nodes.find((n) => n.id === nodeId);
+      const isVenue =
+        node &&
+        (node.kind === "lodging" ||
+          node.kind === "eatery" ||
+          node.kind === "poi" ||
+          node.kind === "amenity");
+
+      if (isVenue) {
+        // Floating Callout Window — stack (max 3); same entity = focus.
+        openCalloutWindow({ entityId: nodeId });
+        setPeekClosed(true);
+      } else {
+        setPeekClosed(false);
       }
 
       void (async () => {
@@ -688,6 +715,9 @@ export function ContextWorkspaceShell({
         }
         setMapFocusKind(result.mapFocusKind);
         setFocusedId(result.focusId);
+        if (isVenue) {
+          openCalloutWindow({ entityId: result.focusId });
+        }
         if (result.replyKo?.trim()) {
           appendWorkspaceChatTurn({
             contextEventId: id,
@@ -714,6 +744,7 @@ export function ContextWorkspaceShell({
     setCommitPreviewOpen(false);
     setCloseNameOpen(false);
     setExpanded(false);
+    clearAllCalloutWindows();
     writeContextWorkspaceExpanded(id, false);
     if (result.ok) {
       toast.success(copy.globe.workspaceCommitDoneToast, {
@@ -737,6 +768,7 @@ export function ContextWorkspaceShell({
 
   const collapseWorkspace = useCallback(() => {
     const id = contextEventId?.trim();
+    clearAllCalloutWindows();
     if (!id) {
       return;
     }
@@ -811,16 +843,19 @@ export function ContextWorkspaceShell({
     selectedMediaPin == null;
 
   const mapObjectCallout = useMemo(() => {
-    if (!selectedNode || !state || !eventId) return null;
-    if (
-      selectedNode.kind !== "lodging" &&
-      selectedNode.kind !== "eatery" &&
-      selectedNode.kind !== "poi" &&
-      selectedNode.kind !== "amenity"
-    ) {
-      return null;
-    }
-    const nodeId = selectedNode.id;
+    if (!state || !eventId) return null;
+    // Prefer focused window entity for handler fallbacks; session lookups are by objectId.
+    const focusEntityId =
+      (focusedWindowId
+        ? calloutWindows.find((w) => w.id === focusedWindowId)?.entityId
+        : null) ??
+      selectedNode?.id ??
+      null;
+    const focusNode =
+      (focusEntityId
+        ? state.nodes.find((n) => n.id === focusEntityId)
+        : null) ?? selectedNode;
+
     const handlers: CalloutHandlers = {
       onSelect: (id) => {
         applyWorkspaceTransition({
@@ -828,6 +863,7 @@ export function ContextWorkspaceShell({
           op: "select",
           nodeIds: [id],
         });
+        openCalloutWindow({ entityId: id });
         toast.success(copy.globe.workspacePreviewSelected);
       },
       onCompare: (id) => {
@@ -839,6 +875,7 @@ export function ContextWorkspaceShell({
           op: "compare",
           nodeIds: [...nextIds],
         });
+        openCalloutWindow({ entityId: id });
         if (nextIds.length >= 2) setCompareOpen(true);
       },
       onBookmark: (id) => {
@@ -855,6 +892,7 @@ export function ContextWorkspaceShell({
           op: "find_similar",
           nodeIds: [id],
         });
+        openCalloutWindow({ entityId: id });
         toast.success("Change · 비슷한 후보를 다시 모았어요");
       },
       onAddToDay: (id) => {
@@ -868,7 +906,7 @@ export function ContextWorkspaceShell({
         });
       },
       onNavigate: (id) => {
-        const node = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        const node = state.nodes.find((n) => n.id === id) ?? focusNode;
         if (!node) return;
         const url = `https://www.google.com/maps/dir/?api=1&destination=${node.lat},${node.lng}`;
         if (typeof window !== "undefined") {
@@ -878,6 +916,7 @@ export function ContextWorkspaceShell({
       },
       onFocusRelated: (id: string) => {
         setFocusedId(id);
+        openCalloutWindow({ entityId: id });
         setPeekClosed(true);
       },
       onChangeIntent: (id, axes) => {
@@ -897,7 +936,7 @@ export function ContextWorkspaceShell({
       onPreviewSimulation: (id, alternativeObjectId) => {
         assertSimulationDoesNotCommit("preview");
         const alt = state.nodes.find((n) => n.id === alternativeObjectId);
-        const cur = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        const cur = state.nodes.find((n) => n.id === id) ?? focusNode;
         if (!alt || !cur) return;
         const draft = createSimulationDraft({
           contextId: eventId,
@@ -920,7 +959,7 @@ export function ContextWorkspaceShell({
       onApplySimulation: (id, alternativeObjectId) => {
         assertSimulationDoesNotCommit("apply_draft");
         const alt = state.nodes.find((n) => n.id === alternativeObjectId);
-        const cur = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        const cur = state.nodes.find((n) => n.id === id) ?? focusNode;
         if (!alt || !cur) return;
 
         let draft = createSimulationDraft({
@@ -934,7 +973,6 @@ export function ContextWorkspaceShell({
         draft = markSimulationDraftApplied(draft);
         writeSimulationDraft(draft);
 
-        // Draft State only — soft select / compare. Never Commit.
         applyWorkspaceTransition({
           contextEventId: eventId,
           op: "select",
@@ -947,13 +985,13 @@ export function ContextWorkspaceShell({
           simulateScenarioKo: `what-if:${draft.simulationId}`,
         });
         setFocusedId(alternativeObjectId);
+        openCalloutWindow({ entityId: alternativeObjectId });
         setPeekClosed(true);
         toast.success("Draft에 적용했어요 · Commit 아님");
       },
       onCreatePrepareDraft: (id) => {
         assertPrepareDoesNotCommit("prepare");
-        const node =
-          state.nodes.find((n) => n.id === id) ?? selectedNode;
+        const node = state.nodes.find((n) => n.id === id) ?? focusNode;
         if (!node) return;
         const object = buildRimvioObjectFromWorkspace({
           contextId: eventId,
@@ -974,7 +1012,6 @@ export function ContextWorkspaceShell({
         });
       },
       onHandoffField: (id) => {
-        // Callout → Field Action only. Commit Ledger after Approve·Pay succeeds.
         onOpenField(id);
       },
       onConnect: (_id, targetId) => {
@@ -983,7 +1020,7 @@ export function ContextWorkspaceShell({
         });
       },
       onAskObject: (id, text) => {
-        const node = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        const node = state.nodes.find((n) => n.id === id) ?? focusNode;
         if (!node) return null;
         const object = buildRimvioObjectFromWorkspace({
           contextId: eventId,
@@ -1105,7 +1142,7 @@ export function ContextWorkspaceShell({
         });
 
         if (evidence.type === "review") {
-          setFocusedId(ref.nodeId ?? nodeId);
+          setFocusedId(ref.nodeId ?? _id);
           setPeekClosed(false);
           toast.message("후기 Evidence", {
             description: evidence.value,
@@ -1220,15 +1257,30 @@ export function ContextWorkspaceShell({
       handlers,
     };
 
-    return { objectId: nodeId, session };
+    return session;
   }, [
     selectedNode,
     state,
     eventId,
+    calloutWindows,
+    focusedWindowId,
     onPrepareReserve,
     onPinToggle,
     onOpenField,
   ]);
+
+  const floatingCallouts = useMemo(() => {
+    if (!mapObjectCallout || calloutWindows.length === 0) return null;
+    return calloutWindows.map((w) => {
+      const node = state?.nodes.find((n) => n.id === w.entityId);
+      return {
+        window: w,
+        session: mapObjectCallout,
+        title: node?.title ?? w.entityId,
+        subtitleKo: node?.amountLabel ?? null,
+      };
+    });
+  }, [mapObjectCallout, calloutWindows, state?.nodes]);
 
   if (!expanded || !state || state.status === "closed") {
     return null;
@@ -1300,6 +1352,18 @@ export function ContextWorkspaceShell({
 
       {/* Map — sole visual plane; soft hints float on map only */}
       <div className="relative min-h-0 flex-1">
+        {preferMobileWorkspace ? (
+          <MobileWorkspace
+            contextEventId={eventId}
+            projectTitleKo={projectTitleKo}
+            pins={mapPins}
+            preferredCenter={preferredMapCenter}
+            routeLineCoords={routeLineCoords}
+            onSelectPin={onSelect}
+            onPrepareReserve={onPrepareReserve}
+          />
+        ) : (
+          <>
         <WorkspaceMapView
           pins={mapPins}
           selectedId={selectedId}
@@ -1311,9 +1375,34 @@ export function ContextWorkspaceShell({
           routeLineCoords={routeLineCoords}
           contextEventId={eventId}
           preferredCenter={preferredMapCenter}
-          objectCallout={mapObjectCallout}
+          floatingCallouts={floatingCallouts}
           evidenceHighlight={evidenceHighlight}
+          onCalloutRequestWorkspace={(entityId) => {
+            setFocusedId(entityId);
+            setPeekClosed(false);
+          }}
         />
+        {calloutWindows.length >= 2 ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[6] flex justify-center px-3">
+            <button
+              type="button"
+              className="pointer-events-auto rounded-full bg-[#191f28] px-4 py-2 text-[11px] font-bold text-white shadow-lg"
+              onClick={() => {
+                const ids = calloutWindows.map((w) => w.entityId).slice(0, 5);
+                applyWorkspaceTransition({
+                  contextEventId: eventId,
+                  op: "compare",
+                  nodeIds: ids,
+                });
+                setCompareOpen(true);
+              }}
+            >
+              비교 · {calloutWindows.length}개 Callout
+            </button>
+          </div>
+        ) : null}
+          </>
+        )}
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed
             title={selectedMediaPin.title}
@@ -1439,8 +1528,8 @@ export function ContextWorkspaceShell({
         ) : null}
       </div>
 
-      {/* Agent dock — hide while place sheet / Commit Preview open */}
-      {!showPeek && !commitPreviewOpen ? (
+      {/* Agent dock — hide on Mobile Workspace (CommandBar owns NL) */}
+      {!preferMobileWorkspace && !showPeek && !commitPreviewOpen ? (
         <div className="relative z-[4] mx-auto w-full max-w-[420px] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
           <WorkspaceDraftPreviewCard
             workspaceId={eventId}
@@ -1462,8 +1551,11 @@ export function ContextWorkspaceShell({
         </div>
       ) : null}
 
-      {/* Place sheet — fixed over full workspace (status bar inset only, GPT Maps) */}
-      {selectedNode && !compareOpen && !commitPreviewOpen ? (
+      {/* Place sheet — desktop / tablet; mobile uses Expandable Sheet */}
+      {!preferMobileWorkspace &&
+      selectedNode &&
+      !compareOpen &&
+      !commitPreviewOpen ? (
         <WorkspaceObjectCarousel
           open={showPeek}
           contextEventId={eventId}

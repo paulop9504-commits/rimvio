@@ -67,6 +67,10 @@ export type WorkspaceMarkerActions = {
   onPrepareReserve?: (id: string) => void;
   /** Prepared → open Field 결재함. */
   onOpenField?: (id: string) => void;
+  /** Mobile: long-press → Object Action Menu. */
+  onLongPress?: (id: string) => void;
+  /** Mobile: double-tap → expand Object Workspace sheet. */
+  onOpenWorkspace?: (id: string) => void;
 };
 
 export type TossWorkspaceMarkerInput = {
@@ -403,8 +407,47 @@ function fillTossWorkspaceMarkerEl(
           : "background:#fff;color:#191f28",
   ].join(";");
 
+  let lastTapAt = 0;
+  let longFired = false;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+
+  chip.addEventListener("pointerdown", (event) => {
+    if (!actions.onLongPress) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    longFired = false;
+    pressTimer = setTimeout(() => {
+      longFired = true;
+      actions.onLongPress?.(pin.id);
+    }, 480);
+  });
+  const clearPress = () => {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+  };
+  chip.addEventListener("pointerup", clearPress);
+  chip.addEventListener("pointerleave", clearPress);
+  chip.addEventListener("pointercancel", clearPress);
+
+  chip.addEventListener("contextmenu", (event) => {
+    if (!actions.onLongPress) return;
+    event.preventDefault();
+    event.stopPropagation();
+    actions.onLongPress(pin.id);
+  });
+
   chip.addEventListener("click", (event) => {
     event.stopPropagation();
+    if (longFired) {
+      longFired = false;
+      return;
+    }
+    const now = Date.now();
+    if (actions.onOpenWorkspace && now - lastTapAt < 280) {
+      lastTapAt = 0;
+      actions.onOpenWorkspace(pin.id);
+      return;
+    }
+    lastTapAt = now;
     actions.onSelect(pin.id);
   });
   root.appendChild(chip);

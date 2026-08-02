@@ -39,8 +39,9 @@ import {
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { WorkspaceMapCapabilityBloom } from "@/components/context-workspace/workspace-map-capability-bloom";
-import { WorkspaceMapObjectCallout } from "@/components/context-workspace/workspace-map-object-callout";
+import { WorkspaceMapCalloutLayer } from "@/components/context-workspace/workspace-map-callout-layer";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
+import type { CalloutWindow } from "@/lib/callout/windows";
 import type {
   CapabilityLiveSignal,
   WorkspaceCapabilityBloomHandlers,
@@ -62,6 +63,14 @@ export type WorkspaceMapObjectCalloutModel = {
   readonly session: CalloutSessionValue;
 };
 
+/** Multi-window Floating Callout layer item (Interaction Model). */
+export type WorkspaceMapFloatingCalloutModel = {
+  readonly window: CalloutWindow;
+  readonly session: CalloutSessionValue;
+  readonly title: string;
+  readonly subtitleKo?: string | null;
+};
+
 export type WorkspaceMapViewProps = {
   pins: readonly WorkspaceMapPin[];
   selectedId?: string | null;
@@ -72,6 +81,10 @@ export type WorkspaceMapViewProps = {
   onPrepareReserve?: (id: string) => void;
   /** Prepared lodging → in-Workspace approve · pay. */
   onOpenField?: (id: string) => void;
+  /** Mobile: long-press Object Action Menu. */
+  onPinLongPress?: (id: string) => void;
+  /** Mobile: double-tap → Object Workspace sheet. */
+  onOpenWorkspace?: (id: string) => void;
   onBackgroundActivate?: () => void;
   /** Primary itinerary LineString as [lng, lat][]. */
   routeLineCoords?: readonly [number, number][];
@@ -85,10 +98,17 @@ export type WorkspaceMapViewProps = {
   preferredCenter?: { readonly lat: number; readonly lng: number } | null;
   /** Capability bloom for the selected object — rendered on the map. */
   capabilityBloom?: WorkspaceMapCapabilityBloomModel | null;
-  /** Object Callout Control Surface — takes precedence over capability bloom. */
+  /**
+   * @deprecated Prefer floatingCallouts multi-window layer.
+   * Single Object Callout — kept for fallback.
+   */
   objectCallout?: WorkspaceMapObjectCalloutModel | null;
+  /** Floating Callout Windows (multi) — Interaction Layer. */
+  floatingCallouts?: readonly WorkspaceMapFloatingCalloutModel[] | null;
   /** Observe Evidence highlight (edge / node) on the map. */
   evidenceHighlight?: WorkspaceEvidenceHighlight | null;
+  /** Expand Callout to Workspace focus affordance */
+  onCalloutRequestWorkspace?: (entityId: string) => void;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -286,6 +306,8 @@ function PlaceholderPinMap({
   onRemovePin,
   onPrepareReserve,
   onOpenField,
+  onPinLongPress,
+  onOpenWorkspace,
   onBackgroundActivate,
   compact,
   preferredCenter = null,
@@ -435,6 +457,15 @@ function PlaceholderPinMap({
                 event.stopPropagation();
                 onSelectPin?.(node.id);
               }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onOpenWorkspace?.(node.id);
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onPinLongPress?.(node.id);
+              }}
               aria-label={node.title}
             >
               {compact
@@ -458,6 +489,8 @@ function MapLibreWorkspaceMap({
   onRemovePin,
   onPrepareReserve,
   onOpenField,
+  onPinLongPress,
+  onOpenWorkspace,
   onBackgroundActivate,
   routeLineCoords,
   compact,
@@ -466,7 +499,9 @@ function MapLibreWorkspaceMap({
   preferredCenter = null,
   capabilityBloom = null,
   objectCallout = null,
+  floatingCallouts = null,
   evidenceHighlight = null,
+  onCalloutRequestWorkspace,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -479,10 +514,15 @@ function MapLibreWorkspaceMap({
   const onPinToggleRef = useRef(onPinToggle);
   const onRemovePinRef = useRef(onRemovePin);
   const onPrepareRef = useRef(onPrepareReserve);
+  const onPinLongPressRef = useRef(onPinLongPress);
+  const onOpenWorkspaceRef = useRef(onOpenWorkspace);
   const [bloomAnchor, setBloomAnchor] = useState<{
     x: number;
     y: number;
   } | null>(null);
+  const [anchorsByEntityId, setAnchorsByEntityId] = useState<
+    Readonly<Record<string, { x: number; y: number }>>
+  >({});
   const onOpenFieldRef = useRef(onOpenField);
   const onBgRef = useRef(onBackgroundActivate);
   useEffect(() => {
@@ -494,6 +534,8 @@ function MapLibreWorkspaceMap({
     onRemovePinRef.current = onRemovePin;
     onPrepareRef.current = onPrepareReserve;
     onOpenFieldRef.current = onOpenField;
+    onPinLongPressRef.current = onPinLongPress;
+    onOpenWorkspaceRef.current = onOpenWorkspace;
     onBgRef.current = onBackgroundActivate;
   }, [
     onSelectPin,
@@ -501,6 +543,8 @@ function MapLibreWorkspaceMap({
     onRemovePin,
     onPrepareReserve,
     onOpenField,
+    onPinLongPress,
+    onOpenWorkspace,
     onBackgroundActivate,
   ]);
   const [ready, setReady] = useState(false);
@@ -676,6 +720,12 @@ function MapLibreWorkspaceMap({
           : undefined,
         onOpenField: onOpenFieldRef.current
           ? (id: string) => onOpenFieldRef.current?.(id)
+          : undefined,
+        onLongPress: onPinLongPressRef.current
+          ? (id: string) => onPinLongPressRef.current?.(id)
+          : undefined,
+        onOpenWorkspace: onOpenWorkspaceRef.current
+          ? (id: string) => onOpenWorkspaceRef.current?.(id)
           : undefined,
       };
 
@@ -919,7 +969,7 @@ function MapLibreWorkspaceMap({
     });
   }, [ready, selectedId, compact]);
 
-  // Project selected pin → screen for Object Callout / Capability bloom.
+  // Project selected pin → screen for legacy single Object Callout / Capability bloom.
   useEffect(() => {
     const map = mapRef.current;
     const hasSurface = Boolean(objectCallout || capabilityBloom);
@@ -949,6 +999,50 @@ function MapLibreWorkspaceMap({
       map.off("pitch", update);
     };
   }, [ready, selectedId, capabilityBloom, objectCallout, pins]);
+
+  // Multi-window: project all floating callout entity pins → screen.
+  const floatingEntityIds = useMemo(
+    () =>
+      (floatingCallouts ?? [])
+        .filter((c) => c.window.anchored)
+        .map((c) => c.window.entityId)
+        .join("|"),
+    [floatingCallouts],
+  );
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const list = floatingCallouts ?? [];
+    if (!ready || !map || list.length === 0) {
+      setAnchorsByEntityId({});
+      return;
+    }
+
+    const update = () => {
+      const next: Record<string, { x: number; y: number }> = {};
+      for (const item of list) {
+        if (!item.window.anchored) continue;
+        const pin = pinsRef.current.find((p) => p.id === item.window.entityId);
+        if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
+          continue;
+        }
+        const pt = map.project([pin.lng, pin.lat]);
+        next[item.window.entityId] = { x: pt.x, y: pt.y };
+      }
+      setAnchorsByEntityId(next);
+    };
+    update();
+    map.on("move", update);
+    map.on("zoom", update);
+    map.on("rotate", update);
+    map.on("pitch", update);
+    return () => {
+      map.off("move", update);
+      map.off("zoom", update);
+      map.off("rotate", update);
+      map.off("pitch", update);
+    };
+  }, [ready, floatingCallouts, floatingEntityIds, pins]);
 
   // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
   const mediaTourSignature = useMemo(
@@ -1019,12 +1113,44 @@ function MapLibreWorkspaceMap({
           />
         </div>
       ) : null}
-      {objectCallout ? (
-        <WorkspaceMapObjectCallout
-          open={Boolean(selectedId && bloomAnchor)}
-          anchor={bloomAnchor}
-          objectId={objectCallout.objectId}
-          session={objectCallout.session}
+      {floatingCallouts && floatingCallouts.length > 0 ? (
+        <WorkspaceMapCalloutLayer
+          items={floatingCallouts.map((c) => ({
+            window: c.window,
+            session: c.session,
+            title: c.title,
+            subtitleKo: c.subtitleKo,
+            anchor: anchorsByEntityId[c.window.entityId] ?? null,
+          }))}
+          onRequestWorkspace={onCalloutRequestWorkspace}
+        />
+      ) : objectCallout ? (
+        <WorkspaceMapCalloutLayer
+          items={[
+            {
+              window: {
+                id: `legacy_${objectCallout.objectId}`,
+                entityId: objectCallout.objectId,
+                mode: "floating" as const,
+                position: {
+                  x: (bloomAnchor?.x ?? 0) - 160,
+                  y: (bloomAnchor?.y ?? 0) - 432,
+                },
+                size: { width: 320, height: 420 },
+                scale: 1,
+                zIndex: 5,
+                locked: false,
+                anchored: true,
+                createdAtIso: "",
+                updatedAtIso: "",
+              },
+              session: objectCallout.session,
+              title: objectCallout.objectId,
+              subtitleKo: null,
+              anchor: bloomAnchor,
+            },
+          ]}
+          onRequestWorkspace={onCalloutRequestWorkspace}
         />
       ) : capabilityBloom ? (
         <WorkspaceMapCapabilityBloom

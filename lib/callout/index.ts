@@ -182,3 +182,38 @@ export {
   resolveDynamicCalloutState,
   schemasForSameObjectAcrossStates,
 } from "@/lib/callout/dynamic";
+
+/** Floating Callout Windows — Interaction Layer (UI state only) */
+export type {
+  CalloutWindow,
+  CalloutWindowMode,
+  CalloutWindowPosition,
+  CalloutWindowSize,
+} from "@/lib/callout/windows";
+export {
+  CALLOUT_WINDOW_COMPACT_SIZE,
+  CALLOUT_WINDOW_DEFAULT_SIZE,
+  CALLOUT_WINDOW_MAX,
+  CALLOUT_WINDOW_MODES,
+  CALLOUT_WINDOW_SCALE_MAX,
+  CALLOUT_WINDOW_SCALE_MIN,
+  clearAllCalloutWindows,
+  clearCalloutWindowsForTests,
+  closeCalloutWindow,
+  findCalloutWindowByEntity,
+  focusCalloutWindow,
+  getCalloutWindowsSnapshot,
+  getFocusedCalloutWindowId,
+  listActiveCalloutWindows,
+  openCalloutWindow,
+  openCalloutWindowsFromAgent,
+  readCalloutWindow,
+  setCalloutWindowMode,
+  subscribeCalloutWindows,
+  updateCalloutWindowLayout,
+} from "@/lib/callout/windows";
+export {
+  useCalloutWindowList,
+  useCalloutWindows,
+  useFocusedCalloutEntityId,
+} from "@/lib/callout/windows/use-callout-windows";
