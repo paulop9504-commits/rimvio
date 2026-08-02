@@ -11,6 +11,13 @@ export {
   compileGlobeIngress,
   isGlobeIngressEligible,
 } from "@/lib/globe-ingress/compile-globe-ingress";
+export {
+  extractTripContextIntelligence,
+  type TripActivityPriority,
+  type TripContextIntelligence,
+  type TripPurpose,
+  type TripTraveler,
+} from "@/lib/globe-ingress/extract-trip-context-intelligence";
 export { isCountryOrRegionDestinationLabel } from "@/lib/globe-ingress/is-country-or-region-destination";
 export {
   resolveIngressContextConverge,

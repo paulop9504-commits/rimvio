@@ -1,35 +1,41 @@
+/**
+ * Rimvio Reality Projection Engine
+ *
+ * Workspace Draft State → Globe / Workspace UI Projection
+ * Reality Layer remains Read Only.
+ */
+
+export type {
+  ProjectionBuildInput,
+  ProjectionEvent,
+  ProjectionEventType,
+  ProjectionSnapshot,
+} from "@/lib/projection-engine/projection-types";
+export { PROJECTION_EVENT_TYPES } from "@/lib/projection-engine/projection-types";
+
 export {
-  PROJECTION_ENGINE_VERSION,
-  PROJECTION_STAGES,
-  type ProjectionStage,
-  type ProjectionProjectKind,
-  type ProjectionNodeKind,
-  type ProjectionRelationKind,
-  type ProjectionClusterKind,
-  type SuggestedTaskVerb,
-  type ProjectionOntologyNode,
-  type ProjectionOntologyRelation,
-  type ProjectedGlobeEntity,
-  type ProjectionCluster,
-  type SuggestedProjectionTask,
-  type ProjectionCommitCandidate,
-  type RealityProjection,
-} from "@/lib/projection-engine/types";
+  appendProjectionEvent,
+  clearProjectionForTests,
+  listProjectionEvents,
+  readProjectionSnapshot,
+  writeProjectionSnapshot,
+} from "@/lib/projection-engine/projection-store";
+
 export {
-  PROJECTION_ENGINE_SYSTEM_PROMPT,
-  buildProjectionEngineUserPrompt,
-} from "@/lib/projection-engine/projection-engine-prompt";
+  REALITY_PROJECTION_EVENT,
+  REALITY_PROJECTION_REFRESH,
+  dispatchProjectionEvent,
+  dispatchProjectionRefresh,
+  subscribeProjectionEvents,
+  subscribeProjectionRefresh,
+  type RealityProjectionRefreshDetail,
+} from "@/lib/projection-engine/projection-events";
+
 export {
-  PROJECTION_STAGE_PROGRESS_KO,
-  PROJECTION_STAGE_DONE_KO,
-  PROJECTION_STAGE_TITLE_KO,
-  projectionStageProgressKo,
-} from "@/lib/projection-engine/progress-copy";
-export {
-  inferProjectionGoal,
-  type InferredProjectionGoal,
-} from "@/lib/projection-engine/infer-project-goal";
-export {
-  compileRealityProjection,
-  advanceProjectionStage,
-} from "@/lib/projection-engine/compile-reality-projection";
+  assertProjectionDoesNotMutateReality,
+  buildProjectionEvents,
+  buildProjectionEventsFromVisibility,
+  projectDraftMutationApplied,
+  projectVisibilityToContextWorkspace,
+  runProjectionHandler,
+} from "@/lib/projection-engine/projection-handler";

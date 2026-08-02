@@ -156,3 +156,29 @@ export {
   type CommitLedgerEntry,
   type FieldRealityCommitResult,
 } from "@/lib/callout/commit-boundary";
+
+/** STEP 8 — Dynamic Callout (Control Surface UI Schema) */
+export type {
+  CalloutUiAction,
+  CalloutUiBlock,
+  CalloutUiBlockKind,
+  DynamicCalloutAgentState,
+  DynamicCalloutCompare,
+  DynamicCalloutContext,
+  DynamicCalloutInput,
+  DynamicCalloutIntent,
+  DynamicCalloutObject,
+  DynamicCalloutSchema,
+  DynamicCalloutState,
+} from "@/lib/callout/dynamic";
+export {
+  CALLOUT_UI_BLOCK_KINDS,
+  DYNAMIC_CALLOUT_STATES,
+  buildDynamicCallout,
+  buildDynamicCalloutSchema,
+  dynamicObjectFromRimvio,
+  formatDynamicCalloutUxKo,
+  isDynamicCalloutState,
+  resolveDynamicCalloutState,
+  schemasForSameObjectAcrossStates,
+} from "@/lib/callout/dynamic";

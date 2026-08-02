@@ -69,3 +69,18 @@ export {
   type CreateActionPlanInput,
   type CreateActionPlanMeta,
 } from "@/lib/agent/create-action-plan";
+
+/** STEP 7 — Workspace Operator Planner (Reason → Plan). ActionPlan V1 above stays SSOT. */
+export {
+  AGENT_RUNTIME_PHASES,
+  isAgentCommitForbidden,
+  looksLikeHotelReplace,
+  looksLikePriceRise,
+  planAgentOperator,
+  reasonAgentOperator,
+  type AgentRuntimeObservation,
+  type AgentRuntimePhase,
+  type AgentRuntimePlan,
+  type AgentRuntimePlanStep,
+  type AgentRuntimeReasoning,
+} from "@/lib/agent/runtime-planner";

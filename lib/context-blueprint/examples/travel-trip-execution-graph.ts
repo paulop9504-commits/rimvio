@@ -337,6 +337,14 @@ export function composeTravelTripBlueprint(input: {
    * Pass country labelKo (일본 · 필리핀 · …) or legacy "japan".
    */
   regionFrame?: string | null;
+  /** NL-extracted purpose / traveler / priority (Context OS quality) */
+  tripIntelligence?: {
+    readonly purpose?: string | null;
+    readonly traveler?: string | null;
+    readonly priority?: readonly string[];
+    readonly companionMode?: string | null;
+    readonly participantsHint?: number | null;
+  } | null;
 }): ContextBlueprint {
   const executionGraph = composeTravelTripExecutionGraph();
   const regionRaw = input.regionFrame?.trim() || null;
@@ -352,6 +360,69 @@ export function composeTravelTripBlueprint(input: {
       ? "어디부터 시작할까요? 오사카 · 도쿄 · 후쿠오카"
       : "어디로 갈까요?");
 
+  const intel = input.tripIntelligence;
+  const knownTruth = [
+    ...(countryFrame
+      ? [
+          {
+            slotId: "region",
+            value: countryFrame.labelKo,
+            source: "user_stated" as const,
+            confidence: 0.95,
+          },
+        ]
+      : []),
+    ...(intel?.purpose
+      ? [
+          {
+            slotId: "purpose",
+            value: intel.purpose,
+            source: "user_stated" as const,
+            confidence: 0.9,
+          },
+        ]
+      : []),
+    ...(intel?.traveler
+      ? [
+          {
+            slotId: "traveler",
+            value: intel.traveler,
+            source: "user_stated" as const,
+            confidence: 0.9,
+          },
+        ]
+      : []),
+    ...(intel?.priority && intel.priority.length > 0
+      ? [
+          {
+            slotId: "priority",
+            value: [...intel.priority],
+            source: "inferred" as const,
+            confidence: 0.85,
+          },
+        ]
+      : []),
+  ];
+
+  const participants =
+    intel?.traveler === "solo" || intel?.participantsHint === 1
+      ? [
+          {
+            id: "self",
+            label: "나",
+            role: "self" as const,
+          },
+        ]
+      : [];
+
+  // shopping > food → eatery lower in executor order
+  const assignedExecutors =
+    intel?.purpose === "shopping_trip"
+      ? (["travel", "lodging", "transit", "finance", "eatery"] as const)
+      : intel?.purpose === "food_trip"
+        ? (["travel", "lodging", "eatery", "transit", "finance"] as const)
+        : (["travel", "lodging", "transit", "eatery", "finance"] as const);
+
   return composeContextBlueprint({
     containerKind: "travel",
     contextId: input.contextId,
@@ -360,6 +431,7 @@ export function composeTravelTripBlueprint(input: {
     goal:
       input.goal ??
       (countryFrame ? `${countryFrame.labelKo} 여행` : "여행"),
+    priority: intel?.purpose === "shopping_trip" ? "high" : "normal",
     executionGraph,
     spatialTargets:
       countryFrame?.countryId === "japan" || regionRaw === "japan"
@@ -369,24 +441,25 @@ export function composeTravelTripBlueprint(input: {
           : composeTravelTripSpatialTargets(),
     temporalTargets: composeTravelTripTemporalTargets(),
     resourcePlan: {
-      requiredResources: ["flight", "lodging", "transit", "eatery", "documents", "payment"],
-      knownTruth: countryFrame
-        ? [
-            {
-              slotId: "region",
-              value: countryFrame.labelKo,
-              source: "user_stated" as const,
-              confidence: 0.95,
-            },
-          ]
-        : [],
+      requiredResources:
+        intel?.purpose === "shopping_trip"
+          ? ["flight", "lodging", "transit", "documents", "payment", "eatery"]
+          : ["flight", "lodging", "transit", "eatery", "documents", "payment"],
+      knownTruth,
       emptySlots: ["destination", "lodging_place"],
       nextQuestion: {
         slotId: "destination",
         promptKo: pickPrompt,
       },
     },
-    assignedExecutors: ["travel", "lodging", "transit", "eatery", "finance"],
+    constraints: {
+      destination: null,
+      period: null,
+      participants,
+      companionMode: intel?.companionMode ?? null,
+      budgetBand: null,
+    },
+    assignedExecutors: [...assignedExecutors],
     approvalPolicy: "manual",
   });
 }

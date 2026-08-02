@@ -23,6 +23,9 @@ import {
   resolveWorkspaceSearchDomain,
   workspaceDomainToToolDomain,
 } from "@/lib/context-workspace/resolve-workspace-search-domain";
+import { runWorkspaceCommandRuntime } from "@/lib/workspace-command";
+import { runWorkspaceRealityAgent } from "@/lib/workspace-agent";
+import { runRealityPrepare } from "@/lib/prepare-layer";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry/invoke-rimvio-tool";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
@@ -519,6 +522,93 @@ export function tryApplyWorkspaceLodgingTurnSync(input: {
         committed: false,
       };
     }
+  }
+
+  // Reality Prepare Layer — ready_for_commit only (no pay / confirm)
+  if (
+    /예약\s*준비|호텔.{0,16}준비해|숙소.{0,16}준비해|reservation\s*prepare/iu.test(
+      utterance,
+    )
+  ) {
+    const wsState = readContextWorkspace(contextEventId);
+    const lodging =
+      wsState?.nodes.find((n) => n.selected && n.kind === "lodging") ??
+      wsState?.nodes.find((n) => n.kind === "lodging" && n.visible) ??
+      null;
+    const entityId = lodging?.placeId ?? lodging?.id ?? "";
+    if (entityId) {
+      const prepared = runRealityPrepare({
+        entityId,
+        utterance,
+        workspaceId: contextEventId,
+        action: "reservation_prepare",
+        titleHint: lodging?.title ?? null,
+        priceLabelKo: lodging?.amountLabel ?? null,
+      });
+      if (prepared.ok) {
+        return {
+          handled: true,
+          replyKo: prepared.summaryKo,
+          committed: false,
+        };
+      }
+      if (prepared.forbidden) {
+        return {
+          handled: true,
+          replyKo: prepared.reasonKo,
+          committed: false,
+        };
+      }
+    }
+  }
+
+  // Workspace Reality Agent — hotel change / scoped operator (Draft only)
+  if (/호텔\s*바꿔|숙소\s*바꿔|다른\s*호텔|호텔\s*변경/iu.test(utterance)) {
+    const agent = runWorkspaceRealityAgent({
+      workspaceId: contextEventId,
+      utterance,
+    });
+    if (agent.ok) {
+      return {
+        handled: true,
+        replyKo: agent.summaryKo,
+        committed: false,
+      };
+    }
+    if (agent.realityCommitAttempted) {
+      return {
+        handled: true,
+        replyKo: agent.reasonKo,
+        committed: false,
+      };
+    }
+  }
+
+  // Workspace Command Runtime — propose Draft (Preview → Apply)
+  const runtime = runWorkspaceCommandRuntime({
+    workspaceId: contextEventId,
+    rawText: utterance,
+  });
+  if (runtime.ok) {
+    if (runtime.mode === "proposed" && runtime.proposal) {
+      return {
+        handled: true,
+        replyKo: `미리보기 · ${runtime.proposal.previewKo}\n[적용]하면 Workspace에만 반영돼요 · Reality 원본 유지`,
+        committed: false,
+      };
+    }
+    return {
+      handled: true,
+      replyKo: runtime.summaryKo,
+      committed: false,
+    };
+  }
+  if (runtime.forbiddenGlobeMutation) {
+    return {
+      handled: true,
+      replyKo: runtime.reasonKo,
+      committed: false,
+    };
   }
 
   const parsed = parseWorkspaceUtteranceTransition(utterance);

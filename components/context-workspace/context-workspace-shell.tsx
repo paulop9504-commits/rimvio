@@ -63,6 +63,7 @@ import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-v
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
+import { WorkspaceDraftPreviewCard } from "@/components/context-workspace/workspace-draft-preview-card";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
 import type { CalloutHandlers, Evidence } from "@/lib/callout/types";
 import {
@@ -1441,6 +1442,13 @@ export function ContextWorkspaceShell({
       {/* Agent dock — hide while place sheet / Commit Preview open */}
       {!showPeek && !commitPreviewOpen ? (
         <div className="relative z-[4] mx-auto w-full max-w-[420px] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
+          <WorkspaceDraftPreviewCard
+            workspaceId={eventId}
+            className="mb-2"
+            onApplied={() => {
+              toast.success("Workspace Draft 적용 · Reality 원본 유지");
+            }}
+          />
           <WorkspaceCursorDock
             contextEventId={eventId}
             onFocusNode={onSelect}

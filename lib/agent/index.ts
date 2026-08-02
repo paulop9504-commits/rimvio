@@ -47,4 +47,35 @@ export {
   safetyHaltMessageKo,
 } from "@/lib/agent/agent-safety-policy";
 
+/** STEP 7 — Workspace Agent Runtime (AI Operator) */
+export type {
+  AgentRuntimeFail,
+  AgentRuntimeInput,
+  AgentRuntimeObservation,
+  AgentRuntimeOk,
+  AgentRuntimePhase,
+  AgentRuntimePlan,
+  AgentRuntimeReasoning,
+  AgentRuntimeResult,
+  AgentRuntimeValidation,
+} from "@/lib/agent/runtime";
+export {
+  AGENT_RUNTIME_PHASES,
+  formatAgentOperatorUxKo,
+  isAgentCommitForbidden,
+  observeAgentRuntime,
+  planAgentOperator,
+  reasonAgentOperator,
+  runAgentRuntime,
+} from "@/lib/agent/runtime";
+export type {
+  AgentExecuteFail,
+  AgentExecuteOk,
+  AgentExecuteResult,
+} from "@/lib/agent/executor";
+export {
+  executeAgentCommit,
+  executeAgentPlan,
+} from "@/lib/agent/executor";
+
 

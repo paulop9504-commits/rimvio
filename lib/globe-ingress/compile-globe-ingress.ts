@@ -20,6 +20,7 @@ import type {
   GlobeIngressContextSlot,
   GlobeIngressIntent,
 } from "@/lib/globe-ingress/types";
+import { extractTripContextIntelligence } from "@/lib/globe-ingress/extract-trip-context-intelligence";
 import { composeRuntime } from "@/lib/runtime/types";
 
 function composeGenericIngressBlueprint(input: {
@@ -214,6 +215,8 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
             : null
       : null;
 
+  const tripIntelligence = extractTripContextIntelligence(intent);
+
   const blueprint =
     runtimeKind === "travel"
       ? composeTravelTripBlueprint({
@@ -222,6 +225,7 @@ export function compileGlobeIngress(input: GlobeIngressIntent): GlobeIngressComp
           runtimeId: runtime.runtimeId,
           goal: context.goal,
           regionFrame: regionFrameLabel ?? (japanFrame ? "japan" : null),
+          tripIntelligence,
         })
       : runtimeKind === "trade"
         ? composeTradeBlueprint({

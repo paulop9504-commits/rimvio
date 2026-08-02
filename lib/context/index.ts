@@ -1,3 +1,56 @@
+/**
+ * lib/context — Peer hub utilities + Reality Context Unit (STEP 2).
+ * Existing peer exports preserved.
+ */
+
+// ── Reality Context Unit (Reality OS) ──────────────────────────────
+export type {
+  RealityContext,
+  RealityContextConstraint,
+  RealityContextEntityKind,
+  RealityContextEntityRef,
+  RealityContextLocation,
+  RealityContextRealityState,
+  RealityContextTimeRange,
+} from "@/lib/context/context";
+
+export {
+  REALITY_CONTEXT_ENTITY_KINDS,
+  buildRealityContextTitle,
+  createOsakaTripContext,
+  createRealityContext,
+  resolveContextPurpose,
+  touchContextRealityState,
+  withContextConstraints,
+  withContextEntities,
+  withContextStatus,
+} from "@/lib/context/context";
+
+export type { RealityContextStatus } from "@/lib/context/context-state";
+
+export {
+  REALITY_CONTEXT_STATUSES,
+  REALITY_CONTEXT_STATUS_TRANSITIONS,
+  assertContextStatusTransition,
+  canTransitionContextStatus,
+  contextStatusLabelKo,
+  nextContextStatus,
+} from "@/lib/context/context-state";
+
+export {
+  REALITY_CONTEXT_UPDATED,
+  clearRealityContextsForTests,
+  listRealityContexts,
+  listRealityContextsByStatus,
+  patchRealityContextState,
+  readRealityContext,
+  saveRealityContext,
+  setRealityContextConstraints,
+  setRealityContextEntities,
+  updateRealityContextStatus,
+} from "@/lib/context/context-store";
+
+// ── Existing peer / hub (do not remove) ────────────────────────────
 export {
   addPeerContact,
   readPeerContacts,
