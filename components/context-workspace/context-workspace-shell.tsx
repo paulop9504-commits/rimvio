@@ -78,6 +78,15 @@ import {
   type ObjectRelation,
   type ObjectRelationType,
 } from "@/lib/callout/object-relation";
+import {
+  assertSimulationDoesNotCommit,
+  buildCurrentRealityFromWorkspace,
+  buildSimulationAnchorsFromWorkspace,
+  buildSimulationProposalFromNode,
+  createSimulationDraft,
+  markSimulationDraftApplied,
+  writeSimulationDraft,
+} from "@/lib/callout/simulation";
 import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import {
   isWorkspaceContextMediaPinId,
@@ -824,16 +833,61 @@ export function ContextWorkspaceShell({
         const axisLabel = axes.map((a) => a.id).join(" · ") || "조건";
         toast.success(`Change Intent · ${axisLabel}`);
       },
+      onPreviewSimulation: (id, alternativeObjectId) => {
+        assertSimulationDoesNotCommit("preview");
+        const alt = state.nodes.find((n) => n.id === alternativeObjectId);
+        const cur = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        if (!alt || !cur) return;
+        const draft = createSimulationDraft({
+          contextId: eventId,
+          scenarioKind:
+            cur.kind === "lodging" ? "change_hotel" : "change_object",
+          current: buildCurrentRealityFromWorkspace({ state, node: cur }),
+          proposal: buildSimulationProposalFromNode({ state, node: alt }),
+          anchors: buildSimulationAnchorsFromWorkspace(state),
+        });
+        writeSimulationDraft(draft);
+        setPeekClosed(true);
+        const budget = draft.result.impact.budget;
+        toast.message("What-if Simulation", {
+          description:
+            budget !== 0
+              ? `가격 ${budget.toLocaleString("ko-KR")}원 · Draft only`
+              : "Possible Reality · Draft only",
+        });
+      },
       onApplySimulation: (id, alternativeObjectId) => {
+        assertSimulationDoesNotCommit("apply_draft");
+        const alt = state.nodes.find((n) => n.id === alternativeObjectId);
+        const cur = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        if (!alt || !cur) return;
+
+        let draft = createSimulationDraft({
+          contextId: eventId,
+          scenarioKind:
+            cur.kind === "lodging" ? "change_hotel" : "change_object",
+          current: buildCurrentRealityFromWorkspace({ state, node: cur }),
+          proposal: buildSimulationProposalFromNode({ state, node: alt }),
+          anchors: buildSimulationAnchorsFromWorkspace(state),
+        });
+        draft = markSimulationDraftApplied(draft);
+        writeSimulationDraft(draft);
+
+        // Draft State only — soft select / compare. Never Commit.
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "select",
+          nodeIds: [alternativeObjectId],
+        });
         applyWorkspaceTransition({
           contextEventId: eventId,
           op: "simulate",
           nodeIds: [id, alternativeObjectId],
-          simulateScenarioKo: `대체: ${alternativeObjectId}`,
+          simulateScenarioKo: `what-if:${draft.simulationId}`,
         });
         setFocusedId(alternativeObjectId);
         setPeekClosed(true);
-        toast.success("변경 영향을 시험했어요");
+        toast.success("Draft에 적용했어요 · Commit 아님");
       },
       onCreatePrepareDraft: () => {
         void onPrepareReserve(nodeId);
@@ -980,6 +1034,7 @@ export function ContextWorkspaceShell({
         }
         return getAllRelationBuckets(objectId, ctx);
       },
+      getSimulationAnchors: () => buildSimulationAnchorsFromWorkspace(state),
       handlers,
     };
 

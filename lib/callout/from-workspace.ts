@@ -12,6 +12,7 @@ import type {
   CalloutGraphNeighbor,
 } from "@/lib/callout/build-callout-model";
 import { rimvioObjectFromWorkspaceNode } from "@/lib/callout/resolve-rimvio-object";
+import { parseWonAmount } from "@/lib/callout/simulation/parse-amount";
 import type { RimvioObject } from "@/lib/callout/types";
 import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
 
@@ -123,15 +124,17 @@ export function buildCalloutAlternativesFromWorkspace(
   const ranked = pool
     .map((n) => {
       const preview = buildNodePreview(n, state);
+      const priceLabelKo =
+        preview.price &&
+        preview.price !== "가격 미정" &&
+        preview.price !== "—"
+          ? preview.price
+          : null;
       return {
         objectId: n.id,
         title: n.title,
-        priceLabelKo:
-          preview.price &&
-          preview.price !== "가격 미정" &&
-          preview.price !== "—"
-            ? preview.price
-            : null,
+        priceLabelKo,
+        priceWon: parseWonAmount(priceLabelKo ?? n.amountLabel),
         metersFromCurrent: Math.round(
           haversineMeters(
             { lat: current.lat, lng: current.lng },
@@ -139,6 +142,8 @@ export function buildCalloutAlternativesFromWorkspace(
           ),
         ),
         rating: n.rating,
+        lat: n.lat,
+        lng: n.lng,
         prefer: compareSet.has(n.id) ? 2 : n.selected || n.bookmarked ? 1 : 0,
       };
     })

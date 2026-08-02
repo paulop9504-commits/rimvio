@@ -4,12 +4,23 @@
  */
 
 import {
-  scoreObserveAiScore,
-} from "@/lib/callout/build-observe-evidence";
+  CALLOUT_MODE_LABEL_KO,
+  getCalloutObjectTypeDescriptor,
+  OBJECT_STATE_LABEL_KO,
+} from "@/lib/callout/callout-registry";
+import { scoreObserveAiScore } from "@/lib/callout/build-observe-evidence";
 import type {
   ObjectRelation,
   ObjectRelationType,
 } from "@/lib/callout/object-relation";
+import {
+  formatMinutesDelta,
+  formatWonDelta,
+  parseWonAmount,
+  runWhatIfSimulation,
+  simulationImpactLinesKo,
+} from "@/lib/callout/simulation";
+import type { SimulationItineraryAnchor } from "@/lib/callout/simulation/types";
 import type {
   CalloutExploreEdge,
   CalloutPrepareStep,
@@ -19,11 +30,6 @@ import type {
   RimvioObjectState,
 } from "@/lib/callout/types";
 import { RIMVIO_OBJECT_STATES } from "@/lib/callout/types";
-import {
-  CALLOUT_MODE_LABEL_KO,
-  getCalloutObjectTypeDescriptor,
-  OBJECT_STATE_LABEL_KO,
-} from "@/lib/callout/callout-registry";
 
 export type CalloutGraphNeighbor = {
   readonly objectId: string;
@@ -37,8 +43,11 @@ export type CalloutGraphAlternative = {
   readonly objectId: string;
   readonly title: string;
   readonly priceLabelKo: string | null;
+  readonly priceWon: number | null;
   readonly metersFromCurrent: number | null;
   readonly rating: number | null;
+  readonly lat: number;
+  readonly lng: number;
 };
 
 function stateReached(
@@ -86,49 +95,54 @@ function buildExploreEdges(
 function buildSimulationDeltas(
   object: RimvioObject,
   alternatives: readonly CalloutGraphAlternative[],
+  anchors: readonly SimulationItineraryAnchor[] = [],
 ): CalloutSimulationDelta[] {
+  const currentPriceWon = parseWonAmount(object.facts.priceLabelKo);
+  const scenarioKind =
+    object.type === "hotel" ? "change_hotel" : "change_object";
+
   return alternatives.slice(0, 3).map((alt) => {
-    const lines: string[] = [];
-    let budgetDeltaKo: string | null = null;
-    let routeDeltaKo: string | null = null;
+    const result = runWhatIfSimulation({
+      scenarioKind,
+      current: {
+        objectId: object.id,
+        title: object.title,
+        typeLabelKo: object.type,
+        priceWon: currentPriceWon,
+        priceLabelKo: object.facts.priceLabelKo,
+        lat: object.location.lat,
+        lng: object.location.lng,
+        dayLabelKo: null,
+      },
+      proposal: {
+        objectId: alt.objectId,
+        title: alt.title,
+        priceWon: alt.priceWon,
+        priceLabelKo: alt.priceLabelKo,
+        lat: alt.lat,
+        lng: alt.lng,
+      },
+      anchors,
+    });
 
-    if (alt.priceLabelKo && object.facts.priceLabelKo) {
-      lines.push(`가격 ${object.facts.priceLabelKo} → ${alt.priceLabelKo}`);
-      budgetDeltaKo = alt.priceLabelKo;
-    } else if (alt.priceLabelKo) {
-      lines.push(`가격 ${alt.priceLabelKo}`);
-      budgetDeltaKo = alt.priceLabelKo;
-    }
-
-    if (alt.metersFromCurrent != null && Number.isFinite(alt.metersFromCurrent)) {
-      const mins = Math.max(1, Math.round(alt.metersFromCurrent / 80));
-      const route = `이동 약 ${mins}분 (${alt.metersFromCurrent}m)`;
-      lines.push(route);
-      routeDeltaKo = route;
-    }
-
-    if (alt.rating != null && object.facts.rating != null) {
-      const d = alt.rating - object.facts.rating;
-      if (Math.abs(d) >= 0.1) {
-        lines.push(
-          d > 0
-            ? `평점 +${d.toFixed(1)}`
-            : `평점 ${d.toFixed(1)}`,
-        );
-      }
-    }
-
-    if (lines.length === 0) {
-      lines.push(`${alt.title}로 바꿔 볼 수 있어요`);
-    }
+    const budgetChange = result.changes.find((c) => c.kind === "budget");
+    const distanceChange = result.changes.find((c) => c.kind === "distance");
+    const scheduleChange = result.changes.find((c) => c.kind === "schedule");
 
     return {
       id: alt.objectId,
       alternativeObjectId: alt.objectId,
       alternativeTitle: alt.title,
-      linesKo: lines,
-      budgetDeltaKo,
-      routeDeltaKo,
+      linesKo: simulationImpactLinesKo(result),
+      budgetDeltaKo: budgetChange
+        ? formatWonDelta(budgetChange.delta)
+        : null,
+      routeDeltaKo:
+        scheduleChange?.valueKo ??
+        (distanceChange
+          ? `거리 ${formatMinutesDelta(distanceChange.delta)}`
+          : null),
+      result,
     };
   });
 }
@@ -142,6 +156,7 @@ export function buildCalloutViewModel(input: {
     ObjectRelationType,
     readonly ObjectRelation[]
   > | null;
+  simulationAnchors?: readonly SimulationItineraryAnchor[] | null;
 }): CalloutViewModel | null {
   const desc = getCalloutObjectTypeDescriptor(input.object.type);
   if (!desc) return null;
@@ -192,7 +207,11 @@ export function buildCalloutViewModel(input: {
     },
     simulate: {
       currentTitle: object.title,
-      deltas: buildSimulationDeltas(object, alternatives),
+      deltas: buildSimulationDeltas(
+        object,
+        alternatives,
+        input.simulationAnchors ?? [],
+      ),
       emptyKo: desc.simulateEmptyKo,
     },
     prepare: {

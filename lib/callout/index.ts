@@ -78,3 +78,26 @@ export {
   type ObjectRelationRole,
   type ObjectRelationType,
 } from "@/lib/callout/object-relation";
+
+export {
+  assertSimulationDoesNotCommit,
+  buildCurrentRealityFromWorkspace,
+  buildSimulationAnchorsFromWorkspace,
+  buildSimulationProposalFromNode,
+  clearSimulationDraft,
+  createSimulationDraft,
+  formatMinutesDelta,
+  formatWonDelta,
+  markSimulationDraftApplied,
+  parseWonAmount,
+  readSimulationDraft,
+  runWhatIfSimulation,
+  simulationImpactLinesKo,
+  writeSimulationDraft,
+  type CurrentRealitySnapshot,
+  type SimulationChange,
+  type SimulationDraft,
+  type SimulationImpact,
+  type SimulationProposal,
+  type SimulationResult,
+} from "@/lib/callout/simulation";

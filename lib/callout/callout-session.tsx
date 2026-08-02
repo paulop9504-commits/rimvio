@@ -24,6 +24,7 @@ import type {
   ObjectRelation,
   ObjectRelationType,
 } from "@/lib/callout/object-relation";
+import type { SimulationItineraryAnchor } from "@/lib/callout/simulation/types";
 
 export type CalloutSessionValue = {
   readonly contextId: string;
@@ -35,6 +36,7 @@ export type CalloutSessionValue = {
   readonly getRelationBuckets: (
     objectId: string,
   ) => Record<ObjectRelationType, readonly ObjectRelation[]>;
+  readonly getSimulationAnchors?: () => readonly SimulationItineraryAnchor[];
   readonly handlers: CalloutHandlers;
 };
 
@@ -69,6 +71,7 @@ export function useCalloutViewModel(objectId: string): CalloutViewModel | null {
       neighbors: session.getNeighbors(objectId),
       alternatives: session.getAlternatives(objectId),
       relationBuckets: session.getRelationBuckets(objectId),
+      simulationAnchors: session.getSimulationAnchors?.() ?? [],
     });
   }, [session, objectId]);
 }

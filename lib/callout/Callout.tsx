@@ -210,6 +210,9 @@ export function Callout({
         {ui.mode === "simulate" ? (
           <CalloutSimulation
             model={model.simulate}
+            onPreview={(altId) =>
+              handlers.onPreviewSimulation?.(objectId, altId)
+            }
             onApply={(altId) => handlers.onApplySimulation?.(objectId, altId)}
           />
         ) : null}

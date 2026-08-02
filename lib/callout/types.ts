@@ -110,6 +110,8 @@ export type CalloutSimulationDelta = {
   readonly linesKo: readonly string[];
   readonly budgetDeltaKo: string | null;
   readonly routeDeltaKo: string | null;
+  /** Engine result — Draft Possible Reality only */
+  readonly result: import("@/lib/callout/simulation/types").SimulationResult | null;
 };
 
 export type CalloutPrepareStep = {
@@ -199,6 +201,12 @@ export type CalloutHandlers = {
     objectId: string,
     axes: readonly { id: string; nudge: "up" | "down" | "neutral" }[],
   ) => void;
+  /** Preview What-if into Simulation Draft (no Commit) */
+  onPreviewSimulation?: (
+    objectId: string,
+    alternativeObjectId: string,
+  ) => void;
+  /** Apply Simulation to Workspace Draft State only — never Commit */
   onApplySimulation?: (objectId: string, alternativeObjectId: string) => void;
   onCreatePrepareDraft?: (objectId: string) => void;
   onHandoffField?: (objectId: string) => void;

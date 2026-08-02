@@ -93,8 +93,11 @@ const model = buildCalloutViewModel({
       objectId: "hotel_b",
       title: "B Hotel",
       priceLabelKo: "98,000원",
+      priceWon: 98000,
       metersFromCurrent: 900,
       rating: 8.2,
+      lat: 34.67,
+      lng: 135.51,
     },
   ],
 });
