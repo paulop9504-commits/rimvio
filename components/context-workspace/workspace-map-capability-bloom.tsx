@@ -7,6 +7,7 @@
 
 import type {
   CapabilityLiveSignal,
+  WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityCallout,
 } from "@/lib/context-workspace/capability-callout";
 import { WorkspaceCapabilityBloom } from "@/components/context-workspace/workspace-capability-bloom";
@@ -19,7 +20,7 @@ export type WorkspaceMapCapabilityBloomProps = {
   callouts: readonly WorkspaceCapabilityCallout[];
   liveSignals?: readonly CapabilityLiveSignal[];
   hubLabelKo: string;
-  onAction?: () => void;
+  handlers?: WorkspaceCapabilityBloomHandlers;
   className?: string;
 };
 
@@ -29,7 +30,7 @@ export function WorkspaceMapCapabilityBloom({
   callouts,
   liveSignals = [],
   hubLabelKo,
-  onAction,
+  handlers,
   className,
 }: WorkspaceMapCapabilityBloomProps) {
   if (!open || !anchor) return null;
@@ -53,7 +54,8 @@ export function WorkspaceMapCapabilityBloom({
           callouts={callouts}
           liveSignals={liveSignals}
           hubLabelKo={hubLabelKo}
-          onAction={onAction}
+          handlers={handlers}
+          onAction={handlers?.onPrepare}
           compact
         />
       </div>

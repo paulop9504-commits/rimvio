@@ -108,6 +108,8 @@ function buildInsight(
     confidence,
     icon: "sparkle",
     evidence,
+    primaryCtaKo: "이 기준으로 다시",
+    primaryAction: "rerank_similar",
   };
 }
 
@@ -151,6 +153,12 @@ function buildReview(preview: NodePreviewModel): WorkspaceCapabilityCallout | nu
 
 function buildNearby(preview: NodePreviewModel): WorkspaceCapabilityCallout | null {
   if (preview.nearby.length === 0) return null;
+  const targets = preview.nearby
+    .filter((n) => Boolean(n.nodeId))
+    .map((n) => ({
+      nodeId: n.nodeId!,
+      labelKo: n.labelKo,
+    }));
   const lines = preview.nearby.slice(0, 3).map((n) => n.labelKo);
   return {
     id: "nearby",
@@ -160,6 +168,9 @@ function buildNearby(preview: NodePreviewModel): WorkspaceCapabilityCallout | nu
     linesKo: lines,
     confidence: null,
     icon: "pin",
+    nearbyTargets: targets,
+    primaryCtaKo: targets[0] ? "맵에서 보기" : null,
+    primaryAction: targets[0] ? "focus_nearby" : null,
   };
 }
 
@@ -180,15 +191,16 @@ function buildDay(
 }
 
 function buildAction(preview: NodePreviewModel): WorkspaceCapabilityCallout | null {
-  if (!preview.canPrepare) return null;
   return {
     id: "action",
     kind: "action",
     labelKo: "실행",
-    valueKo: "예약 준비",
+    valueKo: preview.canPrepare ? "예약 준비" : "선택 · 고정",
     linesKo: ["선택 · 비교 · 고정 · 예약 준비"],
     confidence: null,
     icon: "bolt",
+    primaryCtaKo: preview.canPrepare ? "예약 준비" : "선택",
+    primaryAction: preview.canPrepare ? "prepare" : "select",
   };
 }
 
@@ -272,9 +284,10 @@ const RECIPE_ORDER: Record<
   WorkspaceCapabilityRecipe,
   readonly WorkspaceCapabilityCallout["kind"][]
 > = {
-  travel: ["insight", "price", "review", "nearby", "day", "action"],
-  business: ["insight", "nearby", "price", "action", "review", "day"],
-  date: ["insight", "review", "nearby", "price", "day", "action"],
+  // Prefer operable callouts (insight / nearby / action) in the bloom.
+  travel: ["insight", "nearby", "action", "price", "review", "day"],
+  business: ["insight", "nearby", "action", "price", "review", "day"],
+  date: ["insight", "review", "nearby", "action", "price", "day"],
 };
 
 export function buildWorkspaceCapabilityCallouts(input: {

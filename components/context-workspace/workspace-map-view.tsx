@@ -41,6 +41,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { WorkspaceMapCapabilityBloom } from "@/components/context-workspace/workspace-map-capability-bloom";
 import type {
   CapabilityLiveSignal,
+  WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityCallout,
 } from "@/lib/context-workspace/capability-callout";
 
@@ -48,7 +49,7 @@ export type WorkspaceMapCapabilityBloomModel = {
   readonly callouts: readonly WorkspaceCapabilityCallout[];
   readonly liveSignals: readonly CapabilityLiveSignal[];
   readonly hubLabelKo: string;
-  readonly onAction?: () => void;
+  readonly handlers?: WorkspaceCapabilityBloomHandlers;
 };
 
 export type WorkspaceMapViewProps = {
@@ -976,7 +977,7 @@ function MapLibreWorkspaceMap({
           callouts={capabilityBloom.callouts}
           liveSignals={capabilityBloom.liveSignals}
           hubLabelKo={capabilityBloom.hubLabelKo}
-          onAction={capabilityBloom.onAction}
+          handlers={capabilityBloom.handlers}
         />
       ) : null}
     </div>

@@ -311,6 +311,7 @@ export {
 export type {
   CapabilityEvidenceItem,
   CapabilityLiveSignal,
+  WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityBundle,
   WorkspaceCapabilityCallout,
   WorkspaceCapabilityKind,

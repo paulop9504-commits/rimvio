@@ -19,6 +19,8 @@ export type NodePreviewNearbyChip = {
   readonly kind: "eatery" | "cafe" | "poi" | "amenity" | "route" | "other";
   readonly labelKo: string;
   readonly meters: number | null;
+  /** Live Workspace node — Callout can focus the map on this object. */
+  readonly nodeId: string | null;
 };
 
 export type NodePreviewModel = {
@@ -177,6 +179,7 @@ export function buildNodePreview(
         ? `${nearbyIcon(kind)} ${base} ${metersLabel}`
         : `${nearbyIcon(kind)} ${base}`,
       meters: edge.meters,
+      nodeId: other?.id ?? otherId,
     });
     if (nearby.length >= 4) break;
   }

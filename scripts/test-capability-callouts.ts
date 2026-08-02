@@ -23,8 +23,8 @@ const preview: NodePreviewModel = {
   whyChosen: "역 4분 · 가성비 · 혼자 여행",
   amenities: ["예약 가능", "숙소 · 동선 중심"],
   nearby: [
-    { kind: "amenity", labelKo: "🏪 편의점 120m", meters: 120 },
-    { kind: "eatery", labelKo: "🍣 맛집 거리 3분", meters: 240 },
+    { kind: "amenity", labelKo: "🏪 편의점 120m", meters: 120, nodeId: "n2" },
+    { kind: "eatery", labelKo: "🍣 맛집 거리 3분", meters: 240, nodeId: "n3" },
   ],
   selected: false,
   bookmarked: false,
@@ -63,6 +63,10 @@ assert.equal(
   scoreInsightConfidence(insight.evidence ?? [], 3) ,
   insight.confidence,
 );
+assert.equal(callouts[0]?.primaryAction, "rerank_similar");
+const nearby = callouts.find((c) => c.kind === "nearby");
+assert.ok(nearby?.nearbyTargets?.length);
+assert.ok(callouts.some((c) => c.kind === "action"));
 console.log(
   "ok capability-callouts",
   callouts.map((c) => c.kind).join(","),

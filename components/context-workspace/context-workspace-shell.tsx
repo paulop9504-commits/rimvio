@@ -784,16 +784,64 @@ export function ContextWorkspaceShell({
     if (bundle.callouts.length === 0 && bundle.liveSignals.length === 0) {
       return null;
     }
+    const nodeId = selectedNode.id;
     return {
       callouts: bundle.callouts,
       liveSignals: bundle.liveSignals,
       hubLabelKo: preview.ratingLabel,
-      onAction: () => {
-        if (!preview.canPrepare) return;
-        void onPrepareReserve(selectedNode.id);
+      handlers: {
+        onRerankSimilar: () => {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "select",
+            nodeIds: [nodeId],
+          });
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "find_similar",
+            nodeIds: [nodeId],
+          });
+          toast.success("비슷한 후보를 다시 모았어요");
+        },
+        onFocusNearby: (id: string) => {
+          setFocusedId(id);
+          setPeekClosed(true);
+        },
+        onSelect: () => {
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "select",
+            nodeIds: [nodeId],
+          });
+          toast.success(copy.globe.workspacePreviewSelected);
+        },
+        onCompare: () => {
+          const nextIds = state.compareIds.includes(nodeId)
+            ? state.compareIds
+            : [...state.compareIds, nodeId].slice(0, 5);
+          applyWorkspaceTransition({
+            contextEventId: eventId,
+            op: "compare",
+            nodeIds: [...nextIds],
+          });
+          if (nextIds.length >= 2) setCompareOpen(true);
+        },
+        onBookmark: () => {
+          onPinToggle(nodeId);
+        },
+        onPrepare: () => {
+          if (!preview.canPrepare) return;
+          void onPrepareReserve(nodeId);
+        },
       },
     };
-  }, [selectedNode, state, eventId, onPrepareReserve]);
+  }, [
+    selectedNode,
+    state,
+    eventId,
+    onPrepareReserve,
+    onPinToggle,
+  ]);
 
   return (
     <div

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type {
   CapabilityLiveSignal,
+  WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityCallout,
 } from "@/lib/context-workspace/capability-callout";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,9 @@ export type WorkspaceCapabilityBloomProps = {
   liveSignals?: readonly CapabilityLiveSignal[];
   hubLabelKo: string;
   className?: string;
+  /** @deprecated use handlers.onPrepare */
   onAction?: () => void;
+  handlers?: WorkspaceCapabilityBloomHandlers;
   /** Tighter layout for map-anchored bloom. */
   compact?: boolean;
 };
@@ -105,6 +108,7 @@ export function WorkspaceCapabilityBloom({
   hubLabelKo,
   className,
   onAction,
+  handlers,
   compact = false,
 }: WorkspaceCapabilityBloomProps) {
   const [activeId, setActiveId] = useState<string | null>(
@@ -125,6 +129,22 @@ export function WorkspaceCapabilityBloom({
 
   const active =
     callouts.find((c) => c.id === activeId) ?? callouts[0] ?? null;
+
+  const runPrimary = (c: WorkspaceCapabilityCallout) => {
+    const action = c.primaryAction;
+    if (!action) return;
+    if (action === "rerank_similar") handlers?.onRerankSimilar?.();
+    else if (action === "focus_nearby") {
+      const id = c.nearbyTargets?.[0]?.nodeId;
+      if (id) handlers?.onFocusNearby?.(id);
+    } else if (action === "select") handlers?.onSelect?.();
+    else if (action === "compare") handlers?.onCompare?.();
+    else if (action === "bookmark") handlers?.onBookmark?.();
+    else if (action === "prepare") {
+      handlers?.onPrepare?.();
+      onAction?.();
+    }
+  };
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -183,7 +203,6 @@ export function WorkspaceCapabilityBloom({
                   )}
                   onClick={() => {
                     setActiveId(c.id);
-                    if (c.kind === "action") onAction?.();
                   }}
                   aria-pressed={on}
                 >
@@ -266,17 +285,78 @@ export function WorkspaceCapabilityBloom({
                 </div>
               ) : null}
 
-              <ul className="mt-2.5 space-y-1.5">
-                {active.linesKo.map((line) => (
-                  <li
-                    key={line}
-                    className="flex items-start gap-2 text-[13px] leading-snug text-[#4e5968]"
+              {active.kind === "nearby" &&
+              active.nearbyTargets &&
+              active.nearbyTargets.length > 0 ? (
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {active.nearbyTargets.slice(0, 3).map((t) => (
+                    <button
+                      key={t.nodeId}
+                      type="button"
+                      className="max-w-full truncate rounded-full bg-white px-2.5 py-1 text-left text-[11px] font-semibold text-[#191f28] ring-1 ring-black/[0.05]"
+                      onClick={() => handlers?.onFocusNearby?.(t.nodeId)}
+                    >
+                      {t.labelKo}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <ul className="mt-2.5 space-y-1.5">
+                  {active.linesKo.map((line) => (
+                    <li
+                      key={line}
+                      className="flex items-start gap-2 text-[13px] leading-snug text-[#4e5968]"
+                    >
+                      <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-[#3182f6]/80" />
+                      <span className="min-w-0 flex-1">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {active.kind === "action" ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className="rounded-full bg-[#191f28] px-3 py-1.5 text-[11px] font-semibold text-white"
+                    onClick={() => handlers?.onSelect?.()}
                   >
-                    <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-[#3182f6]/80" />
-                    <span className="min-w-0 flex-1">{line}</span>
-                  </li>
-                ))}
-              </ul>
+                    선택
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] ring-1 ring-black/[0.06]"
+                    onClick={() => handlers?.onCompare?.()}
+                  >
+                    비교
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#191f28] ring-1 ring-black/[0.06]"
+                    onClick={() => handlers?.onBookmark?.()}
+                  >
+                    고정
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-[#3182f6] px-3 py-1.5 text-[11px] font-semibold text-white"
+                    onClick={() => {
+                      handlers?.onPrepare?.();
+                      onAction?.();
+                    }}
+                  >
+                    예약 준비
+                  </button>
+                </div>
+              ) : active.primaryCtaKo && active.primaryAction ? (
+                <button
+                  type="button"
+                  className="mt-3 w-full rounded-full bg-[#3182f6] px-3 py-2 text-[12px] font-semibold text-white"
+                  onClick={() => runPrimary(active)}
+                >
+                  {active.primaryCtaKo}
+                </button>
+              ) : null}
             </motion.div>
           </AnimatePresence>
         </>
