@@ -1,11 +1,14 @@
 /**
- * Build ≤4 Capability Callouts for a Workspace place hub.
- * Empty capabilities are omitted — bloom stays sparse and clean.
+ * Build ≤4 Capability Callouts + thin Live Pulse for a Workspace place hub.
+ * Empty capabilities / signals are omitted — bloom stays sparse and clean.
  */
 
 import type { NodePreviewModel } from "@/lib/context-workspace/build-node-preview";
 import type { PlaceBrief } from "@/lib/context-workspace/place-brief/types";
 import type {
+  CapabilityEvidenceItem,
+  CapabilityLiveSignal,
+  WorkspaceCapabilityBundle,
   WorkspaceCapabilityCallout,
   WorkspaceCapabilityRecipe,
 } from "@/lib/context-workspace/capability-callout/types";
@@ -45,9 +48,48 @@ function insightLines(
   return lines.slice(0, 4);
 }
 
+function buildEvidence(input: {
+  preview: NodePreviewModel;
+  brief: PlaceBrief | null | undefined;
+  draftDayLabelKo: string | null | undefined;
+}): readonly CapabilityEvidenceItem[] {
+  const { preview, brief, draftDayLabelKo } = input;
+  const hasReview =
+    preview.rating != null ||
+    (typeof preview.reviewSummary === "string" &&
+      preview.reviewSummary !== "후기 없음") ||
+    Boolean(brief?.reviewSummaryKo?.trim());
+  const hasPrice =
+    Boolean(preview.price?.trim()) &&
+    preview.price !== "가격 미정" &&
+    preview.price !== "—";
+  const hasSchedule = Boolean(draftDayLabelKo?.trim() || brief?.routeFitKo?.trim());
+  const hasDistance = preview.nearby.length > 0;
+
+  return [
+    { id: "review", labelKo: "리뷰", present: hasReview },
+    { id: "price", labelKo: "가격", present: hasPrice },
+    { id: "schedule", labelKo: "일정", present: hasSchedule },
+    { id: "distance", labelKo: "거리", present: hasDistance },
+  ];
+}
+
+/** Palantir-style confidence from grounded evidence only — never invent. */
+export function scoreInsightConfidence(
+  evidence: readonly CapabilityEvidenceItem[],
+  lineCount: number,
+): number {
+  const present = evidence.filter((e) => e.present).length;
+  const base = 0.52;
+  const fromEvidence = present * 0.1;
+  const fromLines = Math.min(0.12, lineCount * 0.03);
+  return Math.min(0.96, Math.round((base + fromEvidence + fromLines) * 100) / 100);
+}
+
 function buildInsight(
   preview: NodePreviewModel,
   brief: PlaceBrief | null | undefined,
+  draftDayLabelKo: string | null | undefined,
 ): WorkspaceCapabilityCallout | null {
   const lines = insightLines(preview, brief);
   if (lines.length === 0 && !brief?.introKo?.trim()) return null;
@@ -55,14 +97,17 @@ function buildInsight(
     lines.length > 0
       ? lines
       : [brief!.introKo!.trim().slice(0, 80)];
+  const evidence = buildEvidence({ preview, brief, draftDayLabelKo });
+  const confidence = scoreInsightConfidence(evidence, body.length);
   return {
     id: "insight",
     kind: "insight",
     labelKo: "AI 추천",
-    valueKo: body[0]!.slice(0, 22),
+    valueKo: `${Math.round(confidence * 100)}%`,
     linesKo: body,
-    confidence: body.length >= 3 ? 0.9 : body.length >= 2 ? 0.82 : 0.7,
+    confidence,
     icon: "sparkle",
+    evidence,
   };
 }
 
@@ -147,6 +192,82 @@ function buildAction(preview: NodePreviewModel): WorkspaceCapabilityCallout | nu
   };
 }
 
+/** Live pulse — only grounded facts (no fake crowd/weather/rooms). */
+export function buildWorkspaceLiveSignals(input: {
+  preview: NodePreviewModel;
+  brief?: PlaceBrief | null;
+  draftDayLabelKo?: string | null;
+}): readonly CapabilityLiveSignal[] {
+  const { preview, brief, draftDayLabelKo } = input;
+  const out: CapabilityLiveSignal[] = [];
+
+  if (
+    preview.price &&
+    preview.price !== "가격 미정" &&
+    preview.price !== "—"
+  ) {
+    out.push({
+      id: "price",
+      labelKo: "가격",
+      valueKo: preview.price,
+      tone: "neutral",
+    });
+  }
+
+  if (preview.rating != null) {
+    out.push({
+      id: "rating",
+      labelKo: "평점",
+      valueKo: preview.ratingLabel,
+      tone: preview.rating >= 8 || preview.rating >= 4.2 ? "good" : "neutral",
+    });
+  } else if (preview.reviewSummary !== "후기 없음") {
+    out.push({
+      id: "reviews",
+      labelKo: "후기",
+      valueKo: preview.reviewSummary,
+      tone: "neutral",
+    });
+  }
+
+  if (preview.nearby[0]) {
+    const first = preview.nearby[0].labelKo.replace(/^[^\s]+\s/u, "");
+    out.push({
+      id: "nearby",
+      labelKo: "주변",
+      valueKo: first.slice(0, 18),
+      tone: "good",
+    });
+  }
+
+  if (draftDayLabelKo?.trim()) {
+    out.push({
+      id: "day",
+      labelKo: "일정",
+      valueKo: draftDayLabelKo.trim(),
+      tone: "neutral",
+    });
+  } else if (brief?.routeFitKo?.trim()) {
+    out.push({
+      id: "route",
+      labelKo: "동선",
+      valueKo: brief.routeFitKo.trim().slice(0, 18),
+      tone: "good",
+    });
+  }
+
+  if (preview.canPrepare) {
+    out.push({
+      id: "prep",
+      labelKo: "상태",
+      valueKo: "예약 준비 가능",
+      tone: "good",
+    });
+  }
+
+  return out.slice(0, 5);
+}
+
 const RECIPE_ORDER: Record<
   WorkspaceCapabilityRecipe,
   readonly WorkspaceCapabilityCallout["kind"][]
@@ -162,12 +283,25 @@ export function buildWorkspaceCapabilityCallouts(input: {
   draftDayLabelKo?: string | null;
   recipe?: WorkspaceCapabilityRecipe;
 }): readonly WorkspaceCapabilityCallout[] {
+  return buildWorkspaceCapabilityBundle(input).callouts;
+}
+
+export function buildWorkspaceCapabilityBundle(input: {
+  preview: NodePreviewModel;
+  brief?: PlaceBrief | null;
+  draftDayLabelKo?: string | null;
+  recipe?: WorkspaceCapabilityRecipe;
+}): WorkspaceCapabilityBundle {
   const recipe = input.recipe ?? "travel";
   const pool: Partial<
     Record<WorkspaceCapabilityCallout["kind"], WorkspaceCapabilityCallout>
   > = {};
 
-  const insight = buildInsight(input.preview, input.brief);
+  const insight = buildInsight(
+    input.preview,
+    input.brief,
+    input.draftDayLabelKo,
+  );
   if (insight) pool.insight = insight;
   const price = buildPrice(input.preview);
   if (price) pool.price = price;
@@ -180,11 +314,19 @@ export function buildWorkspaceCapabilityCallouts(input: {
   const action = buildAction(input.preview);
   if (action) pool.action = action;
 
-  const out: WorkspaceCapabilityCallout[] = [];
+  const callouts: WorkspaceCapabilityCallout[] = [];
   for (const kind of RECIPE_ORDER[recipe]) {
     const c = pool[kind];
-    if (c) out.push(c);
-    if (out.length >= MAX_CALLOUTS) break;
+    if (c) callouts.push(c);
+    if (callouts.length >= MAX_CALLOUTS) break;
   }
-  return out;
+
+  return {
+    callouts,
+    liveSignals: buildWorkspaceLiveSignals({
+      preview: input.preview,
+      brief: input.brief,
+      draftDayLabelKo: input.draftDayLabelKo,
+    }),
+  };
 }

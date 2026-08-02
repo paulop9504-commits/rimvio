@@ -47,7 +47,7 @@ import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work
 import { WorkspaceRemoteImage } from "@/components/context-workspace/workspace-remote-image";
 import { WorkspacePlaceBriefSection } from "@/components/context-workspace/workspace-place-brief-section";
 import { WorkspaceCapabilityBloom } from "@/components/context-workspace/workspace-capability-bloom";
-import { buildWorkspaceCapabilityCallouts } from "@/lib/context-workspace/capability-callout";
+import { buildWorkspaceCapabilityBundle } from "@/lib/context-workspace/capability-callout";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -229,9 +229,9 @@ export function WorkspaceObjectCarousel({
     return findRealityDraftDayForNode(workspace.realityDraft, activeNode.id);
   }, [activeNode, workspace.realityDraft]);
 
-  const capabilityCallouts = useMemo(() => {
-    if (!preview) return [];
-    return buildWorkspaceCapabilityCallouts({
+  const capabilityBundle = useMemo(() => {
+    if (!preview) return { callouts: [], liveSignals: [] };
+    return buildWorkspaceCapabilityBundle({
       preview,
       brief: placeBrief ?? immediateBrief,
       draftDayLabelKo: draftDay?.labelKo ?? null,
@@ -486,9 +486,11 @@ export function WorkspaceObjectCarousel({
                   </p>
                 </div>
 
-                {capabilityCallouts.length > 0 ? (
+                {capabilityBundle.callouts.length > 0 ||
+                capabilityBundle.liveSignals.length > 0 ? (
                   <WorkspaceCapabilityBloom
-                    callouts={capabilityCallouts}
+                    callouts={capabilityBundle.callouts}
+                    liveSignals={capabilityBundle.liveSignals}
                     hubLabelKo={preview.ratingLabel}
                     onAction={() => {
                       if (preview.canPrepare && primary.kind !== "done") {

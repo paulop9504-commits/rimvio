@@ -1,8 +1,11 @@
 /**
- * Smoke: capability callouts stay ≤4 and prefer insight.
+ * Smoke: capability callouts stay ≤4; insight has evidence + confidence; live pulse grounded.
  */
 import assert from "node:assert/strict";
-import { buildWorkspaceCapabilityCallouts } from "@/lib/context-workspace/capability-callout/build-capability-callouts";
+import {
+  buildWorkspaceCapabilityBundle,
+  scoreInsightConfidence,
+} from "@/lib/context-workspace/capability-callout/build-capability-callouts";
 import type { NodePreviewModel } from "@/lib/context-workspace/build-node-preview";
 
 const preview: NodePreviewModel = {
@@ -30,7 +33,7 @@ const preview: NodePreviewModel = {
   capabilities: ["book_room"],
 };
 
-const callouts = buildWorkspaceCapabilityCallouts({
+const bundle = buildWorkspaceCapabilityBundle({
   preview,
   brief: {
     placeId: "p1",
@@ -48,8 +51,22 @@ const callouts = buildWorkspaceCapabilityCallouts({
   recipe: "travel",
 });
 
+const { callouts, liveSignals } = bundle;
 assert.ok(callouts.length <= 4, "max 4");
 assert.equal(callouts[0]?.kind, "insight");
-assert.ok(callouts.some((c) => c.kind === "price"));
-assert.ok(callouts.some((c) => c.kind === "review"));
-console.log("ok capability-callouts", callouts.map((c) => c.kind).join(","));
+const insight = callouts[0]!;
+assert.ok(insight.confidence != null && insight.confidence >= 0.8);
+assert.ok(insight.evidence?.every((e) => e.present));
+assert.ok(liveSignals.length >= 3);
+assert.ok(liveSignals.some((s) => s.id === "price"));
+assert.equal(
+  scoreInsightConfidence(insight.evidence ?? [], 3) ,
+  insight.confidence,
+);
+console.log(
+  "ok capability-callouts",
+  callouts.map((c) => c.kind).join(","),
+  "live",
+  liveSignals.map((s) => s.id).join(","),
+  `conf=${Math.round((insight.confidence ?? 0) * 100)}%`,
+);

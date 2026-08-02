@@ -304,9 +304,14 @@ export {
 } from "@/lib/context-workspace/workspace-object-layer";
 
 export {
+  buildWorkspaceCapabilityBundle,
   buildWorkspaceCapabilityCallouts,
+  buildWorkspaceLiveSignals,
 } from "@/lib/context-workspace/capability-callout";
 export type {
+  CapabilityEvidenceItem,
+  CapabilityLiveSignal,
+  WorkspaceCapabilityBundle,
   WorkspaceCapabilityCallout,
   WorkspaceCapabilityKind,
   WorkspaceCapabilityRecipe,
