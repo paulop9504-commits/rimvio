@@ -302,4 +302,13 @@ export {
   listPresentObjectLayers,
   layerLabelKo,
 } from "@/lib/context-workspace/workspace-object-layer";
+
+export {
+  buildWorkspaceCapabilityCallouts,
+} from "@/lib/context-workspace/capability-callout";
+export type {
+  WorkspaceCapabilityCallout,
+  WorkspaceCapabilityKind,
+  WorkspaceCapabilityRecipe,
+} from "@/lib/context-workspace/capability-callout";
 export type { WorkspaceObjectLayerId } from "@/lib/context-workspace/workspace-object-layer";

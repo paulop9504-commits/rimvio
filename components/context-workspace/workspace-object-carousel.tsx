@@ -26,6 +26,7 @@ import {
 } from "@/lib/context-workspace";
 import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
 import { buildNodeContextBrief } from "@/lib/context-workspace/context-brief/build-node-brief";
+import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
 import {
   buildImmediatePlaceBrief,
   buildPlaceBriefFactPack,
@@ -45,6 +46,8 @@ import {
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { WorkspaceRemoteImage } from "@/components/context-workspace/workspace-remote-image";
 import { WorkspacePlaceBriefSection } from "@/components/context-workspace/workspace-place-brief-section";
+import { WorkspaceCapabilityBloom } from "@/components/context-workspace/workspace-capability-bloom";
+import { buildWorkspaceCapabilityCallouts } from "@/lib/context-workspace/capability-callout";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -220,6 +223,21 @@ export function WorkspaceObjectCarousel({
       anchorTitle: lodging?.title ?? null,
     });
   }, [activeNode, workspace]);
+
+  const draftDay = useMemo(() => {
+    if (!activeNode || !workspace.realityDraft) return null;
+    return findRealityDraftDayForNode(workspace.realityDraft, activeNode.id);
+  }, [activeNode, workspace.realityDraft]);
+
+  const capabilityCallouts = useMemo(() => {
+    if (!preview) return [];
+    return buildWorkspaceCapabilityCallouts({
+      preview,
+      brief: placeBrief ?? immediateBrief,
+      draftDayLabelKo: draftDay?.labelKo ?? null,
+      recipe: "travel",
+    });
+  }, [preview, placeBrief, immediateBrief, draftDay]);
 
   useEffect(() => {
     setPhotoIndex(0);
@@ -467,6 +485,22 @@ export function WorkspaceObjectCarousel({
                     ) : null}
                   </p>
                 </div>
+
+                {capabilityCallouts.length > 0 ? (
+                  <WorkspaceCapabilityBloom
+                    callouts={capabilityCallouts}
+                    hubLabelKo={preview.ratingLabel}
+                    onAction={() => {
+                      if (preview.canPrepare && primary.kind !== "done") {
+                        if (primary.kind === "confirm")
+                          onConfirmReady?.(activeNode.id);
+                        else if (primary.kind === "approve_pay")
+                          onOpenField?.(activeNode.id);
+                        else onPrepareReserve?.(activeNode.id);
+                      }
+                    }}
+                  />
+                ) : null}
 
                 <div className="flex gap-2">
                   <button
