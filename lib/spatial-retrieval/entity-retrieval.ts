@@ -1,8 +1,11 @@
 /**
- * Entity Retrieval — discover target entities near Anchor (Workspace-scoped).
- * Stub seeds when no inventory yet — pipeline continues to relations/projection.
+ * Entity Retrieval — discover targets near Anchor, then Context-Score rank.
+ * Stub seeds until live maps wire — never treat as bare Google POI list SSOT.
  */
 
+import {
+  applySpatialQueryRanking,
+} from "@/lib/spatial-retrieval/spatial-query-builder";
 import type {
   SpatialQuerySpec,
   SpatialRetrievedEntity,
@@ -22,11 +25,21 @@ function haversineMeters(
   return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** Demo inventory relative to Namba — retrieval placeholder until live maps wire. */
+type SeedHit = {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  budgetBand: string;
+  scheduleTags: readonly string[];
+};
+
+/** Demo inventory relative to Anchor — Context Score attributes included. */
 function seedInventory(
   target: SpatialTargetEntity,
   center: { lat: number; lng: number },
-): readonly { id: string; title: string; lat: number; lng: number }[] {
+): readonly SeedHit[] {
   if (target === "restaurant" || target === "cafe") {
     return [
       {
@@ -34,18 +47,27 @@ function seedInventory(
         title: "Ichiran",
         lat: center.lat + 0.004,
         lng: center.lng + 0.002,
+        rating: 4.4,
+        budgetBand: "mid",
+        scheduleTags: ["lunch", "dinner"],
       },
       {
         id: "ent_rest_kukuru",
         title: "Kukuru Takoyaki",
         lat: center.lat + 0.002,
         lng: center.lng - 0.003,
+        rating: 4.1,
+        budgetBand: "low",
+        scheduleTags: ["snack", "dinner"],
       },
       {
         id: "ent_rest_sushi",
         title: "Sushiro Namba",
         lat: center.lat - 0.003,
         lng: center.lng + 0.001,
+        rating: 4.0,
+        budgetBand: "mid",
+        scheduleTags: ["lunch", "dinner"],
       },
     ];
   }
@@ -56,6 +78,9 @@ function seedInventory(
         title: "Station Capsule",
         lat: center.lat + 0.001,
         lng: center.lng + 0.001,
+        rating: 3.8,
+        budgetBand: "low",
+        scheduleTags: ["night"],
       },
     ];
   }
@@ -65,8 +90,33 @@ function seedInventory(
       title: "Dotonbori",
       lat: center.lat + 0.005,
       lng: center.lng,
+      rating: 4.6,
+      budgetBand: "mid",
+      scheduleTags: ["day", "evening"],
     },
   ];
+}
+
+function passesRelationFilter(
+  query: SpatialQuerySpec,
+  meters: number,
+): boolean {
+  const r = query.radius;
+  switch (query.relation) {
+    case "nearby":
+      return meters <= r;
+    case "walking_distance":
+      // Prefer walkable band (≤ ~12 min ≈ 960m when default)
+      return meters <= r && meters / 80 <= 15;
+    case "route_along":
+      return meters <= r;
+    case "same_area":
+      return meters <= r;
+    case "inside":
+      return meters <= Math.min(r, 600);
+    default:
+      return meters <= r;
+  }
 }
 
 export function retrieveSpatialEntities(input: {
@@ -78,13 +128,16 @@ export function retrieveSpatialEntities(input: {
     readonly kind: string;
     readonly lat: number;
     readonly lng: number;
+    readonly rating?: number | null;
+    readonly budgetBand?: string | null;
+    readonly scheduleTags?: readonly string[];
   }[];
 }): readonly SpatialRetrievedEntity[] {
   const { query } = input;
   const center = query.center;
   if (!center) return [];
 
-  const raw =
+  const raw: SeedHit[] =
     input.inventory && input.inventory.length > 0
       ? input.inventory
           .filter((e) => {
@@ -103,8 +156,11 @@ export function retrieveSpatialEntities(input: {
             title: e.titleKo,
             lat: e.lat,
             lng: e.lng,
+            rating: e.rating ?? 3.5,
+            budgetBand: e.budgetBand ?? "mid",
+            scheduleTags: e.scheduleTags ?? ["any"],
           }))
-      : seedInventory(query.targetEntity, center);
+      : [...seedInventory(query.targetEntity, center)];
 
   const out: SpatialRetrievedEntity[] = [];
   for (const e of raw) {
@@ -112,7 +168,7 @@ export function retrieveSpatialEntities(input: {
     const meters = Math.round(
       haversineMeters(center, { lat: e.lat, lng: e.lng }),
     );
-    if (meters > query.radiusMeters) continue;
+    if (!passesRelationFilter(query, meters)) continue;
     out.push({
       entityId: e.id,
       titleKo: e.title,
@@ -121,7 +177,12 @@ export function retrieveSpatialEntities(input: {
       lng: e.lng,
       metersFromAnchor: meters,
       walkMinutes: Math.max(1, Math.round(meters / 80)),
+      rating: e.rating,
+      budgetBand: e.budgetBand,
+      scheduleTags: e.scheduleTags,
     });
   }
-  return out.slice(0, 12);
+
+  // Context Score ranking — not distance-only sort
+  return applySpatialQueryRanking({ query, entities: out }).slice(0, 12);
 }

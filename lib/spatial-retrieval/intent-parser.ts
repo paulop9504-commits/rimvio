@@ -18,6 +18,8 @@ function emptyConstraints(
     distance: patch?.distance ?? null,
     walkingTime: patch?.walkingTime ?? null,
     category: patch?.category ?? null,
+    budgetBand: patch?.budgetBand ?? null,
+    scheduleWindow: patch?.scheduleWindow ?? null,
   };
 }
 
@@ -62,9 +64,16 @@ function resolveAnchorType(text: string): SpatialAnchorEntity {
 }
 
 function resolveRelation(text: string): SpatialRelation {
-  if (/도보|걸어서|walking/iu.test(text)) return "nearby";
-  if (/경로|루트|route|가는\s*길/iu.test(text)) return "route";
-  if (/안|내부|within/iu.test(text)) return "within";
+  if (/같은\s*동네|같은\s*구역|same\s*area|일대/iu.test(text)) {
+    return "same_area";
+  }
+  if (/안|내부|inside|within/iu.test(text)) return "inside";
+  if (/경로|루트|따라|route\s*along|가는\s*길/iu.test(text)) {
+    return "route_along";
+  }
+  if (/도보|걸어서|walking\s*distance|걸어서\s*갈/iu.test(text)) {
+    return "walking_distance";
+  }
   return "nearby";
 }
 
@@ -76,12 +85,23 @@ function resolveConstraints(text: string): SpatialDiscoveryConstraints {
   if (meters) distance = Number(meters[1]);
   else if (km) distance = Math.round(Number(km[1]) * 1000);
 
+  let budgetBand: string | null = null;
+  if (/저렴|싼|가성비|budget|low/iu.test(text)) budgetBand = "low";
+  else if (/고급|비싸|luxury|high/iu.test(text)) budgetBand = "high";
+  else if (/적당|중간|mid/iu.test(text)) budgetBand = "mid";
+
+  let scheduleWindow: string | null = null;
+  if (/점심|lunch/iu.test(text)) scheduleWindow = "lunch";
+  else if (/저녁|dinner/iu.test(text)) scheduleWindow = "dinner";
+
   return emptyConstraints({
     walkingTime: walk ? Number(walk[1]) : null,
     distance,
     category: /라멘|스시|야키토리/iu.test(text)
       ? (text.match(/(라멘|스시|야키토리)/iu)?.[1] ?? null)
       : null,
+    budgetBand,
+    scheduleWindow,
   });
 }
 

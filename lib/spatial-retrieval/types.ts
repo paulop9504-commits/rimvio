@@ -26,18 +26,48 @@ export const SPATIAL_ANCHOR_ENTITIES = [
 
 export type SpatialAnchorEntity = (typeof SPATIAL_ANCHOR_ENTITIES)[number];
 
+/**
+ * Supported spatial relations (Query Engine).
+ * Nearby · Walking Distance · Route Along · Same Area · Inside
+ */
 export const SPATIAL_RELATIONS = [
   "nearby",
-  "route",
-  "within",
+  "walking_distance",
+  "route_along",
+  "same_area",
+  "inside",
 ] as const;
 
 export type SpatialRelation = (typeof SPATIAL_RELATIONS)[number];
+
+/** Ranking axes declared on Spatial Query (not distance-only). */
+export const SPATIAL_QUERY_RANKING = [
+  "distance",
+  "rating",
+  "contextFit",
+] as const;
+
+export type SpatialQueryRankingAxis = (typeof SPATIAL_QUERY_RANKING)[number];
+
+/**
+ * Context Score weights — Restaurant example:
+ * distance 40% · rating 20% · budgetFit 20% · scheduleFit 20%
+ */
+export const SPATIAL_CONTEXT_SCORE_WEIGHTS = {
+  distance: 0.4,
+  rating: 0.2,
+  budgetFit: 0.2,
+  scheduleFit: 0.2,
+} as const;
 
 export type SpatialDiscoveryConstraints = {
   readonly distance: number | null;
   readonly walkingTime: number | null;
   readonly category: string | null;
+  /** Optional budget band for contextFit (e.g. "mid") */
+  readonly budgetBand?: string | null;
+  /** Optional schedule window hint (e.g. "lunch") */
+  readonly scheduleWindow?: string | null;
 };
 
 /**
@@ -126,13 +156,46 @@ export type SpatialAnchorResolveAmbiguous = {
   readonly askUser: false;
 };
 
+/**
+ * Spatial Query Engine output.
+ *
+ * {
+ *   center: { lat, lng },
+ *   radius: 1000,
+ *   category: "restaurant",
+ *   ranking: ["distance", "rating", "contextFit"]
+ * }
+ */
+export type SpatialQueryEngineOutput = {
+  readonly center: { readonly lat: number; readonly lng: number } | null;
+  readonly radius: number;
+  readonly category: string;
+  readonly ranking: readonly SpatialQueryRankingAxis[];
+  readonly relation: SpatialRelation;
+};
+
 export type SpatialQuerySpec = {
   readonly targetEntity: SpatialTargetEntity;
   readonly relation: SpatialRelation;
   readonly anchor: SpatialAnchorResolved;
   readonly constraints: SpatialDiscoveryConstraints;
   readonly center: { readonly lat: number; readonly lng: number } | null;
+  /** @deprecated prefer radius — kept for pipeline callers */
   readonly radiusMeters: number;
+  readonly radius: number;
+  readonly category: string;
+  readonly ranking: readonly SpatialQueryRankingAxis[];
+  /** Product wire shape */
+  readonly engine: SpatialQueryEngineOutput;
+};
+
+export type SpatialContextScoreBreakdown = {
+  readonly distance: number;
+  readonly rating: number;
+  readonly budgetFit: number;
+  readonly scheduleFit: number;
+  /** Weighted total 0..1 */
+  readonly total: number;
 };
 
 export type SpatialRetrievedEntity = {
@@ -143,6 +206,45 @@ export type SpatialRetrievedEntity = {
   readonly lng: number;
   readonly metersFromAnchor: number | null;
   readonly walkMinutes: number | null;
+  readonly rating?: number | null;
+  readonly budgetBand?: string | null;
+  readonly scheduleTags?: readonly string[];
+  readonly contextScore?: SpatialContextScoreBreakdown;
+};
+
+/**
+ * Reality Entity — not a flat POI list row.
+ * { id, type, location, attributes, contextLinks:[] }
+ */
+export type SpatialRealityEntity = {
+  readonly id: string;
+  readonly type: string;
+  readonly location: {
+    readonly lat: number | null;
+    readonly lng: number | null;
+  };
+  readonly attributes: {
+    readonly titleKo: string;
+    readonly rating?: number | null;
+    readonly budgetBand?: string | null;
+    readonly scheduleTags?: readonly string[];
+    readonly contextScore?: number;
+  };
+  readonly contextLinks: readonly string[];
+};
+
+/**
+ * Reality Relationship edge.
+ * { from, to, type, metadata: { distance, walkingTime } }
+ */
+export type SpatialRealityRelationship = {
+  readonly from: string;
+  readonly to: string;
+  readonly type: SpatialRelation;
+  readonly metadata: {
+    readonly distance: number | null;
+    readonly walkingTime: number | null;
+  };
 };
 
 export type SpatialRelationEdge = {
@@ -152,6 +254,30 @@ export type SpatialRelationEdge = {
   readonly relation: SpatialRelation;
   readonly meters: number | null;
   readonly walkMinutes: number | null;
+  /** Product wire shape */
+  readonly reality: SpatialRealityRelationship;
+};
+
+/**
+ * Workspace auto-update pipeline:
+ * Entity Created → Projection Event → Map Update → Marker → Relationship Layer → Callout
+ */
+export const SPATIAL_PROJECTION_PIPELINE = [
+  "entity_created",
+  "projection_event",
+  "map_update",
+  "marker_created",
+  "relationship_layer_update",
+  "callout_created",
+] as const;
+
+export type SpatialProjectionPipelineStage =
+  (typeof SPATIAL_PROJECTION_PIPELINE)[number];
+
+export type SpatialProjectionEvent = {
+  readonly stage: SpatialProjectionPipelineStage;
+  readonly entityId: string | null;
+  readonly message: string;
 };
 
 export type SpatialProjectionPin = {
@@ -178,7 +304,8 @@ export type SpatialRetrievalStage =
   | "retrieval"
   | "relations"
   | "projection"
-  | "callout";
+  | "callout"
+  | "reality_graph";
 
 export type SpatialRetrievalLogLine = {
   readonly stage: SpatialRetrievalStage;
@@ -214,10 +341,17 @@ export type SpatialRetrievalResult =
       readonly anchor: SpatialAnchorResolved;
       readonly resolver: SpatialEntityResolverResult;
       readonly query: SpatialQuerySpec;
+      /** Ranked retrieval hits (Context Score — not distance-only) */
       readonly entities: readonly SpatialRetrievedEntity[];
+      /** Reality Graph nodes (anchor + discovered) */
+      readonly realityEntities: readonly SpatialRealityEntity[];
       readonly relations: readonly SpatialRelationEdge[];
+      /** Reality Graph edges (from/to/type/metadata) */
+      readonly realityRelationships: readonly SpatialRealityRelationship[];
       readonly pins: readonly SpatialProjectionPin[];
       readonly callouts: readonly SpatialCalloutSeed[];
+      /** Workspace auto-update event stream */
+      readonly projectionEvents: readonly SpatialProjectionEvent[];
       readonly logs: readonly SpatialRetrievalLogLine[];
       readonly summaryKo: string;
     }

@@ -1,25 +1,10 @@
 /**
- * Relationship Generator — Anchor ↔ discovered entities
+ * Relationship Generator — re-export Reality Graph edges.
+ * @deprecated import from reality-graph — kept for path stability.
  */
 
-import type {
-  SpatialAnchorResolved,
-  SpatialRelation,
-  SpatialRelationEdge,
-  SpatialRetrievedEntity,
-} from "@/lib/spatial-retrieval/types";
-
-export function generateSpatialRelations(input: {
-  readonly anchor: SpatialAnchorResolved;
-  readonly entities: readonly SpatialRetrievedEntity[];
-  readonly relation: SpatialRelation;
-}): readonly SpatialRelationEdge[] {
-  return input.entities.map((e) => ({
-    id: `rel_${input.anchor.entityId}_${e.entityId}_${input.relation}`,
-    fromId: input.anchor.entityId,
-    toId: e.entityId,
-    relation: input.relation,
-    meters: e.metersFromAnchor,
-    walkMinutes: e.walkMinutes,
-  }));
-}
+export {
+  extractRealityRelationships,
+  generateSpatialRelations,
+  toRealityRelationship,
+} from "@/lib/spatial-retrieval/reality-graph";

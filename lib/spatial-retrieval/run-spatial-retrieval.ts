@@ -1,18 +1,26 @@
 /**
  * Spatial Retrieval Pipeline runner
  *
- * User Command → Intent → Context → Anchor → Query → Retrieval → Relations → Projection → Callout
+ * Intent → Context → Anchor → Spatial Query Engine → Retrieval (Context Score) →
+ * Reality Graph → Projection Events → Map/Marker/Callout
  */
 
-import {
-  resolveSpatialAnchorDetailed,
-} from "@/lib/spatial-retrieval/anchor-resolver";
+import { resolveSpatialAnchorDetailed } from "@/lib/spatial-retrieval/anchor-resolver";
 import { buildSpatialCalloutSeeds } from "@/lib/spatial-retrieval/callout-renderer";
 import { resolveSpatialContext } from "@/lib/spatial-retrieval/context-resolver";
 import { retrieveSpatialEntities } from "@/lib/spatial-retrieval/entity-retrieval";
 import { parseSpatialDiscoveryIntent } from "@/lib/spatial-retrieval/intent-parser";
-import { generateSpatialRelations } from "@/lib/spatial-retrieval/relationship-generator";
-import { buildSpatialQuery } from "@/lib/spatial-retrieval/spatial-query-builder";
+import { emitSpatialProjectionEvents } from "@/lib/spatial-retrieval/projection-events";
+import {
+  buildRealityEntities,
+  extractRealityRelationships,
+  formatRealityGraphSketch,
+  generateSpatialRelations,
+} from "@/lib/spatial-retrieval/reality-graph";
+import {
+  buildSpatialQuery,
+  toSpatialQueryEngineOutput,
+} from "@/lib/spatial-retrieval/spatial-query-builder";
 import type {
   SpatialRetrievalInput,
   SpatialRetrievalLogLine,
@@ -37,9 +45,9 @@ function pushLog(
  *
  * Completion for "난바 호텔 기준 맛집 찾아줘":
  *   Intent · SPATIAL_DISCOVERY
- *   anchorEntity = Namba Hotel
- *   targetEntity = Restaurant
- *   relation = Nearby
+ *   Spatial Query · center/radius/category/ranking
+ *   Reality Graph · Hotel ─Nearby─ Restaurants
+ *   Map pins auto-added via Projection Events
  */
 export function runSpatialRetrieval(
   input: SpatialRetrievalInput,
@@ -81,7 +89,7 @@ export function runSpatialRetrieval(
     logEnabled,
   );
 
-  // 3. Anchor Resolver (priority → Entity Resolver result; never chat-ask)
+  // 3. Anchor Resolver
   const anchorResolved = resolveSpatialAnchorDetailed({
     intent,
     contextId: context.contextId,
@@ -115,7 +123,6 @@ export function runSpatialRetrieval(
 
   const { anchor, resolver, source } = anchorResolved;
 
-  // Completion logs (product acceptance)
   pushLog(
     logs,
     "anchor",
@@ -136,48 +143,89 @@ export function runSpatialRetrieval(
     logEnabled,
   );
 
-  // 4. Spatial Query Builder
+  // 4. Spatial Query Engine
   const query = buildSpatialQuery({ intent, anchor });
+  const engineOut = toSpatialQueryEngineOutput(query);
   pushLog(
     logs,
     "query",
-    `Spatial Query · near ${anchor.labelKo} · r=${query.radiusMeters}m · target=${query.targetEntity}`,
+    `Spatial Query · center=${engineOut.center ? `${engineOut.center.lat},${engineOut.center.lng}` : "null"} · radius=${engineOut.radius} · category=${engineOut.category} · ranking=[${engineOut.ranking.join(",")}]`,
     logEnabled,
   );
 
-  // 5. Entity Retrieval
+  // 5. Entity Retrieval + Context Score (not distance-only)
   const entities = retrieveSpatialEntities({ query });
   pushLog(
     logs,
     "retrieval",
-    `Entity Retrieval · ${entities.length}개 발견`,
+    `Entity Retrieval · ${entities.length}개 · Context Score ranked`,
     logEnabled,
   );
+  for (const e of entities.slice(0, 3)) {
+    pushLog(
+      logs,
+      "retrieval",
+      `  ${e.titleKo} · score=${e.contextScore?.total ?? "?"} · ${e.metersFromAnchor}m`,
+      logEnabled,
+    );
+  }
 
-  // 6. Relationship Generator
+  // 6. Reality Graph (entities + relationships — not POI list)
+  const realityEntities = buildRealityEntities({
+    anchor,
+    entities,
+    contextId: context.contextId,
+  });
   const relations = generateSpatialRelations({
     anchor,
     entities,
     relation: intent.relation,
   });
+  const realityRelationships = extractRealityRelationships(relations);
   pushLog(
     logs,
-    "relations",
-    `Relationship · ${relations.length} edges (${intent.relation})`,
+    "reality_graph",
+    `Reality Graph · nodes=${realityEntities.length} · edges=${realityRelationships.length}`,
     logEnabled,
   );
+  if (logEnabled) {
+    console.log(
+      formatRealityGraphSketch({
+        anchorLabel: anchor.labelKo,
+        relation: intent.relation,
+        targets: entities.map((e) => e.titleKo),
+      }),
+    );
+  }
 
-  // 7. Workspace Projection
+  // 7. Workspace Projection (pins)
   const pins = projectSpatialPins({ anchor, entities });
   pushLog(
     logs,
     "projection",
-    `Projection · pins=${pins.length} (anchor+discovered)`,
+    `Projection · pins=${pins.length} (anchor+discovered) · auto map update`,
     logEnabled,
   );
 
-  // 8. Callout Renderer seeds
+  // 8. Callout seeds
   const callouts = buildSpatialCalloutSeeds({ anchor, entities });
+
+  // 9. Projection Event pipeline → Workspace auto-update
+  const projectionEvents = emitSpatialProjectionEvents({
+    realityEntities,
+    relationships: realityRelationships,
+    pins,
+    callouts,
+  });
+  for (const ev of projectionEvents) {
+    if (
+      ev.stage === "entity_created" ||
+      ev.stage === "map_update" ||
+      ev.stage === "relationship_layer_update"
+    ) {
+      pushLog(logs, "projection", ev.message, logEnabled);
+    }
+  }
   pushLog(
     logs,
     "callout",
@@ -191,7 +239,8 @@ export function runSpatialRetrieval(
     `anchorEntity = ${anchor.labelKo}`,
     `targetEntity = ${capitalizeEntity(intent.targetEntity)}`,
     `relation = ${capitalizeRelation(intent.relation)}`,
-    `entities · ${entities.length}`,
+    `Spatial Query · r=${query.radius} · ranking=${query.ranking.join("+")}`,
+    `Reality Graph · ${realityEntities.length} nodes · ${realityRelationships.length} edges`,
   ].join("\n");
 
   return {
@@ -202,9 +251,12 @@ export function runSpatialRetrieval(
     resolver,
     query,
     entities,
+    realityEntities,
     relations,
+    realityRelationships,
     pins,
     callouts,
+    projectionEvents,
     logs,
     summaryKo,
   };
@@ -220,7 +272,9 @@ function capitalizeEntity(e: string): string {
 
 function capitalizeRelation(r: string): string {
   if (r === "nearby") return "Nearby";
-  if (r === "route") return "Route";
-  if (r === "within") return "Within";
+  if (r === "walking_distance") return "Walking Distance";
+  if (r === "route_along") return "Route Along";
+  if (r === "same_area") return "Same Area";
+  if (r === "inside") return "Inside";
   return r.charAt(0).toUpperCase() + r.slice(1);
 }

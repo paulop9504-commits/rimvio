@@ -76,6 +76,83 @@ assert.ok(logText.includes("source=selected"));
 console.log("\n── Entity Resolver ──");
 console.log(JSON.stringify(result.resolver, null, 2));
 
+// Spatial Query Engine wire
+assert.equal(result.query.radius, 1000);
+assert.equal(result.query.category, "restaurant");
+assert.deepEqual([...result.query.ranking], ["distance", "rating", "contextFit"]);
+assert.ok(result.query.center);
+assert.equal(result.query.engine.radius, 1000);
+assert.equal(result.query.engine.category, "restaurant");
+
+console.log("\n── Spatial Query ──");
+console.log(
+  JSON.stringify(
+    {
+      center: result.query.center,
+      radius: result.query.radius,
+      category: result.query.category,
+      ranking: result.query.ranking,
+    },
+    null,
+    2,
+  ),
+);
+
+// Context Score — not distance-only (all entities have breakdown)
+assert.ok(result.entities.length >= 1);
+for (const e of result.entities) {
+  assert.ok(e.contextScore, `contextScore on ${e.titleKo}`);
+  assert.ok(e.contextScore!.total >= 0 && e.contextScore!.total <= 1);
+  // weights present
+  assert.ok("distance" in e.contextScore!);
+  assert.ok("rating" in e.contextScore!);
+  assert.ok("budgetFit" in e.contextScore!);
+  assert.ok("scheduleFit" in e.contextScore!);
+}
+// Sorted by context score descending
+for (let i = 1; i < result.entities.length; i++) {
+  assert.ok(
+    (result.entities[i - 1]!.contextScore!.total ?? 0) >=
+      (result.entities[i]!.contextScore!.total ?? 0),
+  );
+}
+
+// Reality Graph — not POI list
+assert.ok(result.realityEntities.length >= 2);
+const anchorNode = result.realityEntities.find((e) => e.id === "hotel_123");
+assert.ok(anchorNode);
+assert.equal(anchorNode!.type, "hotel");
+assert.ok(Array.isArray(anchorNode!.contextLinks));
+
+const restNode = result.realityEntities.find((e) => e.type === "restaurant");
+assert.ok(restNode);
+assert.equal(typeof restNode!.attributes.titleKo, "string");
+assert.ok(Array.isArray(restNode!.contextLinks));
+
+assert.ok(result.realityRelationships.length >= 1);
+const edge = result.realityRelationships[0]!;
+assert.equal(edge.from, "hotel_123");
+assert.equal(edge.type, "nearby");
+assert.ok("distance" in edge.metadata);
+assert.ok("walkingTime" in edge.metadata);
+
+// Projection Event pipeline → auto map pins
+assert.ok(result.projectionEvents.some((e) => e.stage === "entity_created"));
+assert.ok(result.projectionEvents.some((e) => e.stage === "map_update"));
+assert.ok(result.projectionEvents.some((e) => e.stage === "marker_created"));
+assert.ok(
+  result.projectionEvents.some((e) => e.stage === "relationship_layer_update"),
+);
+assert.ok(result.projectionEvents.some((e) => e.stage === "callout_created"));
+assert.ok(result.pins.some((p) => p.role === "discovered"));
+assert.ok(result.pins.filter((p) => p.role === "discovered").length >= 1);
+
+console.log("\n── Reality Graph ──");
+console.log(`nodes=${result.realityEntities.length} edges=${result.realityRelationships.length}`);
+console.log(
+  JSON.stringify(result.realityRelationships[0], null, 2),
+);
+
 // Priority: selected wins over contextAnchor when both set differently
 {
   const intent = parseSpatialDiscoveryIntent("호텔 근처 맛집 찾아줘")!;
@@ -238,6 +315,11 @@ console.log("Intent 생성");
 console.log(`anchorEntity = ${result.anchor.labelKo}`);
 console.log("targetEntity = Restaurant");
 console.log("relation = Nearby");
+console.log("Spatial Query · radius/ranking/contextFit");
+console.log("Reality Graph · Hotel ─Nearby─ Restaurants");
+console.log("Projection Events · Map pins auto");
 console.log("ambiguous → Projection (askUser=false)");
 
-console.log("\nok spatial-retrieval Anchor Resolver · Entity Resolver · candidates");
+console.log(
+  "\nok spatial-retrieval Query Engine · Reality Graph · Context Score · Projection",
+);
