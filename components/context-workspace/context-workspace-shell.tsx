@@ -803,18 +803,18 @@ export function ContextWorkspaceShell({
     }
     const nodeId = selectedNode.id;
     const handlers: CalloutHandlers = {
-      onSelect: () => {
+      onSelect: (id) => {
         applyWorkspaceTransition({
           contextEventId: eventId,
           op: "select",
-          nodeIds: [nodeId],
+          nodeIds: [id],
         });
         toast.success(copy.globe.workspacePreviewSelected);
       },
-      onCompare: () => {
-        const nextIds = state.compareIds.includes(nodeId)
+      onCompare: (id) => {
+        const nextIds = state.compareIds.includes(id)
           ? state.compareIds
-          : [...state.compareIds, nodeId].slice(0, 5);
+          : [...state.compareIds, id].slice(0, 5);
         applyWorkspaceTransition({
           contextEventId: eventId,
           op: "compare",
@@ -822,8 +822,40 @@ export function ContextWorkspaceShell({
         });
         if (nextIds.length >= 2) setCompareOpen(true);
       },
-      onBookmark: () => {
-        onPinToggle(nodeId);
+      onBookmark: (id) => {
+        onPinToggle(id);
+      },
+      onChange: (id) => {
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "select",
+          nodeIds: [id],
+        });
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "find_similar",
+          nodeIds: [id],
+        });
+        toast.success("Change · 비슷한 후보를 다시 모았어요");
+      },
+      onAddToDay: (id) => {
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "select",
+          nodeIds: [id],
+        });
+        toast.message("일정에 추가", {
+          description: "Draft 일정에 반영할 수 있어요 · Commit 아님",
+        });
+      },
+      onNavigate: (id) => {
+        const node = state.nodes.find((n) => n.id === id) ?? selectedNode;
+        if (!node) return;
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${node.lat},${node.lng}`;
+        if (typeof window !== "undefined") {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+        toast.message("길찾기", { description: node.title });
       },
       onFocusRelated: (id: string) => {
         setFocusedId(id);

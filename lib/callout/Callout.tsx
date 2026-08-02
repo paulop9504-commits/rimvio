@@ -13,6 +13,7 @@ import { CalloutObserve } from "@/lib/callout/CalloutObserve";
 import { CalloutPrepare } from "@/lib/callout/CalloutPrepare";
 import { CalloutSimulation } from "@/lib/callout/CalloutSimulation";
 import { CalloutTabs } from "@/lib/callout/CalloutTabs";
+import { invokeRegisteredAction } from "@/lib/callout/action-registry";
 import {
   useCalloutHandlers,
   useCalloutViewModel,
@@ -108,38 +109,20 @@ export function Callout({
 
   const modeActions = useMemo(() => {
     if (!model) return [];
+    // Buttons from Action Registry only — never hard-coded by object type here.
     return model.object.actions;
   }, [model]);
 
   if (!model) return null;
 
   const runAction = (action: CalloutActionModel) => {
-    const id = objectId;
-    switch (action.kind) {
-      case "select":
-        handlers.onSelect?.(id);
-        break;
-      case "compare":
-        handlers.onCompare?.(id);
-        break;
-      case "bookmark":
-        handlers.onBookmark?.(id);
-        break;
-      case "focus_related":
-        if (action.targetId) handlers.onFocusRelated?.(action.targetId);
-        break;
-      case "create_prepare_draft":
-        handlers.onCreatePrepareDraft?.(id);
-        break;
-      case "handoff_field":
-        handlers.onHandoffField?.(id);
-        break;
-      case "connect":
-        if (action.targetId) handlers.onConnect?.(id, action.targetId);
-        break;
-      default:
-        break;
-    }
+    void invokeRegisteredAction(action.action, {
+      objectId,
+      objectType: model.object.type,
+      contextId: model.object.contextId,
+      object: model.object,
+      handlers,
+    });
   };
 
   const applyIntent = () => {
@@ -173,6 +156,8 @@ export function Callout({
         onChange={ui.setMode}
       />
 
+      <CalloutAction actions={modeActions} onAction={runAction} />
+
       <div className="min-h-[120px]">
         {ui.mode === "observe" ? (
           <div className="space-y-3">
@@ -184,7 +169,6 @@ export function Callout({
                 handlers.onHighlightEvidence?.(objectId, ev);
               }}
             />
-            <CalloutAction actions={modeActions.slice(0, 3)} onAction={runAction} />
           </div>
         ) : null}
 

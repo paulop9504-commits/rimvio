@@ -4,6 +4,10 @@
 
 import { buildObserveEvidence } from "@/lib/callout/build-observe-evidence";
 import type { ObserveEvidenceNeighbor } from "@/lib/callout/build-observe-evidence";
+import {
+  ensureBuiltinCalloutActions,
+  resolveCalloutActionButtons,
+} from "@/lib/callout/action-registry";
 import type { ContextWorkspaceNode, ContextWorkspaceRelationshipEdge } from "@/lib/context-workspace/types";
 import type { NodePreviewModel } from "@/lib/context-workspace/build-node-preview";
 import type {
@@ -38,44 +42,27 @@ export function resolveRimvioObjectState(
   return "discovered";
 }
 
-function buildActions(objectId: string, preview: NodePreviewModel): CalloutAction[] {
-  return [
-    {
-      id: "select",
-      kind: "select",
-      labelKo: "선택",
-      enabled: true,
-      targetId: objectId,
-    },
-    {
-      id: "compare",
-      kind: "compare",
-      labelKo: "비교",
-      enabled: true,
-      targetId: objectId,
-    },
-    {
-      id: "bookmark",
-      kind: "bookmark",
-      labelKo: "고정",
-      enabled: true,
-      targetId: objectId,
-    },
-    {
-      id: "prepare",
-      kind: "create_prepare_draft",
-      labelKo: "예약 검토 생성",
-      enabled: preview.canPrepare,
-      targetId: objectId,
-    },
-    {
-      id: "commit",
-      kind: "handoff_field",
-      labelKo: "Field에서 검토",
-      enabled: preview.canPrepare || preview.selected,
-      targetId: objectId,
-    },
-  ];
+function buildActionsFromRegistry(object: {
+  id: string;
+  type: RimvioObjectType;
+  facts: RimvioObject["facts"];
+  evidence: RimvioObject["evidence"];
+  state: RimvioObjectState;
+  title: string;
+  location: RimvioObject["location"];
+  contextId: string;
+  actions: readonly CalloutAction[];
+}): CalloutAction[] {
+  ensureBuiltinCalloutActions();
+  return resolveCalloutActionButtons(object).map((btn) => ({
+    id: btn.id,
+    action: btn.action,
+    kind: btn.action,
+    labelKo: btn.labelKo,
+    enabled: btn.enabled,
+    primary: btn.primary,
+    targetId: object.id,
+  }));
 }
 
 export function rimvioObjectFromWorkspaceNode(input: {
@@ -94,7 +81,7 @@ export function rimvioObjectFromWorkspaceNode(input: {
     .filter((s) => s.length >= 2)
     .slice(0, 4);
 
-  return {
+  const base = {
     id: node.id,
     type: workspaceKindToRimvioObjectType(node.kind),
     title: node.title,
@@ -108,7 +95,7 @@ export function rimvioObjectFromWorkspaceNode(input: {
       neighbors,
       edges,
     }),
-    actions: buildActions(node.id, preview),
+    actions: [] as CalloutAction[],
     facts: {
       priceLabelKo:
         preview.price &&
@@ -126,5 +113,10 @@ export function rimvioObjectFromWorkspaceNode(input: {
       bookmarked: preview.bookmarked,
       inCompare: preview.inCompare,
     },
+  };
+
+  return {
+    ...base,
+    actions: buildActionsFromRegistry(base),
   };
 }

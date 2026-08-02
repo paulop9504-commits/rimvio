@@ -118,3 +118,18 @@ export {
   type ReservationDateRange,
   type ReservationPrice,
 } from "@/lib/callout/prepare";
+
+export {
+  ensureBuiltinCalloutActions,
+  getRegisteredAction,
+  invokeRegisteredAction,
+  listRegisteredActions,
+  registerAction,
+  reinstallBuiltinCalloutActionsForTests,
+  resetCalloutActionRegistryForTests,
+  resolveCalloutActionButtons,
+  type CalloutActionButton,
+  type CalloutActionContext,
+  type CalloutRegistryActionId,
+  type RegisterCalloutActionInput,
+} from "@/lib/callout/action-registry";

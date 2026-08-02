@@ -51,16 +51,25 @@ export type CalloutActionKind =
   | "bookmark"
   | "focus_related"
   | "change_intent"
+  | "change"
   | "apply_simulation"
   | "create_prepare_draft"
+  | "prepare_booking"
+  | "reserve"
+  | "add_to_day"
+  | "navigate"
   | "handoff_field"
   | "connect";
 
 export type CalloutAction = {
   readonly id: string;
-  readonly kind: CalloutActionKind;
+  /** Registry action id — Callout buttons come from Action Registry */
+  readonly action: string;
+  /** @deprecated prefer `action` — kept for older call sites */
+  readonly kind?: CalloutActionKind | string;
   readonly labelKo: string;
   readonly enabled: boolean;
+  readonly primary?: boolean;
   /** Target object / relation when applicable */
   readonly targetId?: string | null;
 };
@@ -187,6 +196,12 @@ export type CalloutHandlers = {
   onSelect?: (objectId: string) => void;
   onCompare?: (objectId: string) => void;
   onBookmark?: (objectId: string) => void;
+  /** Registry action: change — find similar / Change Intent */
+  onChange?: (objectId: string) => void;
+  /** Registry action: add_to_day */
+  onAddToDay?: (objectId: string) => void;
+  /** Registry action: navigate */
+  onNavigate?: (objectId: string) => void;
   onFocusRelated?: (objectId: string) => void;
   /** Observe Evidence click — highlight graph ref on map */
   onHighlightEvidence?: (objectId: string, evidence: Evidence) => void;

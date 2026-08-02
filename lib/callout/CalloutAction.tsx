@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Callout action buttons — rendered only from Action Registry resolutions.
+ * Do not hard-code hotel/restaurant button sets here.
+ */
+
 import type { CalloutAction } from "@/lib/callout/types";
 import { cn } from "@/lib/utils";
 
@@ -15,17 +20,20 @@ export function CalloutAction({
   if (actions.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-wrap gap-1.5", className)}>
+    <div
+      className={cn("flex flex-wrap gap-1.5", className)}
+      data-callout-action-registry
+    >
       {actions.map((action) => (
         <button
           key={action.id}
           type="button"
           disabled={!action.enabled}
+          data-callout-action={action.action}
           className={cn(
             "rounded-full px-3 py-1.5 text-[11px] font-semibold",
             action.enabled
-              ? action.kind === "handoff_field" ||
-                action.kind === "create_prepare_draft"
+              ? action.primary
                 ? "bg-[#3182f6] text-white"
                 : "bg-white text-[#191f28] ring-1 ring-black/[0.06]"
               : "cursor-not-allowed bg-[#f2f4f6] text-[#c4c9d0]",
