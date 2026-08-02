@@ -45,11 +45,24 @@ export function buildRimvioObjectFromWorkspace(input: {
   node: ContextWorkspaceNode;
 }): RimvioObject {
   const preview = buildNodePreview(input.node, input.state);
+  const neighbors = buildCalloutNeighborsFromWorkspace(
+    input.state,
+    input.node.id,
+  ).map((n) => {
+    const other = input.state.nodes.find((x) => x.id === n.objectId);
+    return {
+      ...n,
+      lat: other?.lat ?? null,
+      lng: other?.lng ?? null,
+    };
+  });
   return rimvioObjectFromWorkspaceNode({
     node: input.node,
     preview,
     contextId: input.contextId,
     draftDayLabelKo: draftDayLabel(input.state, input.node.id),
+    neighbors,
+    edges: input.state.relationshipEdges ?? [],
   });
 }
 

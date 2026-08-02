@@ -2,11 +2,12 @@
  * Project Workspace / Context nodes → RimvioObject (Callout SSOT entity).
  */
 
-import type { ContextWorkspaceNode } from "@/lib/context-workspace/types";
+import { buildObserveEvidence } from "@/lib/callout/build-observe-evidence";
+import type { ObserveEvidenceNeighbor } from "@/lib/callout/build-observe-evidence";
+import type { ContextWorkspaceNode, ContextWorkspaceRelationshipEdge } from "@/lib/context-workspace/types";
 import type { NodePreviewModel } from "@/lib/context-workspace/build-node-preview";
 import type {
   CalloutAction,
-  CalloutEvidence,
   RimvioObject,
   RimvioObjectState,
   RimvioObjectType,
@@ -35,69 +36,6 @@ export function resolveRimvioObjectState(
   if (node.selected || ready === "prepare") return "shortlisted";
   if (node.bookmarked) return "candidate";
   return "discovered";
-}
-
-function buildEvidence(input: {
-  preview: NodePreviewModel;
-  draftDayLabelKo?: string | null;
-}): CalloutEvidence[] {
-  const { preview, draftDayLabelKo } = input;
-  const hasPrice =
-    Boolean(preview.price?.trim()) &&
-    preview.price !== "가격 미정" &&
-    preview.price !== "—";
-  const hasReview =
-    preview.rating != null ||
-    (preview.reviewSummary !== "후기 없음" && Boolean(preview.reviewSummary));
-  const hasDistance = preview.nearby.length > 0;
-  const hasSchedule = Boolean(draftDayLabelKo?.trim());
-  const hasPreference = preview.whyChosen.trim().length > 0;
-  const hasAvail = preview.canPrepare;
-
-  return [
-    {
-      id: "price",
-      layer: "price",
-      labelKo: "가격",
-      detailKo: hasPrice ? preview.price : null,
-      present: hasPrice,
-    },
-    {
-      id: "distance",
-      layer: "distance",
-      labelKo: "거리",
-      detailKo: hasDistance ? preview.nearby[0]?.labelKo ?? null : null,
-      present: hasDistance,
-    },
-    {
-      id: "preference",
-      layer: "preference",
-      labelKo: "취향",
-      detailKo: hasPreference ? preview.whyChosen.slice(0, 48) : null,
-      present: hasPreference,
-    },
-    {
-      id: "availability",
-      layer: "availability",
-      labelKo: "예약 가능성",
-      detailKo: hasAvail ? "준비 가능" : null,
-      present: hasAvail,
-    },
-    {
-      id: "review",
-      layer: "review",
-      labelKo: "후기",
-      detailKo: hasReview ? preview.reviewSummary : null,
-      present: hasReview,
-    },
-    {
-      id: "schedule",
-      layer: "schedule",
-      labelKo: "일정",
-      detailKo: draftDayLabelKo?.trim() || null,
-      present: hasSchedule,
-    },
-  ];
 }
 
 function buildActions(objectId: string, preview: NodePreviewModel): CalloutAction[] {
@@ -145,8 +83,11 @@ export function rimvioObjectFromWorkspaceNode(input: {
   preview: NodePreviewModel;
   contextId: string;
   draftDayLabelKo?: string | null;
+  neighbors?: readonly ObserveEvidenceNeighbor[];
+  edges?: readonly ContextWorkspaceRelationshipEdge[];
 }): RimvioObject {
-  const { node, preview, contextId, draftDayLabelKo } = input;
+  const { node, preview, contextId, draftDayLabelKo, neighbors, edges } =
+    input;
   const whyLines = preview.whyChosen
     .split(/[·•|/]|(?:\s*[-–—]\s*)/u)
     .map((s) => s.trim())
@@ -160,7 +101,13 @@ export function rimvioObjectFromWorkspaceNode(input: {
     location: { lat: node.lat, lng: node.lng },
     contextId,
     state: resolveRimvioObjectState(node),
-    evidence: buildEvidence({ preview, draftDayLabelKo }),
+    evidence: buildObserveEvidence({
+      node,
+      preview,
+      draftDayLabelKo,
+      neighbors,
+      edges,
+    }),
     actions: buildActions(node.id, preview),
     facts: {
       priceLabelKo:
@@ -173,9 +120,7 @@ export function rimvioObjectFromWorkspaceNode(input: {
       reviewSummaryKo:
         preview.reviewSummary !== "후기 없음" ? preview.reviewSummary : null,
       whyLinesKo:
-        whyLines.length > 0
-          ? whyLines
-          : preview.amenities.slice(0, 3),
+        whyLines.length > 0 ? whyLines : preview.amenities.slice(0, 3),
       canPrepare: preview.canPrepare,
       selected: preview.selected,
       bookmarked: preview.bookmarked,

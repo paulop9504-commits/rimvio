@@ -46,6 +46,8 @@ import type {
   WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityCallout,
 } from "@/lib/context-workspace/capability-callout";
+import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
+import { syncWorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 
 export type WorkspaceMapCapabilityBloomModel = {
   readonly callouts: readonly WorkspaceCapabilityCallout[];
@@ -85,6 +87,8 @@ export type WorkspaceMapViewProps = {
   capabilityBloom?: WorkspaceMapCapabilityBloomModel | null;
   /** Object Callout Control Surface — takes precedence over capability bloom. */
   objectCallout?: WorkspaceMapObjectCalloutModel | null;
+  /** Observe Evidence highlight (edge / node) on the map. */
+  evidenceHighlight?: WorkspaceEvidenceHighlight | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -462,6 +466,7 @@ function MapLibreWorkspaceMap({
   preferredCenter = null,
   capabilityBloom = null,
   objectCallout = null,
+  evidenceHighlight = null,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -785,6 +790,34 @@ function MapLibreWorkspaceMap({
       /* style not ready */
     }
   }, [ready, routeKey, routeLineCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncWorkspaceEvidenceHighlight(map, evidenceHighlight ?? null);
+      if (
+        evidenceHighlight &&
+        (!evidenceHighlight.lineCoords ||
+          evidenceHighlight.lineCoords.length < 2) &&
+        evidenceHighlight.focusNodeId
+      ) {
+        const pin = pinsRef.current.find(
+          (p) => p.id === evidenceHighlight.focusNodeId,
+        );
+        if (pin && Number.isFinite(pin.lat) && Number.isFinite(pin.lng)) {
+          map.easeTo({
+            center: [pin.lng, pin.lat],
+            zoom: Math.max(map.getZoom(), 15),
+            duration: 620,
+            essential: true,
+          });
+        }
+      }
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, evidenceHighlight]);
 
   useEffect(() => {
     const ctx = contextEventId?.trim() ?? "";

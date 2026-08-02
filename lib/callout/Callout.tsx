@@ -5,10 +5,10 @@
  * Modes: Observe · Explore · Simulate · Prepare · Commit (Field handoff).
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CalloutAction } from "@/lib/callout/CalloutAction";
-import { CalloutEvidence } from "@/lib/callout/CalloutEvidence";
 import { CalloutHeader } from "@/lib/callout/CalloutHeader";
+import { CalloutObserve } from "@/lib/callout/CalloutObserve";
 import { CalloutPrepare } from "@/lib/callout/CalloutPrepare";
 import { CalloutSimulation } from "@/lib/callout/CalloutSimulation";
 import { CalloutTabs } from "@/lib/callout/CalloutTabs";
@@ -21,6 +21,7 @@ import type {
   CalloutAction as CalloutActionModel,
   CalloutHandlers,
   CalloutMode,
+  Evidence,
 } from "@/lib/callout/types";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,7 @@ export function Callout({
   const sessionHandlers = useCalloutHandlers();
   const handlers = handlersProp ?? sessionHandlers;
   const ui = useCalloutState(initialMode);
+  const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(null);
 
   const modeActions = useMemo(() => {
     if (!model) return [];
@@ -171,24 +173,14 @@ export function Callout({
       <div className="min-h-[120px]">
         {ui.mode === "observe" ? (
           <div className="space-y-3">
-            {model.observe.whyLinesKo.length > 0 ? (
-              <ul className="space-y-1.5">
-                {model.observe.whyLinesKo.map((line) => (
-                  <li
-                    key={line}
-                    className="flex items-start gap-2 text-[13px] leading-snug text-[#4e5968]"
-                  >
-                    <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-[#22c55e]" />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[12px] text-[#8b95a1]">
-                왜 여기 있는지 Evidence로 확인하세요
-              </p>
-            )}
-            <CalloutEvidence evidence={model.observe.evidence} />
+            <CalloutObserve
+              model={model.observe}
+              activeEvidenceId={activeEvidenceId}
+              onSelectEvidence={(ev: Evidence) => {
+                setActiveEvidenceId(ev.id);
+                handlers.onHighlightEvidence?.(objectId, ev);
+              }}
+            />
             <CalloutAction actions={modeActions.slice(0, 3)} onAction={runAction} />
           </div>
         ) : null}

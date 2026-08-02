@@ -64,12 +64,14 @@ import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
-import type { CalloutHandlers } from "@/lib/callout/types";
+import type { CalloutHandlers, Evidence } from "@/lib/callout/types";
 import {
   buildCalloutAlternativesFromWorkspace,
   buildCalloutNeighborsFromWorkspace,
   buildRimvioObjectFromWorkspace,
 } from "@/lib/callout/from-workspace";
+import { evidenceHighlightLineCoords } from "@/lib/callout/build-observe-evidence";
+import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import {
   isWorkspaceContextMediaPinId,
   projectWorkspaceContextMediaPins,
@@ -162,6 +164,8 @@ export function ContextWorkspaceShell({
     number | null
   >(null);
   const [mediaTick, setMediaTick] = useState(0);
+  const [evidenceHighlight, setEvidenceHighlight] =
+    useState<WorkspaceEvidenceHighlight | null>(null);
   const didAutoMediaFocusRef = useRef(false);
 
   const refresh = useCallback(() => {
@@ -183,6 +187,7 @@ export function ContextWorkspaceShell({
     setMapFocusKind(null);
     setFocusedId(null);
     setPeekClosed(true);
+    setEvidenceHighlight(null);
     peekOpenGenerationRef.current += 1;
     const id = contextEventId?.trim();
     if (id) {
@@ -618,6 +623,7 @@ export function ContextWorkspaceShell({
       setFocusedId(nodeId);
       setListOpen(false);
       setPeekClosed(false);
+      setEvidenceHighlight(null);
 
       if (isWorkspaceContextMediaPinId(nodeId)) {
         setMapFocusKind(null);
@@ -846,6 +852,60 @@ export function ContextWorkspaceShell({
         });
         toast.success("이 객체 기준으로 반영했어요");
       },
+      onHighlightEvidence: (_id, evidence: Evidence) => {
+        const ref = evidence.graphRef;
+        if (!ref) return;
+
+        let lineCoords = evidenceHighlightLineCoords(evidence);
+        if (
+          (!lineCoords || lineCoords.length < 2) &&
+          ref.lat != null &&
+          ref.lng != null &&
+          ref.toNodeId
+        ) {
+          const other = state.nodes.find((n) => n.id === ref.toNodeId);
+          if (other) {
+            lineCoords = [
+              [ref.lng, ref.lat],
+              [other.lng, other.lat],
+            ];
+          }
+        }
+
+        setEvidenceHighlight({
+          evidenceId: evidence.id,
+          focusNodeId: ref.toNodeId ?? ref.nodeId,
+          lineCoords,
+          mode: ref.kind,
+        });
+
+        if (evidence.type === "review") {
+          setFocusedId(ref.nodeId ?? nodeId);
+          setPeekClosed(false);
+          toast.message("후기 Evidence", {
+            description: evidence.value,
+          });
+          return;
+        }
+
+        if (evidence.type === "distance" && (ref.toNodeId || lineCoords)) {
+          setPeekClosed(true);
+          toast.message(evidence.title, {
+            description: "거리 Edge를 강조했어요",
+          });
+          return;
+        }
+
+        if (ref.kind === "route") {
+          setPeekClosed(true);
+          toast.message(evidence.title, {
+            description: evidence.value,
+          });
+          return;
+        }
+
+        setPeekClosed(true);
+      },
     };
 
     const session: CalloutSessionValue = {
@@ -954,6 +1014,7 @@ export function ContextWorkspaceShell({
           contextEventId={eventId}
           preferredCenter={preferredMapCenter}
           objectCallout={mapObjectCallout}
+          evidenceHighlight={evidenceHighlight}
         />
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed

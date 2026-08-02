@@ -34,22 +34,16 @@ export const CALLOUT_MODES = [
 
 export type CalloutMode = (typeof CALLOUT_MODES)[number];
 
-export type CalloutEvidenceLayer =
-  | "price"
-  | "distance"
-  | "preference"
-  | "availability"
-  | "review"
-  | "schedule"
-  | "relation";
+export type {
+  CalloutEvidence,
+  CalloutEvidenceLayer,
+  Evidence,
+  EvidenceGraphRef,
+  EvidenceType,
+} from "@/lib/callout/evidence";
+export { EVIDENCE_TYPES } from "@/lib/callout/evidence";
 
-export type CalloutEvidence = {
-  readonly id: string;
-  readonly layer: CalloutEvidenceLayer;
-  readonly labelKo: string;
-  readonly detailKo: string | null;
-  readonly present: boolean;
-};
+import type { Evidence } from "@/lib/callout/evidence";
 
 export type CalloutActionKind =
   | "select"
@@ -83,7 +77,7 @@ export type RimvioObject = {
   readonly location: RimvioObjectLocation;
   readonly contextId: string;
   readonly state: RimvioObjectState;
-  readonly evidence: readonly CalloutEvidence[];
+  readonly evidence: readonly Evidence[];
   readonly actions: readonly CalloutAction[];
   /** Grounded facts for Simulate / Prepare — never invent */
   readonly facts: {
@@ -150,7 +144,9 @@ export type CalloutViewModel = {
   readonly modes: readonly CalloutMode[];
   readonly observe: {
     readonly whyLinesKo: readonly string[];
-    readonly evidence: readonly CalloutEvidence[];
+    readonly evidence: readonly Evidence[];
+    /** 0–100 grounded recommendation score */
+    readonly aiScore: number;
   };
   readonly explore: {
     readonly edges: readonly CalloutExploreEdge[];
@@ -180,6 +176,8 @@ export type CalloutHandlers = {
   onCompare?: (objectId: string) => void;
   onBookmark?: (objectId: string) => void;
   onFocusRelated?: (objectId: string) => void;
+  /** Observe Evidence click — highlight graph ref on map */
+  onHighlightEvidence?: (objectId: string, evidence: Evidence) => void;
   onChangeIntent?: (
     objectId: string,
     axes: readonly { id: string; nudge: "up" | "down" | "neutral" }[],

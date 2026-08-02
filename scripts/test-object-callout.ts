@@ -73,7 +73,9 @@ const object = rimvioObjectFromWorkspaceNode({
 assert.equal(object.id, "hotel_123");
 assert.equal(object.type, "hotel");
 assert.equal(object.state, "shortlisted");
-assert.ok(object.evidence.some((e) => e.layer === "price" && e.present));
+assert.ok(object.evidence.some((e) => e.type === "price" && e.present));
+assert.ok(object.evidence.every((e) => e.graphRef != null || !e.present));
+assert.ok(object.evidence.some((e) => e.type === "distance" && e.graphRef?.kind === "edge"));
 
 const model = buildCalloutViewModel({
   object,
@@ -98,6 +100,8 @@ const model = buildCalloutViewModel({
 });
 
 assert.ok(model);
+assert.ok(model!.observe.aiScore >= 70);
+assert.ok(model!.observe.evidence.length >= 3);
 assert.deepEqual(
   [...model!.modes],
   ["observe", "explore", "simulate", "prepare", "commit"],

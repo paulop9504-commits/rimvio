@@ -8,6 +8,7 @@ import {
   getCalloutObjectTypeDescriptor,
   OBJECT_STATE_LABEL_KO,
 } from "@/lib/callout/callout-registry";
+import { scoreObserveAiScore } from "@/lib/callout/build-observe-evidence";
 import type {
   CalloutExploreEdge,
   CalloutPrepareStep,
@@ -163,6 +164,7 @@ export function buildCalloutViewModel(input: {
     observe: {
       whyLinesKo: object.facts.whyLinesKo,
       evidence: object.evidence,
+      aiScore: scoreObserveAiScore(object.evidence),
     },
     explore: {
       edges: buildExploreEdges(object, neighbors),

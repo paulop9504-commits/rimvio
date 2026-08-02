@@ -16,6 +16,9 @@ export type {
   CalloutPrepareStep,
   CalloutSimulationDelta,
   CalloutViewModel,
+  Evidence,
+  EvidenceGraphRef,
+  EvidenceType,
   RimvioObject,
   RimvioObjectLocation,
   RimvioObjectState,
@@ -23,6 +26,7 @@ export type {
 } from "@/lib/callout/types";
 export {
   CALLOUT_MODES,
+  EVIDENCE_TYPES,
   RIMVIO_OBJECT_STATES,
   RIMVIO_OBJECT_TYPES,
 } from "@/lib/callout/types";
@@ -41,6 +45,12 @@ export {
   type CalloutGraphAlternative,
   type CalloutGraphNeighbor,
 } from "@/lib/callout/build-callout-model";
+
+export {
+  buildObserveEvidence,
+  evidenceHighlightLineCoords,
+  scoreObserveAiScore,
+} from "@/lib/callout/build-observe-evidence";
 
 export {
   resolveRimvioObjectState,

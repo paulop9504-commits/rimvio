@@ -33,7 +33,7 @@ const HOTEL: CalloutObjectTypeDescriptor = {
       id: "dates",
       labelKo: "날짜 확인",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "schedule" && e.present),
+        o.evidence.some((e) => e.source === "schedule" && e.present),
     },
     {
       id: "guests",
@@ -84,7 +84,7 @@ const RESTAURANT: CalloutObjectTypeDescriptor = {
       id: "time",
       labelKo: "시간 확인",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "schedule" && e.present),
+        o.evidence.some((e) => e.source === "schedule" && e.present),
     },
     {
       id: "party",
@@ -133,13 +133,13 @@ const PLACE: CalloutObjectTypeDescriptor = {
       id: "when",
       labelKo: "방문 시점",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "schedule" && e.present),
+        o.evidence.some((e) => e.source === "schedule" && e.present),
     },
     {
       id: "route",
       labelKo: "동선 확인",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "distance" && e.present),
+        o.evidence.some((e) => e.type === "distance" && e.present),
     },
     {
       id: "compare",
@@ -177,13 +177,13 @@ const EVENT: CalloutObjectTypeDescriptor = {
       id: "when",
       labelKo: "일시 확인",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "schedule" && e.present),
+        o.evidence.some((e) => e.source === "schedule" && e.present),
     },
     {
       id: "tickets",
       labelKo: "티켓·자리",
       isDone: (o) =>
-        o.evidence.some((e) => e.layer === "availability" && e.present),
+        o.evidence.some((e) => e.type === "availability" && e.present),
     },
     {
       id: "compare",
