@@ -957,7 +957,7 @@ export function ContextWorkspaceShell({
 
       {/* Agent dock — hide while place sheet / Commit Preview open */}
       {!showPeek && !commitPreviewOpen ? (
-        <div className="relative z-[4] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5">
+        <div className="relative z-[4] mx-auto w-full max-w-[420px] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
           <WorkspaceCursorDock
             contextEventId={eventId}
             onFocusNode={onSelect}

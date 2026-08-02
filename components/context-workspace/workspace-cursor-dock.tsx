@@ -74,12 +74,14 @@ export type WorkspaceCursorDockProps = {
 function AssistantBubble(props: {
   turn: WorkspaceChatTurn;
   contextEventId: string;
+  /** Dock mode — text + chips only; map stays primary (no tall draft cards). */
+  dense?: boolean;
   onFocusNode?: (nodeId: string) => void;
   onBriefReplay?: () => void;
   briefReplayGroundIndex?: number | null;
   activeDraftNodeId?: string | null;
 }) {
-  const { turn, contextEventId } = props;
+  const { turn, contextEventId, dense = false } = props;
   const onRealityJump = (target: RealityJumpTarget) => {
     const ok = dispatchRealityJump({
       contextEventId,
@@ -89,11 +91,11 @@ function AssistantBubble(props: {
     if (ok) toast.message(copy.globe.realityJumpToast(target.labelKo));
   };
 
-  const draft = turn.realityDraft ?? null;
-  const brief = turn.contextBrief ?? null;
+  const draft = !dense ? (turn.realityDraft ?? null) : null;
+  const brief = !dense ? (turn.contextBrief ?? null) : null;
 
   return (
-    <div className="max-w-[96%] space-y-1.5">
+    <div className={cn("space-y-1.5", dense ? "max-w-[92%]" : "max-w-[96%]")}>
       {draft ? (
         <RealityDraftItineraryCard
           draft={draft}
@@ -125,7 +127,7 @@ function AssistantBubble(props: {
       ) : null}
       {turn.objects && turn.objects.length > 0 ? (
         <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-          {turn.objects.slice(0, 4).map((card) => (
+          {turn.objects.slice(0, dense ? 3 : 4).map((card) => (
             <button
               key={card.nodeId}
               type="button"
@@ -159,12 +161,14 @@ export function WorkspaceCursorDock({
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentExpanded, setAgentExpanded] = useState(false);
-  const [transcriptOpen, setTranscriptOpen] = useState(!compact);
+  /** Map-first: transcript stays closed until user opens or sends. */
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [turns, setTurns] = useState<readonly WorkspaceChatTurn[]>([]);
   const [agent, setAgent] = useState<AgentExecutionState | null>(null);
   const autoContinueRef = useRef<string | null>(null);
   const autoContinueCountRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
   const eventId = contextEventId.trim();
 
@@ -175,6 +179,20 @@ export function WorkspaceCursorDock({
     }
   }, [compact]);
 
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
+    };
+  }, []);
+
+  const scheduleTranscriptCollapse = useCallback(() => {
+    if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
+    collapseTimerRef.current = setTimeout(() => {
+      setTranscriptOpen(false);
+      setAgentExpanded(false);
+      collapseTimerRef.current = null;
+    }, 5_500);
+  }, []);
   useEffect(() => {
     if (!eventId) return;
     const syncChat = () => setTurns(readWorkspaceChat(eventId));
@@ -225,6 +243,8 @@ export function WorkspaceCursorDock({
       if (!text || !eventId || busy) return;
       setBusy(true);
       setTranscriptOpen(true);
+      setAgentExpanded(false);
+      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
       spineIngressFromLegacy({
         source: "workstream",
         contextEventId: eventId,
@@ -329,9 +349,10 @@ export function WorkspaceCursorDock({
         finishAgentExecutionSession({ keepMs: 4_000 });
         setBusy(false);
         scheduleExecutionFeedDismiss("run_complete");
+        scheduleTranscriptCollapse();
       }
     },
-    [busy, eventId],
+    [busy, eventId, scheduleTranscriptCollapse],
   );
 
   const percent = agent?.percent ?? 0;
@@ -467,7 +488,13 @@ export function WorkspaceCursorDock({
             <button
               type="button"
               className="text-[10px] font-medium text-[#8b95a1]"
-              onClick={() => setTranscriptOpen((v) => !v)}
+              onClick={() => {
+                if (collapseTimerRef.current) {
+                  clearTimeout(collapseTimerRef.current);
+                  collapseTimerRef.current = null;
+                }
+                setTranscriptOpen((v) => !v);
+              }}
             >
               {transcriptOpen ? "접기" : `대화 ${turns.length}`}
             </button>
@@ -477,14 +504,14 @@ export function WorkspaceCursorDock({
         {transcriptOpen && !compact ? (
           <div
             ref={scrollerRef}
-            className="max-h-[min(22vh,168px)] space-y-2 overflow-y-auto px-3 py-2"
+            className="max-h-[min(12vh,96px)] space-y-1.5 overflow-y-auto px-3 py-1.5"
           >
             {turns.length === 0 ? (
-              <p className="py-3 text-center text-[11px] text-[#8b95a1]">
+              <p className="py-2 text-center text-[11px] text-[#8b95a1]">
                 {copy.globe.workspaceChatEmptyBody}
               </p>
             ) : (
-              turns.slice(-8).map((turn) => (
+              turns.slice(-3).map((turn) => (
                 <div
                   key={turn.id}
                   className={cn(
@@ -499,6 +526,7 @@ export function WorkspaceCursorDock({
                   ) : (
                     <AssistantBubble
                       turn={turn}
+                      dense
                       contextEventId={eventId}
                       onFocusNode={onFocusNode}
                       onBriefReplay={onBriefReplay}
