@@ -5,13 +5,16 @@
  * Relationship Layer Update → Callout
  */
 
+import type {
+  SpatialCalloutSeed,
+  SpatialContextAwareCallout,
+  SpatialProjectionEvent,
+  SpatialProjectionPin,
+  SpatialRealityEntity,
+  SpatialRealityRelationship,
+} from "@/lib/spatial-retrieval/types";
 import {
   SPATIAL_PROJECTION_PIPELINE,
-  type SpatialCalloutSeed,
-  type SpatialProjectionEvent,
-  type SpatialProjectionPin,
-  type SpatialRealityEntity,
-  type SpatialRealityRelationship,
 } from "@/lib/spatial-retrieval/types";
 
 /**
@@ -21,7 +24,7 @@ export function emitSpatialProjectionEvents(input: {
   readonly realityEntities: readonly SpatialRealityEntity[];
   readonly relationships: readonly SpatialRealityRelationship[];
   readonly pins: readonly SpatialProjectionPin[];
-  readonly callouts: readonly SpatialCalloutSeed[];
+  readonly callouts: readonly (SpatialContextAwareCallout | SpatialCalloutSeed)[];
 }): readonly SpatialProjectionEvent[] {
   const events: SpatialProjectionEvent[] = [];
   const discovered = input.realityEntities.filter(

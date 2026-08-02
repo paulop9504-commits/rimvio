@@ -1,7 +1,8 @@
 /**
  * Spatial Retrieval Pipeline
  *
- * User Command → Intent → Context → Anchor → Query Engine → Reality Graph → Projection
+ * User Command → Intent → Context → Anchor → Query Engine → Reality Graph →
+ * Workspace Projection → Context Aware Callout → Draft → Commit
  */
 
 export type {
@@ -11,11 +12,17 @@ export type {
   SpatialAnchorResolveAmbiguous,
   SpatialAnchorResolveOk,
   SpatialAnchorResolveSource,
+  SpatialCalloutAction,
+  SpatialCalloutActionId,
+  SpatialCalloutEvidence,
+  SpatialCalloutRelationship,
   SpatialCalloutSeed,
+  SpatialContextAwareCallout,
   SpatialContextRef,
   SpatialContextScoreBreakdown,
   SpatialDiscoveryConstraints,
   SpatialDiscoveryIntent,
+  SpatialDraftEdge,
   SpatialEntityResolverResult,
   SpatialProjectionEvent,
   SpatialProjectionPipelineStage,
@@ -85,6 +92,23 @@ export { projectSpatialPins } from "@/lib/spatial-retrieval/workspace-projection
 
 export { emitSpatialProjectionEvents } from "@/lib/spatial-retrieval/projection-events";
 
-export { buildSpatialCalloutSeeds } from "@/lib/spatial-retrieval/callout-renderer";
+export {
+  buildContextAwareCallout,
+  buildSpatialCalloutSeeds,
+  formatContextAwareCalloutSketch,
+} from "@/lib/spatial-retrieval/callout-renderer";
+
+export {
+  createScheduleDraftEdge,
+  isPreCommitDraft,
+} from "@/lib/spatial-retrieval/draft-edge";
+
+export {
+  applySpatialSessionTurn,
+  createSpatialSession,
+  type SpatialSessionPhase,
+  type SpatialSessionState,
+  type SpatialSessionTurnResult,
+} from "@/lib/spatial-retrieval/spatial-session";
 
 export { runSpatialRetrieval } from "@/lib/spatial-retrieval/run-spatial-retrieval";

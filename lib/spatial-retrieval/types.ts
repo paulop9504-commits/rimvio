@@ -289,11 +289,83 @@ export type SpatialProjectionPin = {
   readonly role: "anchor" | "discovered";
 };
 
-export type SpatialCalloutSeed = {
+/** Evidence row inside Context Aware Callout */
+export type SpatialCalloutEvidence = {
+  readonly id: string;
+  readonly kind:
+    | "hotel_relation"
+    | "distance"
+    | "walking"
+    | "why"
+    | "metric";
+  readonly labelKo: string;
+  readonly valueKo: string;
+  /** Why bullets use checkmark presentation */
+  readonly checked?: boolean;
+};
+
+/** Relationship row shown on Callout (Hotel Relation …) */
+export type SpatialCalloutRelationship = {
+  readonly fromId: string;
+  readonly toId: string;
+  readonly type: SpatialRelation;
+  readonly labelKo: string;
+  readonly anchorTitleKo: string;
+  readonly distanceMeters: number | null;
+  readonly walkingMinutes: number | null;
+};
+
+export type SpatialCalloutActionId =
+  | "add_to_schedule"
+  | "compare"
+  | "prepare_reservation";
+
+export type SpatialCalloutAction = {
+  readonly id: SpatialCalloutActionId;
+  readonly labelKo: string;
+  readonly enabled: boolean;
+  readonly primary: boolean;
+};
+
+/**
+ * Context Aware Callout — replaces flat Restaurant Card.
+ *
+ * {
+ *   entityId,
+ *   mode: "discovery",
+ *   evidence[],
+ *   relationships[],
+ *   actions[]
+ * }
+ */
+export type SpatialContextAwareCallout = {
   readonly entityId: string;
-  readonly mode: "Discover";
+  readonly mode: "discovery";
   readonly titleKo: string;
+  readonly emoji: string;
+  readonly evidence: readonly SpatialCalloutEvidence[];
+  readonly relationships: readonly SpatialCalloutRelationship[];
+  readonly actions: readonly SpatialCalloutAction[];
+  /** Display lines for WHY (✓ …) */
   readonly whyLinesKo: readonly string[];
+};
+
+/** @deprecated use SpatialContextAwareCallout — kept as alias for older seeds */
+export type SpatialCalloutSeed = SpatialContextAwareCallout;
+
+/**
+ * Draft Edge — schedule add before Reality Commit.
+ * "여기 일정에 넣어" → draft only; Commit 전 상태 유지.
+ */
+export type SpatialDraftEdge = {
+  readonly id: string;
+  readonly fromEntityId: string;
+  readonly toEntityId: string;
+  readonly kind: "schedule_add";
+  readonly status: "draft";
+  readonly committed: false;
+  readonly labelKo: string;
+  readonly createdAtIso: string;
 };
 
 export type SpatialRetrievalStage =
@@ -305,7 +377,8 @@ export type SpatialRetrievalStage =
   | "relations"
   | "projection"
   | "callout"
-  | "reality_graph";
+  | "reality_graph"
+  | "draft";
 
 export type SpatialRetrievalLogLine = {
   readonly stage: SpatialRetrievalStage;
@@ -349,7 +422,8 @@ export type SpatialRetrievalResult =
       /** Reality Graph edges (from/to/type/metadata) */
       readonly realityRelationships: readonly SpatialRealityRelationship[];
       readonly pins: readonly SpatialProjectionPin[];
-      readonly callouts: readonly SpatialCalloutSeed[];
+      /** Context Aware Callouts (not Restaurant Cards) */
+      readonly callouts: readonly SpatialContextAwareCallout[];
       /** Workspace auto-update event stream */
       readonly projectionEvents: readonly SpatialProjectionEvent[];
       readonly logs: readonly SpatialRetrievalLogLine[];

@@ -6,7 +6,10 @@
  */
 
 import { resolveSpatialAnchorDetailed } from "@/lib/spatial-retrieval/anchor-resolver";
-import { buildSpatialCalloutSeeds } from "@/lib/spatial-retrieval/callout-renderer";
+import {
+  buildSpatialCalloutSeeds,
+  formatContextAwareCalloutSketch,
+} from "@/lib/spatial-retrieval/callout-renderer";
 import { resolveSpatialContext } from "@/lib/spatial-retrieval/context-resolver";
 import { retrieveSpatialEntities } from "@/lib/spatial-retrieval/entity-retrieval";
 import { parseSpatialDiscoveryIntent } from "@/lib/spatial-retrieval/intent-parser";
@@ -207,8 +210,24 @@ export function runSpatialRetrieval(
     logEnabled,
   );
 
-  // 8. Callout seeds
-  const callouts = buildSpatialCalloutSeeds({ anchor, entities });
+  // 8. Context Aware Callout (not Restaurant Card)
+  const callouts = buildSpatialCalloutSeeds({
+    anchor,
+    entities,
+    context,
+    relation: intent.relation,
+    constraints: intent.constraints,
+    realityRelationships,
+  });
+  pushLog(
+    logs,
+    "callout",
+    `Context Aware Callout · ${callouts.length} · mode=discovery`,
+    logEnabled,
+  );
+  if (logEnabled && callouts[0]) {
+    console.log(formatContextAwareCalloutSketch(callouts[0]));
+  }
 
   // 9. Projection Event pipeline → Workspace auto-update
   const projectionEvents = emitSpatialProjectionEvents({
@@ -221,17 +240,12 @@ export function runSpatialRetrieval(
     if (
       ev.stage === "entity_created" ||
       ev.stage === "map_update" ||
-      ev.stage === "relationship_layer_update"
+      ev.stage === "relationship_layer_update" ||
+      ev.stage === "callout_created"
     ) {
       pushLog(logs, "projection", ev.message, logEnabled);
     }
   }
-  pushLog(
-    logs,
-    "callout",
-    `Callout seeds · ${callouts.length} · mode=Discover`,
-    logEnabled,
-  );
 
   const summaryKo = [
     "Spatial Retrieval",
@@ -241,6 +255,7 @@ export function runSpatialRetrieval(
     `relation = ${capitalizeRelation(intent.relation)}`,
     `Spatial Query · r=${query.radius} · ranking=${query.ranking.join("+")}`,
     `Reality Graph · ${realityEntities.length} nodes · ${realityRelationships.length} edges`,
+    `Callout · ${callouts.length} discovery`,
   ].join("\n");
 
   return {

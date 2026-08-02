@@ -178,6 +178,7 @@
     "test:dynamic-callout": "npx tsx scripts/test-dynamic-callout.ts",
     "test:callout-windows": "npx tsx scripts/test-callout-windows.ts",
     "test:spatial-retrieval": "npx tsx scripts/test-spatial-retrieval.ts",
+    "test:spatial-retrieval-e2e": "npx tsx scripts/test-spatial-retrieval-e2e.ts",
     "test:mobile-workspace": "npx tsx scripts/test-mobile-workspace.ts",
     "test:context-command-bar": "npx tsx scripts/test-context-command-bar.ts",
     "test:rimvio-command": "npx tsx scripts/test-rimvio-command.ts",

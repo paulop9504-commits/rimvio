@@ -147,6 +147,12 @@ assert.ok(result.projectionEvents.some((e) => e.stage === "callout_created"));
 assert.ok(result.pins.some((p) => p.role === "discovered"));
 assert.ok(result.pins.filter((p) => p.role === "discovered").length >= 1);
 
+// Context Aware Callout schema
+assert.ok(result.callouts.length >= 1);
+assert.equal(result.callouts[0]!.mode, "discovery");
+assert.ok(result.callouts[0]!.evidence.some((e) => e.kind === "hotel_relation"));
+assert.ok(result.callouts[0]!.actions.some((a) => a.id === "add_to_schedule"));
+
 console.log("\n── Reality Graph ──");
 console.log(`nodes=${result.realityEntities.length} edges=${result.realityRelationships.length}`);
 console.log(
