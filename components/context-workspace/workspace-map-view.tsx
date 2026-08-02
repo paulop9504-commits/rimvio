@@ -39,6 +39,8 @@ import {
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { WorkspaceMapCapabilityBloom } from "@/components/context-workspace/workspace-map-capability-bloom";
+import { WorkspaceMapObjectCallout } from "@/components/context-workspace/workspace-map-object-callout";
+import type { CalloutSessionValue } from "@/lib/callout/callout-session";
 import type {
   CapabilityLiveSignal,
   WorkspaceCapabilityBloomHandlers,
@@ -50,6 +52,12 @@ export type WorkspaceMapCapabilityBloomModel = {
   readonly liveSignals: readonly CapabilityLiveSignal[];
   readonly hubLabelKo: string;
   readonly handlers?: WorkspaceCapabilityBloomHandlers;
+};
+
+/** Object Callout Control Surface — preferred over capability bloom. */
+export type WorkspaceMapObjectCalloutModel = {
+  readonly objectId: string;
+  readonly session: CalloutSessionValue;
 };
 
 export type WorkspaceMapViewProps = {
@@ -75,6 +83,8 @@ export type WorkspaceMapViewProps = {
   preferredCenter?: { readonly lat: number; readonly lng: number } | null;
   /** Capability bloom for the selected object — rendered on the map. */
   capabilityBloom?: WorkspaceMapCapabilityBloomModel | null;
+  /** Object Callout Control Surface — takes precedence over capability bloom. */
+  objectCallout?: WorkspaceMapObjectCalloutModel | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -451,6 +461,7 @@ function MapLibreWorkspaceMap({
   contextEventId,
   preferredCenter = null,
   capabilityBloom = null,
+  objectCallout = null,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -871,10 +882,11 @@ function MapLibreWorkspaceMap({
     });
   }, [ready, selectedId, compact]);
 
-  // Project selected pin → screen for Capability bloom (object-anchored).
+  // Project selected pin → screen for Object Callout / Capability bloom.
   useEffect(() => {
     const map = mapRef.current;
-    if (!ready || !map || !selectedId || !capabilityBloom) {
+    const hasSurface = Boolean(objectCallout || capabilityBloom);
+    if (!ready || !map || !selectedId || !hasSurface) {
       setBloomAnchor(null);
       return;
     }
@@ -899,7 +911,7 @@ function MapLibreWorkspaceMap({
       map.off("rotate", update);
       map.off("pitch", update);
     };
-  }, [ready, selectedId, capabilityBloom, pins]);
+  }, [ready, selectedId, capabilityBloom, objectCallout, pins]);
 
   // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
   const mediaTourSignature = useMemo(
@@ -970,7 +982,14 @@ function MapLibreWorkspaceMap({
           />
         </div>
       ) : null}
-      {capabilityBloom ? (
+      {objectCallout ? (
+        <WorkspaceMapObjectCallout
+          open={Boolean(selectedId && bloomAnchor)}
+          anchor={bloomAnchor}
+          objectId={objectCallout.objectId}
+          session={objectCallout.session}
+        />
+      ) : capabilityBloom ? (
         <WorkspaceMapCapabilityBloom
           open={Boolean(selectedId && bloomAnchor)}
           anchor={bloomAnchor}

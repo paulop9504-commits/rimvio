@@ -1,0 +1,57 @@
+/**
+ * Rimvio Object Callout — Control Surface on Reality Entities.
+ */
+
+export type {
+  CalloutAction,
+  CalloutActionKind,
+  CalloutConnectTarget,
+  CalloutEvidence,
+  CalloutEvidenceLayer,
+  CalloutExploreEdge,
+  CalloutHandlers,
+  CalloutIntentAxis,
+  CalloutMode,
+  CalloutObjectTypeDescriptor,
+  CalloutPrepareStep,
+  CalloutSimulationDelta,
+  CalloutViewModel,
+  RimvioObject,
+  RimvioObjectLocation,
+  RimvioObjectState,
+  RimvioObjectType,
+} from "@/lib/callout/types";
+export {
+  CALLOUT_MODES,
+  RIMVIO_OBJECT_STATES,
+  RIMVIO_OBJECT_TYPES,
+} from "@/lib/callout/types";
+
+export {
+  CALLOUT_MODE_LABEL_KO,
+  getCalloutObjectTypeDescriptor,
+  listCalloutObjectTypes,
+  OBJECT_STATE_LABEL_KO,
+  registerCalloutObjectType,
+} from "@/lib/callout/callout-registry";
+
+export {
+  buildCalloutViewModel,
+  calloutModeLabelKo,
+  type CalloutGraphAlternative,
+  type CalloutGraphNeighbor,
+} from "@/lib/callout/build-callout-model";
+
+export {
+  resolveRimvioObjectState,
+  rimvioObjectFromWorkspaceNode,
+  workspaceKindToRimvioObjectType,
+} from "@/lib/callout/resolve-rimvio-object";
+
+export { useCalloutState } from "@/lib/callout/hooks/useCalloutState";
+
+export {
+  buildCalloutAlternativesFromWorkspace,
+  buildCalloutNeighborsFromWorkspace,
+  buildRimvioObjectFromWorkspace,
+} from "@/lib/callout/from-workspace";

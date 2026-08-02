@@ -63,10 +63,13 @@ import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-v
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
-import { buildNodePreview } from "@/lib/context-workspace/build-node-preview";
-import { buildWorkspaceCapabilityBundle } from "@/lib/context-workspace/capability-callout";
-import { buildImmediatePlaceBrief } from "@/lib/context-workspace/place-brief";
-import { findRealityDraftDayForNode } from "@/lib/context-workspace/reality-draft/build-reality-draft";
+import type { CalloutSessionValue } from "@/lib/callout/callout-session";
+import type { CalloutHandlers } from "@/lib/callout/types";
+import {
+  buildCalloutAlternativesFromWorkspace,
+  buildCalloutNeighborsFromWorkspace,
+  buildRimvioObjectFromWorkspace,
+} from "@/lib/callout/from-workspace";
 import {
   isWorkspaceContextMediaPinId,
   projectWorkspaceContextMediaPins,
@@ -756,7 +759,7 @@ export function ContextWorkspaceShell({
     !peekClosed &&
     selectedMediaPin == null;
 
-  const mapCapabilityBloom = useMemo(() => {
+  const mapObjectCallout = useMemo(() => {
     if (!selectedNode || !state || !eventId) return null;
     if (
       selectedNode.kind !== "lodging" &&
@@ -766,81 +769,111 @@ export function ContextWorkspaceShell({
     ) {
       return null;
     }
-    const preview = buildNodePreview(selectedNode, state);
-    const draftDay = state.realityDraft
-      ? findRealityDraftDayForNode(state.realityDraft, selectedNode.id)
-      : null;
-    const brief = buildImmediatePlaceBrief({
-      contextEventId: eventId,
-      node: selectedNode,
-      destinationKo: state.realityDraft?.destinationKo ?? null,
-    });
-    const bundle = buildWorkspaceCapabilityBundle({
-      preview,
-      brief,
-      draftDayLabelKo: draftDay?.labelKo ?? null,
-      recipe: "travel",
-    });
-    if (bundle.callouts.length === 0 && bundle.liveSignals.length === 0) {
-      return null;
-    }
     const nodeId = selectedNode.id;
-    return {
-      callouts: bundle.callouts,
-      liveSignals: bundle.liveSignals,
-      hubLabelKo: preview.ratingLabel,
-      handlers: {
-        onRerankSimilar: () => {
-          applyWorkspaceTransition({
-            contextEventId: eventId,
-            op: "select",
-            nodeIds: [nodeId],
-          });
-          applyWorkspaceTransition({
-            contextEventId: eventId,
-            op: "find_similar",
-            nodeIds: [nodeId],
-          });
-          toast.success("비슷한 후보를 다시 모았어요");
-        },
-        onFocusNearby: (id: string) => {
-          setFocusedId(id);
-          setPeekClosed(true);
-        },
-        onSelect: () => {
-          applyWorkspaceTransition({
-            contextEventId: eventId,
-            op: "select",
-            nodeIds: [nodeId],
-          });
-          toast.success(copy.globe.workspacePreviewSelected);
-        },
-        onCompare: () => {
-          const nextIds = state.compareIds.includes(nodeId)
-            ? state.compareIds
-            : [...state.compareIds, nodeId].slice(0, 5);
-          applyWorkspaceTransition({
-            contextEventId: eventId,
-            op: "compare",
-            nodeIds: [...nextIds],
-          });
-          if (nextIds.length >= 2) setCompareOpen(true);
-        },
-        onBookmark: () => {
-          onPinToggle(nodeId);
-        },
-        onPrepare: () => {
-          if (!preview.canPrepare) return;
-          void onPrepareReserve(nodeId);
-        },
+    const handlers: CalloutHandlers = {
+      onSelect: () => {
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "select",
+          nodeIds: [nodeId],
+        });
+        toast.success(copy.globe.workspacePreviewSelected);
+      },
+      onCompare: () => {
+        const nextIds = state.compareIds.includes(nodeId)
+          ? state.compareIds
+          : [...state.compareIds, nodeId].slice(0, 5);
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "compare",
+          nodeIds: [...nextIds],
+        });
+        if (nextIds.length >= 2) setCompareOpen(true);
+      },
+      onBookmark: () => {
+        onPinToggle(nodeId);
+      },
+      onFocusRelated: (id: string) => {
+        setFocusedId(id);
+        setPeekClosed(true);
+      },
+      onChangeIntent: (id, axes) => {
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "select",
+          nodeIds: [id],
+        });
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "find_similar",
+          nodeIds: [id],
+        });
+        const axisLabel = axes.map((a) => a.id).join(" · ") || "조건";
+        toast.success(`Change Intent · ${axisLabel}`);
+      },
+      onApplySimulation: (id, alternativeObjectId) => {
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "simulate",
+          nodeIds: [id, alternativeObjectId],
+          simulateScenarioKo: `대체: ${alternativeObjectId}`,
+        });
+        setFocusedId(alternativeObjectId);
+        setPeekClosed(true);
+        toast.success("변경 영향을 시험했어요");
+      },
+      onCreatePrepareDraft: () => {
+        void onPrepareReserve(nodeId);
+      },
+      onHandoffField: () => {
+        onOpenField(nodeId);
+      },
+      onConnect: (_id, targetId) => {
+        toast.message(`연결 · ${targetId}`, {
+          description: "그래프 연결은 이어갈 수 있어요",
+        });
+      },
+      onAskObject: (id, text) => {
+        appendWorkspaceChatTurn({
+          contextEventId: eventId,
+          role: "user",
+          text: `@${selectedNode.title}: ${text}`,
+        });
+        applyWorkspaceTransition({
+          contextEventId: eventId,
+          op: "find_similar",
+          nodeIds: [id],
+        });
+        toast.success("이 객체 기준으로 반영했어요");
       },
     };
+
+    const session: CalloutSessionValue = {
+      contextId: eventId,
+      getObject: (objectId) => {
+        const node = state.nodes.find((n) => n.id === objectId);
+        if (!node) return null;
+        return buildRimvioObjectFromWorkspace({
+          contextId: eventId,
+          state,
+          node,
+        });
+      },
+      getNeighbors: (objectId) =>
+        buildCalloutNeighborsFromWorkspace(state, objectId),
+      getAlternatives: (objectId) =>
+        buildCalloutAlternativesFromWorkspace(state, objectId),
+      handlers,
+    };
+
+    return { objectId: nodeId, session };
   }, [
     selectedNode,
     state,
     eventId,
     onPrepareReserve,
     onPinToggle,
+    onOpenField,
   ]);
 
   return (
@@ -920,7 +953,7 @@ export function ContextWorkspaceShell({
           routeLineCoords={routeLineCoords}
           contextEventId={eventId}
           preferredCenter={preferredMapCenter}
-          capabilityBloom={mapCapabilityBloom}
+          objectCallout={mapObjectCallout}
         />
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed
