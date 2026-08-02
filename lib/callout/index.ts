@@ -101,3 +101,20 @@ export {
   type SimulationProposal,
   type SimulationResult,
 } from "@/lib/callout/simulation";
+
+export {
+  assertPrepareDoesNotCommit,
+  buildPrepareChecklist,
+  buildReservationDateRangeFromWorkspace,
+  buildReservationPriceFromObject,
+  clearReservationDraft,
+  createReservationDraft,
+  defaultGuestCountFromWorkspace,
+  readReservationDraft,
+  reservationDraftSummaryKo,
+  writeReservationDraft,
+  type PrepareChecklistStep,
+  type ReservationDraft,
+  type ReservationDateRange,
+  type ReservationPrice,
+} from "@/lib/callout/prepare";

@@ -118,6 +118,7 @@ export type CalloutPrepareStep = {
   readonly id: string;
   readonly labelKo: string;
   readonly done: boolean;
+  readonly detailKo?: string | null;
 };
 
 /** Change Intent axes — Context is the protagonist, not "ask AI". */
@@ -165,9 +166,12 @@ export type CalloutViewModel = {
     readonly emptyKo: string;
   };
   readonly prepare: {
+    readonly titleKo: string;
     readonly steps: readonly CalloutPrepareStep[];
     readonly ctaKo: string;
     readonly canCreateDraft: boolean;
+    readonly draft: import("@/lib/callout/prepare/types").ReservationDraft | null;
+    readonly commitHintKo: string;
   };
   readonly commit: {
     readonly summaryKo: string;

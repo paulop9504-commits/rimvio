@@ -113,6 +113,9 @@ assert.ok(model!.explore.edges.some((e) => e.relationId === "restaurant"));
 assert.ok(model!.explore.buckets);
 assert.equal(model!.simulate.deltas.length, 1);
 assert.ok(model!.prepare.steps.length >= 3);
+assert.ok(model!.prepare.steps.some((s) => s.id === "info"));
+assert.equal(model!.prepare.draft, null);
+assert.ok(model!.prepare.commitHintKo.includes("Commit"));
 assert.equal(model!.commit.ctaKo.includes("Field"), true);
 
 /** Extensibility: register new type without touching Callout Core. */

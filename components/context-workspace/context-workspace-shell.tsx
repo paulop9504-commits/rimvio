@@ -79,6 +79,16 @@ import {
   type ObjectRelationType,
 } from "@/lib/callout/object-relation";
 import {
+  assertPrepareDoesNotCommit,
+  buildReservationDateRangeFromWorkspace,
+  buildReservationPriceFromObject,
+  createReservationDraft,
+  defaultGuestCountFromWorkspace,
+  readReservationDraft,
+  reservationDraftSummaryKo,
+  writeReservationDraft,
+} from "@/lib/callout/prepare";
+import {
   assertSimulationDoesNotCommit,
   buildCurrentRealityFromWorkspace,
   buildSimulationAnchorsFromWorkspace,
@@ -890,7 +900,24 @@ export function ContextWorkspaceShell({
         toast.success("Draft에 적용했어요 · Commit 아님");
       },
       onCreatePrepareDraft: () => {
+        assertPrepareDoesNotCommit("prepare");
+        const object = buildRimvioObjectFromWorkspace({
+          contextId: eventId,
+          state,
+          node: selectedNode,
+        });
+        const draft = createReservationDraft({
+          contextId: eventId,
+          object,
+          dateRange: buildReservationDateRangeFromWorkspace(state),
+          guestCount: defaultGuestCountFromWorkspace(state),
+          price: buildReservationPriceFromObject(object),
+        });
+        writeReservationDraft(draft);
         void onPrepareReserve(nodeId);
+        toast.message("ReservationDraft", {
+          description: `${reservationDraftSummaryKo(draft)} · Commit 아님`,
+        });
       },
       onHandoffField: () => {
         onOpenField(nodeId);
@@ -1035,6 +1062,24 @@ export function ContextWorkspaceShell({
         return getAllRelationBuckets(objectId, ctx);
       },
       getSimulationAnchors: () => buildSimulationAnchorsFromWorkspace(state),
+      getPrepareDraft: (objectId) =>
+        readReservationDraft(eventId, objectId),
+      getPrepareDateRange: () =>
+        buildReservationDateRangeFromWorkspace(state),
+      getPrepareGuestCount: () => defaultGuestCountFromWorkspace(state),
+      getPreparePrice: (objectId) => {
+        const node = state.nodes.find((n) => n.id === objectId);
+        if (!node) {
+          return { amountWon: null, labelKo: null };
+        }
+        return buildReservationPriceFromObject(
+          buildRimvioObjectFromWorkspace({
+            contextId: eventId,
+            state,
+            node,
+          }),
+        );
+      },
       handlers,
     };
 

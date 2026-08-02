@@ -24,6 +24,11 @@ import type {
   ObjectRelation,
   ObjectRelationType,
 } from "@/lib/callout/object-relation";
+import type {
+  ReservationDateRange,
+  ReservationDraft,
+  ReservationPrice,
+} from "@/lib/callout/prepare/types";
 import type { SimulationItineraryAnchor } from "@/lib/callout/simulation/types";
 
 export type CalloutSessionValue = {
@@ -37,6 +42,10 @@ export type CalloutSessionValue = {
     objectId: string,
   ) => Record<ObjectRelationType, readonly ObjectRelation[]>;
   readonly getSimulationAnchors?: () => readonly SimulationItineraryAnchor[];
+  readonly getPrepareDraft?: (objectId: string) => ReservationDraft | null;
+  readonly getPrepareDateRange?: () => ReservationDateRange;
+  readonly getPrepareGuestCount?: () => number;
+  readonly getPreparePrice?: (objectId: string) => ReservationPrice;
   readonly handlers: CalloutHandlers;
 };
 
@@ -72,6 +81,10 @@ export function useCalloutViewModel(objectId: string): CalloutViewModel | null {
       alternatives: session.getAlternatives(objectId),
       relationBuckets: session.getRelationBuckets(objectId),
       simulationAnchors: session.getSimulationAnchors?.() ?? [],
+      prepareDraft: session.getPrepareDraft?.(objectId) ?? null,
+      prepareDateRange: session.getPrepareDateRange?.() ?? null,
+      prepareGuestCount: session.getPrepareGuestCount?.() ?? null,
+      preparePrice: session.getPreparePrice?.(objectId) ?? null,
     });
   }, [session, objectId]);
 }

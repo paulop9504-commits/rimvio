@@ -221,6 +221,7 @@ export function Callout({
           <CalloutPrepare
             model={model.prepare}
             onCreateDraft={() => handlers.onCreatePrepareDraft?.(objectId)}
+            onHandoffCommit={() => handlers.onHandoffField?.(objectId)}
           />
         ) : null}
 

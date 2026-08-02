@@ -13,6 +13,12 @@ import type {
   ObjectRelation,
   ObjectRelationType,
 } from "@/lib/callout/object-relation";
+import { buildPrepareChecklist } from "@/lib/callout/prepare/create-reservation-draft";
+import type {
+  ReservationDateRange,
+  ReservationDraft,
+  ReservationPrice,
+} from "@/lib/callout/prepare/types";
 import {
   formatMinutesDelta,
   formatWonDelta,
@@ -157,6 +163,10 @@ export function buildCalloutViewModel(input: {
     readonly ObjectRelation[]
   > | null;
   simulationAnchors?: readonly SimulationItineraryAnchor[] | null;
+  prepareDraft?: ReservationDraft | null;
+  prepareDateRange?: ReservationDateRange | null;
+  prepareGuestCount?: number | null;
+  preparePrice?: ReservationPrice | null;
 }): CalloutViewModel | null {
   const desc = getCalloutObjectTypeDescriptor(input.object.type);
   if (!desc) return null;
@@ -167,15 +177,33 @@ export function buildCalloutViewModel(input: {
     (a) => a.objectId !== object.id,
   );
 
-  const prepareSteps: CalloutPrepareStep[] = desc.prepareStepDefs.map((s) => ({
+  const dateRange: ReservationDateRange = input.prepareDateRange ?? {
+    checkInIso: null,
+    checkOutIso: null,
+    labelKo: null,
+  };
+  const guestCount = input.prepareGuestCount ?? 2;
+  const price: ReservationPrice = input.preparePrice ?? {
+    amountWon: parseWonAmount(object.facts.priceLabelKo),
+    labelKo: object.facts.priceLabelKo,
+  };
+
+  const prepareSteps: CalloutPrepareStep[] = buildPrepareChecklist({
+    object,
+    dateRange,
+    guestCount,
+    price,
+  }).map((s) => ({
     id: s.id,
     labelKo: s.labelKo,
-    done: s.isDone(object),
+    done: s.done,
+    detailKo: s.detailKo,
   }));
 
   const canCreateDraft =
+    prepareSteps.filter((s) => s.done).length >= 2 ||
     object.facts.canPrepare ||
-    prepareSteps.filter((s) => s.done).length >= 2;
+    object.facts.selected;
 
   const emptyBuckets: Record<ObjectRelationType, readonly ObjectRelation[]> = {
     nearby: [],
@@ -215,9 +243,16 @@ export function buildCalloutViewModel(input: {
       emptyKo: desc.simulateEmptyKo,
     },
     prepare: {
+      titleKo:
+        object.type === "hotel"
+          ? "호텔 예약 준비"
+          : `${desc.labelKo} 준비`,
       steps: prepareSteps,
       ctaKo: desc.prepareCtaKo,
       canCreateDraft,
+      draft: input.prepareDraft ?? null,
+      commitHintKo:
+        "Prepare는 Commit하지 않아요 · 실행은 Field Reality Action",
     },
     commit: {
       summaryKo:
