@@ -31,13 +31,13 @@ export const STORY_L0 = {
     ko: "그때 거기, 함께한 사람 — 맞을 때 다시.",
   },
   memoryOs: {
-    en: "Lived ontology — agents prepare the next move.",
-    ko: "살아본 온톨로지 위에서, 에이전트가 다음을 준비한다",
+    en: "Context and Reality Graph — AI Agents prepare the next move in Workspace.",
+    ko: "Context·Reality Graph 위에서, AI Agent가 Workspace로 다음을 준비한다",
   },
-  /** Product mission — ontology SSOT + agentic prep → human Commit. */
+  /** Product mission — Reality Graph + AI Agent prep → human Commit. */
   mission: {
-    en: "Ontology holds context. Agents prepare. You Commit.",
-    ko: "온톨로지가 맥락을 붙잡고, 에이전트가 준비한다 — Commit은 당신.",
+    en: "Context. Reality Graph. AI Agent. Workspace. You Commit.",
+    ko: "Context · Reality Graph · AI Agent · Workspace — Commit은 당신.",
   },
 } as const;
 

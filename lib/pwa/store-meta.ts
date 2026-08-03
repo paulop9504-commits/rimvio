@@ -2,22 +2,26 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
+  /** Google / HTML meta · Twitter — keep SEO keywords early. */
   shortDescription:
-    "살아본 맥락을 온톨로지로 붙이고, 에이전트가 비교·예약·다음 행동을 준비하는 Experience OS",
+    "Rimvio는 현실 세계의 장소와 경험을 AI가 이해하는 Context 기반 Experience OS입니다. Reality Graph와 AI Agent를 통해 탐색, 비교, 예약, 다음 행동까지 연결합니다.",
+  /** Open Graph · store full listing. */
   longDescription:
-    "Rimvio(림비오)는 시간·장소·사람·행동을 하나의 경험 온톨로지로 엮는 에이전틱 Experience OS입니다. 대화와 지구 위 Diff에 맥락이 쌓이면, 에이전트가 검색·가격 비교·예약 준비까지 맡습니다. 결제와 Reality Commit은 당신이 승인할 때만 실행됩니다. 챗봇이 아니라, 구조가 남고 행동이 이어지는 OS입니다.",
+    "Rimvio(림비오)는 현실 세계를 이해하는 AI Experience OS입니다. 사용자의 Context를 중심으로 장소·경험·일정·관계·데이터를 Reality Graph로 연결하고, Context AI Agent가 Workspace에서 후보 탐색·비교·일정 구성·예약 준비·다음 행동까지 이어 줍니다. 3D Globe에서 장소(Object)·진행 중 작업(Capsule)·AI 분석이 같은 공간에 연결되며, \"지난번 오사카 여행 이어서\"처럼 Context Resume로 이전 작업을 그대로 이어갑니다. Reality Commit은 당신이 승인할 때만 실행됩니다.",
   keywords: [
     "Rimvio",
     "림비오",
+    "AI Experience OS",
     "Experience OS",
-    "에이전틱",
-    "온톨로지",
-    "agentic",
-    "ontology",
+    "Context",
+    "Reality Graph",
+    "AI Agent",
+    "Workspace",
+    "Context Resume",
+    "Globe",
     "맥락",
     "여행",
     "예약",
-    "Globe",
     "PWA",
   ],
   category: "productivity",
@@ -46,7 +50,7 @@ export const STORE_META = {
       path: "/store/welcome-mobile.png",
       width: 390,
       height: 844,
-      label: "온톨로지 위에 에이전트가 준비한다",
+      label: "Context AI가 Workspace에서 다음을 준비한다",
     },
   },
 } as const;

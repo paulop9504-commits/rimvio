@@ -49,8 +49,8 @@ export const APPLE_MOBILE_WEB_UI_FIXED = {
 export const RIMVIO_MOBILE_WEB_UI_FIXED = {
   ...APPLE_MOBILE_WEB_UI_FIXED,
   defaultHeaderTagline:
-    "Rimvio — 경험 온톨로지 위 에이전틱 Experience OS. 맥락을 붙잡고, 비교·예약을 준비하며, Commit은 당신.",
-  defaultUrlBar: "rimvio.app",
+    "Rimvio — AI Experience OS. Context · Reality Graph · AI Agent · Workspace. Commit은 당신.",
+  defaultUrlBar: "rimvio.com",
 } as const;
 
 const GRAPHIC_HINTS: Record<Exclude<AppleMobileWebCardGraphic, "custom">, string> = {

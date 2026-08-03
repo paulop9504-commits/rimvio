@@ -38,9 +38,10 @@ export const copy = {
   product: {
     definition: NORTH_STAR.experienceOsDefinitionKo,
     definitionHuman: NORTH_STAR.experienceOsHumanKo,
-    oneLiner: "그때 거기, 함께한 사람 — 맞을 때 다시 떠오르는 OS",
+    oneLiner:
+      "현실 세계의 Context를 이해하고, AI Agent가 다음 행동까지 준비하는 Experience OS",
     oneLinerSub:
-      "지구에 남긴 흔적 · 친구와의 맥락 · 맞을 때 회상 — 필요하면 한 번에 이어가기",
+      "Reality Graph로 장소·경험·일정을 잇고 · Workspace에서 탐색·비교·예약 · Context Resume로 이어가기",
     feedContext: "공유한 링크도 살아본 맥락에 담기",
     peersContext:
       "기억은 사람과 함께 묶여요 · 대화에서 한 번에 이어가기",
@@ -554,6 +555,19 @@ export const copy = {
     agentStatusEyebrow: "Current Context",
     agentStatusTitle: "Rimvio Agent",
     agentStatusLabel: "상태",
+    /** ADR-050 — product pipeline work log (not chat essay). */
+    agentRuntimeWorkLogTitle: "작업 로그",
+    agentRuntimePinsReady: (n: number) => `지도 후보 ${n}곳`,
+    agentRuntimePreparePending: "예약 준비됨 · 승인 대기",
+    /** Cursor-like Agent Activity tape */
+    agentActivityWorking: (elapsed: string) => `작업 중 · ${elapsed}`,
+    agentActivityWorked: (elapsed: string) => `${elapsed} 동안 작업`,
+    agentActivityThought: "Thought",
+    agentActivityExplore: "Explored",
+    agentActivityTool: "Tool",
+    agentActivityPatch: "Patched",
+    agentActivityVerify: "Verified",
+    agentActivityStatus: "Status",
     agentCurrentTask: "현재 작업",
     agentGoalLabel: "Goal",
     agentStrategyLabel: "전략",
@@ -695,9 +709,13 @@ export const copy = {
     workspaceNodeDoneCta: "완료됨",
     workspaceMapLegHint: (minutes: number, km: number) =>
       `${minutes}분 · ${km.toFixed(1)}km`,
-    workspaceCompareEyebrow: "비교",
-    workspaceCompareTitle: "후보 비교",
-    workspaceCompareTitleCount: (n: number) => `후보 ${n}곳 비교`,
+    workspaceCompareEyebrow: "판단",
+    workspaceCompareTitle: "Context 판단",
+    workspaceCompareTitleCount: (n: number) => `${n}곳 Decision`,
+    workspaceDecisionScore: (n: number) => `${n}점`,
+    workspaceDecisionJudgment: "판단",
+    workspaceCompareDecisionPill: (n: number) => `판단 ${n}`,
+    workspaceCompareDecisionExit: "종료",
     workspacePinCta: "고정",
     workspacePinDone: "고정됨",
     workspacePinCartTitle: (count: number) => `고정 ${count}`,
@@ -3928,7 +3946,7 @@ export const copy = {
       "로그인 후 이름·Rimvio ID만 정하면 친구·실행 탭을 바로 쓸 수 있어요",
     googleCardFoot: "Human decides · 실행은 항상 내가 탭할 때만",
     loading: "프로필 불러오는 중…",
-    introTitle: "Rimvio는 에이전틱 · 온톨로지 Experience OS예요",
+    introTitle: "Rimvio는 AI Experience OS예요",
     introBody: NORTH_STAR.experienceOsHumanKo,
     introTapHint: "자동 실행 없음 · 탭할 때만 실행",
     introCta: "프로필 만들기",
@@ -4137,9 +4155,9 @@ export const copy = {
     headline: RIMVIO.northStar,
     northStar: RIMVIO.northStarKo,
     body: `${RIMVIO.name}는 북마크 앱도 챗봇도 아니에요. `,
-    bodyStrong: "온톨로지",
+    bodyStrong: "Reality Graph",
     bodyEnd:
-      "에 맥락을 붙잡고, 에이전트가 비교·예약을 준비하며, Commit은 당신이 합니다",
+      "로 Context를 잇고, AI Agent가 Workspace에서 비교·예약을 준비하며, Commit은 당신이 합니다",
     pwaOk: "홈 화면에 추가되어 실행 중입니다",
     privacyTitle: "개인정보 · 입력 분석",
     privacyBody:
@@ -4165,7 +4183,7 @@ export const copy = {
     iosStep3Body: "에 붙여넣기 → Action Dock으로 이어집니다",
     desktopSection: "데스크톱",
     desktopMid: "에 링크를 붙여넣거나",
-    desktopEnd: "로 에이전틱 · 온톨로지 Experience OS를 체험해 보세요",
+    desktopEnd: "로 AI Experience OS · Context Workspace를 체험해 보세요",
     tryDemo: "체험하기",
   },
   manual: {
@@ -4193,7 +4211,7 @@ export const copy = {
     tryCta: "실행 화면에서 바로 써보기",
     introTitle: "처음이시면 설명서부터 읽어보세요",
     introBody:
-      "림비오는 경험 온톨로지 위 에이전틱 OS예요. 1분이면 지구·친구·회상 흐름을 잡을 수 있어요.",
+      "림비오는 Context · Reality Graph · AI Agent Workspace예요. 1분이면 지구·친구·회상 흐름을 잡을 수 있어요.",
     readManualCta: "설명서 읽기",
     skipIntroCta: "바로 써볼게요",
     feedBannerText: "아직 설명서를 안 읽으셨어요.",
