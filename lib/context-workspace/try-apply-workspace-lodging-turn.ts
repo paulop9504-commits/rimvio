@@ -53,7 +53,9 @@ import {
   ensureWorkspaceAnchorNode,
   distanceGateNearScout,
   gateNearScoutAnchorAsync,
+  DEFAULT_NEAR_RADIUS_METERS,
 } from "@/lib/context-workspace/reality-anchor";
+import { assertWorkspacePostcondition } from "@/lib/context-workspace/assert-workspace-postcondition";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -545,6 +547,32 @@ async function rescoutWorkspace(input: {
           ? `${label} ${fresh}곳 · 고정 ${pinned}곳 유지 · 작업장에서 확인`
           : `${label} 후보 ${fresh}곳 준비했어요 · 작업장에서 확인`
         : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`;
+
+    // Postcondition — near scout must leave Anchor + in-radius candidates.
+    if (nearGate.gated && nearGate.ok) {
+      const candidateKind =
+        activeDomain === "eatery"
+          ? "eatery"
+          : activeDomain === "poi" || activeDomain === "amenity"
+            ? "poi"
+            : "lodging";
+      const pc = assertWorkspacePostcondition({
+        state: freshState,
+        expect: {
+          kind: "near_scout",
+          anchorId: nearGate.anchor.id,
+          anchorLat: nearGate.anchor.lat,
+          anchorLng: nearGate.anchor.lng,
+          radiusMeters: DEFAULT_NEAR_RADIUS_METERS,
+          candidateKind,
+          minCandidates: 1,
+        },
+      });
+      if (!pc.ok) {
+        replyKo = `${replyKo} · ${pc.detailKo}`;
+      }
+    }
+
     if (fresh > 0) {
       appendWorkspaceSyncedAssistantTurn({
         contextEventId: input.contextEventId,

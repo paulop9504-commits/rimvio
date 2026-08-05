@@ -37,7 +37,13 @@ import {
   ensureWorkspaceAnchorNode,
   extractNearPlaceLabelFromUtterance,
   gateNearScoutAnchorAsync,
+  DEFAULT_NEAR_RADIUS_METERS,
 } from "@/lib/context-workspace/reality-anchor";
+import {
+  assertWorkspacePostcondition,
+  type NearScoutPostconditionExpect,
+} from "@/lib/context-workspace/assert-workspace-postcondition";
+import { resolveAgentJobTargetFromUtterance } from "@/lib/agent-policy/agent-job";
 import { runAgentP0Guards } from "@/lib/agent-policy/run-agent-p0-guards";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
@@ -225,6 +231,7 @@ export async function runWorkspaceAgentLoop(input: {
   let workspaceMutated = false;
   let commitPending = false;
   let focusIds: string[] | null = null;
+  let nearVerify: NearScoutPostconditionExpect | null = null;
 
   if (toolId === "workspace_patch" && understood.patch) {
     // Spatial constraint — pin Reality Anchor before Patch/scout (catalog → metro → geocode).
@@ -235,12 +242,12 @@ export async function runWorkspaceAgentLoop(input: {
       const nearGate = await gateNearScoutAnchorAsync({ utterance });
       // spatial_constraint always implies near — assert even if detector missed.
       if (!nearGate.gated || !nearGate.ok) {
-        const statusKo =
+        const failKo =
           nearGate.gated && !nearGate.ok
             ? nearGate.statusKo
             : `${nearLabel || "그곳"} 위치를 정확히 확인하지 못했어요`;
         return fail({
-          statusKo: shorten(statusKo),
+          statusKo: shorten(failKo),
           contextEventId,
           toolId,
         });
@@ -258,6 +265,27 @@ export async function runWorkspaceAgentLoop(input: {
         geoId: nearGate.anchor.id,
         summaryKo: `${nearGate.anchor.labelKo} · 검색 기준점`,
       });
+      const target = resolveAgentJobTargetFromUtterance(utterance);
+      const candidateKind =
+        target === "eatery"
+          ? "eatery"
+          : target === "poi" || target === "amenity"
+            ? "poi"
+            : "lodging";
+      const meters =
+        typeof understood.patch.meters === "number" &&
+        understood.patch.meters > 0
+          ? understood.patch.meters
+          : DEFAULT_NEAR_RADIUS_METERS;
+      nearVerify = {
+        kind: "near_scout",
+        anchorId: nearGate.anchor.id,
+        anchorLat: nearGate.anchor.lat,
+        anchorLng: nearGate.anchor.lng,
+        radiusMeters: meters,
+        candidateKind,
+        minCandidates: 1,
+      };
     }
 
     const applied = applyWorkspacePatch({
@@ -408,16 +436,29 @@ export async function runWorkspaceAgentLoop(input: {
     entityIds: focusIds,
   });
 
-  // 7. Verify
+  // 7. Verify — read Workspace State (not Tool essay)
   phases.push("verify");
   const after = readContextWorkspace(contextEventId);
-  const verified =
+  let verified =
     Boolean(after) &&
     projection.ok &&
     projection.manualRefreshRequired === false &&
     (workspaceMutated ||
       after?.updatedAtIso !== before?.updatedAtIso ||
       (after?.patches?.length ?? 0) > (before?.patches?.length ?? 0));
+
+  if (nearVerify) {
+    const pc = assertWorkspacePostcondition({
+      state: after,
+      expect: nearVerify,
+    });
+    if (!pc.ok) {
+      verified = false;
+      statusKo = statusKo
+        ? `${statusKo} · ${pc.detailKo}`
+        : pc.detailKo;
+    }
+  }
 
   // 8. Wait (human — never auto Commit)
   phases.push("wait");
