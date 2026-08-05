@@ -21,9 +21,84 @@ import type { ContextWorkspaceNode } from "@/lib/context-workspace/types";
 import {
   parseLodgingStayTypeFromText,
   resolveLodgingStaySearchKeyword,
+  normalizeLodgingStayType,
 } from "@/lib/globe/lodging/lodging-stay-types";
 
 const DAY_TAG_RE = /^day[_-]?\d+$/iu;
+
+function softRefineSortNodes(
+  nodes: readonly ContextWorkspaceNode[],
+  sortBy: "price" | "rating" | "value" | null | undefined,
+): ContextWorkspaceNode[] {
+  if (!sortBy) return [...nodes];
+  const next = [...nodes];
+  if (sortBy === "price") {
+    next.sort((a, b) => (a.priceBand ?? 99) - (b.priceBand ?? 99));
+  } else if (sortBy === "rating") {
+    next.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  } else {
+    // value = cheaper first, then higher rating
+    next.sort((a, b) => {
+      const pd = (a.priceBand ?? 99) - (b.priceBand ?? 99);
+      if (pd !== 0) return pd;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    });
+  }
+  return next;
+}
+
+function applySoftKeepVisible(
+  nodes: readonly ContextWorkspaceNode[],
+  keepTopN: number | null | undefined,
+  relativeCheaper: boolean | null | undefined,
+): ContextWorkspaceNode[] {
+  const ranked = nodes.filter(
+    (n) =>
+      n.visible &&
+      n.source !== "reality_anchor" &&
+      !n.tags.includes("reality_anchor"),
+  );
+  const keep = new Set<string>();
+  for (const n of nodes) {
+    if (n.bookmarked || n.selected) keep.add(n.id);
+  }
+
+  if (keepTopN != null && keepTopN >= 1) {
+    for (const n of ranked.slice(0, keepTopN)) {
+      keep.add(n.id);
+    }
+  } else if (relativeCheaper && ranked.length > 1) {
+    const bands = ranked
+      .map((n) => n.priceBand)
+      .filter((b): b is number => b != null && Number.isFinite(b))
+      .sort((a, b) => a - b);
+    if (bands.length > 0) {
+      const mid = bands[Math.floor((bands.length - 1) / 2)]!;
+      for (const n of ranked) {
+        if (n.priceBand == null || n.priceBand <= mid) keep.add(n.id);
+      }
+    } else {
+      for (const n of ranked) keep.add(n.id);
+    }
+  } else {
+    for (const n of ranked) keep.add(n.id);
+  }
+
+  // Never empty the set — if soft rule wiped everything, keep ranked as-is.
+  if (keep.size === 0) {
+    for (const n of ranked) keep.add(n.id);
+  }
+
+  return nodes.map((n) => {
+    if (n.source === "reality_anchor" || n.tags.includes("reality_anchor")) {
+      return n;
+    }
+    if (!ranked.some((r) => r.id === n.id)) {
+      return n;
+    }
+    return { ...n, visible: keep.has(n.id) };
+  });
+}
 
 function listVisibleScheduleCandidates(
   nodes: readonly ContextWorkspaceNode[],
@@ -154,7 +229,7 @@ export function applyWorkspacePatch(input: {
     }
     case "spatial_constraint": {
       const stayType =
-        patch.stayType ??
+        normalizeLodgingStayType(patch.stayType) ??
         parseLodgingStayTypeFromText(utterance ?? "") ??
         null;
       const reality = applyWorkspaceRealityPatch({
@@ -162,7 +237,7 @@ export function applyWorkspacePatch(input: {
         utterance: utterance ?? `${patch.nearLabelKo} 근처`,
         patch: {
           stationNear: patch.stationNear === true,
-          ...(stayType ? { stayType: stayType as never } : {}),
+          ...(stayType ? { stayType } : {}),
         },
       });
       const anchorHit = resolveRealityAnchorFromUtterance(
@@ -221,12 +296,42 @@ export function applyWorkspacePatch(input: {
       break;
     }
     case "filter_entity": {
+      const softSort = patch.filter.sortBy ?? null;
+      const keepTopN = patch.filter.keepTopN ?? null;
+      const relativeCheaper = Boolean(patch.filter.relativeCheaper);
+      const storeFilter = {
+        minRating: patch.filter.minRating ?? null,
+        maxPriceBand: patch.filter.maxPriceBand ?? null,
+        tagIncludes: patch.filter.tagIncludes ?? null,
+        queryIncludes: patch.filter.queryIncludes ?? null,
+      };
+
+      // Soft refine: if hard maxPriceBand would hide every candidate, drop it.
+      let safeFilter = storeFilter;
+      if (storeFilter.maxPriceBand != null) {
+        const probe = readContextWorkspace(contextEventId);
+        if (probe) {
+          const wouldRemain = probe.nodes.filter((n) => {
+            if (n.bookmarked || n.selected) return true;
+            if (n.source === "reality_anchor" || n.tags.includes("reality_anchor")) {
+              return true;
+            }
+            if (!n.visible) return false;
+            return n.priceBand != null && n.priceBand <= storeFilter.maxPriceBand!;
+          });
+          if (wouldRemain.length === 0) {
+            safeFilter = { ...storeFilter, maxPriceBand: null };
+          }
+        }
+      }
+
       applyWorkspaceTransition({
         contextEventId,
         op: "filter",
-        filter: patch.filter,
+        filter: safeFilter,
         changeKo: "필터 패치",
       });
+
       const tags = patch.filter.tagIncludes ?? [];
       if (tags.some((t) => t.startsWith("stay:"))) {
         const stay = tags
@@ -240,8 +345,42 @@ export function applyWorkspacePatch(input: {
         needsRescout = reality.needsRescout;
         scoutQuery = reality.scoutQuery;
         statusKo = reality.replyKo ?? "필터 패치 적용";
+      } else if (softSort || keepTopN != null || relativeCheaper) {
+        const live = readContextWorkspace(contextEventId);
+        if (live) {
+          const sorted = softRefineSortNodes(live.nodes, softSort);
+          const refined = applySoftKeepVisible(
+            sorted,
+            keepTopN,
+            relativeCheaper,
+          );
+          const visible = refined.filter((n) => n.visible).length;
+          writeContextWorkspace({
+            ...live,
+            nodes: refined,
+            summaryKo: `${visible}곳`,
+            lastChangeKo:
+              keepTopN != null
+                ? `지금 후보 안에서 상위 ${keepTopN}곳만 남겼어요`
+                : relativeCheaper
+                  ? "지금 후보 안에서 더 싼 쪽으로 골랐어요"
+                  : "지금 후보 안에서 정렬했어요",
+            updatedAtIso: new Date().toISOString(),
+          });
+          statusKo =
+            keepTopN != null
+              ? `지금 후보 · 상위 ${keepTopN}곳`
+              : relativeCheaper
+                ? "지금 후보 · 가성비 정리"
+                : "지금 후보 · 정렬";
+        } else {
+          statusKo = "필터 패치 적용";
+        }
       } else {
-        statusKo = "필터 패치 적용";
+        const visible =
+          readContextWorkspace(contextEventId)?.nodes.filter((n) => n.visible)
+            .length ?? 0;
+        statusKo = `필터 패치 · ${visible}곳`;
       }
       break;
     }

@@ -87,14 +87,63 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
     };
   }
 
-  // "더 싼 호텔" → Replace Entity Patch
-  if (/더\s*싼|더\s*싸|저렴|싼\s*곳|싼\s*호텔|가성비|cheap|cheaper/iu.test(text)) {
-    return {
-      kind: "replace_entity",
-      domain: /맛집|식당|restaurant/iu.test(text) ? "eatery" : "lodging",
-      cheaper: true,
-      query: text,
-    };
+  // Soft refine in-set — FILTER, never wipe inventory (P0).
+  // Explicit「다시 찾아」만 replace_entity로 재검색.
+  {
+    const softCheap =
+      /더\s*싼|더\s*싸|저렴한\s*순|가성비|싼\s*순|cheap|cheaper/iu.test(text);
+    const softInSet =
+      /이\s*중|그중|그\s*중|필터|정렬|가까운\s*순|평점\s*높|별점\s*높|상위\s*\d/iu.test(
+        text,
+      );
+    const explicitRescout =
+      /다시\s*(?:찾|보여|검색|골라)|다른\s*(?:거|곳|호텔|숙소)/iu.test(text);
+
+    if ((softCheap || softInSet) && !explicitRescout) {
+      const topMatch = text.match(
+        /(?:상위\s*)?(\d+)\s*개|(?:만\s*)?(\d+)\s*개\s*(?:만|보여|남|골라)/u,
+      );
+      const keepTopN = topMatch
+        ? Number(topMatch[1] || topMatch[2])
+        : null;
+      const wantsValue =
+        softCheap || /가성비|싼\s*순/iu.test(text);
+      const wantsRating = /평점\s*높|별점\s*높|rating/iu.test(text);
+      return {
+        kind: "filter_entity",
+        filter: {
+          // Soft refine never hard-caps priceBand to force rescout wipe.
+          ...(wantsRating ? { minRating: 4 } : {}),
+          ...(keepTopN != null &&
+          Number.isFinite(keepTopN) &&
+          keepTopN >= 1 &&
+          keepTopN <= 20
+            ? { keepTopN }
+            : {}),
+          ...(wantsValue &&
+          (keepTopN == null || !Number.isFinite(keepTopN))
+            ? { relativeCheaper: true }
+            : {}),
+          sortBy: wantsValue
+            ? "value"
+            : wantsRating
+              ? "rating"
+              : /가까운\s*순/iu.test(text)
+                ? "value"
+                : null,
+        },
+      };
+    }
+
+    // Explicit re-search with cheap cue → Replace Entity
+    if (softCheap && explicitRescout) {
+      return {
+        kind: "replace_entity",
+        domain: /맛집|식당|restaurant/iu.test(text) ? "eatery" : "lodging",
+        cheaper: true,
+        query: text,
+      };
+    }
   }
 
   // Stay-type replace / filter ("캡슐호텔만", "캡슐호텔 찾아줘")

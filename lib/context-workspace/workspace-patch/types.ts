@@ -13,7 +13,7 @@ export const WORKSPACE_PATCH_KINDS = [
   "disconnect_entity",
   "create_draft",
   "simulation",
-  /** Replace candidates (e.g. "더 싼 호텔") */
+  /** Replace candidates (e.g. "더 싼 호텔 다시 찾아줘") */
   "replace_entity",
   /** Move item onto a schedule day (e.g. "Day2로 옮겨") */
   "move_schedule",
@@ -50,6 +50,15 @@ export type WorkspacePatch =
         readonly minRating?: number | null;
         readonly tagIncludes?: readonly string[] | null;
         readonly queryIncludes?: string | null;
+        /** Soft refine — keep only top N visible (dim rest, keep bookmarks). */
+        readonly keepTopN?: number | null;
+        /** Soft refine sort before keep/filter. */
+        readonly sortBy?: "price" | "rating" | "value" | null;
+        /**
+         * Soft cheap without keepTopN: hide above-median priceBand in-set
+         * (never empties bookmarked / selected).
+         */
+        readonly relativeCheaper?: boolean | null;
       };
     }
   | {

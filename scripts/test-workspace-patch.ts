@@ -1,6 +1,7 @@
 /**
  * Smoke: Workspace stores Patches only — never Answers.
- * "더 싼 호텔" → replace_entity
+ * Soft refine (P0): "더 싼 호텔" → filter_entity (in-set), not replace rescout
+ * Explicit: "더 싼 호텔 다시 찾아줘" → replace_entity
  * "Day2로 옮겨" → move_schedule
  * "난바역 근처" → spatial_constraint
  */
@@ -24,8 +25,25 @@ import { writeContextWorkspaceExpanded } from "@/lib/context-workspace/workspace
 assert.ok(WORKSPACE_PATCH_KINDS.includes("replace_entity"));
 assert.ok(WORKSPACE_PATCH_KINDS.includes("move_schedule"));
 assert.ok(WORKSPACE_PATCH_KINDS.includes("spatial_constraint"));
+assert.ok(WORKSPACE_PATCH_KINDS.includes("filter_entity"));
 
-assert.equal(parseWorkspacePatch("더 싼 호텔")?.kind, "replace_entity");
+assert.equal(parseWorkspacePatch("더 싼 호텔")?.kind, "filter_entity");
+assert.equal(
+  parseWorkspacePatch("이중에 가성비 좋은 것만 3개")?.kind,
+  "filter_entity",
+);
+{
+  const top3 = parseWorkspacePatch("이중에 가성비 좋은 것만 3개");
+  assert.equal(top3?.kind, "filter_entity");
+  if (top3?.kind === "filter_entity") {
+    assert.equal(top3.filter.keepTopN, 3);
+    assert.equal(top3.filter.sortBy, "value");
+  }
+}
+assert.equal(
+  parseWorkspacePatch("더 싼 호텔 다시 찾아줘")?.kind,
+  "replace_entity",
+);
 assert.equal(parseWorkspacePatch("Day2로 옮겨")?.kind, "move_schedule");
 assert.equal(parseWorkspacePatch("난바역 근처")?.kind, "spatial_constraint");
 {
@@ -55,29 +73,43 @@ openMapContextWorkspace({
   candidates: [],
 });
 
-const node: ContextWorkspaceNode = {
-  id: "h1",
-  kind: "lodging",
-  placeId: "h1",
-  title: "Namba Hotel",
-  summaryKo: "난바",
-  lat: 34.665,
-  lng: 135.501,
-  rating: 4.2,
-  priceBand: 3,
-  amountLabel: "₩150,000",
-  thumbnailUrl: null,
-  tags: ["stay:hotel"],
-  visible: true,
-  selected: true,
-  bookmarked: false,
-  source: "seed",
-};
+function hotel(
+  id: string,
+  title: string,
+  priceBand: number,
+  rating: number,
+): ContextWorkspaceNode {
+  return {
+    id,
+    kind: "lodging",
+    placeId: id,
+    title,
+    summaryKo: title,
+    lat: 34.665,
+    lng: 135.501,
+    rating,
+    priceBand,
+    amountLabel: `₩${priceBand * 50_000}`,
+    thumbnailUrl: null,
+    tags: ["stay:hotel"],
+    visible: true,
+    selected: id === "h1",
+    bookmarked: false,
+    source: "search",
+  };
+}
+
+const nodes: ContextWorkspaceNode[] = [
+  hotel("h1", "Premium Hotel", 4, 4.5),
+  hotel("h2", "Value Hotel", 2, 4.2),
+  hotel("h3", "Mid Hotel", 3, 4.0),
+  hotel("h4", "Budget Inn", 1, 3.9),
+];
 
 const opened = readContextWorkspace(CTX)!;
 writeContextWorkspace({
   ...opened,
-  nodes: [node],
+  nodes,
   selectedIds: ["h1"],
   patches: [],
 });
@@ -94,12 +126,48 @@ const cheaper = applyWorkspacePatch({
   utterance: "더 싼 호텔",
 });
 assert.equal(cheaper.ok, true);
-assert.equal(cheaper.record?.kind, "replace_entity");
+assert.equal(cheaper.record?.kind, "filter_entity");
 assert.equal(cheaper.record?.answerForbidden, true);
+assert.equal(cheaper.needsRescout, false);
+{
+  const after = readContextWorkspace(CTX)!;
+  const visible = after.nodes.filter((n) => n.visible);
+  assert.ok(visible.length >= 1, "soft refine keeps some candidates");
+  assert.ok(visible.length < nodes.length, "soft refine hides some pricier");
+  assert.ok(
+    visible.every((n) => n.id === "h1" || (n.priceBand ?? 99) <= 2),
+    "visible are selected or ≤ median band",
+  );
+  assert.equal(after.nodes.length, nodes.length, "in-set — no wipe inventory");
+}
 
 writeContextWorkspace({
   ...readContextWorkspace(CTX)!,
-  nodes: [node],
+  nodes,
+  selectedIds: ["h1"],
+  domain: "lodging",
+});
+
+const top3 = applyWorkspacePatch({
+  contextEventId: CTX,
+  patch: parseWorkspacePatch("이중에 가성비 좋은 것만 3개")!,
+  utterance: "이중에 가성비 좋은 것만 3개",
+});
+assert.equal(top3.ok, true);
+assert.equal(top3.record?.kind, "filter_entity");
+assert.equal(top3.needsRescout, false);
+{
+  const after = readContextWorkspace(CTX)!;
+  const visible = after.nodes.filter(
+    (n) => n.visible && n.source !== "reality_anchor",
+  );
+  assert.ok(visible.length <= 3 + 1, "top-N soft keep (+ selected)");
+  assert.equal(after.nodes.length, nodes.length);
+}
+
+writeContextWorkspace({
+  ...readContextWorkspace(CTX)!,
+  nodes,
   selectedIds: ["h1"],
   domain: "lodging",
 });
@@ -141,17 +209,29 @@ assert.ok(
 );
 
 void (async () => {
+  writeContextWorkspace({
+    ...readContextWorkspace(CTX)!,
+    nodes,
+    selectedIds: ["h1"],
+    domain: "lodging",
+  });
   const agent = await applyGlobeWorkspaceAgentTurn({
     utterance: "더 싼 호텔",
     explicitContextEventId: CTX,
   });
   assert.equal(agent.via, "workspace_patch");
-  assert.equal(agent.patchKind, "replace_entity");
+  assert.equal(agent.patchKind, "filter_entity");
   assert.ok(agent.statusKo);
   assert.ok(!agent.statusKo!.includes("\n"));
+  {
+    const after = readContextWorkspace(CTX)!;
+    assert.equal(after.nodes.length, nodes.length, "agent soft refine keeps set");
+  }
 
   clearContextWorkspace(CTX);
-  console.log("ok — Workspace Patch-only SSOT (replace / move_schedule / spatial)");
+  console.log(
+    "ok — Workspace Patch soft-refine (filter in-set) / move_schedule / spatial",
+  );
 })().catch((err) => {
   console.error(err);
   process.exit(1);
