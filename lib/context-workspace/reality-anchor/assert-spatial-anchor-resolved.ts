@@ -99,7 +99,7 @@ export function assertSpatialAnchorResolved(input: {
     return {
       ok: false,
       code: "ANCHOR_NOT_FOUND",
-      statusKo: `${labelHint} 위치를 정확히 확인하지 못했어요`,
+      statusKo: `'${labelHint}'을(를) 찾지 못했어요`,
       candidates: candidates.slice(0, 3),
     };
   }

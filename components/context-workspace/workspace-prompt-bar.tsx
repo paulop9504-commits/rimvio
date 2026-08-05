@@ -6,10 +6,14 @@
 
 import { useCallback, useState } from "react";
 import { ArrowUp } from "lucide-react";
-import { tryApplyWorkspacePromptTurn } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
+import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
+import {
+  ANCHOR_RETYPE_CHIP_UTTERANCE,
+} from "@/lib/context-workspace/reality-anchor";
+import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
 import { openWorkspaceForTripPrep } from "@/lib/agent/open-workspace-for-trip-prep";
 import { shouldPrepareTripWorkspaceDraft } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import { WorkspaceAgentStatusPanel } from "@/components/context-workspace/workspace-agent-status-panel";
@@ -47,6 +51,9 @@ export function WorkspacePromptBar({
 }: WorkspacePromptBarProps) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [softChips, setSoftChips] = useState<readonly NetworkAbsorbSoftChip[]>(
+    [],
+  );
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
 
   const runTurn = useCallback(
@@ -126,10 +133,11 @@ export function WorkspacePromptBar({
           return;
         }
 
-        const result = await tryApplyWorkspacePromptTurn({
+        const result = await applyGlobeWorkspaceAgentTurn({
           utterance: text,
-          contextEventId: eventId,
+          explicitContextEventId: eventId,
         });
+        setSoftChips(result.softChips ?? []);
         completeAgentExecutionStep("turn-apply");
         dispatchExecutionFeedStep({
           graphId,
@@ -139,21 +147,22 @@ export function WorkspacePromptBar({
           resultKo: result.handled ? `✓ ${copy.globe.activityDone}` : undefined,
         });
         const ws = readContextWorkspace(eventId);
+        const statusKo =
+          result.statusKo?.trim() ||
+          ws?.lastChangeKo?.trim() ||
+          null;
         if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
           appendWorkspaceSyncedAssistantTurn({
             contextEventId: eventId,
             state: ws,
-            textKo:
-              result.replyKo ??
-              ws.lastChangeKo ??
-              "Workspace에 반영했어요.",
+            textKo: statusKo ?? "Workspace에 반영했어요.",
           });
         } else {
           appendWorkspaceChatTurn({
             contextEventId: eventId,
             role: "assistant",
             text: result.handled
-              ? (result.replyKo ?? ws?.lastChangeKo ?? "반영했어요")
+              ? (statusKo ?? "반영했어요")
               : copy.globe.workspacePromptUnhandled,
           });
         }
@@ -191,6 +200,28 @@ export function WorkspacePromptBar({
               onClick={() => void runTurn(chip.text)}
             >
               {chip.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {softChips.length > 0 ? (
+        <div className="mb-1.5 flex flex-wrap gap-1.5 px-0.5">
+          {softChips.map((chip) => (
+            <button
+              key={`${chip.labelKo}:${chip.utterance}`}
+              type="button"
+              disabled={busy}
+              className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[#4e5968] ring-1 ring-black/[0.06] disabled:opacity-40"
+              onClick={() => {
+                if (chip.utterance === ANCHOR_RETYPE_CHIP_UTTERANCE) {
+                  setSoftChips([]);
+                  setValue("");
+                  return;
+                }
+                void runTurn(chip.utterance);
+              }}
+            >
+              {chip.labelKo}
             </button>
           ))}
         </div>

@@ -323,7 +323,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
 
   if (!loop.ok && !loop.workspaceMutated) {
     return {
-      handled: openedWorkspace,
+      handled: openedWorkspace || Boolean(loop.softChips?.length),
       statusKo: shortenWorkspaceAgentStatus(
         loop.statusKo ?? mintStatusKo,
       ),
@@ -335,6 +335,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       phases: loop.phases,
       commitPending: false,
       waitingCommit: false,
+      softChips: loop.softChips,
     };
   }
 
@@ -359,5 +360,6 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     commitPending,
     waitingCommit: commitPending,
     phases: loop.phases,
+    softChips: loop.softChips,
   };
 }

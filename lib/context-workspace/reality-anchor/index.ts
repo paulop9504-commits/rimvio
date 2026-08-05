@@ -34,6 +34,13 @@ export {
 export { ensureWorkspaceAnchorNode } from "@/lib/context-workspace/reality-anchor/ensure-workspace-anchor-node";
 
 export {
+  ANCHOR_RETYPE_CHIP_UTTERANCE,
+  buildAnchorFailSoftChips,
+  formatAnchorNotFoundStatusKo,
+  rebuildNearScoutUtterance,
+} from "@/lib/context-workspace/reality-anchor/build-anchor-fail-soft-chips";
+
+export {
   extractPlaceLocateQuery,
   isPlaceLocateUtterance,
   resolvePlaceLocate,

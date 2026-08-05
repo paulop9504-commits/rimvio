@@ -18,6 +18,7 @@ import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-work
 import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
 import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
 import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
+import { ANCHOR_RETYPE_CHIP_UTTERANCE } from "@/lib/context-workspace/reality-anchor";
 import {
   readContextWorkspace,
   subscribeContextWorkspaceUpdated,
@@ -700,10 +701,18 @@ export function WorkspaceCursorDock({
             >
               {softChips.map((chip) => (
                 <button
-                  key={chip.utterance}
+                  key={`${chip.labelKo}:${chip.utterance}`}
                   type="button"
                   disabled={busy}
-                  onClick={() => void runTurn(chip.utterance)}
+                  onClick={() => {
+                    if (chip.utterance === ANCHOR_RETYPE_CHIP_UTTERANCE) {
+                      setSoftChips([]);
+                      setValue("");
+                      setTranscriptOpen(true);
+                      return;
+                    }
+                    void runTurn(chip.utterance);
+                  }}
                   className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[#4e5968] ring-1 ring-black/[0.06] disabled:opacity-40"
                 >
                   {chip.labelKo}

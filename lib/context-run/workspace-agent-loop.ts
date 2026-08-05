@@ -38,13 +38,19 @@ import {
   extractNearPlaceLabelFromUtterance,
   gateNearScoutAnchorAsync,
   DEFAULT_NEAR_RADIUS_METERS,
+  buildAnchorFailSoftChips,
 } from "@/lib/context-workspace/reality-anchor";
 import {
   assertWorkspacePostcondition,
   type NearScoutPostconditionExpect,
 } from "@/lib/context-workspace/assert-workspace-postcondition";
 import { resolveAgentJobTargetFromUtterance } from "@/lib/agent-policy/agent-job";
-import { runAgentP0Guards } from "@/lib/agent-policy/run-agent-p0-guards";
+import {
+  assertAgentPostcondition,
+  runAgentP1Guards,
+  stampAgentIdempotencyKey,
+} from "@/lib/agent-policy";
+import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -81,6 +87,8 @@ export type WorkspaceAgentLoopResult = {
   readonly waiting: true;
   readonly essayForbidden: true;
   readonly commitPending: boolean;
+  /** Anchor fail / network absorb soft chips */
+  readonly softChips?: readonly NetworkAbsorbSoftChip[];
 };
 
 function shorten(text: string | null | undefined, max = 72): string | null {
@@ -207,7 +215,7 @@ export async function runWorkspaceAgentLoop(input: {
 
   // 4. Select Tool — Patch always preferred when parseable
   phases.push("select_tool");
-  const toolId = selectTool({ utterance, understood });
+  let toolId = selectTool({ utterance, understood });
   {
     const product = readLastAgentProductTurn();
     if (product?.contextEventId === contextEventId) {
@@ -215,16 +223,27 @@ export async function runWorkspaceAgentLoop(input: {
     }
   }
 
-  // P0 guards — Job · Scope · Stale (Anchor gate runs on spatial / rescout).
-  const p0 = runAgentP0Guards({
+  // Job Classification → P1 Preflight → P0 · Carry-over → commit (Guard = judgment)
+  const p1 = runAgentP1Guards({
     contextEventId,
     utterance,
     patchKind: understood.patch?.kind ?? null,
+    toolId,
   });
+  if (!p1.ok) {
+    return fail({
+      statusKo: shorten(p1.statusKo),
+      contextEventId,
+      toolId,
+    });
+  }
+  if (toolId === "reality_prepare" && !p1.allowPrepare) {
+    toolId = understood.patch ? "workspace_patch" : "workspace_prompt";
+  }
 
   // 5. Execute Patch / Tool
   phases.push("execute_patch");
-  let statusKo: string | null = p0.statusHintKo;
+  let statusKo: string | null = p1.statusHintKo;
   let patchKind: string | null = null;
   let patchRecord: import("@/lib/context-workspace/workspace-patch/types").WorkspacePatchRecord | null =
     null;
@@ -232,6 +251,7 @@ export async function runWorkspaceAgentLoop(input: {
   let commitPending = false;
   let focusIds: string[] | null = null;
   let nearVerify: NearScoutPostconditionExpect | null = null;
+  let softChips: readonly NetworkAbsorbSoftChip[] | undefined;
 
   if (toolId === "workspace_patch" && understood.patch) {
     // Spatial constraint — pin Reality Anchor before Patch/scout (catalog → metro → geocode).
@@ -245,11 +265,25 @@ export async function runWorkspaceAgentLoop(input: {
         const failKo =
           nearGate.gated && !nearGate.ok
             ? nearGate.statusKo
-            : `${nearLabel || "그곳"} 위치를 정확히 확인하지 못했어요`;
+            : `${nearLabel || "그곳"}을(를) 찾지 못했어요`;
+        const softChips =
+          nearGate.gated && !nearGate.ok
+            ? buildAnchorFailSoftChips({
+                utterance,
+                code: nearGate.code,
+                nearLabelKo: nearLabel,
+                candidates: nearGate.candidates,
+              })
+            : buildAnchorFailSoftChips({
+                utterance,
+                code: "ANCHOR_NOT_FOUND",
+                nearLabelKo: nearLabel,
+              });
         return fail({
           statusKo: shorten(failKo),
           contextEventId,
           toolId,
+          softChips,
         });
       }
       ensureWorkspaceAnchorNode({
@@ -302,14 +336,20 @@ export async function runWorkspaceAgentLoop(input: {
       });
     }
     statusKo = applied.statusKo;
-    if (p0.statusHintKo && applied.statusKo) {
-      statusKo = `${p0.statusHintKo} · ${applied.statusKo}`;
-    } else if (p0.statusHintKo) {
-      statusKo = p0.statusHintKo;
+    if (p1.statusHintKo && applied.statusKo) {
+      statusKo = `${p1.statusHintKo} · ${applied.statusKo}`;
+    } else if (p1.statusHintKo) {
+      statusKo = p1.statusHintKo;
     }
     patchKind = understood.patch.kind;
     patchRecord = applied.record;
     workspaceMutated = true;
+    // Speak → Workspace reacts: early projection on first Patch write.
+    runAutoProjectionAfterPatch({
+      contextEventId,
+      patchRecord: applied.record,
+      entityIds: null,
+    });
     // Stay-type / spatial constraint → live scout so map fills with matching venues.
     // Explicit find ("캡슐호텔 찾아") always rescouts even if soft-filter matched a few.
     const stayFind =
@@ -323,11 +363,14 @@ export async function runWorkspaceAgentLoop(input: {
       applied.scoutQuery?.trim()
     ) {
       const scouted = await tryApplyWorkspacePromptTurn({
-        utterance: applied.scoutQuery,
+        utterance: p1.scoutUtterance || applied.scoutQuery,
         contextEventId,
       });
       if (scouted.handled && scouted.replyKo?.trim()) {
         statusKo = scouted.replyKo;
+      }
+      if (scouted.softChips?.length) {
+        softChips = scouted.softChips;
       }
     }
     focusIds = [...(readContextWorkspace(contextEventId)?.selectedIds ?? [])];
@@ -347,6 +390,12 @@ export async function runWorkspaceAgentLoop(input: {
     statusKo = spatial.statusKo;
     patchKind = "create_entity";
     workspaceMutated = spatial.entityCount > 0 || Boolean(spatial.statusKo);
+    if (workspaceMutated) {
+      runAutoProjectionAfterPatch({
+        contextEventId,
+        entityIds: null,
+      });
+    }
     const afterSpatial = readContextWorkspace(contextEventId);
     focusIds = afterSpatial?.nodes
       .filter((n) => n.kind === "eatery" && n.visible)
@@ -412,7 +461,7 @@ export async function runWorkspaceAgentLoop(input: {
     }
   } else {
     const prompt = await tryApplyWorkspacePromptTurn({
-      utterance,
+      utterance: p1.scoutUtterance || utterance,
       contextEventId,
     });
     if (!prompt.handled) {
@@ -425,6 +474,9 @@ export async function runWorkspaceAgentLoop(input: {
     statusKo = prompt.replyKo;
     workspaceMutated = true;
     patchKind = "update_entity";
+    if (prompt.softChips?.length) {
+      softChips = prompt.softChips;
+    }
     focusIds = [...(readContextWorkspace(contextEventId)?.selectedIds ?? [])];
   }
 
@@ -460,6 +512,32 @@ export async function runWorkspaceAgentLoop(input: {
     }
   }
 
+  // P1 Postcondition — discover must leave domain candidates (no false SUCCESS)
+  if (workspaceMutated && p1.discoverOnly && p1.job.target !== "map") {
+    const pc2 = assertAgentPostcondition({
+      contextEventId,
+      expect: {
+        target: p1.job.target,
+        requireVisibleDomain: true,
+        workspaceMutated: true,
+        anchorLat: nearVerify?.anchorLat ?? null,
+        anchorLng: nearVerify?.anchorLng ?? null,
+        maxDistanceMeters: nearVerify?.radiusMeters ?? null,
+      },
+    });
+    if (!pc2.ok) {
+      verified = false;
+      statusKo = statusKo ? `${statusKo} · ${pc2.statusKo}` : pc2.statusKo;
+    }
+  }
+
+  if (verified || workspaceMutated) {
+    stampAgentIdempotencyKey({
+      contextEventId,
+      key: p1.idempotencyKey,
+    });
+  }
+
   // 8. Wait (human — never auto Commit)
   phases.push("wait");
 
@@ -476,5 +554,6 @@ export async function runWorkspaceAgentLoop(input: {
     waiting: true,
     essayForbidden: true,
     commitPending,
+    softChips,
   };
 }

@@ -55,6 +55,8 @@ import {
   gateNearScoutAnchorAsync,
   DEFAULT_NEAR_RADIUS_METERS,
   type GateNearScoutAnchorResult,
+  buildAnchorFailSoftChips,
+  extractNearPlaceLabelFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
 import { assertWorkspacePostcondition } from "@/lib/context-workspace/assert-workspace-postcondition";
 import {
@@ -64,6 +66,7 @@ import {
   resolveAfterScoutEmpty,
   type ScoutRetryLock,
 } from "@/lib/agent-policy/scout-retry-policy";
+import { runAutoProjectionAfterPatch } from "@/lib/context-workspace/auto-projection";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -71,7 +74,7 @@ export type WorkspacePromptTurnResult = {
   committed: boolean;
   /** Search added/replaced candidates — pin-bar should show preview + expand. */
   openedForReview?: boolean;
-  /** Metro / rail absorb soft chips (map is the answer). */
+  /** Metro / rail / Anchor-fail soft chips (map is the answer). */
   softChips?: readonly NetworkAbsorbSoftChip[];
 };
 
@@ -329,6 +332,12 @@ async function rescoutWorkspace(input: {
       handled: true,
       replyKo: nearGate.statusKo,
       committed: false,
+      softChips: buildAnchorFailSoftChips({
+        utterance: input.utterance,
+        code: nearGate.code,
+        nearLabelKo: extractNearPlaceLabelFromUtterance(input.utterance),
+        candidates: nearGate.candidates,
+      }),
     };
   }
   if (nearGate.gated && nearGate.ok) {
@@ -392,6 +401,14 @@ async function rescoutWorkspace(input: {
         handled: true,
         replyKo: effectiveNear.statusKo,
         committed: false,
+        softChips: buildAnchorFailSoftChips({
+          utterance: input.utterance,
+          code: effectiveNear.code,
+          nearLabelKo:
+            p1.carry.bagForScout.nearLabelKo ??
+            extractNearPlaceLabelFromUtterance(input.utterance),
+          candidates: effectiveNear.candidates,
+        }),
       };
     }
   }
@@ -599,6 +616,10 @@ async function rescoutWorkspace(input: {
             : null,
       });
       expandWorkspaceForReview(input.contextEventId);
+      runAutoProjectionAfterPatch({
+        contextEventId: input.contextEventId,
+        entityIds: null,
+      });
       const after = readContextWorkspace(input.contextEventId);
       const baseReply =
         next?.lastChangeKo ??
@@ -654,6 +675,11 @@ async function rescoutWorkspace(input: {
       });
     }
     expandWorkspaceForReview(input.contextEventId);
+    // Speak → Workspace reacts: project Map/List before soft-next / chat.
+    runAutoProjectionAfterPatch({
+      contextEventId: input.contextEventId,
+      entityIds: focus ? [focus.id] : null,
+    });
     const freshState = readContextWorkspace(input.contextEventId) ?? opened;
     const pinned = freshState.nodes.filter((n) => n.bookmarked).length;
     const fresh = freshState.nodes.filter((n) => !n.bookmarked && n.visible).length;
