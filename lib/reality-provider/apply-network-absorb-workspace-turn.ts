@@ -15,12 +15,22 @@ export type NetworkAbsorbWorkspaceTurnResult = {
   readonly replyKo: string;
   readonly needId: string | null;
   readonly softChips: readonly NetworkAbsorbSoftChip[];
+  /** Session/map projection applied (may be true even without Workspace write). */
+  readonly mapProjected: boolean;
+  readonly workspacePatched: boolean;
 };
 
 function softChipsForNeed(
   needId: string | null,
   statusKo: string,
+  mapProjected: boolean,
 ): readonly NetworkAbsorbSoftChip[] {
+  if (!mapProjected) {
+    return [
+      { labelKo: "오사카 메트로", utterance: "오사카 지하철 노선" },
+      { labelKo: "한국 철도", utterance: "한국 철도 노선 보여줘" },
+    ];
+  }
   if (needId === "metro_network") {
     const hide = /숨김/u.test(statusKo);
     if (hide) {
@@ -60,6 +70,12 @@ export function tryApplyNetworkAbsorbWorkspaceTurn(input: {
     handled: true,
     replyKo: result.statusKo,
     needId: result.needId,
-    softChips: softChipsForNeed(result.needId, result.statusKo),
+    mapProjected: result.mapProjected,
+    workspacePatched: result.workspacePatched,
+    softChips: softChipsForNeed(
+      result.needId,
+      result.statusKo,
+      result.mapProjected,
+    ),
   };
 }

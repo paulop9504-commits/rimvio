@@ -204,6 +204,26 @@ function acquireCached(need: RealityNeed): AcquireNetworkResult {
         bundle: japanMetroBundle(need.regionKo ?? "일본", need.utterance),
       };
     }
+    // Korean urban metros — no OSM/city cache wired yet. Never fall back to Osaka.
+    const koreanUrban =
+      need.regionKo === "한국" ||
+      need.regionKo === "대전" ||
+      need.regionKo === "서울" ||
+      need.regionKo === "부산" ||
+      need.regionKo === "인천" ||
+      need.regionKo === "대구" ||
+      need.regionKo === "광주" ||
+      need.regionKo === "울산" ||
+      need.regionKo === "세종" ||
+      /대전|서울|부산|인천|대구|광주|울산|세종|한국/iu.test(need.utterance);
+    if (koreanUrban) {
+      const label = need.regionKo?.trim() || "한국";
+      return {
+        ok: false,
+        providerId: "cached_overlay",
+        reasonKo: `${label} 도시철 캐시는 아직 없어요 · 오사카·일본 메트로만 지도에 깔 수 있어요`,
+      };
+    }
     return {
       ok: true,
       providerId: "cached_overlay",

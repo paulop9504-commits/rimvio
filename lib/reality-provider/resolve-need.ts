@@ -10,6 +10,21 @@ function regionFromText(text: string): string | null {
   if (/교토|kyoto/iu.test(text)) return "교토";
   if (/고베|kobe/iu.test(text)) return "고베";
   if (/일본|japan/iu.test(text)) return "일본";
+  if (
+    /대전|daejeon|서울|seoul|부산|busan|인천|incheon|대구|daegu|광주|gwangju|울산|ulsan|세종|세종시/iu.test(
+      text,
+    )
+  ) {
+    // City name → keep concrete label (acquire refuses missing urban metro caches)
+    if (/대전|daejeon/iu.test(text)) return "대전";
+    if (/서울|seoul/iu.test(text)) return "서울";
+    if (/부산|busan/iu.test(text)) return "부산";
+    if (/인천|incheon/iu.test(text)) return "인천";
+    if (/대구|daegu/iu.test(text)) return "대구";
+    if (/광주|gwangju/iu.test(text)) return "광주";
+    if (/울산|ulsan/iu.test(text)) return "울산";
+    if (/세종/iu.test(text)) return "세종";
+  }
   if (/한국|korea|전국\s*노선|한반도/iu.test(text)) return "한국";
   return null;
 }

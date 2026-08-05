@@ -21,6 +21,8 @@ export type RealityAbsorbResult = {
   readonly needId: string | null;
   readonly providerId: RealityProviderId | null;
   readonly workspacePatched: boolean;
+  /** Session Projection store updated — Map can paint even without Workspace write. */
+  readonly mapProjected: boolean;
 };
 
 /**
@@ -44,6 +46,7 @@ export function tryApplyRealityAbsorbFromUtterance(input: {
       needId: need.needId,
       providerId: null,
       workspacePatched: false,
+      mapProjected: false,
     };
   }
 
@@ -55,6 +58,17 @@ export function tryApplyRealityAbsorbFromUtterance(input: {
     });
     if (!acquired.ok) {
       lastFail = acquired.reasonKo;
+      // City metro missing cache — don't mask with "osm 미연결".
+      if (/도시철 캐시는 아직/u.test(lastFail)) {
+        return {
+          handled: true,
+          statusKo: lastFail,
+          needId: need.needId,
+          providerId: candidate.providerId,
+          workspacePatched: false,
+          mapProjected: false,
+        };
+      }
       continue;
     }
     const projected = projectNetworkAbsorb({
@@ -68,6 +82,7 @@ export function tryApplyRealityAbsorbFromUtterance(input: {
       needId: need.needId,
       providerId: projected.providerId,
       workspacePatched: projected.workspacePatched,
+      mapProjected: true,
     };
   }
 
@@ -77,5 +92,6 @@ export function tryApplyRealityAbsorbFromUtterance(input: {
     needId: need.needId,
     providerId: resolution.selected?.providerId ?? null,
     workspacePatched: false,
+    mapProjected: false,
   };
 }

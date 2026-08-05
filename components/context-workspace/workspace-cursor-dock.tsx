@@ -336,7 +336,20 @@ export function WorkspaceCursorDock({
           result.statusKo?.trim() ||
           ws?.lastChangeKo?.trim() ||
           null;
-        if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
+        // Map overlay / soft absorb — answer is the status line (or map), not
+        // previous lodging Object Cards synced into chat.
+        const isMapOverlay =
+          result.patchKind === "map_overlay" ||
+          (result.softChips != null && result.softChips.length > 0);
+        if (isMapOverlay) {
+          // Don't let prior trip next-step auto-run steal this turn.
+          autoContinueCountRef.current = 99;
+          appendWorkspaceChatTurn({
+            contextEventId: eventId,
+            role: "assistant",
+            text: statusKo ?? "지도에 반영했어요",
+          });
+        } else if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
           appendWorkspaceSyncedAssistantTurn({
             contextEventId: eventId,
             state: ws,

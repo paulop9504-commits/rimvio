@@ -242,7 +242,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       handled: true,
       statusKo: absorb.replyKo,
       contextEventId: ctx,
-      workspaceMutated: true,
+      workspaceMutated: absorb.mapProjected || absorb.workspacePatched,
       openedWorkspace: false,
       committed: false,
       via: "workspace_prompt",
