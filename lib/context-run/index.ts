@@ -148,6 +148,51 @@ export {
 } from "@/lib/context-run/agent-product-pipeline";
 
 export {
+  applyGlobeWorkspaceAgentTurn,
+  shortenWorkspaceAgentStatus,
+  type GlobeWorkspaceAgentTurnResult,
+} from "@/lib/context-run/apply-globe-workspace-agent-turn";
+
+export {
+  runWorkspaceAgentLoop,
+  WORKSPACE_AGENT_LOOP_PHASES,
+  type WorkspaceAgentLoopPhase,
+  type WorkspaceAgentLoopResult,
+  type WorkspaceAgentToolId,
+} from "@/lib/context-run/workspace-agent-loop";
+
+export {
+  compileWorkspaceAgentPlan,
+} from "@/lib/context-run/compile-workspace-agent-plan";
+export {
+  runWorkspaceAgentPlan,
+  type WorkspaceAgentPlanRunResult,
+} from "@/lib/context-run/run-workspace-agent-plan";
+export type {
+  WorkspaceAgentPlan,
+  WorkspaceAgentPlanStep,
+  WorkspaceAgentPlanKind,
+  WorkspaceAgentPlanObservation,
+} from "@/lib/context-run/workspace-agent-plan";
+
+export { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+export { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
+export { looksLikeAgentFreeTalk } from "@/lib/context-run/looks-like-agent-free-talk";
+export { tryApplyAgentFreeTalkTurn } from "@/lib/context-run/try-apply-agent-free-talk-turn";
+export {
+  composeAgentVagueClarifyKo,
+  shouldSkipAgentLoopForConversation,
+  AGENT_VAGUE_CLARIFY_KO,
+} from "@/lib/context-run/compose-agent-vague-clarify";
+
+export {
   buildAgentFinishMessageKo,
   getCollapseHeaderLabel,
 } from "@/lib/context-run/build-agent-finish-surfaces";
+
+export {
+  planObjectDiscovery,
+  runObjectDiscovery,
+  type ObjectDiscoveryPlan,
+  type ObjectDiscoveryResult,
+} from "@/lib/context-run/object-discovery";

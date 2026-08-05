@@ -30,11 +30,15 @@ import {
   readWorkspaceChat,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { buildRealityDraft } from "@/lib/context-workspace/reality-draft/build-reality-draft";
-import { burstFillTripInventory } from "@/lib/context-workspace/reality-draft/burst-fill-trip-inventory";
+import {
+  burstFillTripInventory,
+  burstFillTripInventoryViaTools,
+} from "@/lib/context-workspace/reality-draft/burst-fill-trip-inventory";
 import {
   compileTripEntitySlots,
   materializeTripDraftStops,
   resolveTripDayCount,
+  type TripSlotInventory,
 } from "@/lib/context-workspace/reality-draft/compile-trip-entity-slots";
 import { refineTripDraftStops } from "@/lib/context-workspace/reality-draft/refine-trip-draft-stops";
 import type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
@@ -65,7 +69,18 @@ function stopToNode(
       ? "도착 · 이동"
       : `${stop.walkMinutes}분 · ${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
   const price = stop.amountLabel?.trim();
-  const summaryKo = [price, leg].filter(Boolean).join(" · ") || leg;
+  const unresolved = stop.entityResolved === false;
+  const summaryKo = [
+    price,
+    unresolved ? "장소 미확정" : null,
+    leg,
+  ]
+    .filter(Boolean)
+    .join(" · ") || leg;
+  const thumb =
+    stop.thumbnailUrl?.trim() || stop.galleryUrls?.[0]?.trim() || null;
+  const gallery =
+    stop.galleryUrls?.filter((u) => typeof u === "string" && u.trim()) ?? null;
 
   return {
     id: `ws-node:${stop.id}`,
@@ -76,19 +91,26 @@ function stopToNode(
     lat: stop.lat,
     lng: stop.lng,
     rating: stop.rating,
-    priceBand: price ? 2 : null,
+    priceBand: stop.priceBand ?? (price ? 2 : null),
     amountLabel: price ?? null,
-    reviewCount: null,
-    thumbnailUrl: null,
+    reviewCount: stop.reviewCount ?? null,
+    thumbnailUrl: thumb,
+    galleryUrls: gallery && gallery.length > 0 ? gallery : null,
+    liteapiOfferId: stop.liteapiOfferId ?? null,
     tags: [...stop.tags],
     visible: true,
     // Soft focus only — do not pre-select or pin every skeleton
     // (map ✓/✗ chrome was firing on all bookmarked draft pins).
     selected: false,
     bookmarked: false,
-    source: "trip_prep_draft",
+    source:
+      stop.placeSource === "maps" ||
+      stop.placeSource === "liteapi" ||
+      stop.placeSource === "booking"
+        ? `trip_prep_${stop.placeSource}`
+        : "trip_prep_draft",
     /** Spatial Reality Draft — Action-Ready, not Committed. */
-    actionReadyState: "ready",
+    actionReadyState: unresolved ? "prepare" : "ready",
   };
 }
 
@@ -119,21 +141,21 @@ function stubIntentRoute(input: {
   };
 }
 
-/**
- * Prepare a focused trip Workspace map draft and expand it.
- */
-export function prepareTripWorkspaceDraft(input: {
-  readonly utterance: string;
-  readonly contextEventId: string;
-  readonly tripPrep?: TripPrepSlots | null;
-  readonly expand?: boolean;
-  /** When caller already wrote the user chat turn. */
-  readonly skipUserChat?: boolean;
-}): ContextWorkspaceState | null {
-  const contextEventId = input.contextEventId.trim();
-  const utterance = input.utterance.trim();
-  if (!contextEventId || !utterance) return null;
+type TripPrepCompile = {
+  readonly dest: string;
+  readonly stay: string | null;
+  readonly nights: number | null | undefined;
+  readonly days: number | null | undefined;
+  readonly stayMatch: RegExpExecArray | null;
+  readonly dayCount: number;
+  readonly slots: ReturnType<typeof compileTripEntitySlots>;
+};
 
+function compileTripPrepInput(input: {
+  readonly utterance: string;
+  readonly tripPrep?: TripPrepSlots | null;
+}): TripPrepCompile {
+  const utterance = input.utterance.trim();
   const dest =
     input.tripPrep?.destinationKo?.trim() ||
     (/오사카|osaka|大阪/iu.test(utterance) ? "오사카" : null) ||
@@ -170,12 +192,32 @@ export function prepareTripWorkspaceDraft(input: {
     nights: nights ?? null,
     expectedEntities: plan.expectedEntities,
   });
-  // L2 + L3: parallel-style slot inventory → pick1 (sync Search Engine).
-  const inventories = burstFillTripInventory({
-    destinationKo: dest,
-    slots,
-    dayCount,
-  });
+  return { dest, stay, nights, days, stayMatch, dayCount, slots };
+}
+
+function writeTripWorkspaceFromInventories(input: {
+  readonly utterance: string;
+  readonly contextEventId: string;
+  readonly tripPrep?: TripPrepSlots | null;
+  readonly expand?: boolean;
+  readonly skipUserChat?: boolean;
+  /** Tool enrich pass — skip chat / soft-next re-fire. */
+  readonly enrichOnly?: boolean;
+  readonly compiled: TripPrepCompile;
+  readonly inventories: readonly TripSlotInventory[];
+  readonly inventoryVia: "sync_search" | "tool_registry";
+}): ContextWorkspaceState | null {
+  const {
+    utterance,
+    contextEventId,
+    expand,
+    skipUserChat,
+    enrichOnly,
+    compiled,
+    inventories,
+  } = input;
+  const { dest, stay, nights, days, stayMatch, dayCount, slots } = compiled;
+
   const materialized = materializeTripDraftStops({
     destinationKo: dest,
     utterance,
@@ -195,6 +237,7 @@ export function prepareTripWorkspaceDraft(input: {
   const osaka =
     seededFrom === "osaka_catalog" || /오사카|osaka|大阪/iu.test(dest);
   const query = stay ? `${dest} ${stay} 여행` : `${dest} 여행 준비`;
+  const resolvedCount = stops.filter((s) => s.entityResolved !== false).length;
   const summaryKo = stay
     ? `${dest} · ${stay} Reality Draft · READY`
     : `${dest} 여행 Reality Draft`;
@@ -223,16 +266,20 @@ export function prepareTripWorkspaceDraft(input: {
     openedAtIso: prev?.openedAtIso ?? now,
     updatedAtIso: now,
     committedAtIso: null,
-    lastChangeKo: `${nodes.length}곳 여행 초안 · 지도에 펼침`,
+    lastChangeKo: enrichOnly
+      ? `Place Entity ${resolvedCount}/${nodes.length} · Tool 연결`
+      : `${nodes.length}곳 여행 초안 · 지도에 펼침`,
     lastWhy: {
       actionKo: `${dest} 여행 Workspace 생성`,
       reasonsKo: [
         "Goal · Planning",
-        seededFrom === "live_burst"
-          ? "Day×slot burst inventory"
-          : osaka
-            ? "난바 중심 fallback seed"
-            : `${dest} Intent 슬롯`,
+        input.inventoryVia === "tool_registry"
+          ? "hotel.lookup · restaurant.lookup · maps.search"
+          : seededFrom === "live_burst"
+            ? "Day×slot burst inventory"
+            : osaka
+              ? "난바 중심 fallback seed"
+              : `${dest} Intent 슬롯`,
         "morning · lunch · afternoon · dinner",
         refined.repairedLegs > 0
           ? `동선 ${refined.repairedLegs}곳 재배치`
@@ -261,7 +308,9 @@ export function prepareTripWorkspaceDraft(input: {
     ...state,
     realityDraft,
     lastChangeKo: realityDraft
-      ? `${realityDraft.days.length}일 Reality Draft · Prepared`
+      ? enrichOnly
+        ? `Place Entity ${resolvedCount}/${nodes.length} · ${realityDraft.days.length}일`
+        : `${realityDraft.days.length}일 Reality Draft · Prepared`
       : state.lastChangeKo,
   };
   writeContextWorkspace(state);
@@ -271,14 +320,15 @@ export function prepareTripWorkspaceDraft(input: {
     forceIntent: "trip_plan",
     replace: true,
   });
-  dispatchContextWorkspaceOpen({
-    contextEventId,
-    workspaceId,
-    source: "trip_prep",
-  });
+  if (!enrichOnly) {
+    dispatchContextWorkspaceOpen({
+      contextEventId,
+      workspaceId,
+      source: "trip_prep",
+    });
+  }
 
-  // Continuity chip on Globe — Resume opens Workspace (Reality OS).
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && !enrichOnly) {
     writeGlobeResumeSession({
       eventId: contextEventId,
       title: stay ? `${dest} · ${stay}` : `${dest} 여행`,
@@ -287,7 +337,6 @@ export function prepareTripWorkspaceDraft(input: {
     });
   }
 
-  // Stamp dest/dates onto Context so Agent % moves and 「계속 진행」 works.
   stampTripDraftOntoContext({
     contextEventId,
     destinationKo: dest,
@@ -296,22 +345,24 @@ export function prepareTripWorkspaceDraft(input: {
     days: days ?? (stayMatch ? Number.parseInt(stayMatch[2]!, 10) : null),
     tripPrep: input.tripPrep ?? null,
   });
-  clearSoftNextWorkContinueMemory(contextEventId);
-  // Auto-chain next soft scout (숙소 → …) without extra clicks.
-  offerSoftNextWorkAfterAct({
-    contextEventId,
-    lastAct: "open_workspace",
-    lastUtterance: utterance,
-    delayMs: 480,
-    autoRun: true,
-  });
+
+  if (!enrichOnly) {
+    clearSoftNextWorkContinueMemory(contextEventId);
+    offerSoftNextWorkAfterAct({
+      contextEventId,
+      lastAct: "open_workspace",
+      lastUtterance: utterance,
+      delayMs: 480,
+      autoRun: true,
+    });
+  }
 
   observeWorldState({
     contextEventId,
     destinationHint: dest,
     utterance,
   });
-  if (osaka) {
+  if (osaka && !enrichOnly) {
     upsertWorldSignal({
       contextEventId,
       signal: {
@@ -342,7 +393,7 @@ export function prepareTripWorkspaceDraft(input: {
     headerTitleKo: stay ? `${dest} · ${stay}` : dest,
   });
 
-  if (input.expand !== false) {
+  if (expand !== false && !enrichOnly) {
     writeContextWorkspaceExpanded(contextEventId, true);
     if (typeof window !== "undefined") {
       dispatchContextWorkspaceExpand({
@@ -366,33 +417,115 @@ export function prepareTripWorkspaceDraft(input: {
       repairedLegs: refined.repairedLegs,
       weatherSwapped: refined.weatherSwapped,
       rainy: refined.rainy,
+      inventoryVia: input.inventoryVia,
+      entityResolved: resolvedCount,
+      enrichOnly: Boolean(enrichOnly),
     },
   });
 
-  const existing = readWorkspaceChat(contextEventId);
-  const hasUser = existing.some(
-    (t) => t.role === "user" && t.text.slice(0, 16) === utterance.slice(0, 16),
-  );
-  if (!input.skipUserChat && !hasUser) {
-    appendWorkspaceChatTurn({
+  if (!enrichOnly) {
+    const existing = readWorkspaceChat(contextEventId);
+    const hasUser = existing.some(
+      (t) => t.role === "user" && t.text.slice(0, 16) === utterance.slice(0, 16),
+    );
+    if (!skipUserChat && !hasUser) {
+      appendWorkspaceChatTurn({
+        contextEventId,
+        role: "user",
+        text: utterance,
+      });
+    }
+    appendWorkspaceSyncedAssistantTurn({
       contextEventId,
-      role: "user",
-      text: utterance,
+      state: readContextWorkspace(contextEventId) ?? state,
+      includeContextBrief: true,
+      includeDayPlan: false,
+      realityDraft:
+        (readContextWorkspace(contextEventId) ?? state).realityDraft ?? null,
+      textKo: stay
+        ? `${dest} ${stay} Reality Draft · Prepared`
+        : `${dest} 여행 Reality Draft · Prepared`,
     });
   }
-  appendWorkspaceSyncedAssistantTurn({
-    contextEventId,
-    state: readContextWorkspace(contextEventId) ?? state,
-    includeContextBrief: true,
-    includeDayPlan: false,
-    realityDraft:
-      (readContextWorkspace(contextEventId) ?? state).realityDraft ?? null,
-    textKo: stay
-      ? `${dest} ${stay} Reality Draft · Prepared`
-      : `${dest} 여행 Reality Draft · Prepared`,
-  });
 
   return readContextWorkspace(contextEventId) ?? state;
+}
+
+/**
+ * Prepare a focused trip Workspace map draft and expand it.
+ * Sync Search Engine burst — instant pins; browser open path Tool-enriches after.
+ */
+export function prepareTripWorkspaceDraft(input: {
+  readonly utterance: string;
+  readonly contextEventId: string;
+  readonly tripPrep?: TripPrepSlots | null;
+  readonly expand?: boolean;
+  /** When caller already wrote the user chat turn. */
+  readonly skipUserChat?: boolean;
+}): ContextWorkspaceState | null {
+  const contextEventId = input.contextEventId.trim();
+  const utterance = input.utterance.trim();
+  if (!contextEventId || !utterance) return null;
+
+  const compiled = compileTripPrepInput({
+    utterance,
+    tripPrep: input.tripPrep,
+  });
+  const inventories = burstFillTripInventory({
+    destinationKo: compiled.dest,
+    slots: compiled.slots,
+    dayCount: compiled.dayCount,
+  });
+  return writeTripWorkspaceFromInventories({
+    utterance,
+    contextEventId,
+    tripPrep: input.tripPrep,
+    expand: input.expand,
+    skipUserChat: input.skipUserChat,
+    compiled,
+    inventories,
+    inventoryVia: "sync_search",
+  });
+}
+
+/**
+ * Place Entity materialization — hotel.lookup / restaurant.lookup / maps.search
+ * per Day×slot, then rewrite Workspace nodes (photos · price · coords).
+ */
+export async function prepareTripWorkspaceDraftAsync(input: {
+  readonly utterance: string;
+  readonly contextEventId: string;
+  readonly tripPrep?: TripPrepSlots | null;
+  readonly expand?: boolean;
+  readonly skipUserChat?: boolean;
+  /** When true, rewrite entities only (no chat / soft-next / open events). */
+  readonly enrichOnly?: boolean;
+}): Promise<ContextWorkspaceState | null> {
+  const contextEventId = input.contextEventId.trim();
+  const utterance = input.utterance.trim();
+  if (!contextEventId || !utterance) return null;
+
+  const compiled = compileTripPrepInput({
+    utterance,
+    tripPrep: input.tripPrep,
+  });
+  const inventories = await burstFillTripInventoryViaTools({
+    destinationKo: compiled.dest,
+    slots: compiled.slots,
+    dayCount: compiled.dayCount,
+    contextEventId,
+  });
+  return writeTripWorkspaceFromInventories({
+    utterance,
+    contextEventId,
+    tripPrep: input.tripPrep,
+    expand: input.expand,
+    skipUserChat: input.skipUserChat,
+    enrichOnly: input.enrichOnly,
+    compiled,
+    inventories,
+    inventoryVia: "tool_registry",
+  });
 }
 
 /** Whether utterance should auto-prepare a full trip map draft. */
@@ -402,7 +535,7 @@ export function shouldPrepareTripWorkspaceDraft(utterance: string): boolean {
 
   // Explicit prep verbs (legacy)
   if (
-    /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|일정\s*(?:짜|세워|만들)|추천\s*일정/iu.test(
+    /여행\s*준비|준비해(?:줘|요|놔|주세요)?|알아서\s*준비|trip\s*prep|일정\s*\S{0,3}\s*(?:짜|세워|만들)|추천\s*일정/iu.test(
       text,
     ) &&
     (/여행|trip|4\s*박|3\s*박|5\s*일|놀러/iu.test(text) ||

@@ -24,6 +24,14 @@ import {
 import { isCompoundActionUtterance } from "@/lib/action-planner";
 import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
 import { resolveIngressContextEventId } from "@/lib/context-run/should-spawn-new-context";
+import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
+import { looksLikeAgentFreeTalk } from "@/lib/context-run/looks-like-agent-free-talk";
+import { composeAgentVagueClarifyKo } from "@/lib/context-run/compose-agent-vague-clarify";
+import {
+  hasActiveWorkspaceForGlobePrompt,
+  resolveActiveWorkspaceContextId,
+} from "@/lib/context-run/resolve-active-workspace-context";
 
 function planPortalComposeResumeIfEligible(
   bound: BoundSituation,
@@ -154,21 +162,86 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return portalResume;
   }
 
-  // Small talk lane: a greeting/thanks/chit-chat on the composer gets a short
-  // conversational reply instead of being forced into a search/ingest. Mirrors
-  // the context assistant's dispatcher; deterministic, no LLM. Runs after active
-  // multi-turn flows (recall/portal) so those keep priority, and real requests
-  // (search cues present) fall through to the normal planner below.
+  // Free-talk / greeting BEFORE Workspace Agent — never Patch on「ㅎㅇ」.
   if (ingress.surface === "composer") {
     const smallTalk = resolveSmallTalk({ text });
-    if (smallTalk) {
+    if (smallTalk || looksLikeAgentFreeTalk(text)) {
       return {
         kind: "small_talk",
-        smallTalkReplyKo: smallTalk.replyKo,
+        smallTalkReplyKo: smallTalk?.replyKo,
         composeAmbientChat: true,
         ...base,
       };
     }
+  }
+
+  // New trip create — Globe Ingress → Continuum Day1..N (before Agent / compound).
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal" &&
+    isNewTripGlobeIngressUtterance(text)
+  ) {
+    const existingContextId = resolveIngressContextEventId({
+      utterance: text,
+      activeContextEventId: ingress.contextEventId,
+      forceNewContext: ingress.forceNewContext === true,
+    });
+    return {
+      kind: "globe_ingress",
+      globeIngress: compileGlobeIngress({
+        text,
+        existingContextId,
+      }),
+      ...base,
+    };
+  }
+
+  // Active Workspace → Agent Loop only for real work (Patch/Scout/Prepare).
+  // Vague NL → small_talk clarify (never "Patch 없음").
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal"
+  ) {
+    const explicit = ingress.contextEventId?.trim() || null;
+    if (
+      hasActiveWorkspaceForGlobePrompt({
+        explicitContextEventId: explicit,
+      })
+    ) {
+      if (isWorkspaceAgentWorkUtterance(text)) {
+        const workspaceAgentContextEventId =
+          resolveActiveWorkspaceContextId({
+            explicitContextEventId: explicit,
+          }) ?? explicit ?? undefined;
+        return {
+          kind: "workspace_agent",
+          workspaceAgentContextEventId,
+          composeAmbientChat: true,
+          ...base,
+        };
+      }
+      return {
+        kind: "small_talk",
+        smallTalkReplyKo: composeAgentVagueClarifyKo(text),
+        composeAmbientChat: true,
+        ...base,
+      };
+    }
+  }
+
+  // Clear Workspace work without an open draft — Agent Loop may mint Continuum.
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal" &&
+    isWorkspaceAgentWorkUtterance(text)
+  ) {
+    const explicit = ingress.contextEventId?.trim() || null;
+    return {
+      kind: "workspace_agent",
+      workspaceAgentContextEventId: explicit || undefined,
+      composeAmbientChat: true,
+      ...base,
+    };
   }
 
   // Graph Command OS — NL → graph edit (before map_intent / discovery scout).
@@ -180,7 +253,10 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
       ingress.contextEventId?.trim() || bound.graphId;
     const session = readSessionGraph(contextEventId);
     const graphCommands = parseGraphCommands(text, session);
-    if (graphCommands.length > 0 || isCompoundActionUtterance(text)) {
+    if (
+      (graphCommands.length > 0 || isCompoundActionUtterance(text)) &&
+      !isNewTripGlobeIngressUtterance(text)
+    ) {
       return {
         kind: "graph_command",
         graphCommands,

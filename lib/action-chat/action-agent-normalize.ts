@@ -61,6 +61,19 @@ export function parseRelativeDateTimeFromText(
 
   const ref = referenceNoon(referenceDate);
 
+  // 「내일모래」「낼모레」 before bare 「내일」 (+2 days).
+  if (/내일\s*모래|낼\s*모레|모레/u.test(trimmed)) {
+    const target = new Date(ref);
+    target.setDate(ref.getDate() + 2);
+    const normalized = normalizeTimeFromText(trimmed);
+    if (normalized) {
+      target.setHours(normalized.hour, normalized.minute, 0, 0);
+    } else {
+      target.setHours(9, 0, 0, 0);
+    }
+    return formatIsoLocal(target);
+  }
+
   if (/내일/.test(trimmed)) {
     const target = new Date(ref);
     target.setDate(ref.getDate() + 1);
@@ -81,13 +94,6 @@ export function parseRelativeDateTimeFromText(
       return formatIsoLocal(target);
     }
     target.setHours(ref.getHours(), ref.getMinutes(), 0, 0);
-    return formatIsoLocal(target);
-  }
-
-  if (/모레/.test(trimmed)) {
-    const target = new Date(ref);
-    target.setDate(ref.getDate() + 2);
-    target.setHours(9, 0, 0, 0);
     return formatIsoLocal(target);
   }
 
