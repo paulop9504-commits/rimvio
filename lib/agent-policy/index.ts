@@ -48,6 +48,51 @@ export {
 } from "@/lib/agent-policy/run-agent-p0-guards";
 
 export {
+  runAgentP1Guards,
+  stampAgentIdempotencyKey,
+  type AgentP1GuardResult,
+  type AgentP1GuardPass,
+  type AgentP1GuardBlock,
+} from "@/lib/agent-policy/run-agent-p1-guards";
+
+export {
+  resolveAgentActionLevel,
+  type AgentActionLevel,
+  type ActionLevelGateResult,
+} from "@/lib/agent-policy/action-level-gate";
+
+export {
+  resolveAmbiguityGate,
+  type AmbiguityGateResult,
+} from "@/lib/agent-policy/ambiguity-gate";
+
+export {
+  resolveConstraintCarryOver,
+  clearJobLocalConstraints,
+  isTargetStackUtterance,
+  isLocaleDeixisUtterance,
+  type ConstraintCarryOverResult,
+} from "@/lib/agent-policy/constraint-carry-over";
+
+export {
+  resolveMutationScopeGuard,
+  isPatchKindAllowed,
+  type MutationScopeGateResult,
+} from "@/lib/agent-policy/mutation-scope-guard";
+
+export {
+  assertAgentPostcondition,
+  type PostconditionExpect,
+  type PostconditionResult,
+} from "@/lib/agent-policy/postcondition-check";
+
+export {
+  buildAgentIdempotencyKey,
+  resolveIdempotencyGate,
+  type IdempotencyGateResult,
+} from "@/lib/agent-policy/idempotency-gate";
+
+export {
   projectAgentTurnSurfaces,
   type AgentTurnSurfaces,
 } from "@/lib/agent-policy/project-agent-turn-surfaces";
