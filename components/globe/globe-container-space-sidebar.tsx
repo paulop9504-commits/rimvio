@@ -944,9 +944,12 @@ export function GlobeContainerSpaceSidebar({
                     enabled={open}
                     onAccepted={(contextEventId) => {
                       setRevision((value) => value + 1);
+                      const timeline = listGlobeContextTimeline(
+                        listLifeEventCandidates(),
+                      );
                       const entry =
                         recent.find((row) => row.eventId === contextEventId) ??
-                        listGlobeContextTimeline(listLifeEventCandidates()).find(
+                        [...timeline.future, ...timeline.present, ...timeline.past].find(
                           (row) => row.eventId === contextEventId,
                         ) ??
                         null;
