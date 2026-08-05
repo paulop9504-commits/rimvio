@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   readContextWorkspace,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/reality-os";
 import { buildWorkspaceNodeProjectionModel } from "@/lib/reality-os/node-projection-model";
 import { WorkspaceSdkNodeBody } from "@/components/workspace-sdk/workspace-sdk-node-body";
+import { WorkspaceShareSettingsSheet } from "@/components/context-workspace/workspace-share-settings-sheet";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import {
@@ -54,6 +55,7 @@ export function WorkspaceSdkHost({
   const [nodes, setNodes] = useState<readonly ContextWorkspaceNode[]>([]);
   const [completedSlotIds, setCompletedSlotIds] = useState<string[]>([]);
   const [linkTick, setLinkTick] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const hubId = contextEventId?.trim() || "";
 
@@ -249,14 +251,27 @@ export function WorkspaceSdkHost({
               {frame.header.titleKo}
             </h2>
           </div>
-          <button
-            type="button"
-            className="rounded-full p-2 text-[#8b95a1]"
-            aria-label={copy.globe.workspaceCollapse}
-            onClick={() => setOpen(false)}
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {ctx ? (
+              <button
+                type="button"
+                className="rounded-full p-2 text-[#3182f6]"
+                aria-label={copy.globe.workspaceShareOpenCta}
+                data-workspace-share-open
+                onClick={() => setShareOpen(true)}
+              >
+                <UserPlus className="h-5 w-5" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="rounded-full p-2 text-[#8b95a1]"
+              aria-label={copy.globe.workspaceCollapse}
+              onClick={() => setOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <div className="border-b border-black/[0.04] px-4 py-2.5">
@@ -389,6 +404,13 @@ export function WorkspaceSdkHost({
           })()}
         </div>
       </div>
+      {ctx ? (
+        <WorkspaceShareSettingsSheet
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          contextEventId={ctx}
+        />
+      ) : null}
     </div>
   );
 }

@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
 import { GlobeContainerSpaceToolbar } from "@/components/globe/globe-container-space-toolbar";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
+import { GlobeResumeInviteSection } from "@/components/globe/globe-resume-invite-section";
+import { GlobeResumeSidebarList } from "@/components/globe/globe-resume-sidebar-list";
 import { fetchSocialLayer } from "@/lib/peer-chat/peer-chat-client";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
 import {
@@ -334,7 +336,6 @@ export function GlobeContainerSpaceSidebar({
     null,
   );
   const [socialPeers, setSocialPeers] = useState<SocialBubblePeer[] | null>(null);
-  void socialPeers;
   const pendingAgentBindRef = useRef(false);
   const agentPressBusyRef = useRef(false);
 
@@ -938,45 +939,51 @@ export function GlobeContainerSpaceSidebar({
                   </section>
                 </>
               ) : (
-                <div className="px-0.5 pt-1">
-                  <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
-                    {copy.globe.containerSpaceExplorer}
-                  </p>
-                  {pinned ? (
-                    <section className="mb-3" data-globe-container-space-pinned>
-                      <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
-                        {copy.globe.containerSpacePinned}
-                      </p>
-                      <SidebarRow
-                        entry={pinned}
-                        active
-                        onSelect={handleSelect}
-                      />
-                    </section>
-                  ) : null}
-                  <section data-globe-container-space-recent>
-                    {filteredRecent.length === 0 ? (
-                      <p className="px-2 py-6 text-[13px] leading-relaxed text-white/45">
-                        {copy.globe.containerSpaceEmpty.split("\n").map((line, index) => (
-                          <span key={line}>
-                            {index > 0 ? <br /> : null}
-                            {line}
-                          </span>
-                        ))}
-                      </p>
-                    ) : (
-                      <div className="space-y-px">
-                        {listEntries.map((entry) => (
-                          <SidebarRow
-                            key={entry.eventId}
-                            entry={entry}
-                            active={entry.eventId === activeEventId}
-                            onSelect={handleSelect}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
+                <div className="px-0.5 pt-1" data-globe-resume-shell>
+                  <GlobeResumeInviteSection
+                    enabled={open}
+                    onAccepted={(contextEventId) => {
+                      setRevision((value) => value + 1);
+                      const entry =
+                        recent.find((row) => row.eventId === contextEventId) ??
+                        listGlobeContextTimeline(listLifeEventCandidates()).find(
+                          (row) => row.eventId === contextEventId,
+                        ) ??
+                        null;
+                      if (entry) {
+                        onSelect(entry);
+                      }
+                    }}
+                  />
+                  <GlobeResumeSidebarList
+                    activeEventId={activeEventId}
+                    socialPeers={socialPeers}
+                    query={query}
+                    revision={revision}
+                    onWorkspaceOpened={(contextEventId) => {
+                      const entry =
+                        recent.find((row) => row.eventId === contextEventId) ?? null;
+                      if (entry) onSelect(entry);
+                      closeAfter();
+                    }}
+                    onWorkspaceFallback={(contextEventId) => {
+                      const entry =
+                        recent.find((row) => row.eventId === contextEventId) ??
+                        listGlobeContextTimeline(listLifeEventCandidates()).find(
+                          (row) => row.eventId === contextEventId,
+                        ) ??
+                        null;
+                      if (entry) {
+                        onSelect(entry);
+                        closeAfter();
+                      } else {
+                        toast.message(copy.globe.resumeSidebarWorkspaceOpenFailed);
+                      }
+                    }}
+                    onFriendOpened={() => {
+                      closeAfter();
+                    }}
+                  />
                 </div>
               )}
             </div>

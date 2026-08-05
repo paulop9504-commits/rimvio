@@ -431,6 +431,7 @@ import {
 } from "@/lib/globe/spatial-semantic/enter-context-solo-stage";
 import { projectBridgeGhostClusters } from "@/lib/experience-bridge/project-bridge-ghost-clusters";
 import type { PendingBridgeInvite } from "@/hooks/use-pending-bridge-invites";
+import { useSharedWorkspaceRealtimeSync } from "@/hooks/use-shared-workspace-realtime-sync";
 import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { readGlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { runGlobeEateryDiscovery } from "@/lib/globe/eatery/run-globe-eatery-discovery";
@@ -446,6 +447,7 @@ function GlobeHomeBody() {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  useSharedWorkspaceRealtimeSync(true);
   const rimvioHonorific = resolveRimvioHonorific(user);
   const recallEventId = searchParams.get("recallEvent");
   /** Blocks deep-link re-open after the user closes the PromptFrame with X. */

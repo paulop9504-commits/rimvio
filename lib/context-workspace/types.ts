@@ -65,6 +65,11 @@ export type ContextWorkspaceNode = {
    * Default omitted ≈ discover for legacy nodes.
    */
   readonly actionReadyState?: ActionReadyState | null;
+  /**
+   * RTS Object Owner (ADR-047) — Commit/Pay for this unit.
+   * Unset = 🟡 shared / legacy until claimed.
+   */
+  readonly ownerUserId?: string | null;
 };
 
 export type ContextWorkspaceStatus =
@@ -176,7 +181,8 @@ export type ContextWorkspaceOpenSource =
   | "restore"
   | "scout_patch"
   | "trip_prep"
-  | "nl_open";
+  | "nl_open"
+  | "bridge_invite_commit";
 
 export type ContextWorkspaceOpenDetail = {
   readonly contextEventId: string;

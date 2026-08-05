@@ -13,7 +13,9 @@ export type ContextWorkspaceExpandDetail = {
     | "capsule_resume"
     | "trip_prep"
     | "nl_open"
-    | "scout_patch";
+    | "scout_patch"
+    | "one_touch"
+    | "workspace_invite_commit";
 };
 
 export function dispatchContextWorkspaceExpand(

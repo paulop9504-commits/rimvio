@@ -119,3 +119,35 @@ export {
   type CursorOsSpineAxisId,
   type CursorOsSpineAxis,
 } from "@/lib/context-run/cursor-os-spine";
+
+export type {
+  AgentActivityEvent,
+  AgentActivityKind,
+  AgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+
+export {
+  AGENT_ACTIVITY_KINDS,
+  appendAgentActivityEvent,
+  appendAgentActivityForStage,
+  beginAgentActivityTranscript,
+  clearAgentActivityTranscriptForTests,
+  finishAgentActivityTranscript,
+  formatAgentActivityElapsed,
+  readAgentActivityTranscript,
+  subscribeAgentActivityTranscript,
+  yieldAgentActivityFrame,
+} from "@/lib/context-run/agent-activity-transcript";
+
+export {
+  AGENT_PRODUCT_PIPELINE_STAGES,
+  AGENT_PRODUCT_PIPELINE_STATUS_KO,
+  beginAgentProductTurn,
+  clearLastAgentProductTurnForTests,
+  readLastAgentProductTurn,
+} from "@/lib/context-run/agent-product-pipeline";
+
+export {
+  buildAgentFinishMessageKo,
+  getCollapseHeaderLabel,
+} from "@/lib/context-run/build-agent-finish-surfaces";

@@ -1,0 +1,19 @@
+---
+description: ADR-047 RTS Permission Model — shared Map, owned Units (Globe Resume share)
+alwaysApply: true
+---
+
+# RTS Permission Model (locked)
+
+**Canonical:** `docs/adr/047-rts-permission-model.md`
+
+> Same Map (Context), different Players — each Reality Object has one Owner.
+
+Mine · Companion · Shared (no Owner Commit — adopt via Proposal)
+
+## PR reject
+
+- Ally Edit+Commit on foreign Objects
+- Ownerless Commit on shared POI
+- Friends ROOM as Workspace Capsule kind
+- Spreadsheet co-edit as the collab story
