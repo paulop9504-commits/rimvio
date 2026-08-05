@@ -19,8 +19,6 @@ import { GlobeContextRuntimePanel } from "@/components/globe/globe-context-runti
 import { toast } from "sonner";
 import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
 import { GlobeContainerSpaceToolbar } from "@/components/globe/globe-container-space-toolbar";
-import { GlobeResumeInviteSection } from "@/components/globe/globe-resume-invite-section";
-import { GlobeResumeSidebarList } from "@/components/globe/globe-resume-sidebar-list";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
 import { fetchSocialLayer } from "@/lib/peer-chat/peer-chat-client";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
@@ -44,7 +42,6 @@ import {
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
-import { formatResumeRelativeTime } from "@/lib/globe/resume-sidebar/format-resume-relative-time";
 import { copy } from "@/lib/copy/human-ko";
 import {
   armGlobeContextAgent,
@@ -55,6 +52,23 @@ import {
 } from "@/lib/globe/context-agent";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+
+function formatSidebarRelativeTime(sortMs: number, nowMs = Date.now()): string {
+  if (!Number.isFinite(sortMs) || sortMs <= 0) return "";
+  const delta = Math.max(0, nowMs - sortMs);
+  const sec = Math.floor(delta / 1000);
+  if (sec < 45) return "지금";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 48) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 14) return `${day}d`;
+  return new Date(sortMs).toLocaleDateString("ko-KR", {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export type GlobeContainerSpaceSidebarProps = {
   open: boolean;
@@ -215,9 +229,7 @@ function SidebarRow({
     }
     onSelect(entry);
   };
-  const relative = formatResumeRelativeTime(
-    new Date(entry.sortMs).toISOString(),
-  );
+  const relative = formatSidebarRelativeTime(entry.sortMs);
 
   return (
     <button
@@ -418,15 +430,6 @@ export function GlobeContainerSpaceSidebar({
     }
     return recent.find((row) => row.eventId === id) ?? null;
   }, [activeEventId, recent]);
-
-  const findEntryByEventId = useCallback(
-    (eventId: string): GlobeContextTimelineEntry | null => {
-      const id = eventId.trim();
-      if (!id) return null;
-      return recent.find((row) => row.eventId === id) ?? null;
-    },
-    [recent],
-  );
 
   const deleteSelection = useMemo(() => {
     let detachLocal = 0;
@@ -944,29 +947,44 @@ export function GlobeContainerSpaceSidebar({
                 </>
               ) : (
                 <div className="px-0.5 pt-1">
-                  <p className="mb-1.5 flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
-                    <span>{copy.globe.containerSpaceExplorer}</span>
+                  <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                    {copy.globe.containerSpaceExplorer}
                   </p>
-                  <GlobeResumeInviteSection
-                    enabled={open}
-                    onAccepted={(contextEventId) => {
-                      openResumeWorkspace(contextEventId);
-                      setRevision((value) => value + 1);
-                    }}
-                  />
-                  <GlobeResumeSidebarList
-                    activeEventId={activeEventId}
-                    socialPeers={socialPeers}
-                    query={query}
-                    revision={revision}
-                    onWorkspaceOpened={(contextEventId) => {
-                      openResumeWorkspace(contextEventId);
-                    }}
-                    onWorkspaceFallback={(contextEventId) => {
-                      openResumeWorkspace(contextEventId);
-                    }}
-                    onFriendOpened={() => onOpenChange(false)}
-                  />
+                  {pinned ? (
+                    <section className="mb-3" data-globe-container-space-pinned>
+                      <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                        {copy.globe.containerSpacePinned}
+                      </p>
+                      <SidebarRow
+                        entry={pinned}
+                        active
+                        onSelect={handleSelect}
+                      />
+                    </section>
+                  ) : null}
+                  <section data-globe-container-space-recent>
+                    {filteredRecent.length === 0 ? (
+                      <p className="px-2 py-6 text-[13px] leading-relaxed text-white/45">
+                        {copy.globe.containerSpaceEmpty.split("\n").map((line, index) => (
+                          <span key={line}>
+                            {index > 0 ? <br /> : null}
+                            {line}
+                          </span>
+                        ))}
+                      </p>
+                    ) : (
+                      <div className="space-y-px">
+                        {listEntries.map((entry) => (
+                          <SidebarRow
+                            key={entry.eventId}
+                            entry={entry}
+                            active={entry.eventId === activeEventId}
+                            onSelect={handleSelect}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 </div>
               )}
             </div>
