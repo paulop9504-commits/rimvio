@@ -23,6 +23,12 @@ import {
   resolveLodgingStaySearchKeyword,
   normalizeLodgingStayType,
 } from "@/lib/globe/lodging/lodging-stay-types";
+import { rememberConstraintsOnWorkspace } from "@/lib/agent-policy/stamp-constitution-on-workspace";
+import { optimizeWorkspaceNodeRoute } from "@/lib/context-workspace/optimize-workspace-route";
+import {
+  emptyWorkspaceRealityPlan,
+  mergeWorkspaceRealityPlan,
+} from "@/lib/context-workspace/workspace-reality-patch";
 
 const DAY_TAG_RE = /^day[_-]?\d+$/iu;
 
@@ -100,6 +106,64 @@ function applySoftKeepVisible(
   });
 }
 
+function parseNightlyKrwFromNode(node: ContextWorkspaceNode): number | null {
+  const label = node.amountLabel?.trim() ?? "";
+  if (!label) return null;
+  const m = label.match(/(\d[\d,]*)/);
+  if (!m?.[1]) return null;
+  const n = Number(m[1].replace(/,/gu, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Soft budget leave — hide above max nightly KRW; keep selected/bookmarked. */
+function applyMaxNightlyVisible(
+  nodes: readonly ContextWorkspaceNode[],
+  maxNightlyPriceKrw: number,
+): ContextWorkspaceNode[] {
+  const ranked = nodes.filter(
+    (n) =>
+      n.visible &&
+      n.source !== "reality_anchor" &&
+      !n.tags.includes("reality_anchor"),
+  );
+  const keep = new Set<string>();
+  for (const n of nodes) {
+    if (n.bookmarked || n.selected) keep.add(n.id);
+  }
+  for (const n of ranked) {
+    const krw = parseNightlyKrwFromNode(n);
+    if (krw == null || krw <= maxNightlyPriceKrw) keep.add(n.id);
+  }
+  if (keep.size === 0) {
+    for (const n of ranked) keep.add(n.id);
+  }
+  return nodes.map((n) => {
+    if (n.source === "reality_anchor" || n.tags.includes("reality_anchor")) {
+      return n;
+    }
+    if (!ranked.some((r) => r.id === n.id)) {
+      return n;
+    }
+    return { ...n, visible: keep.has(n.id) };
+  });
+}
+
+/** Visible place order for ordinal delete / schedule — list sheet order. */
+function listVisiblePlaceOrder(
+  nodes: readonly ContextWorkspaceNode[],
+): ContextWorkspaceNode[] {
+  return nodes.filter(
+    (n) =>
+      n.visible &&
+      n.source !== "reality_anchor" &&
+      !n.tags.includes("reality_anchor") &&
+      (n.kind === "lodging" ||
+        n.kind === "eatery" ||
+        n.kind === "poi" ||
+        n.kind === "amenity"),
+  );
+}
+
 function listVisibleScheduleCandidates(
   nodes: readonly ContextWorkspaceNode[],
 ): ContextWorkspaceNode[] {
@@ -128,6 +192,60 @@ function stampDayTag(
     tags,
     selected: true,
   };
+}
+
+function clearDayTag(
+  node: ContextWorkspaceNode,
+  day: number,
+): ContextWorkspaceNode {
+  const tags = node.tags.filter(
+    (t) => !new RegExp(`^day[_-]?${day}$`, "iu").test(t),
+  );
+  return { ...node, tags };
+}
+
+function nodeOnDay(node: ContextWorkspaceNode, day: number): boolean {
+  return node.tags.some((t) => new RegExp(`^day[_-]?${day}$`, "iu").test(t));
+}
+
+function haversineMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
+}
+
+/** P4 — nearest-neighbor order among one day's stops. */
+function orderDayStops(
+  nodes: readonly ContextWorkspaceNode[],
+): ContextWorkspaceNode[] {
+  if (nodes.length <= 1) return [...nodes];
+  return optimizeWorkspaceNodeRoute(nodes, nodes[0]?.id ?? null).filter((n) =>
+    nodes.some((d) => d.id === n.id),
+  );
+}
+
+function matchNodeByQuery(
+  nodes: readonly ContextWorkspaceNode[],
+  query: string,
+): ContextWorkspaceNode | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  return (
+    nodes.find((n) => {
+      const blob = `${n.title} ${n.summaryKo} ${n.tags.join(" ")}`.toLowerCase();
+      return blob.includes(q);
+    }) ?? null
+  );
 }
 
 export type ApplyWorkspacePatchResult = {
@@ -299,6 +417,7 @@ export function applyWorkspacePatch(input: {
       const softSort = patch.filter.sortBy ?? null;
       const keepTopN = patch.filter.keepTopN ?? null;
       const relativeCheaper = Boolean(patch.filter.relativeCheaper);
+      const maxNightlyPriceKrw = patch.filter.maxNightlyPriceKrw ?? null;
       const storeFilter = {
         minRating: patch.filter.minRating ?? null,
         maxPriceBand: patch.filter.maxPriceBand ?? null,
@@ -334,45 +453,87 @@ export function applyWorkspacePatch(input: {
 
       const tags = patch.filter.tagIncludes ?? [];
       if (tags.some((t) => t.startsWith("stay:"))) {
-        const stay = tags
+        const stayRaw = tags
           .find((t) => t.startsWith("stay:"))
           ?.replace(/^stay:/, "");
-        const reality = applyWorkspaceRealityPatch({
-          contextEventId,
-          utterance: utterance ?? "필터",
-          patch: stay ? { stayType: stay as never } : {},
-        });
-        needsRescout = reality.needsRescout;
-        scoutQuery = reality.scoutQuery;
-        statusKo = reality.replyKo ?? "필터 패치 적용";
-      } else if (softSort || keepTopN != null || relativeCheaper) {
+        const stay = stayRaw
+          ? normalizeLodgingStayType(stayRaw)
+          : null;
+        const live = readContextWorkspace(contextEventId);
+        const visibleStay =
+          live?.nodes.filter(
+            (n) =>
+              n.visible &&
+              stayRaw != null &&
+              n.tags.includes(`stay:${stayRaw}`),
+          ).length ?? 0;
+        // Soft「만 보여」— stamp plan + keep in-set; rescout only if none match.
+        if (live && stay && visibleStay > 0) {
+          const plan = mergeWorkspaceRealityPlan(
+            live.realityPlan ?? emptyWorkspaceRealityPlan(),
+            { stayType: stay },
+            `${stay}만`,
+          );
+          writeContextWorkspace({
+            ...live,
+            realityPlan: plan,
+            lastChangeKo: `${stay} · ${visibleStay}곳`,
+            updatedAtIso: new Date().toISOString(),
+          });
+          statusKo = `${stay} · ${visibleStay}곳`;
+          needsRescout = false;
+        } else {
+          const reality = applyWorkspaceRealityPatch({
+            contextEventId,
+            utterance: utterance ?? "필터",
+            patch: stay ? { stayType: stay } : {},
+          });
+          needsRescout = reality.needsRescout;
+          scoutQuery = reality.scoutQuery;
+          statusKo = reality.replyKo ?? "필터 패치 적용";
+        }
+      } else if (
+        softSort ||
+        keepTopN != null ||
+        relativeCheaper ||
+        maxNightlyPriceKrw != null
+      ) {
         const live = readContextWorkspace(contextEventId);
         if (live) {
-          const sorted = softRefineSortNodes(live.nodes, softSort);
-          const refined = applySoftKeepVisible(
-            sorted,
-            keepTopN,
-            relativeCheaper,
-          );
+          let refined = softRefineSortNodes(live.nodes, softSort);
+          if (maxNightlyPriceKrw != null) {
+            refined = applyMaxNightlyVisible(refined, maxNightlyPriceKrw);
+          }
+          if (softSort || keepTopN != null || relativeCheaper) {
+            refined = applySoftKeepVisible(
+              refined,
+              keepTopN,
+              relativeCheaper,
+            );
+          }
           const visible = refined.filter((n) => n.visible).length;
           writeContextWorkspace({
             ...live,
             nodes: refined,
             summaryKo: `${visible}곳`,
             lastChangeKo:
-              keepTopN != null
-                ? `지금 후보 안에서 상위 ${keepTopN}곳만 남겼어요`
-                : relativeCheaper
-                  ? "지금 후보 안에서 더 싼 쪽으로 골랐어요"
-                  : "지금 후보 안에서 정렬했어요",
+              maxNightlyPriceKrw != null
+                ? `지금 후보 안에서 ${Math.round(maxNightlyPriceKrw / 10_000)}만원 이하만 남겼어요`
+                : keepTopN != null
+                  ? `지금 후보 안에서 상위 ${keepTopN}곳만 남겼어요`
+                  : relativeCheaper
+                    ? "지금 후보 안에서 더 싼 쪽으로 골랐어요"
+                    : "지금 후보 안에서 정렬했어요",
             updatedAtIso: new Date().toISOString(),
           });
           statusKo =
-            keepTopN != null
-              ? `지금 후보 · 상위 ${keepTopN}곳`
-              : relativeCheaper
-                ? "지금 후보 · 가성비 정리"
-                : "지금 후보 · 정렬";
+            maxNightlyPriceKrw != null
+              ? `지금 후보 · ${Math.round(maxNightlyPriceKrw / 10_000)}만원 이하`
+              : keepTopN != null
+                ? `지금 후보 · 상위 ${keepTopN}곳`
+                : relativeCheaper
+                  ? "지금 후보 · 가성비 정리"
+                  : "지금 후보 · 정렬";
         } else {
           statusKo = "필터 패치 적용";
         }
@@ -385,12 +546,50 @@ export function applyWorkspacePatch(input: {
       break;
     }
     case "delete_entity": {
+      const live = readContextWorkspace(contextEventId);
+      const places = live ? listVisiblePlaceOrder(live.nodes) : [];
+      const fromOrdinal =
+        patch.ordinalIndex != null &&
+        patch.ordinalIndex >= 0 &&
+        patch.ordinalIndex < places.length
+          ? places[patch.ordinalIndex]!.id
+          : null;
+      let fromTitle: string[] = [];
+      if (
+        patch.entityIds.length === 0 &&
+        fromOrdinal == null &&
+        state.selectedIds.length === 0 &&
+        utterance?.trim()
+      ) {
+        const hint =
+          utterance
+            .match(
+              /([\uac00-\ud7a3A-Za-z0-9·\s]{2,28}?)\s*(?:을|를|은|는)?\s*(?:빼|삭제|지워|제외|없애)/u,
+            )?.[1]
+            ?.trim()
+            .replace(/^(?:이|그|저)\s*(?:호텔|숙소|맛집|거|곳)?\s*/u, "")
+            .trim() ?? "";
+        if (hint.length >= 2 && !/^(?:이|그|저|호텔|숙소|맛집)$/u.test(hint)) {
+          const q = hint.toLowerCase();
+          fromTitle = (live?.nodes ?? [])
+            .filter((n) => {
+              if (!n.visible) return false;
+              const blob = `${n.title} ${n.summaryKo}`.toLowerCase();
+              return blob.includes(q) || q.includes(n.title.toLowerCase());
+            })
+            .map((n) => n.id);
+        }
+      }
       const ids =
         patch.entityIds.length > 0
           ? patch.entityIds
-          : state.selectedIds.length > 0
-            ? state.selectedIds
-            : [];
+          : fromOrdinal
+            ? [fromOrdinal]
+            : fromTitle.length > 0
+              ? fromTitle
+              : state.selectedIds.length > 0
+                ? state.selectedIds
+                : [];
       if (ids.length === 0) {
         statusKo = "삭제할 Entity 없음";
         break;
@@ -474,16 +673,37 @@ export function applyWorkspacePatch(input: {
     case "move_schedule": {
       const live = readContextWorkspace(contextEventId);
       const day = patch.dayIndex + 1;
-      const places = live ? listVisibleScheduleCandidates(live.nodes) : [];
+      const kindHint = /호텔|숙소|lodging|hotel/iu.test(utterance ?? "")
+        ? ("lodging" as const)
+        : /맛집|식당|레스토랑|카페|eatery|cafe|restaurant/iu.test(
+              utterance ?? "",
+            )
+          ? ("eatery" as const)
+          : null;
+      const places = live
+        ? listVisibleScheduleCandidates(live.nodes).filter((n) =>
+            kindHint ? n.kind === kindHint : true,
+          )
+        : [];
       const fromOrdinal =
         patch.ordinalIndex != null &&
         patch.ordinalIndex >= 0 &&
         patch.ordinalIndex < places.length
           ? places[patch.ordinalIndex]!.id
           : null;
+      const fromQuery =
+        patch.queryIncludes && live
+          ? matchNodeByQuery(
+              kindHint
+                ? live.nodes.filter((n) => n.kind === kindHint)
+                : live.nodes,
+              patch.queryIncludes,
+            )?.id ?? null
+          : null;
       const entityId =
         patch.entityId ||
         fromOrdinal ||
+        fromQuery ||
         live?.selectedIds[0] ||
         live?.nodes.find((n) => n.selected)?.id ||
         places[0]?.id ||
@@ -552,6 +772,19 @@ export function applyWorkspacePatch(input: {
         statusKo = moved
           ? `${moved.title} · Day${day} 일정에 넣었어요`
           : `Day${day} Draft 생성`;
+        // P4 — refresh NN route + meters after day placement
+        applyWorkspacePatch({
+          contextEventId,
+          patch: { kind: "rebuild_route", dayIndex: patch.dayIndex },
+          utterance: utterance ?? `Day${day} 동선`,
+          skipAutoProjection: true,
+        });
+        {
+          const afterRoute = readContextWorkspace(contextEventId);
+          if (afterRoute?.lastChangeKo?.includes("동선")) {
+            statusKo = `${statusKo} · ${afterRoute.lastChangeKo}`;
+          }
+        }
       } else if (live) {
         writeContextWorkspace({
           ...live,
@@ -577,6 +810,137 @@ export function applyWorkspacePatch(input: {
       } else {
         statusKo = `Day${day} Draft 생성`;
       }
+      break;
+    }
+    case "remove_schedule": {
+      const live = readContextWorkspace(contextEventId);
+      const day = patch.dayIndex + 1;
+      if (!live) {
+        statusKo = "삭제할 일정 없음";
+        break;
+      }
+      const onDay = live.nodes.filter((n) => nodeOnDay(n, day));
+      const target =
+        (patch.entityId
+          ? live.nodes.find(
+              (n) => n.id === patch.entityId || n.placeId === patch.entityId,
+            )
+          : null) ??
+        (patch.queryIncludes
+          ? matchNodeByQuery(
+              onDay.length > 0 ? onDay : live.nodes,
+              patch.queryIncludes,
+            )
+          : null) ??
+        onDay[0] ??
+        null;
+      if (!target) {
+        statusKo = `Day${day}에서 뺄 장소 없음`;
+        break;
+      }
+      const nodes = live.nodes.map((n) =>
+        n.id === target.id ? clearDayTag(n, day) : n,
+      );
+      const prevEdges = live.relationshipEdges ?? [];
+      const edges = prevEdges.filter(
+        (e) =>
+          !(
+            e.id === `schedule_${target.id}_day${day}` ||
+            (e.fromId === target.id && e.toId === `schedule:day${day}`) ||
+            (e.toId === target.id && e.fromId === `schedule:day${day}`)
+          ),
+      );
+      const realityDraft =
+        buildRealityDraft({
+          contextTitleKo: live.summaryKo || live.query || "여행",
+          destinationKo: live.realityDraft?.destinationKo ?? null,
+          stayLabelKo: live.realityDraft?.stayLabelKo ?? null,
+          nodes,
+        }) ?? live.realityDraft ?? null;
+      writeContextWorkspace({
+        ...live,
+        nodes,
+        relationshipEdges: edges,
+        realityDraft,
+        lastChangeKo: `${target.title} · Day${day}에서 뺐어요`,
+        updatedAtIso: new Date().toISOString(),
+      });
+      statusKo = `${target.title} · Day${day}에서 뺐어요`;
+      applyWorkspacePatch({
+        contextEventId,
+        patch: { kind: "rebuild_route", dayIndex: patch.dayIndex },
+        utterance: utterance ?? `Day${day} 동선`,
+        skipAutoProjection: true,
+      });
+      break;
+    }
+    case "rebuild_route": {
+      const live = readContextWorkspace(contextEventId);
+      const day = patch.dayIndex + 1;
+      if (!live) {
+        statusKo = "동선 재구성 실패";
+        break;
+      }
+      const onDayRaw = live.nodes.filter(
+        (n) => n.visible && nodeOnDay(n, day),
+      );
+      const onDay = orderDayStops(onDayRaw);
+      const dayNodeId = `schedule:day${day}`;
+      const kept = (live.relationshipEdges ?? []).filter(
+        (e) =>
+          !(
+            e.toId === dayNodeId ||
+            e.fromId === dayNodeId ||
+            (e.kind === "route" && e.id.startsWith(`route_day${day}_`))
+          ),
+      );
+      const routeEdges = onDay.slice(0, -1).map((from, i) => {
+        const to = onDay[i + 1]!;
+        return {
+          id: `route_day${day}_${from.id}_${to.id}`,
+          kind: "route" as const,
+          fromId: from.id,
+          toId: to.id,
+          labelKo: `Day${day} ${i + 1}→${i + 2}`,
+          meters: haversineMeters(from, to),
+        };
+      });
+      const scheduleEdges = onDay.map((n) => ({
+        id: `schedule_${n.id}_day${day}`,
+        kind: "route" as const,
+        fromId: n.id,
+        toId: dayNodeId,
+        labelKo: `Day${day} Draft`,
+        meters: null as number | null,
+      }));
+      const totalMeters = routeEdges.reduce(
+        (sum, e) => sum + (e.meters ?? 0),
+        0,
+      );
+      const realityDraft =
+        buildRealityDraft({
+          contextTitleKo: live.summaryKo || live.query || "여행",
+          destinationKo: live.realityDraft?.destinationKo ?? null,
+          stayLabelKo: live.realityDraft?.stayLabelKo ?? null,
+          nodes: live.nodes,
+        }) ?? live.realityDraft ?? null;
+      writeContextWorkspace({
+        ...live,
+        relationshipEdges: [...kept, ...scheduleEdges, ...routeEdges].slice(
+          0,
+          64,
+        ),
+        realityDraft,
+        lastChangeKo:
+          onDay.length > 0
+            ? `Day${day} 동선 · ${onDay.length}곳${totalMeters > 0 ? ` · 약 ${Math.round(totalMeters / 1000)}km` : ""}`
+            : `Day${day} 동선 다시 짜기`,
+        updatedAtIso: new Date().toISOString(),
+      });
+      statusKo =
+        onDay.length > 0
+          ? `Day${day} 동선 · ${onDay.length}곳`
+          : `Day${day} 동선 다시 짰어요`;
       break;
     }
     case "move_entity": {
@@ -651,6 +1015,19 @@ export function applyWorkspacePatch(input: {
 
   const record = makeRecord({ patch, utterance, statusKo });
   appendPatchRecord(contextEventId, record);
+
+  // P1 — soft/spatial/replace Patch also stamps ConstraintMemory SSOT (Law 15).
+  if (
+    utterance?.trim() &&
+    (patch.kind === "filter_entity" ||
+      patch.kind === "spatial_constraint" ||
+      patch.kind === "replace_entity")
+  ) {
+    rememberConstraintsOnWorkspace({
+      contextEventId,
+      utterance,
+    });
+  }
 
   // STEP 6 — Auto Projection (always; no user Refresh)
   if (!input.skipAutoProjection) {

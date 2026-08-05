@@ -8,7 +8,8 @@ import {
   writeContextWorkspace,
 } from "@/lib/context-workspace/workspace-store";
 import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
-import { mergePreservePinnedNodes } from "@/lib/context-workspace/merge-preserve-pinned";
+import { mergeScoutInventoryNodes } from "@/lib/context-workspace/merge-preserve-pinned";
+import { isWorkspaceReadySlotNode } from "@/lib/context-workspace/workspace-map-focus";
 import {
   domainLabelKo,
   type ContextWorkspaceDomain,
@@ -262,9 +263,12 @@ export function openMapContextWorkspace(input: {
   hits?: readonly PlaceSearchHit[] | null;
   candidates?: readonly SearchToolCandidate[] | null;
   source?: ContextWorkspaceOpenSource;
+  /** P3 — add keeps other-domain inventory; replace refreshes this domain only. */
+  inventoryMode?: "replace" | "add";
 }): ContextWorkspaceState {
   const contextEventId = input.contextEventId.trim();
   const domain = graphDomainToWorkspaceDomain(input.domain);
+  const inventoryMode = input.inventoryMode ?? "replace";
   const fromHits = (input.hits ?? []).map((h, i) =>
     placeHitToWorkspaceNode(h, i, domain),
   );
@@ -283,9 +287,22 @@ export function openMapContextWorkspace(input: {
     prev?.status === "editing" || prev?.status === "committing"
       ? prev.nodes.filter((n) => n.bookmarked).length
       : 0;
+  // Drop unresolved shells of this domain so live hotels/cafes/POI replace 「리버뷰」「근처 카페」.
+  const prevWithoutDomainShells =
+    prev && (prev.status === "editing" || prev.status === "committing")
+      ? prev.nodes.filter(
+          (n) => !(isWorkspaceReadySlotNode(n) && n.kind === domain),
+        )
+      : [];
   const nodes =
     prev && (prev.status === "editing" || prev.status === "committing")
-      ? mergePreservePinnedNodes(prev.nodes, nodesIncoming, 36)
+      ? mergeScoutInventoryNodes({
+          previous: prevWithoutDomainShells,
+          incoming: nodesIncoming,
+          domain,
+          mode: inventoryMode,
+          max: 36,
+        })
       : nodesIncoming;
   const now = new Date().toISOString();
   const workspaceId =

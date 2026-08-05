@@ -1,10 +1,14 @@
 /**
  * Law 15 — Never Lose User Constraint.
  * Constraint bag survives replace / re-scout on the same Context.
+ *
+ * P1: NL → one structured ConstraintMemoryBag (SSOT for scout + soft refine).
  */
 
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
+
+export type ConstraintSortBy = "price" | "rating" | "value";
 
 export type ConstraintMemoryBag = {
   readonly maxNightlyPriceKrw: number | null;
@@ -12,6 +16,9 @@ export type ConstraintMemoryBag = {
   readonly nearLabelKo: string | null;
   readonly stayType: string | null;
   readonly minRating: number | null;
+  /** Soft refine — keep only top N after scout / in-set rank. */
+  readonly keepTopN: number | null;
+  readonly sortBy: ConstraintSortBy | null;
   readonly updatedAtIso: string;
 };
 
@@ -22,6 +29,8 @@ export function emptyConstraintMemory(): ConstraintMemoryBag {
     nearLabelKo: null,
     stayType: null,
     minRating: null,
+    keepTopN: null,
+    sortBy: null,
     updatedAtIso: new Date(0).toISOString(),
   };
 }
@@ -32,6 +41,10 @@ const NEAR_LABEL_RE =
 export function extractNearLabelKo(utterance: string): string | null {
   const text = utterance.trim();
   if (!text) return null;
+  const namedStation = text.match(/([가-힣A-Za-z0-9]+역)/u)?.[1]?.trim();
+  if (namedStation && /근처|주변|앞|에서/u.test(text)) {
+    return namedStation;
+  }
   const m = text.match(NEAR_LABEL_RE);
   const raw = m?.[1]?.trim();
   if (!raw) return null;
@@ -39,22 +52,73 @@ export function extractNearLabelKo(utterance: string): string | null {
   return raw;
 }
 
+function parseKeepTopN(text: string): number | null {
+  const topMatch = text.match(
+    /(?:상위\s*)?(\d+)\s*개|(?:만\s*)?(\d+)\s*개\s*(?:만|보여|남|골라)|(\d+)\s*곳\s*(?:만|보여|남|골라)/u,
+  );
+  if (!topMatch) return null;
+  const n = Number(topMatch[1] || topMatch[2] || topMatch[3]);
+  if (!Number.isFinite(n) || n < 1 || n > 20) return null;
+  return n;
+}
+
+/**
+ * Parse minRating without stealing digits from 「3개만」 / 「10만원」.
+ * Explicit `평점 4.5` wins; bare `평점 높` → default 4.
+ */
+export function parseMinRatingFromUtterance(text: string): number | null {
+  if (!/평점|별점|rating/iu.test(text)) return null;
+  const explicit = text.match(
+    /(?:평점|별점|rating)\s*(?:이?\s*)?(\d+(?:\.\d+)?)\s*(?:\+|이상|점)?/iu,
+  );
+  if (explicit?.[1]) {
+    const n = Number(explicit[1]);
+    return Number.isFinite(n) && n >= 1 && n <= 5 ? n : 4;
+  }
+  if (/평점\s*높|별점\s*높|rating\s*high/iu.test(text)) return 4;
+  return null;
+}
+
+export function parseSortByFromUtterance(text: string): ConstraintSortBy | null {
+  if (/가성비|싼\s*순|더\s*싸|더\s*싼|저렴한\s*순|cheap|cheaper/iu.test(text)) {
+    return "value";
+  }
+  if (/평점\s*높|별점\s*높|rating/iu.test(text)) return "rating";
+  if (/가까운\s*순/iu.test(text)) return "value";
+  return null;
+}
+
+/**
+ * Single NL → Constraint compile (P1 SSOT).
+ * Prefer this over ad-hoc regex at Patch / Discovery call sites.
+ */
+export function compileConstraintMemoryFromUtterance(input: {
+  readonly prev?: ConstraintMemoryBag | null | undefined;
+  readonly utterance: string;
+}): ConstraintMemoryBag {
+  return mergeConstraintMemoryFromUtterance({
+    prev: input.prev ?? null,
+    utterance: input.utterance,
+  });
+}
+
 export function mergeConstraintMemoryFromUtterance(input: {
   readonly prev: ConstraintMemoryBag | null | undefined;
   readonly utterance: string;
 }): ConstraintMemoryBag {
-  const base = input.prev ?? emptyConstraintMemory();
+  const base = {
+    ...emptyConstraintMemory(),
+    ...(input.prev ?? {}),
+  };
   const text = input.utterance.trim();
   if (!text) return base;
 
   const hardPrice = parseMaxNightlyPriceKrw(text);
   const stayType = parseLodgingStayTypeFromText(text);
   const near = extractNearLabelKo(text);
-  let minRating: number | null = null;
-  if (/평점|별점|rating/iu.test(text)) {
-    const m = text.match(/(\d+(?:\.\d+)?)/);
-    minRating = m?.[1] ? Number(m[1]) : 4.5;
-  }
+  const minRating = parseMinRatingFromUtterance(text);
+  const keepTopN = parseKeepTopN(text);
+  const sortBy = parseSortByFromUtterance(text);
   const softBudget = /더\s*싸|저렴|가성비|budget|cheap/iu.test(text);
 
   return {
@@ -71,6 +135,8 @@ export function mergeConstraintMemoryFromUtterance(input: {
     nearLabelKo: near ?? base.nearLabelKo,
     stayType: stayType ?? base.stayType,
     minRating: minRating ?? base.minRating,
+    keepTopN: keepTopN ?? base.keepTopN,
+    sortBy: sortBy ?? base.sortBy,
     updatedAtIso: new Date().toISOString(),
   };
 }
@@ -85,7 +151,6 @@ export function applyConstraintMemoryToScoutQuery(
   const bits: string[] = [];
   if (bag.nearLabelKo) bits.push(`${bag.nearLabelKo} 근처`);
   if (bag.stayType) {
-    // Prefer Korean scout noun over internal id (capsule → 캡슐호텔).
     const stayKo =
       bag.stayType === "capsule"
         ? "캡슐호텔"
@@ -102,13 +167,14 @@ export function applyConstraintMemoryToScoutQuery(
     bits.push("저렴");
   }
   if (bag.minRating != null) bits.push(`평점 ${bag.minRating}+`);
+  if (bag.keepTopN != null) bits.push(`${bag.keepTopN}개만`);
+  if (bag.sortBy === "value") bits.push("가성비");
+  else if (bag.sortBy === "rating") bits.push("평점 높은");
   if (bits.length === 0) return base;
-  // Avoid duplicating tokens already in utterance.
   const extra = bits.filter((b) => {
     const compact = b.replace(/\s+/g, "");
     return compact && !base.includes(compact) && !base.includes(b);
   });
-  // 「캡슐」 already in utterance → skip English/alias stay bit
   const filtered = extra.filter((b) => {
     if (/캡슐호텔|료칸|호텔/u.test(b) && /캡슐|료칸|호텔/u.test(base)) {
       return false;
@@ -134,5 +200,8 @@ export function constraintMemoryLinesKo(
   }
   if (bag.stayType) lines.push(`숙소 타입 · ${bag.stayType}`);
   if (bag.minRating != null) lines.push(`평점 · ${bag.minRating}+`);
-  return lines.slice(0, 4);
+  if (bag.keepTopN != null) lines.push(`상위 · ${bag.keepTopN}곳`);
+  if (bag.sortBy === "value") lines.push("정렬 · 가성비");
+  else if (bag.sortBy === "rating") lines.push("정렬 · 평점");
+  return lines.slice(0, 6);
 }

@@ -14,7 +14,9 @@ export type ConstraintField =
   | "near"
   | "stayType"
   | "budget"
-  | "minRating";
+  | "minRating"
+  | "keepTopN"
+  | "sortBy";
 
 export type ConstraintInheritOp = "keep" | "drop" | "from_utterance";
 
@@ -137,6 +139,22 @@ export function planConstraintInheritance(input: {
     field: "minRating",
     op: /평점|별점|rating/iu.test(text) ? "from_utterance" : "keep",
     reason: "rating_policy",
+  });
+
+  out.push({
+    field: "keepTopN",
+    op: /\d+\s*(?:개|곳)\s*만|상위\s*\d/iu.test(text)
+      ? "from_utterance"
+      : "keep",
+    reason: "keep_top_n_policy",
+  });
+
+  out.push({
+    field: "sortBy",
+    op: /가성비|싼\s*순|평점\s*높|별점\s*높|가까운\s*순/iu.test(text)
+      ? "from_utterance"
+      : "keep",
+    reason: "sort_policy",
   });
 
   return out;

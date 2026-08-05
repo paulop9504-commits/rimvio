@@ -1,11 +1,5 @@
 /**
- * P1 · Constraint Carry-over Gate
- * Not all context inherits equally — Target stack vs destination change vs deixis.
- *
- * Policy (locked):
- * - 「맛집도」Target stack → NEW Job + inheritSpatial (keep near)
- * - 「후쿠오카 맛집」destination change → NEW Job + drop near
- * - 「거기서 맛집」deixis → inherit near
+ * P1 · Constraint Carry-over — applies per-field inheritance policy (judgment only).
  */
 
 import {
@@ -14,29 +8,16 @@ import {
   type ConstraintMemoryBag,
 } from "@/lib/agent-policy/constraint-memory";
 import type { AgentJobTarget } from "@/lib/agent-policy/agent-job";
+import {
+  planConstraintInheritance,
+  type ConstraintInheritDecision,
+} from "@/lib/agent-policy/constraint-inheritance-policy";
 
-/** 「거기서 / 그곳 근처」 — conversational inherit of near is allowed. */
-const LOCALE_DEIXIS_RE =
-  /거기(?:서|에서|서\s*근처)?|그곳(?:에서|근처)?|여기(?:서|근처)?|같은\s*(?:역|곳|동네|근처)|그\s*근처/iu;
-
-/**
- * 「맛집도 찾아줘」 — Target stack: new Job, keep Spatial from previous Job.
- * Distinct from destination pivots (「후쿠오카 맛집」).
- */
-const TARGET_STACK_RE =
-  /(?:맛집|호텔|숙소|카페|놀거리|관광|약국)도|(?:그리고|또)\s*(?:맛집|호텔|숙소|카페|놀거리)/iu;
-
-/** Named city/region in utterance that should replace remembered near. */
-const DESTINATION_PIVOT_RE =
-  /후쿠오카|fukuoka|도쿄|tokyo|교토|kyoto|오사카|osaka|서울|부산|제주|나고야|삿포로|고베/iu;
-
-export function isTargetStackUtterance(utterance: string): boolean {
-  return TARGET_STACK_RE.test(utterance.trim());
-}
-
-export function isLocaleDeixisUtterance(utterance: string): boolean {
-  return LOCALE_DEIXIS_RE.test(utterance.trim());
-}
+export {
+  isLocaleDeixisUtterance,
+  isTargetStackUtterance,
+  isDestinationPivotUtterance,
+} from "@/lib/agent-policy/constraint-inheritance-policy";
 
 export type ConstraintCarryOverResult = {
   readonly bagForScout: ConstraintMemoryBag;
@@ -44,11 +25,25 @@ export type ConstraintCarryOverResult = {
   readonly droppedNear: boolean;
   readonly droppedStayType: boolean;
   readonly inheritedSpatialFromStack: boolean;
+  readonly decisions: readonly ConstraintInheritDecision[];
   readonly statusKo: string | null;
 };
 
+function applyFieldOp(input: {
+  readonly op: "keep" | "drop" | "from_utterance";
+  readonly previous: string | number | null;
+  readonly fromUtterance: string | number | null;
+}): string | number | null {
+  if (input.op === "drop") return null;
+  if (input.op === "from_utterance") {
+    return input.fromUtterance ?? input.previous;
+  }
+  return input.previous;
+}
+
 /**
  * Decide which remembered constraints may ride into this turn's scout.
+ * Does not write Workspace — Agent Loop commits the bag.
  */
 export function resolveConstraintCarryOver(input: {
   readonly utterance: string;
@@ -57,72 +52,96 @@ export function resolveConstraintCarryOver(input: {
   readonly previousTarget?: AgentJobTarget | null;
   readonly nextTarget?: AgentJobTarget | null;
 }): ConstraintCarryOverResult {
+  const prev = input.previousBag ?? emptyConstraintMemory();
+  const fromUtt = mergeConstraintMemoryFromUtterance({
+    prev: emptyConstraintMemory(),
+    utterance: input.utterance,
+  });
   const merged = mergeConstraintMemoryFromUtterance({
-    prev: input.previousBag,
+    prev,
     utterance: input.utterance,
   });
 
-  const text = input.utterance.trim();
-  const deixis = isLocaleDeixisUtterance(text);
-  const targetStack = isTargetStackUtterance(text);
-  const destinationPivot = DESTINATION_PIVOT_RE.test(text);
-  const targetChanged =
-    Boolean(input.previousTarget) &&
-    Boolean(input.nextTarget) &&
-    input.previousTarget !== "mixed" &&
-    input.nextTarget !== "mixed" &&
-    input.previousTarget !== input.nextTarget;
+  const decisions = planConstraintInheritance({
+    utterance: input.utterance,
+    switchJob: input.switchJob,
+    previousTarget: input.previousTarget,
+    nextTarget: input.nextTarget,
+    hasPreviousNear: Boolean(prev.nearLabelKo),
+  });
 
-  let nearLabelKo = merged.nearLabelKo;
-  let stayType = merged.stayType;
-  let droppedNear = false;
-  let droppedStayType = false;
-  let inheritedSpatialFromStack = false;
+  const byField = new Map(decisions.map((d) => [d.field, d]));
 
-  // Explicit destination in this utterance wins over remembered near.
-  if (destinationPivot) {
-    const fromUtterance = mergeConstraintMemoryFromUtterance({
-      prev: emptyConstraintMemory(),
-      utterance: text,
-    }).nearLabelKo;
-    if (fromUtterance) {
-      nearLabelKo = fromUtterance;
-    } else if (input.previousBag?.nearLabelKo && input.switchJob) {
-      nearLabelKo = null;
-      droppedNear = true;
-    }
-  } else if (targetStack && input.previousBag?.nearLabelKo) {
-    // 「맛집도」— NEW Job but inherit Spatial from Job A.
-    nearLabelKo = input.previousBag.nearLabelKo;
-    inheritedSpatialFromStack = true;
-    droppedNear = false;
-  } else if (input.switchJob && !deixis) {
-    // New Job without stack / deixis → do not silently inherit near.
-    const utteranceHasNear = /근처|주변|쪽|역\s*앞/iu.test(text);
-    if (!utteranceHasNear && nearLabelKo) {
-      nearLabelKo = null;
-      droppedNear = true;
-    }
-  }
+  const nearOp = byField.get("near")?.op ?? "keep";
+  const stayOp = byField.get("stayType")?.op ?? "from_utterance";
+  const budgetOp = byField.get("budget")?.op ?? "keep";
+  const ratingOp = byField.get("minRating")?.op ?? "keep";
+  const keepTopNOp = byField.get("keepTopN")?.op ?? "keep";
+  const sortByOp = byField.get("sortBy")?.op ?? "keep";
 
-  // Target pivot lodging → eatery: stayType is stale lodging bias.
-  if (targetChanged && input.nextTarget === "eatery" && stayType) {
-    stayType = null;
-    droppedStayType = true;
-  }
+  const nearLabelKo = applyFieldOp({
+    op: nearOp,
+    previous: prev.nearLabelKo,
+    fromUtterance: fromUtt.nearLabelKo ?? merged.nearLabelKo,
+  }) as string | null;
+
+  const stayType = applyFieldOp({
+    op: stayOp,
+    previous: prev.stayType,
+    fromUtterance: fromUtt.stayType ?? merged.stayType,
+  }) as string | null;
+
+  const maxNightlyPriceKrw = applyFieldOp({
+    op: budgetOp,
+    previous: prev.maxNightlyPriceKrw,
+    fromUtterance: fromUtt.maxNightlyPriceKrw,
+  }) as number | null;
+
+  const maxPriceBand = applyFieldOp({
+    op: budgetOp,
+    previous: prev.maxPriceBand,
+    fromUtterance: fromUtt.maxPriceBand,
+  }) as number | null;
+
+  const minRating = applyFieldOp({
+    op: ratingOp,
+    previous: prev.minRating,
+    fromUtterance: fromUtt.minRating,
+  }) as number | null;
+
+  const keepTopN = applyFieldOp({
+    op: keepTopNOp,
+    previous: prev.keepTopN,
+    fromUtterance: fromUtt.keepTopN,
+  }) as number | null;
+
+  const sortBy = applyFieldOp({
+    op: sortByOp,
+    previous: prev.sortBy,
+    fromUtterance: fromUtt.sortBy,
+  }) as ConstraintMemoryBag["sortBy"];
+
+  const droppedNear = nearOp === "drop" && Boolean(prev.nearLabelKo);
+  const droppedStayType = stayOp === "drop" && Boolean(prev.stayType);
+  const inheritedSpatialFromStack =
+    byField.get("near")?.reason === "target_stack_keeps_spatial";
 
   const bagForScout: ConstraintMemoryBag = {
-    ...merged,
+    maxNightlyPriceKrw,
+    maxPriceBand,
     nearLabelKo,
     stayType,
+    minRating,
+    keepTopN,
+    sortBy,
     updatedAtIso: new Date().toISOString(),
   };
 
   let statusKo: string | null = null;
   if (inheritedSpatialFromStack && nearLabelKo) {
     statusKo = `${nearLabelKo} 기준은 유지하고 대상만 바꿨어요`;
-  } else if (droppedNear && input.previousBag?.nearLabelKo) {
-    statusKo = `이전 위치(${input.previousBag.nearLabelKo})는 안 끌고 갔어요`;
+  } else if (droppedNear && prev.nearLabelKo) {
+    statusKo = `이전 위치(${prev.nearLabelKo})는 안 끌고 갔어요`;
   }
 
   return {
@@ -131,6 +150,7 @@ export function resolveConstraintCarryOver(input: {
     droppedNear,
     droppedStayType,
     inheritedSpatialFromStack,
+    decisions,
     statusKo,
   };
 }

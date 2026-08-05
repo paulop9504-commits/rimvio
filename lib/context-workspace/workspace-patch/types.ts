@@ -17,6 +17,10 @@ export const WORKSPACE_PATCH_KINDS = [
   "replace_entity",
   /** Move item onto a schedule day (e.g. "Day2로 옮겨") */
   "move_schedule",
+  /** Remove item from a schedule day (Day B · "Day2에서 우메다 빼") */
+  "remove_schedule",
+  /** Rebuild day route edges (Day B · "Day2 동선 다시") */
+  "rebuild_route",
   /** Spatial constraint on plan (e.g. "난바역 근처") */
   "spatial_constraint",
   /** ADR-051 Reality absorb (rail / event / amenity network) */
@@ -37,6 +41,8 @@ export type WorkspacePatch =
   | {
       readonly kind: "delete_entity";
       readonly entityIds: readonly string[];
+      /** 0-based index in the visible place list (「두 번째 빼」). */
+      readonly ordinalIndex?: number | null;
     }
   | {
       readonly kind: "update_entity";
@@ -59,6 +65,8 @@ export type WorkspacePatch =
          * (never empties bookmarked / selected).
          */
         readonly relativeCheaper?: boolean | null;
+        /** Soft budget leave — hide candidates above nightly KRW cap (in-set). */
+        readonly maxNightlyPriceKrw?: number | null;
       };
     }
   | {
@@ -100,6 +108,19 @@ export type WorkspacePatch =
       readonly entityId?: string | null;
       /** 0-based ordinal from 「2번」 when entityId not yet known */
       readonly ordinalIndex?: number | null;
+      /** Title/summary match when putting named place on a day. */
+      readonly queryIncludes?: string | null;
+      readonly dayIndex: number;
+    }
+  | {
+      readonly kind: "remove_schedule";
+      readonly dayIndex: number;
+      readonly entityId?: string | null;
+      /** Label match against title/summary (「우메다 빼」). */
+      readonly queryIncludes?: string | null;
+    }
+  | {
+      readonly kind: "rebuild_route";
       readonly dayIndex: number;
     }
   | {

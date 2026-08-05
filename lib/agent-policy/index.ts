@@ -137,10 +137,14 @@ export {
 export {
   emptyConstraintMemory,
   mergeConstraintMemoryFromUtterance,
+  compileConstraintMemoryFromUtterance,
   applyConstraintMemoryToScoutQuery,
   constraintMemoryLinesKo,
   extractNearLabelKo,
+  parseMinRatingFromUtterance,
+  parseSortByFromUtterance,
   type ConstraintMemoryBag,
+  type ConstraintSortBy,
 } from "@/lib/agent-policy/constraint-memory";
 
 export {

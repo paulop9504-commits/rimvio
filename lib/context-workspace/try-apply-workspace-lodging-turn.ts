@@ -27,7 +27,10 @@ import { runWorkspaceCommandRuntime } from "@/lib/workspace-command";
 import { runWorkspaceRealityAgent } from "@/lib/workspace-agent";
 import { runRealityPrepare } from "@/lib/prepare-layer";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
-import { invokeRimvioToolAsync } from "@/lib/tool-registry/invoke-rimvio-tool";
+import {
+  planObjectDiscovery,
+  runObjectDiscovery,
+} from "@/lib/context-run/object-discovery";
 import { resolveLodgingStaySearchKeyword } from "@/lib/globe/lodging/lodging-stay-types";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import {
@@ -67,6 +70,9 @@ import {
   type ScoutRetryLock,
 } from "@/lib/agent-policy/scout-retry-policy";
 import { runAutoProjectionAfterPatch } from "@/lib/context-workspace/auto-projection";
+import { applyWorkspacePatch } from "@/lib/context-workspace/workspace-patch";
+import { tryEnterCompareDecisionAfterRefine } from "@/lib/context-workspace/projection/try-enter-compare-after-refine";
+import { isAdditiveScoutUtterance } from "@/lib/context-workspace/merge-preserve-pinned";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -414,8 +420,14 @@ async function rescoutWorkspace(input: {
   }
 
   // Stale / clear → always replace inventory (never silent refine of old set).
+  // P3 — target-stack 「호텔도」stays ADD even when forceReplace would wipe Job A.
+  const additive = isAdditiveScoutUtterance(input.utterance);
   const effectiveMode =
-    p1.forceReplaceScout && input.mode === "add" ? "replace" : input.mode;
+    additive
+      ? "add"
+      : p1.forceReplaceScout && input.mode === "add"
+        ? "replace"
+        : input.mode;
 
   const activeDomain = resolveWorkspaceSearchDomain(
     p1.scoutUtterance,
@@ -483,7 +495,6 @@ async function rescoutWorkspace(input: {
   const maxScoutAttempts = scoutLock ? MAX_SCOUT_ATTEMPTS : 1;
 
   try {
-    const invokeDomain = toolDomain === "amenity" ? "poi" : toolDomain;
     const patchMeters = (() => {
       const patches = state.patches ?? [];
       for (let i = patches.length - 1; i >= 0; i -= 1) {
@@ -527,27 +538,33 @@ async function rescoutWorkspace(input: {
         }
       }
 
-      const tool = await invokeRimvioToolAsync(toolId, {
-        query,
-        domain: invokeDomain,
-        lat: scoutLock ? scoutLock.anchorLat : seed?.lat,
-        lng: scoutLock ? scoutLock.anchorLng : seed?.lng,
-        utterance: p1.scoutUtterance,
+      const planned = planObjectDiscovery({
         contextEventId: input.contextEventId,
-        placeName: (scoutLock?.areaHint ?? areaHint) || undefined,
-        contextLabelKo: scoutLock?.areaHint ?? areaHint,
+        utterance: p1.scoutUtterance,
+        mode: effectiveMode === "add" ? "add" : "replace",
       });
-      toolSummaryKo = tool.summaryKo?.trim() || null;
-      const candidatesRaw = (tool.candidates ?? []).filter((c) => {
-        const id = c.id ?? "";
-        if (id.startsWith("search:")) return false;
-        if (/^(?:eatery|lodging|poi|amenity):osaka:/i.test(id)) return true;
-        if (c.source === "seed") return false;
-        return true;
-      });
+      if (!planned) {
+        return {
+          handled: true,
+          replyKo: "검색 계획을 세우지 못했어요",
+          committed: false,
+        };
+      }
 
-      candidates = candidatesRaw;
-      distanceStatusKo = null;
+      const discovery = await runObjectDiscovery({
+        ...planned,
+        query,
+        toolId,
+        toolDomain,
+        lat: scoutLock ? scoutLock.anchorLat : (seed?.lat ?? planned.lat),
+        lng: scoutLock ? scoutLock.anchorLng : (seed?.lng ?? planned.lng),
+        placeName: (scoutLock?.areaHint ?? areaHint) || planned.placeName,
+        // Async Anchor already resolved in this turn — don't re-block.
+        nearScoutBlockedKo: null,
+      });
+      toolSummaryKo = discovery.summaryKo?.trim() || null;
+      candidates = [...(discovery.candidates ?? [])];
+      distanceStatusKo = discovery.ok ? null : (discovery.reasonKo ?? null);
       if (
         effectiveNear.gated &&
         effectiveNear.ok &&
@@ -560,7 +577,7 @@ async function rescoutWorkspace(input: {
             lng: effectiveNear.anchor.lng,
             labelKo: effectiveNear.anchor.labelKo,
           },
-          candidates: candidatesRaw,
+          candidates,
           patchMeters,
         });
         candidates = [...gated.kept];
@@ -662,6 +679,7 @@ async function rescoutWorkspace(input: {
         `${label} 후보 ${candidates.length}곳 · 작업장에서 확인`,
       candidates,
       source: "scout_patch",
+      inventoryMode: effectiveMode === "add" ? "add" : "replace",
     });
     const focus =
       opened.nodes.find((n) => !n.bookmarked && n.visible && n.kind === activeDomain) ??
@@ -680,6 +698,41 @@ async function rescoutWorkspace(input: {
       contextEventId: input.contextEventId,
       entityIds: focus ? [focus.id] : null,
     });
+
+    // P1 — apply durable ConstraintMemory keepTopN/rating/budget after scout.
+    {
+      const bag = readContextWorkspace(input.contextEventId)?.constraintMemory;
+      if (
+        bag &&
+        (bag.keepTopN != null ||
+          bag.minRating != null ||
+          bag.maxNightlyPriceKrw != null ||
+          bag.sortBy != null)
+      ) {
+        applyWorkspacePatch({
+          contextEventId: input.contextEventId,
+          patch: {
+            kind: "filter_entity",
+            filter: {
+              ...(bag.minRating != null ? { minRating: bag.minRating } : {}),
+              ...(bag.keepTopN != null ? { keepTopN: bag.keepTopN } : {}),
+              ...(bag.maxNightlyPriceKrw != null
+                ? { maxNightlyPriceKrw: bag.maxNightlyPriceKrw }
+                : {}),
+              ...(bag.sortBy ? { sortBy: bag.sortBy } : {}),
+            },
+          },
+          utterance: input.utterance,
+          skipAutoProjection: false,
+        });
+        tryEnterCompareDecisionAfterRefine({
+          contextEventId: input.contextEventId,
+          utterance: input.utterance,
+          keepTopN: bag.keepTopN,
+        });
+      }
+    }
+
     const freshState = readContextWorkspace(input.contextEventId) ?? opened;
     const pinned = freshState.nodes.filter((n) => n.bookmarked).length;
     const fresh = freshState.nodes.filter((n) => !n.bookmarked && n.visible).length;
@@ -1150,7 +1203,7 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
     return rescoutWorkspace({
       contextEventId,
       utterance,
-      mode: "replace",
+      mode: isAdditiveScoutUtterance(utterance) ? "add" : "replace",
     });
   }
 

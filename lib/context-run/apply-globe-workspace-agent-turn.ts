@@ -9,6 +9,8 @@
  */
 
 import { runWorkspaceAgentLoop } from "@/lib/context-run/workspace-agent-loop";
+import { compileWorkspaceAgentPlan } from "@/lib/context-run/compile-workspace-agent-plan";
+import { runWorkspaceAgentPlan } from "@/lib/context-run/run-workspace-agent-plan";
 import { resolveActiveWorkspaceContextId } from "@/lib/context-run/resolve-active-workspace-context";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 import { beginAgentProductTurn } from "@/lib/context-run/agent-product-pipeline";
@@ -23,10 +25,7 @@ import {
   seedTravelLodgingForContinuum,
 } from "@/lib/workspace-kind/run-workspace-intent-continuum";
 import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
-import {
-  tryApplyNetworkAbsorbWorkspaceTurn,
-  type NetworkAbsorbSoftChip,
-} from "@/lib/reality-provider";
+import { tryApplyRealityAbsorbFromUtterance } from "@/lib/reality-provider";
 import {
   buildAnchorLodgingContinuumUtterance,
   isNearLodgingUtterance,
@@ -47,14 +46,20 @@ export type GlobeWorkspaceAgentTurnResult = {
     | "spatial_discovery"
     | "workspace_prompt"
     | "reality_prepare"
-    | "continuum_mint";
+    | "continuum_mint"
+    | "free_talk"
+    | "map_overlay"
+    | "network_absorb";
   readonly patchKind?: string | null;
   readonly commitPending?: boolean;
   /** Alias — Article 0: never auto Commit. */
   readonly waitingCommit?: boolean;
   readonly phases?: readonly string[];
-  /** Metro / rail absorb soft chips */
-  readonly softChips?: readonly NetworkAbsorbSoftChip[];
+  /** Soft follow-up chips (map overlay / absorb) — not essay SSOT. */
+  readonly softChips?: readonly {
+    readonly labelKo: string;
+    readonly utterance: string;
+  }[];
   /** Address ambiguity chips — AgentChatCard objects */
   readonly objects?: readonly {
     readonly nodeId: string;
@@ -227,50 +232,58 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     };
   }
 
-  // ADR-051 Reality absorb — metro/rail → map + soft chips (not lodging scout)
-  const absorb = tryApplyNetworkAbsorbWorkspaceTurn({
+  // ADR-051 Reality absorb — single network ingress (Projection via overlay stores)
+  const earlyPlan = compileWorkspaceAgentPlan({
     utterance,
     contextEventId:
       input.explicitContextEventId ?? input.contextEventId ?? null,
   });
-  if (absorb?.handled) {
-    const ctx = resolveActiveWorkspaceContextId({
-      explicitContextEventId:
+  const multiStepPlan = earlyPlan.steps.length > 1;
+
+  if (!multiStepPlan) {
+    const absorb = tryApplyRealityAbsorbFromUtterance({
+      utterance,
+      contextEventId:
         input.explicitContextEventId ?? input.contextEventId ?? null,
     });
-    return {
-      handled: true,
-      statusKo: absorb.replyKo,
-      contextEventId: ctx,
-      workspaceMutated: absorb.mapProjected || absorb.workspacePatched,
-      openedWorkspace: false,
-      committed: false,
-      via: "workspace_prompt",
-      patchKind: "map_overlay",
-      softChips: absorb.softChips,
-    };
-  }
+    if (absorb?.handled) {
+      const ctx = resolveActiveWorkspaceContextId({
+        explicitContextEventId:
+          input.explicitContextEventId ?? input.contextEventId ?? null,
+      });
+      return {
+        handled: true,
+        statusKo: absorb.statusKo,
+        contextEventId: ctx,
+        workspaceMutated: absorb.workspacePatched,
+        openedWorkspace: false,
+        committed: false,
+        via: "workspace_prompt",
+        patchKind: "map_overlay",
+      };
+    }
 
-  // Place / landmark locate — Anchor on map, 1-line hierarchy status.
-  const placeLocate = await tryApplyPlaceLocateFromUtterance({
-    utterance,
-    contextEventId:
-      input.explicitContextEventId ?? input.contextEventId ?? null,
-    lat: input.lat,
-    lng: input.lng,
-  });
-  if (placeLocate) {
-    return {
-      handled: true,
-      statusKo: shortenWorkspaceAgentStatus(placeLocate.statusKo),
-      contextEventId: placeLocate.contextEventId,
-      workspaceMutated: placeLocate.workspaceMutated,
-      openedWorkspace: placeLocate.openedWorkspace,
-      committed: false,
-      via: "workspace_prompt",
-      patchKind: "place_locate",
-      objects: placeLocate.objects,
-    };
+    // Place / landmark locate — Anchor on map, 1-line hierarchy status.
+    const placeLocate = await tryApplyPlaceLocateFromUtterance({
+      utterance,
+      contextEventId:
+        input.explicitContextEventId ?? input.contextEventId ?? null,
+      lat: input.lat,
+      lng: input.lng,
+    });
+    if (placeLocate) {
+      return {
+        handled: true,
+        statusKo: shortenWorkspaceAgentStatus(placeLocate.statusKo),
+        contextEventId: placeLocate.contextEventId,
+        workspaceMutated: placeLocate.workspaceMutated,
+        openedWorkspace: placeLocate.openedWorkspace,
+        committed: false,
+        via: "workspace_prompt",
+        patchKind: "place_locate",
+        objects: placeLocate.objects,
+      };
+    }
   }
 
   let contextEventId = resolveActiveWorkspaceContextId({
@@ -316,6 +329,43 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     utterance,
   });
 
+  // Multi-step Plan (Day B / Compound C) — sequential Loop turns.
+  const plan =
+    multiStepPlan
+      ? { ...earlyPlan, contextEventId }
+      : compileWorkspaceAgentPlan({
+          utterance,
+          contextEventId,
+        });
+  if (plan.steps.length > 1) {
+    const ran = await runWorkspaceAgentPlan({
+      utterance,
+      explicitContextEventId: contextEventId,
+      plan,
+    });
+    const lastTool = ran.lastLoop?.toolId ?? "workspace_patch";
+    const commitPending = ran.commitPending === true;
+    const statusFromPipeline = resolveAgentStatusWorkLog({
+      contextEventId,
+      fallbackKo: ran.statusKo ?? mintStatusKo,
+    });
+    return {
+      handled: ran.ok || ran.workspaceMutated || openedWorkspace,
+      statusKo: shortenWorkspaceAgentStatus(
+        statusFromPipeline ?? ran.statusKo ?? mintStatusKo,
+      ),
+      contextEventId: ran.contextEventId ?? contextEventId,
+      workspaceMutated: ran.workspaceMutated || openedWorkspace,
+      openedWorkspace: openedWorkspace || Boolean(ran.contextEventId),
+      committed: false,
+      via: viaFromTool(lastTool),
+      patchKind: ran.lastLoop?.patchKind ?? plan.planKind,
+      commitPending,
+      waitingCommit: commitPending,
+      phases: ran.lastLoop?.phases,
+    };
+  }
+
   const loop = await runWorkspaceAgentLoop({
     utterance,
     explicitContextEventId: contextEventId,
@@ -323,7 +373,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
 
   if (!loop.ok && !loop.workspaceMutated) {
     return {
-      handled: openedWorkspace || Boolean(loop.softChips?.length),
+      handled: openedWorkspace,
       statusKo: shortenWorkspaceAgentStatus(
         loop.statusKo ?? mintStatusKo,
       ),
@@ -335,7 +385,6 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       phases: loop.phases,
       commitPending: false,
       waitingCommit: false,
-      softChips: loop.softChips,
     };
   }
 
@@ -360,6 +409,5 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     commitPending,
     waitingCommit: commitPending,
     phases: loop.phases,
-    softChips: loop.softChips,
   };
 }

@@ -13,6 +13,10 @@ export type PostconditionExpect = {
   readonly anchorLng?: number | null;
   readonly maxDistanceMeters?: number | null;
   readonly workspaceMutated?: boolean;
+  /** P5 — at least N visible nodes (after scout / soft keep). */
+  readonly minVisible?: number | null;
+  /** P5 — some node must carry day_N tag. */
+  readonly requireDay?: number | null;
 };
 
 export type PostconditionResult =
@@ -93,6 +97,34 @@ export function assertAgentPostcondition(input: {
           ok: false,
           reason: "anchor_distance",
           statusKo: `기준점 ${maxM}m 안에 맞는 결과가 없어요`,
+        };
+      }
+    }
+
+    const minVisible = input.expect.minVisible;
+    if (minVisible != null && minVisible > 0) {
+      const count =
+        target && target !== "map" ? domainHits.length : visible.length;
+      if (count < minVisible) {
+        return {
+          ok: false,
+          reason: "no_entities",
+          statusKo: `후보가 ${minVisible}곳보다 적어요`,
+        };
+      }
+    }
+
+    const requireDay = input.expect.requireDay;
+    if (requireDay != null && requireDay >= 1) {
+      const dayRe = new RegExp(`^day[_-]?${requireDay}$`, "iu");
+      const onDay = state.nodes.filter((n) =>
+        n.tags.some((t) => dayRe.test(t)),
+      );
+      if (onDay.length === 0) {
+        return {
+          ok: false,
+          reason: "no_mutation",
+          statusKo: `Day ${requireDay} 일정에 반영되지 않았어요`,
         };
       }
     }
