@@ -46,6 +46,7 @@ import {
   offerSoftNextWorkAfterAct,
 } from "@/lib/workstream/offer-soft-next-work-after-act";
 import { stampTripDraftOntoContext } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
+import { openCapabilityLayoutForWorkspace } from "@/lib/workspace-capability";
 
 export type { TripDraftStop } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
 export { OSAKA_TRIP_DRAFT_STOPS } from "@/lib/context-workspace/reality-draft/trip-draft-stops";
@@ -264,6 +265,12 @@ export function prepareTripWorkspaceDraft(input: {
       : state.lastChangeKo,
   };
   writeContextWorkspace(state);
+  openCapabilityLayoutForWorkspace({
+    state,
+    utterance,
+    forceIntent: "trip_plan",
+    replace: true,
+  });
   dispatchContextWorkspaceOpen({
     contextEventId,
     workspaceId,

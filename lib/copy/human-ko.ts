@@ -556,6 +556,32 @@ export const copy = {
     workspaceSdkActionReadyHint: (placeName: string) =>
       `${placeName} 예약 준비를 결재함에 담았어요`,
     workspaceOpenTitle: "작업장",
+    workspaceCapabilityDayRail: "Day",
+    workspaceCapabilityTimeline: "Timeline",
+    workspaceCapabilityBudget: "예산",
+    workspaceCapabilityBooking: "예약",
+    workspaceCapabilityCandidates: "후보",
+    workspaceCapabilityIntentHint: (
+      intent:
+        | "eatery_search"
+        | "trip_plan"
+        | "lodging_book"
+        | "share_collab"
+        | "generic_map",
+    ) => {
+      switch (intent) {
+        case "eatery_search":
+          return "맛집 · 필요한 도구만 열림";
+        case "trip_plan":
+          return "일정 · Day·Timeline·Budget";
+        case "lodging_book":
+          return "숙소 · 비교·예약·결제";
+        case "share_collab":
+          return "공유 · 멤버·권한";
+        default:
+          return "작업 도구 · Intent에 맞게";
+      }
+    },
     workspaceResumeToast: "지난 작업장으로 이어갈게요",
     workspaceShareTitle: "공유",
     workspaceShareSubtitle: "스프레드시트처럼 사람·권한을 정해요",
@@ -702,7 +728,11 @@ export const copy = {
     workspaceMapCapabilityHotel: "호텔 예약",
     workspaceMapCapabilityTicket: "티켓 구매",
     workspaceMapCapabilityTicketHint: "티켓·입장 후보를 골랐어요",
-    workspaceChatTitle: "작업장 대화",
+    /** One work stream (Agent steps + result) — not a separate “chat room”. */
+    workspaceChatTitle: "작업",
+    workspaceWorkStreamCollapse: "작업 접기",
+    workspaceWorkStreamExpand: (n: number) =>
+      n > 0 ? `작업 ${n}` : "작업 열기",
     workspaceChatTurnCount: (n: number) => `${n}턴`,
     workspaceChatEmptyHint: "말로 편집",
     workspaceChatEmptyBody: "말하면 Workspace 객체가 생겨요\n카드로 지도와 연결됩니다",

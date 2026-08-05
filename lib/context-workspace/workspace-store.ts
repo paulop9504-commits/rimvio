@@ -7,6 +7,7 @@ import type {
   ContextWorkspaceOpenDetail,
   ContextWorkspaceState,
 } from "@/lib/context-workspace/types";
+import { clearWorkspaceCapabilityLayout } from "@/lib/workspace-capability/layout-store";
 
 const STORAGE_PREFIX = "rimvio.context-workspace.";
 const INDEX_KEY = "rimvio.context-workspace.index";
@@ -163,6 +164,7 @@ export function clearContextWorkspace(contextEventId: string): void {
     return;
   }
   memory.delete(key);
+  clearWorkspaceCapabilityLayout(key);
   const store = storage();
   if (store) {
     try {

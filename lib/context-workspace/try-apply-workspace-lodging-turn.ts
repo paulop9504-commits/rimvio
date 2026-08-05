@@ -37,6 +37,9 @@ import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
 import {
+  tryApplyCapabilityUtterance,
+} from "@/lib/workspace-capability";
+import {
   applyWorkspaceRealityPatch,
   parseWorkspaceRealityPatch,
 } from "@/lib/context-workspace/apply-workspace-reality-patch";
@@ -464,6 +467,14 @@ export function tryApplyWorkspaceLodgingTurnSync(input: {
     return { handled: false, replyKo: null, committed: false };
   }
 
+  if (tryApplyCapabilityUtterance({ contextEventId, utterance })) {
+    return {
+      handled: true,
+      replyKo: "작업 도구를 바꿨어요",
+      committed: false,
+    };
+  }
+
   const index = parseSelectByIndex(utterance);
   if (index != null && index >= 1) {
     const state = readContextWorkspace(contextEventId);
@@ -627,6 +638,14 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
   const utterance = input.utterance.trim();
   if (!contextEventId || !utterance) {
     return { handled: false, replyKo: null, committed: false };
+  }
+
+  if (tryApplyCapabilityUtterance({ contextEventId, utterance })) {
+    return {
+      handled: true,
+      replyKo: "작업 도구를 바꿨어요",
+      committed: false,
+    };
   }
 
   const openWs = tryOpenWorkspaceFromUtterance({

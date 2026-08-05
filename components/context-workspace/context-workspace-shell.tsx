@@ -5,7 +5,7 @@
  * Chat = Agent work log (not SSOT). ADR-022 · Reality OS 4-layer.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { List, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -63,7 +63,6 @@ import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-v
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
-import { WorkspaceDraftPreviewCard } from "@/components/context-workspace/workspace-draft-preview-card";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
 import type { CalloutHandlers, Evidence } from "@/lib/callout/types";
 import {
@@ -120,6 +119,14 @@ import type { WorkspaceMapPin } from "@/lib/context-workspace/map/workspace-map-
 import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
+import {
+  buildWorkspaceCapabilityViewModel,
+  capabilityChromeNeeded,
+  openCapabilityLayoutForWorkspace,
+  readWorkspaceCapabilityLayout,
+  subscribeWorkspaceCapabilityLayout,
+} from "@/lib/workspace-capability";
+import { WorkspaceCapabilityChrome } from "@/components/context-workspace/workspace-capability-chrome";
 
 export type ContextWorkspaceShellProps = {
   contextEventId: string | null | undefined;
@@ -208,6 +215,36 @@ export function ContextWorkspaceShell({
   const didAutoMediaFocusRef = useRef(false);
   const { windows: calloutWindows, focusedWindowId } = useCalloutWindows();
   const preferMobileWorkspace = usePreferMobileWorkspace();
+
+  const capabilityLayout = useSyncExternalStore(
+    (onStoreChange) => {
+      const id = contextEventId?.trim();
+      if (!id) return () => {};
+      return subscribeWorkspaceCapabilityLayout((eventId) => {
+        if (eventId === id) onStoreChange();
+      });
+    },
+    () => {
+      const id = contextEventId?.trim();
+      return id ? readWorkspaceCapabilityLayout(id) : null;
+    },
+    () => null,
+  );
+
+  useEffect(() => {
+    if (!expanded || !state || state.status === "closed") return;
+    openCapabilityLayoutForWorkspace({
+      state,
+      utterance: state.query,
+    });
+  }, [
+    expanded,
+    state?.contextEventId,
+    state?.query,
+    state?.domain,
+    state?.realityDraft?.days?.length,
+    state?.status,
+  ]);
 
   const refresh = useCallback(() => {
     const id = contextEventId?.trim();
@@ -842,6 +879,32 @@ export function ContextWorkspaceShell({
     !peekClosed &&
     selectedMediaPin == null;
 
+  const capabilityView =
+    state && capabilityLayout
+      ? buildWorkspaceCapabilityViewModel({
+          state,
+          layout: capabilityLayout,
+        })
+      : null;
+  const useCapabilityChrome =
+    !preferMobileWorkspace &&
+    capabilityChromeNeeded(capabilityLayout) &&
+    capabilityView != null &&
+    capabilityLayout != null;
+
+  const capabilityFocusNodeIds = useMemo(() => {
+    if (!useCapabilityChrome || !capabilityView) return null;
+    if (capabilityLayout?.items.some((i) => i.id === "day_rail" && i.open)) {
+      return new Set(capabilityView.timeline.map((r) => r.nodeId));
+    }
+    return null;
+  }, [useCapabilityChrome, capabilityView, capabilityLayout]);
+
+  const capabilityMapPins = useMemo(() => {
+    if (!capabilityFocusNodeIds) return mapPins;
+    return mapPins.filter((p) => capabilityFocusNodeIds.has(p.id));
+  }, [mapPins, capabilityFocusNodeIds]);
+
   const mapObjectCallout = useMemo(() => {
     if (!state || !eventId) return null;
     // Prefer focused window entity for handler fallbacks; session lookups are by objectId.
@@ -1286,10 +1349,168 @@ export function ContextWorkspaceShell({
     return null;
   }
 
+  const sharedSheets = (
+    <>
+      {closeNameOpen ? (
+        <WorkspaceCloseNameSheet
+          suggestedTitleKo={closeNameSuggested}
+          busy={commitBusy}
+          onConfirm={onCloseNameConfirm}
+          onCollapseOnly={(titleKo) => {
+            const id = contextEventId?.trim();
+            if (id && titleKo.trim()) {
+              renameContextEventTitle(id, titleKo.trim());
+            }
+            collapseWorkspace();
+          }}
+          onCancel={() => setCloseNameOpen(false)}
+        />
+      ) : null}
+
+      {commitPreviewOpen && commitPreview ? (
+        <WorkspaceCommitPreviewSheet
+          preview={commitPreview}
+          busy={commitBusy}
+          onConfirm={runCommit}
+          onCancel={() => setCommitPreviewOpen(false)}
+        />
+      ) : null}
+
+      <WorkspaceCompareSheet
+        open={compareOpen}
+        contextEventId={eventId}
+        workspace={state}
+        onClose={() => setCompareOpen(false)}
+        onSelect={(nodeId) => {
+          setFocusedId(nodeId);
+          setPeekClosed(false);
+        }}
+      />
+    </>
+  );
+
+  if (useCapabilityChrome && capabilityLayout && capabilityView) {
+    return (
+      <div
+        className={cn(
+          "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#eef1f5]",
+          className,
+        )}
+        role="dialog"
+        aria-label={copy.globe.workspaceOpenTitle}
+        aria-modal="true"
+        data-context-workspace-open
+        data-workspace-capability-chrome
+      >
+        <WorkspaceCapabilityChrome
+          contextEventId={eventId}
+          layout={capabilityLayout}
+          view={capabilityView}
+          title={title}
+          progress={progress}
+          agentStatusKo={
+            state.lastChangeKo?.trim() ||
+            concierge.opportunityTitleKo ||
+            copy.globe.agentActivityWorking("…")
+          }
+          weatherKo={concierge.topWeatherKo}
+          onClose={onClose}
+          onCommit={() => setCommitPreviewOpen(true)}
+          commitDisabled={
+            visibleNodes.length === 0 ||
+            (state.selectedIds.length === 0 &&
+              !visibleNodes.some((n) => n.selected))
+          }
+          onSelectNode={(nodeId) => {
+            setFocusedId(nodeId);
+            setPeekClosed(false);
+          }}
+          onOpenCompare={() => setCompareOpen(true)}
+          map={
+            <>
+              <WorkspaceMapView
+                pins={capabilityMapPins}
+                selectedId={selectedId}
+                onSelectPin={onSelect}
+                onPinToggle={onPinToggle}
+                onRemovePin={onRemovePin}
+                onPrepareReserve={onPrepareReserve}
+                onOpenField={onOpenField}
+                routeLineCoords={
+                  capabilityFocusNodeIds
+                    ? buildWorkspaceItineraryLineCoords(
+                        mapFocusNodes.filter((n) =>
+                          capabilityFocusNodeIds.has(n.id),
+                        ),
+                      )
+                    : routeLineCoords
+                }
+                contextEventId={eventId}
+                preferredCenter={preferredMapCenter}
+                floatingCallouts={floatingCallouts}
+                evidenceHighlight={evidenceHighlight}
+                onCalloutRequestWorkspace={(entityId) => {
+                  setFocusedId(entityId);
+                  setPeekClosed(false);
+                }}
+              />
+              {selectedMediaPin?.contextMedia ? (
+                <WorkspaceMapMediaEmbed
+                  title={selectedMediaPin.title}
+                  media={selectedMediaPin.contextMedia}
+                  onClose={() => setFocusedId(null)}
+                />
+              ) : null}
+            </>
+          }
+          agentDock={
+            !showPeek && !commitPreviewOpen ? (
+              <WorkspaceCursorDock
+                contextEventId={eventId}
+                compact
+                onFocusNode={onSelect}
+                onBriefReplay={() => {
+                  setListOpen(false);
+                  setPeekClosed(true);
+                }}
+                briefReplayGroundIndex={briefReplayGroundIndex}
+                activeDraftNodeId={venueSelectedId}
+              />
+            ) : null
+          }
+        />
+
+        {selectedNode && !compareOpen && !commitPreviewOpen ? (
+          <WorkspaceObjectCarousel
+            open={showPeek}
+            contextEventId={eventId}
+            nodes={mapFocusNodes}
+            activeNodeId={selectedNode.id}
+            workspace={state}
+            onActiveNodeChange={(nodeId) => {
+              setFocusedId(nodeId);
+            }}
+            onClose={() => {
+              peekOpenGenerationRef.current += 1;
+              setPeekClosed(true);
+            }}
+            onOpenCompare={() => setCompareOpen(true)}
+            onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
+            onOpenField={(nodeId) => onOpenField(nodeId)}
+            onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
+            awaitingField={selectedAwaitingField}
+          />
+        ) : null}
+
+        {sharedSheets}
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#f7f8fa]",
+        "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#eef1f5]",
         className,
       )}
       role="dialog"
@@ -1299,7 +1520,7 @@ export function ContextWorkspaceShell({
     >
       {/* Top chrome — hide while place sheet is open so panel can rise (GPT Maps) */}
       {!showPeek ? (
-      <header className="relative z-[2] flex shrink-0 items-center gap-2 border-b border-black/[0.04] bg-white/95 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
+      <header className="relative z-[6] flex shrink-0 items-center gap-2 border-b border-black/[0.04] bg-white/95 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
         <button
           type="button"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[#191f28]"
@@ -1350,8 +1571,9 @@ export function ContextWorkspaceShell({
       </header>
       ) : null}
 
-      {/* Map — sole visual plane; soft hints float on map only */}
+      {/* Map owns remaining height — agent floats; no grey footer band. */}
       <div className="relative min-h-0 flex-1">
+        <div className="absolute inset-0">
         {preferMobileWorkspace ? (
           <MobileWorkspace
             contextEventId={eventId}
@@ -1403,6 +1625,7 @@ export function ContextWorkspaceShell({
         ) : null}
           </>
         )}
+        </div>
         {selectedMediaPin?.contextMedia ? (
           <WorkspaceMapMediaEmbed
             title={selectedMediaPin.title}
@@ -1526,30 +1749,26 @@ export function ContextWorkspaceShell({
             </div>
           </div>
         ) : null}
-      </div>
 
-      {/* Agent dock — hide on Mobile Workspace (CommandBar owns NL) */}
+      {/* Agent — floating compact strip over map (never a grey footer). */}
       {!preferMobileWorkspace && !showPeek && !commitPreviewOpen ? (
-        <div className="relative z-[4] mx-auto w-full max-w-[420px] shrink-0 bg-gradient-to-t from-[#f7f8fa] via-[#f7f8fa]/95 to-transparent px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1">
-          <WorkspaceDraftPreviewCard
-            workspaceId={eventId}
-            className="mb-2"
-            onApplied={() => {
-              toast.success("Workspace Draft 적용 · Reality 원본 유지");
-            }}
-          />
-          <WorkspaceCursorDock
-            contextEventId={eventId}
-            onFocusNode={onSelect}
-            onBriefReplay={() => {
-              setListOpen(false);
-              setPeekClosed(true);
-            }}
-            briefReplayGroundIndex={briefReplayGroundIndex}
-            activeDraftNodeId={venueSelectedId}
-          />
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[4] flex justify-center px-3 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto w-full max-w-[min(380px,92%)] drop-shadow-[0_10px_28px_rgba(25,31,40,0.18)]">
+            <WorkspaceCursorDock
+              contextEventId={eventId}
+              compact
+              onFocusNode={onSelect}
+              onBriefReplay={() => {
+                setListOpen(false);
+                setPeekClosed(true);
+              }}
+              briefReplayGroundIndex={briefReplayGroundIndex}
+              activeDraftNodeId={venueSelectedId}
+            />
+          </div>
         </div>
       ) : null}
+      </div>
 
       {/* Place sheet — desktop / tablet; mobile uses Expandable Sheet */}
       {!preferMobileWorkspace &&

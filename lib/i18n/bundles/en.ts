@@ -548,6 +548,32 @@ export const copyEn: Copy = {
     workspaceSdkActionReadyHint: (placeName: string) =>
       `Queued booking prep for ${placeName}`,
     workspaceOpenTitle: "Workspace",
+    workspaceCapabilityDayRail: "Day",
+    workspaceCapabilityTimeline: "Timeline",
+    workspaceCapabilityBudget: "Budget",
+    workspaceCapabilityBooking: "Booking",
+    workspaceCapabilityCandidates: "Candidates",
+    workspaceCapabilityIntentHint: (
+      intent:
+        | "eatery_search"
+        | "trip_plan"
+        | "lodging_book"
+        | "share_collab"
+        | "generic_map",
+    ) => {
+      switch (intent) {
+        case "eatery_search":
+          return "Eatery · only tools you need";
+        case "trip_plan":
+          return "Trip · Day · Timeline · Budget";
+        case "lodging_book":
+          return "Stay · compare · book · pay";
+        case "share_collab":
+          return "Share · members · access";
+        default:
+          return "Tools · opened by intent";
+      }
+    },
     workspaceResumeToast: "Resuming your workspace",
     workspaceShareTitle: "Share",
     workspaceShareSubtitle: "Manage people and access like a spreadsheet",
@@ -691,7 +717,10 @@ export const copyEn: Copy = {
     workspaceMapCapabilityHotel: "Book hotel",
     workspaceMapCapabilityTicket: "Buy tickets",
     workspaceMapCapabilityTicketHint: "Picked a ticket / entry stop",
-    workspaceChatTitle: "Workspace chat",
+    workspaceChatTitle: "Work",
+    workspaceWorkStreamCollapse: "Collapse work",
+    workspaceWorkStreamExpand: (n: number) =>
+      n > 0 ? `Work ${n}` : "Open work",
     workspaceChatTurnCount: (n: number) => `${n} turns`,
     workspaceChatEmptyHint: "Edit by talking",
     workspaceChatEmptyBody:
