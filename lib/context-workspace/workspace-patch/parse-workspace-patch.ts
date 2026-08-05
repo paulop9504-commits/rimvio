@@ -4,6 +4,20 @@
 
 import type { WorkspacePatch } from "@/lib/context-workspace/workspace-patch/types";
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
+import { parseOrdinalIndex } from "@/lib/graph-command/resolve-selection-ref";
+
+function dayMovePatch(input: {
+  readonly dayIndex: number;
+  readonly utterance: string;
+}): WorkspacePatch {
+  const ordinalIndex = parseOrdinalIndex(input.utterance);
+  return {
+    kind: "move_schedule",
+    dayIndex: input.dayIndex,
+    entityId: null,
+    ordinalIndex,
+  };
+}
 
 /**
  * Parse utterance into a single Workspace Patch.
@@ -13,21 +27,20 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
   const text = utterance.trim();
   if (!text) return null;
 
-  // "Day2로 옮겨" → Move Schedule Patch
+  // 「2번을 Day 2에 넣어줘」 / 「Day2로 옮겨」 → Move Schedule Patch
   const dayMove = text.match(
     /(?:day\s*|데이\s*|Day\s*)(\d+)\s*(?:로|에)?\s*(?:옮|넣어|추가|배정)/iu,
   );
   if (dayMove?.[1]) {
     const dayIndex = Math.max(0, Number(dayMove[1]) - 1);
-    return { kind: "move_schedule", dayIndex, entityId: null };
+    return dayMovePatch({ dayIndex, utterance: text });
   }
   if (/일정\s*(?:에\s*)?넣|스케줄\s*(?:에\s*)?넣/iu.test(text)) {
     const d = text.match(/(\d+)\s*일차?/);
-    return {
-      kind: "move_schedule",
+    return dayMovePatch({
       dayIndex: d?.[1] ? Math.max(0, Number(d[1]) - 1) : 1,
-      entityId: null,
-    };
+      utterance: text,
+    });
   }
 
   // "난바역 근처" / "역 근처" → Spatial Constraint Patch

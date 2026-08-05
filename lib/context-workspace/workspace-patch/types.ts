@@ -89,6 +89,8 @@ export type WorkspacePatch =
   | {
       readonly kind: "move_schedule";
       readonly entityId?: string | null;
+      /** 0-based ordinal from 「2번」 when entityId not yet known */
+      readonly ordinalIndex?: number | null;
       readonly dayIndex: number;
     }
   | {

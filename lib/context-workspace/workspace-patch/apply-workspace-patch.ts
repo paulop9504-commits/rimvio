@@ -16,6 +16,40 @@ import type { WorkspacePatch } from "@/lib/context-workspace/workspace-patch/typ
 import type { WorkspacePatchRecord } from "@/lib/context-workspace/workspace-patch/types";
 import { runAutoProjectionAfterPatch } from "@/lib/context-workspace/auto-projection";
 import { applyNetworkAbsorbVisibilityPatch } from "@/lib/reality-provider/network-absorb-projection-store";
+import { buildRealityDraft } from "@/lib/context-workspace/reality-draft";
+import type { ContextWorkspaceNode } from "@/lib/context-workspace/types";
+
+const DAY_TAG_RE = /^day[_-]?\d+$/iu;
+
+function listVisibleScheduleCandidates(
+  nodes: readonly ContextWorkspaceNode[],
+): ContextWorkspaceNode[] {
+  return nodes.filter(
+    (n) =>
+      n.visible &&
+      (n.kind === "eatery" ||
+        n.kind === "lodging" ||
+        n.kind === "poi" ||
+        n.kind === "amenity") &&
+      n.source !== "reality_anchor" &&
+      !n.tags.includes("reality_anchor"),
+  );
+}
+
+function stampDayTag(
+  node: ContextWorkspaceNode,
+  day: number,
+): ContextWorkspaceNode {
+  const tags = [
+    ...node.tags.filter((t) => !DAY_TAG_RE.test(t)),
+    `day_${day}`,
+  ];
+  return {
+    ...node,
+    tags,
+    selected: true,
+  };
+}
 
 export type ApplyWorkspacePatchResult = {
   readonly ok: boolean;
@@ -273,45 +307,64 @@ export function applyWorkspacePatch(input: {
     case "move_schedule": {
       const live = readContextWorkspace(contextEventId);
       const day = patch.dayIndex + 1;
+      const places = live ? listVisibleScheduleCandidates(live.nodes) : [];
+      const fromOrdinal =
+        patch.ordinalIndex != null &&
+        patch.ordinalIndex >= 0 &&
+        patch.ordinalIndex < places.length
+          ? places[patch.ordinalIndex]!.id
+          : null;
       const entityId =
         patch.entityId ||
+        fromOrdinal ||
         live?.selectedIds[0] ||
         live?.nodes.find((n) => n.selected)?.id ||
+        places[0]?.id ||
         live?.nodes.find((n) => n.visible)?.id ||
         null;
-      if (live) {
+      if (live && entityId) {
         const dayNodeId = `schedule:day${day}`;
         const prevEdges = live.relationshipEdges ?? [];
-        const scheduleEdge =
-          entityId != null
-            ? {
-                id: `schedule_${entityId}_day${day}`,
-                kind: "route" as const,
-                fromId: entityId,
-                toId: dayNodeId,
-                labelKo: `Day${day} Draft`,
-                meters: null as number | null,
-              }
-            : null;
-        const edges = scheduleEdge
-          ? [
-              ...prevEdges.filter(
-                (e) =>
-                  !(
-                    e.id.startsWith("schedule_") &&
-                    (e.fromId === entityId || e.toId?.startsWith("schedule:day"))
-                  ),
+        const scheduleEdge = {
+          id: `schedule_${entityId}_day${day}`,
+          kind: "route" as const,
+          fromId: entityId,
+          toId: dayNodeId,
+          labelKo: `Day${day} Draft`,
+          meters: null as number | null,
+        };
+        const edges = [
+          ...prevEdges.filter(
+            (e) =>
+              !(
+                e.id.startsWith("schedule_") &&
+                (e.fromId === entityId || e.toId?.startsWith("schedule:day"))
               ),
-              scheduleEdge,
-            ].slice(0, 64)
-          : prevEdges;
+          ),
+          scheduleEdge,
+        ].slice(0, 64);
+
+        const nodes = live.nodes.map((n) =>
+          n.id === entityId ? stampDayTag(n, day) : n,
+        );
+        const moved = nodes.find((n) => n.id === entityId) ?? null;
+        const realityDraft =
+          buildRealityDraft({
+            contextTitleKo: live.summaryKo || live.query || "여행",
+            destinationKo: live.realityDraft?.destinationKo ?? null,
+            stayLabelKo: live.realityDraft?.stayLabelKo ?? null,
+            nodes,
+          }) ?? live.realityDraft ?? null;
+
         writeContextWorkspace({
           ...live,
+          nodes,
+          selectedIds: [entityId],
           relationshipEdges: edges,
-          lastChangeKo: entityId
-            ? `Day${day} Draft · 일정 이동`
-            : `Day${day} Draft`,
-          // Soft schedule cue — full Reality Draft day move stays prepare-layer.
+          realityDraft,
+          lastChangeKo: moved
+            ? `${moved.title} · Day${day} 일정에 넣었어요`
+            : `Day${day} Draft · 일정 이동`,
           realityPlan: {
             ...(live.realityPlan ?? {
               stayType: null,
@@ -323,14 +376,40 @@ export function applyWorkspacePatch(input: {
               lastEditKo: "",
               updatedAtIso: new Date().toISOString(),
             }),
-            lastEditKo: `move_schedule:day${day}${entityId ? `:${entityId}` : ""}`,
+            lastEditKo: `move_schedule:day${day}:${entityId}`,
             editCount: (live.realityPlan?.editCount ?? 0) + 1,
             updatedAtIso: new Date().toISOString(),
           },
           updatedAtIso: new Date().toISOString(),
         });
+        statusKo = moved
+          ? `${moved.title} · Day${day} 일정에 넣었어요`
+          : `Day${day} Draft 생성`;
+      } else if (live) {
+        writeContextWorkspace({
+          ...live,
+          lastChangeKo: `Day${day} Draft`,
+          realityPlan: {
+            ...(live.realityPlan ?? {
+              stayType: null,
+              maxPriceBand: null,
+              minRating: null,
+              stationNear: false,
+              onsenRequired: false,
+              editCount: 0,
+              lastEditKo: "",
+              updatedAtIso: new Date().toISOString(),
+            }),
+            lastEditKo: `move_schedule:day${day}`,
+            editCount: (live.realityPlan?.editCount ?? 0) + 1,
+            updatedAtIso: new Date().toISOString(),
+          },
+          updatedAtIso: new Date().toISOString(),
+        });
+        statusKo = `Day${day} Draft 생성`;
+      } else {
+        statusKo = `Day${day} Draft 생성`;
       }
-      statusKo = `Day${day} Draft 생성`;
       break;
     }
     case "move_entity": {
