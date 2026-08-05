@@ -1,0 +1,196 @@
+{
+  "type": "FeatureCollection",
+  "name": "japan_shinkansen",
+  "attribution": "Simplified Shinkansen corridors for Rimvio Workspace preview. Align with OSM/JR for production refresh.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokaido",
+        "nameKo": "도카이도신칸센",
+        "color": "#0067C0"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.766, 35.681],
+          [139.622, 35.465],
+          [139.078, 35.255],
+          [138.389, 34.975],
+          [137.735, 34.971],
+          [136.882, 35.171],
+          [136.243, 35.302],
+          [135.759, 34.985],
+          [135.504, 34.733]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sanyo",
+        "nameKo": "산요신칸센",
+        "color": "#0072BC"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.504, 34.733],
+          [135.18, 34.7],
+          [134.685, 34.825],
+          [133.918, 34.666],
+          [133.195, 34.485],
+          [132.475, 34.397],
+          [131.735, 34.05],
+          [130.942, 33.885],
+          [130.42, 33.59]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tohoku",
+        "nameKo": "도호쿠신칸센",
+        "color": "#00A040"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.766, 35.681],
+          [139.752, 35.905],
+          [139.899, 36.56],
+          [140.12, 36.95],
+          [140.383, 37.754],
+          [140.882, 38.26],
+          [141.137, 39.701],
+          [141.15, 40.2],
+          [140.827, 40.827]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "joetsu",
+        "nameKo": "조에쓰신칸센",
+        "color": "#E60012"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.766, 35.681],
+          [139.62, 36.08],
+          [139.02, 36.32],
+          [138.837, 36.74],
+          [138.8, 37.15],
+          [139.061, 37.912]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "hokuriku",
+        "nameKo": "호쿠리쿠신칸센",
+        "color": "#C8102E"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.766, 35.681],
+          [139.02, 36.32],
+          [138.837, 36.74],
+          [138.189, 36.644],
+          [137.213, 36.698],
+          [136.648, 36.578],
+          [136.22, 36.06],
+          [136.073, 35.645]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "kyushu",
+        "nameKo": "큐슈신칸센",
+        "color": "#F15A22"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [130.42, 33.59],
+          [130.55, 33.2],
+          [130.726, 32.79],
+          [130.7, 32.3],
+          [130.558, 31.584]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "hokkaido",
+        "nameKo": "홋카이도신칸센",
+        "color": "#00A0E9"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [140.827, 40.827],
+          [140.8, 41.2],
+          [140.733, 41.905]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "yamagata",
+        "nameKo": "야마가타신칸센",
+        "color": "#F7931E"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [140.383, 37.754],
+          [140.34, 38.05],
+          [140.34, 38.255],
+          [140.3, 38.76]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "akita",
+        "nameKo": "아키타신칸센",
+        "color": "#E4002B"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [141.137, 39.701],
+          [140.75, 39.7],
+          [140.129, 39.717]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "nishi_kyushu",
+        "nameKo": "니시큐슈신칸센",
+        "color": "#7B2D8E"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [130.023, 33.189],
+          [129.95, 33.0],
+          [129.87, 32.753]
+        ]
+      }
+    }
+  ]
+}

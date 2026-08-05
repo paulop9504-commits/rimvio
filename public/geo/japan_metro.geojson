@@ -1,0 +1,1271 @@
+{
+  "type": "FeatureCollection",
+  "name": "japan_metro",
+  "attribution": "Simplified Japan subway corridors for Rimvio Workspace preview. Align with OSM for production refresh.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_ginza",
+        "nameKo": "긴자선",
+        "cityKo": "도쿄",
+        "color": "#FF9500"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.817,
+            35.712
+          ],
+          [
+            139.777,
+            35.714
+          ],
+          [
+            139.767,
+            35.671
+          ],
+          [
+            139.763,
+            35.669
+          ],
+          [
+            139.701,
+            35.659
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_marunouchi",
+        "nameKo": "마루노우치선",
+        "cityKo": "도쿄",
+        "color": "#F62E36"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.767,
+            35.681
+          ],
+          [
+            139.767,
+            35.671
+          ],
+          [
+            139.71,
+            35.646
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_hibiya",
+        "nameKo": "히비야선",
+        "cityKo": "도쿄",
+        "color": "#B5B5AC"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.817,
+            35.712
+          ],
+          [
+            139.777,
+            35.714
+          ],
+          [
+            139.767,
+            35.675
+          ],
+          [
+            139.761,
+            35.67
+          ],
+          [
+            139.71,
+            35.646
+          ],
+          [
+            139.698,
+            35.628
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_tozai",
+        "nameKo": "도자이선",
+        "cityKo": "도쿄",
+        "color": "#009BBF"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.9,
+            35.68
+          ],
+          [
+            139.82,
+            35.695
+          ],
+          [
+            139.774,
+            35.682
+          ],
+          [
+            139.766,
+            35.685
+          ],
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.66,
+            35.7
+          ],
+          [
+            139.58,
+            35.702
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_chiyoda",
+        "nameKo": "치요다선",
+        "cityKo": "도쿄",
+        "color": "#00BB66"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.79,
+            35.76
+          ],
+          [
+            139.777,
+            35.714
+          ],
+          [
+            139.766,
+            35.685
+          ],
+          [
+            139.763,
+            35.669
+          ],
+          [
+            139.701,
+            35.659
+          ],
+          [
+            139.67,
+            35.64
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_yurakucho",
+        "nameKo": "유라쿠초선",
+        "cityKo": "도쿄",
+        "color": "#C1A470"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.763,
+            35.675
+          ],
+          [
+            139.767,
+            35.671
+          ],
+          [
+            139.74,
+            35.655
+          ],
+          [
+            139.7,
+            35.63
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_hanzomon",
+        "nameKo": "한조몬선",
+        "cityKo": "도쿄",
+        "color": "#8F76D6"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.74,
+            35.68
+          ],
+          [
+            139.767,
+            35.681
+          ],
+          [
+            139.8,
+            35.69
+          ],
+          [
+            139.84,
+            35.68
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_namboku",
+        "nameKo": "난보쿠선",
+        "cityKo": "도쿄",
+        "color": "#00AC9B"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.73,
+            35.78
+          ],
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.74,
+            35.69
+          ],
+          [
+            139.767,
+            35.681
+          ],
+          [
+            139.74,
+            35.655
+          ],
+          [
+            139.716,
+            35.634
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "tokyo_fukutoshin",
+        "nameKo": "후쿠토신선",
+        "cityKo": "도쿄",
+        "color": "#9C5E31"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.701,
+            35.659
+          ],
+          [
+            139.716,
+            35.634
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "toei_asakusa",
+        "nameKo": "아사쿠사선",
+        "cityKo": "도쿄",
+        "color": "#E85298"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.8,
+            35.75
+          ],
+          [
+            139.797,
+            35.712
+          ],
+          [
+            139.774,
+            35.682
+          ],
+          [
+            139.767,
+            35.671
+          ],
+          [
+            139.74,
+            35.655
+          ],
+          [
+            139.7,
+            35.63
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "toei_mita",
+        "nameKo": "미타선",
+        "cityKo": "도쿄",
+        "color": "#0079C2"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.73,
+            35.78
+          ],
+          [
+            139.71,
+            35.729
+          ],
+          [
+            139.74,
+            35.69
+          ],
+          [
+            139.767,
+            35.681
+          ],
+          [
+            139.75,
+            35.655
+          ],
+          [
+            139.716,
+            35.634
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "toei_shinjuku",
+        "nameKo": "신주쿠선",
+        "cityKo": "도쿄",
+        "color": "#6CBB5A"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.74,
+            35.69
+          ],
+          [
+            139.767,
+            35.681
+          ],
+          [
+            139.8,
+            35.69
+          ],
+          [
+            139.86,
+            35.7
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "toei_oedo",
+        "nameKo": "오에도선",
+        "cityKo": "도쿄",
+        "color": "#B6007A"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.7,
+            35.69
+          ],
+          [
+            139.74,
+            35.7
+          ],
+          [
+            139.78,
+            35.7
+          ],
+          [
+            139.79,
+            35.68
+          ],
+          [
+            139.76,
+            35.66
+          ],
+          [
+            139.72,
+            35.66
+          ],
+          [
+            139.7,
+            35.69
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "yokohama_blue",
+        "nameKo": "요코하마 블루라인",
+        "cityKo": "요코하마",
+        "color": "#0068B7"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.62,
+            35.54
+          ],
+          [
+            139.64,
+            35.5
+          ],
+          [
+            139.64,
+            35.465
+          ],
+          [
+            139.62,
+            35.44
+          ],
+          [
+            139.61,
+            35.4
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "yokohama_green",
+        "nameKo": "요코하마 그린라인",
+        "cityKo": "요코하마",
+        "color": "#00A651"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            139.62,
+            35.51
+          ],
+          [
+            139.58,
+            35.52
+          ],
+          [
+            139.55,
+            35.53
+          ],
+          [
+            139.53,
+            35.55
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "nagoya_higashiyama",
+        "nameKo": "히가시야마선",
+        "cityKo": "나고야",
+        "color": "#FFCC00"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            136.85,
+            35.17
+          ],
+          [
+            136.88,
+            35.17
+          ],
+          [
+            136.91,
+            35.17
+          ],
+          [
+            136.95,
+            35.17
+          ],
+          [
+            136.99,
+            35.17
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "nagoya_meijo",
+        "nameKo": "메이죠선",
+        "cityKo": "나고야",
+        "color": "#C71585"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            136.91,
+            35.19
+          ],
+          [
+            136.93,
+            35.17
+          ],
+          [
+            136.91,
+            35.15
+          ],
+          [
+            136.89,
+            35.17
+          ],
+          [
+            136.91,
+            35.19
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "nagoya_tsurumai",
+        "nameKo": "쓰루마이선",
+        "cityKo": "나고야",
+        "color": "#0095D9"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            136.88,
+            35.2
+          ],
+          [
+            136.9,
+            35.18
+          ],
+          [
+            136.91,
+            35.17
+          ],
+          [
+            136.92,
+            35.15
+          ],
+          [
+            136.93,
+            35.13
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "nagoya_sakuradori",
+        "nameKo": "사쿠라도리선",
+        "cityKo": "나고야",
+        "color": "#E85298"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            136.88,
+            35.17
+          ],
+          [
+            136.91,
+            35.17
+          ],
+          [
+            136.94,
+            35.17
+          ],
+          [
+            136.97,
+            35.16
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "kyoto_karasuma",
+        "nameKo": "가라스마선",
+        "cityKo": "교토",
+        "color": "#1A9E4E"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.76,
+            35.06
+          ],
+          [
+            135.76,
+            35.04
+          ],
+          [
+            135.76,
+            35.01
+          ],
+          [
+            135.76,
+            34.99
+          ],
+          [
+            135.76,
+            34.97
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "kyoto_tozai",
+        "nameKo": "교토 도자이선",
+        "cityKo": "교토",
+        "color": "#00A7E3"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.7,
+            35.01
+          ],
+          [
+            135.74,
+            35.01
+          ],
+          [
+            135.76,
+            35.01
+          ],
+          [
+            135.79,
+            35.01
+          ],
+          [
+            135.82,
+            35.01
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_midosuji",
+        "nameKo": "미도스지선",
+        "cityKo": "오사카",
+        "color": "#E60012"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.496,
+            34.757
+          ],
+          [
+            135.5,
+            34.71
+          ],
+          [
+            135.501,
+            34.694
+          ],
+          [
+            135.502,
+            34.666
+          ],
+          [
+            135.52,
+            34.638
+          ],
+          [
+            135.506,
+            34.55
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_tanimachi",
+        "nameKo": "다니마치선",
+        "cityKo": "오사카",
+        "color": "#522886"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.529,
+            34.724
+          ],
+          [
+            135.514,
+            34.698
+          ],
+          [
+            135.512,
+            34.676
+          ],
+          [
+            135.518,
+            34.646
+          ],
+          [
+            135.522,
+            34.613
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_yotsubashi",
+        "nameKo": "요쓰바시선",
+        "cityKo": "오사카",
+        "color": "#0078BA"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.486,
+            34.706
+          ],
+          [
+            135.491,
+            34.682
+          ],
+          [
+            135.496,
+            34.666
+          ],
+          [
+            135.5,
+            34.646
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_chuo",
+        "nameKo": "주오선",
+        "cityKo": "오사카",
+        "color": "#019A66"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.46,
+            34.68
+          ],
+          [
+            135.49,
+            34.68
+          ],
+          [
+            135.51,
+            34.68
+          ],
+          [
+            135.54,
+            34.68
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_sennichimae",
+        "nameKo": "센니치마에선",
+        "cityKo": "오사카",
+        "color": "#E44D93"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.48,
+            34.665
+          ],
+          [
+            135.5,
+            34.665
+          ],
+          [
+            135.52,
+            34.665
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_sakaisuji",
+        "nameKo": "사카이스지선",
+        "cityKo": "오사카",
+        "color": "#B5A36A"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.506,
+            34.71
+          ],
+          [
+            135.506,
+            34.69
+          ],
+          [
+            135.506,
+            34.67
+          ],
+          [
+            135.506,
+            34.65
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "osaka_nagahori",
+        "nameKo": "나가호리선",
+        "cityKo": "오사카",
+        "color": "#A8BF00"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.48,
+            34.675
+          ],
+          [
+            135.5,
+            34.675
+          ],
+          [
+            135.53,
+            34.675
+          ],
+          [
+            135.55,
+            34.69
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "kobe_seishin",
+        "nameKo": "세이신·야마테선",
+        "cityKo": "고베",
+        "color": "#0078C1"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.1,
+            34.69
+          ],
+          [
+            135.15,
+            34.69
+          ],
+          [
+            135.19,
+            34.69
+          ],
+          [
+            135.22,
+            34.69
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "kobe_kaigan",
+        "nameKo": "카이간선",
+        "cityKo": "고베",
+        "color": "#00A0E9"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            135.18,
+            34.68
+          ],
+          [
+            135.19,
+            34.685
+          ],
+          [
+            135.2,
+            34.69
+          ],
+          [
+            135.21,
+            34.695
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "fukuoka_kuko",
+        "nameKo": "공항선",
+        "cityKo": "후쿠오카",
+        "color": "#FF9E1B"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            130.45,
+            33.59
+          ],
+          [
+            130.42,
+            33.59
+          ],
+          [
+            130.4,
+            33.59
+          ],
+          [
+            130.38,
+            33.59
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "fukuoka_hakozaki",
+        "nameKo": "하코자키선",
+        "cityKo": "후쿠오카",
+        "color": "#0077C8"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            130.4,
+            33.59
+          ],
+          [
+            130.41,
+            33.6
+          ],
+          [
+            130.42,
+            33.61
+          ],
+          [
+            130.43,
+            33.62
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "fukuoka_nanakuma",
+        "nameKo": "나나쿠마선",
+        "cityKo": "후쿠오카",
+        "color": "#9BCC3C"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            130.4,
+            33.59
+          ],
+          [
+            130.39,
+            33.58
+          ],
+          [
+            130.37,
+            33.57
+          ],
+          [
+            130.35,
+            33.56
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sendai_namboku",
+        "nameKo": "센다이 난보쿠선",
+        "cityKo": "센다이",
+        "color": "#0077C8"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            140.88,
+            38.3
+          ],
+          [
+            140.88,
+            38.27
+          ],
+          [
+            140.88,
+            38.26
+          ],
+          [
+            140.88,
+            38.24
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sendai_tozai",
+        "nameKo": "센다이 도자이선",
+        "cityKo": "센다이",
+        "color": "#FF9E1B"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            140.85,
+            38.26
+          ],
+          [
+            140.87,
+            38.26
+          ],
+          [
+            140.88,
+            38.26
+          ],
+          [
+            140.9,
+            38.26
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sapporo_namboku",
+        "nameKo": "삿포로 난보쿠선",
+        "cityKo": "삿포로",
+        "color": "#007A33"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            141.35,
+            43.12
+          ],
+          [
+            141.35,
+            43.08
+          ],
+          [
+            141.35,
+            43.06
+          ],
+          [
+            141.35,
+            43.04
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sapporo_tozai",
+        "nameKo": "삿포로 도자이선",
+        "cityKo": "삿포로",
+        "color": "#0073BC"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            141.3,
+            43.06
+          ],
+          [
+            141.33,
+            43.06
+          ],
+          [
+            141.35,
+            43.06
+          ],
+          [
+            141.38,
+            43.06
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "sapporo_toho",
+        "nameKo": "삿포로 도호선",
+        "cityKo": "삿포로",
+        "color": "#F15A22"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            141.35,
+            43.1
+          ],
+          [
+            141.36,
+            43.08
+          ],
+          [
+            141.37,
+            43.06
+          ],
+          [
+            141.38,
+            43.05
+          ]
+        ]
+      }
+    }
+  ]
+}

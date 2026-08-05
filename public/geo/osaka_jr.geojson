@@ -1,0 +1,126 @@
+{
+  "type": "FeatureCollection",
+  "name": "osaka_jr",
+  "attribution": "Simplified JR West Osaka corridors for Rimvio Reality Provider cached_overlay. Align with OSM/GTFS for production refresh.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_osaka_loop",
+        "nameKo": "JR오사카순환선",
+        "color": "#E85298"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.4985, 34.7025],
+          [135.5115, 34.6965],
+          [135.5285, 34.6965],
+          [135.5305, 34.6655],
+          [135.5132, 34.6471],
+          [135.5001, 34.6458],
+          [135.4862, 34.655],
+          [135.4669, 34.6817],
+          [135.478, 34.695],
+          [135.4985, 34.7025]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_kyoto",
+        "nameKo": "JR교토선",
+        "color": "#0072BC"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.4985, 34.7025],
+          [135.51, 34.73],
+          [135.52, 34.76],
+          [135.55, 34.79],
+          [135.585, 34.82],
+          [135.64, 34.85],
+          [135.758, 34.985]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_kobe",
+        "nameKo": "JR고베선",
+        "color": "#0072BC"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.4985, 34.7025],
+          [135.48, 34.705],
+          [135.45, 34.71],
+          [135.4, 34.72],
+          [135.35, 34.725],
+          [135.195, 34.68]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_hanwa",
+        "nameKo": "JR한와선",
+        "color": "#F15A22"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.5132, 34.6471],
+          [135.5, 34.62],
+          [135.49, 34.58],
+          [135.48, 34.54],
+          [135.47, 34.5],
+          [135.45, 34.43]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_yamatoji",
+        "nameKo": "JR야마토지선",
+        "color": "#00A651"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.5132, 34.6471],
+          [135.53, 34.64],
+          [135.56, 34.62],
+          [135.6, 34.6],
+          [135.65, 34.58],
+          [135.8, 34.68]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jr_yumesaki",
+        "nameKo": "JR유메사키선",
+        "color": "#1A6BB5"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [135.4669, 34.6817],
+          [135.4615, 34.6785],
+          [135.4552, 34.6752],
+          [135.4485, 34.6715],
+          [135.4389, 34.6678],
+          [135.4325, 34.6625]
+        ]
+      }
+    }
+  ]
+}

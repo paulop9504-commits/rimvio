@@ -28,6 +28,7 @@ import { runWorkspaceRealityAgent } from "@/lib/workspace-agent";
 import { runRealityPrepare } from "@/lib/prepare-layer";
 import { resolveLookupToolId } from "@/lib/rule-engine/resolve-tool-id";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry/invoke-rimvio-tool";
+import { resolveLodgingStaySearchKeyword } from "@/lib/globe/lodging/lodging-stay-types";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import {
   isContinueWorkUtterance,
@@ -43,6 +44,10 @@ import {
   applyWorkspaceRealityPatch,
   parseWorkspaceRealityPatch,
 } from "@/lib/context-workspace/apply-workspace-reality-patch";
+import {
+  tryApplyNetworkAbsorbWorkspaceTurn,
+  type NetworkAbsorbSoftChip,
+} from "@/lib/reality-provider/apply-network-absorb-workspace-turn";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -50,6 +55,8 @@ export type WorkspacePromptTurnResult = {
   committed: boolean;
   /** Search added/replaced candidates — pin-bar should show preview + expand. */
   openedForReview?: boolean;
+  /** Metro / rail absorb soft chips (map is the answer). */
+  softChips?: readonly NetworkAbsorbSoftChip[];
 };
 
 function resolveToolDomain(
@@ -307,7 +314,20 @@ async function rescoutWorkspace(input: {
     null;
     const toolDomain = resolveToolDomain(activeDomain);
     const toolId = resolveLookupToolId(toolDomain, input.utterance);
+    const areaHint =
+      state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
+      state.realityDraft?.destinationKo?.trim() ||
+      state.query?.replace(/\s*(숙소|호텔|여행).*$/u, "").trim() ||
+      null;
+    const stayKw =
+      toolDomain === "lodging"
+        ? resolveLodgingStaySearchKeyword({
+            message: input.utterance,
+            areaHint,
+          })
+        : null;
     const query =
+      stayKw ||
       input.utterance.trim() ||
       state.query ||
       `${domainLabelKo(activeDomain)} 찾기`;
@@ -321,10 +341,8 @@ async function rescoutWorkspace(input: {
         lng: seed?.lng,
         utterance: input.utterance,
         contextEventId: input.contextEventId,
-        placeName:
-          state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
-          state.query ||
-          undefined,
+        placeName: areaHint || undefined,
+        contextLabelKo: areaHint,
       });
     const candidates = (tool.candidates ?? []).filter((c) => {
       const id = c.id ?? "";
@@ -463,6 +481,21 @@ export function tryApplyWorkspaceLodgingTurnSync(input: {
   if (!contextEventId || !utterance) {
     return { handled: false, replyKo: null, committed: false };
   }
+
+  // ADR-051 — subway/rail absorb before lodging select/scout.
+  const networkAbsorb = tryApplyNetworkAbsorbWorkspaceTurn({
+    utterance,
+    contextEventId,
+  });
+  if (networkAbsorb?.handled) {
+    return {
+      handled: true,
+      replyKo: networkAbsorb.replyKo,
+      committed: false,
+      softChips: networkAbsorb.softChips,
+    };
+  }
+
   if (!hasProvisionalContextWorkspace(contextEventId)) {
     return { handled: false, replyKo: null, committed: false };
   }
@@ -638,6 +671,20 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
   const utterance = input.utterance.trim();
   if (!contextEventId || !utterance) {
     return { handled: false, replyKo: null, committed: false };
+  }
+
+  // ADR-051 — subway/rail absorb before lodging / capability steal.
+  const networkAbsorb = tryApplyNetworkAbsorbWorkspaceTurn({
+    utterance,
+    contextEventId,
+  });
+  if (networkAbsorb?.handled) {
+    return {
+      handled: true,
+      replyKo: networkAbsorb.replyKo,
+      committed: false,
+      softChips: networkAbsorb.softChips,
+    };
   }
 
   if (tryApplyCapabilityUtterance({ contextEventId, utterance })) {

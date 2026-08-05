@@ -49,6 +49,19 @@ import type {
 } from "@/lib/context-workspace/capability-callout";
 import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import { syncWorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
+import { syncOsakaMetroLines } from "@/lib/context-workspace/map/sync-osaka-metro-lines";
+import { syncJapanMetroLines } from "@/lib/context-workspace/map/sync-japan-metro-lines";
+import { syncOsakaJrLines } from "@/lib/context-workspace/map/sync-osaka-jr-lines";
+import { syncJapanShinkansenLines } from "@/lib/context-workspace/map/sync-japan-shinkansen-lines";
+import { syncKoreaRailLines } from "@/lib/context-workspace/map/sync-korea-rail-lines";
+import {
+  useHydrateNetworkAbsorbFromWorkspace,
+  useJapanMetroAbsorbLineIds,
+  useJapanShinkansenAbsorbLineIds,
+  useKoreaRailAbsorbLineIds,
+  useOsakaJrAbsorbLineIds,
+  useOsakaMetroAbsorbLineIds,
+} from "@/lib/reality-provider/use-network-absorb-projection";
 
 export type WorkspaceMapCapabilityBloomModel = {
   readonly callouts: readonly WorkspaceCapabilityCallout[];
@@ -507,6 +520,13 @@ function MapLibreWorkspaceMap({
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
   const markersByIdRef = useRef<Map<string, MarkerEntry>>(new Map());
   const lastGeometryKeyRef = useRef<string>("");
+
+  useHydrateNetworkAbsorbFromWorkspace(contextEventId);
+  const osakaMetroLineIds = useOsakaMetroAbsorbLineIds();
+  const japanMetroLineIds = useJapanMetroAbsorbLineIds();
+  const osakaJrLineIds = useOsakaJrAbsorbLineIds();
+  const shinkansenLineIds = useJapanShinkansenAbsorbLineIds();
+  const koreaRailLineIds = useKoreaRailAbsorbLineIds();
   const pinsRef = useRef(pins);
   const replayCancelRef = useRef(false);
   const mediaTourCancelRef = useRef(false);
@@ -844,6 +864,56 @@ function MapLibreWorkspaceMap({
       /* style not ready */
     }
   }, [ready, routeKey, routeLineCoords]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncOsakaMetroLines(map, osakaMetroLineIds);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, osakaMetroLineIds]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncJapanMetroLines(map, japanMetroLineIds);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, japanMetroLineIds]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncOsakaJrLines(map, osakaJrLineIds);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, osakaJrLineIds]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncJapanShinkansenLines(map, shinkansenLineIds);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, shinkansenLineIds]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      syncKoreaRailLines(map, koreaRailLineIds);
+    } catch {
+      /* style not ready */
+    }
+  }, [ready, koreaRailLineIds]);
 
   useEffect(() => {
     const map = mapRef.current;

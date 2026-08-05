@@ -1,0 +1,267 @@
+{
+  "type": "FeatureCollection",
+  "name": "korea_rail",
+  "attribution": "Simplified national rail corridors for Rimvio Workspace preview. Align with OSM/Korail for production refresh.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "ktx_gyeongbu",
+        "nameKo": "KTX 경부선",
+        "color": "#0054A6"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9707, 37.5547],
+          [127.0079, 37.2657],
+          [127.327, 36.62],
+          [127.434, 36.3515],
+          [128.101, 36.119],
+          [128.628, 35.8797],
+          [129.139, 35.551],
+          [129.0413, 35.1151]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "ktx_honam",
+        "nameKo": "KTX 호남선",
+        "color": "#00A651"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9648, 37.5299],
+          [127.0079, 37.2657],
+          [127.327, 36.62],
+          [126.95, 35.941],
+          [126.7905, 35.1377],
+          [126.388, 34.7915]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "ktx_gangneung",
+        "nameKo": "KTX 강릉선",
+        "color": "#00B5E2"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9707, 37.5547],
+          [127.1049, 37.4871],
+          [127.434, 37.28],
+          [127.945, 37.351],
+          [128.45, 37.55],
+          [128.899, 37.764]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "ktx_jeolla",
+        "nameKo": "KTX 전라선",
+        "color": "#8DC63F"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.95, 35.941],
+          [127.146, 35.849],
+          [127.487, 34.95],
+          [127.745, 34.752]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "ktx_gyeongjeon",
+        "nameKo": "KTX 경전선",
+        "color": "#F15A29"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.628, 35.8797],
+          [128.5, 35.55],
+          [128.085, 35.181],
+          [128.681, 35.238],
+          [129.0413, 35.1151]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "srt",
+        "nameKo": "SRT",
+        "color": "#6B2D7B"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.1049, 37.4871],
+          [127.15, 37.2],
+          [127.327, 36.62],
+          [127.45, 36.35],
+          [128.101, 36.119],
+          [128.628, 35.8797],
+          [129.05, 35.4],
+          [129.0413, 35.1151]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "gyeongbu",
+        "nameKo": "경부선",
+        "color": "#1B75BB"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9707, 37.5547],
+          [126.98, 37.4],
+          [127.0079, 37.2657],
+          [127.12, 36.99],
+          [127.25, 36.78],
+          [127.434, 36.3515],
+          [127.8, 36.15],
+          [128.101, 36.119],
+          [128.4, 35.95],
+          [128.628, 35.8797],
+          [128.9, 35.55],
+          [129.0413, 35.1151]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "honam",
+        "nameKo": "호남선",
+        "color": "#39B54A"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.434, 36.3515],
+          [127.2, 36.1],
+          [126.95, 35.941],
+          [126.85, 35.55],
+          [126.7905, 35.1377],
+          [126.55, 34.95],
+          [126.388, 34.7915]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jeolla",
+        "nameKo": "전라선",
+        "color": "#A8CF45"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.95, 35.941],
+          [127.146, 35.849],
+          [127.3, 35.4],
+          [127.487, 34.95],
+          [127.6, 34.85],
+          [127.745, 34.752]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "jungang",
+        "nameKo": "중앙선",
+        "color": "#F7941D"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.0474, 37.5802],
+          [127.3, 37.35],
+          [127.6, 37.2],
+          [128.191, 37.132],
+          [128.4, 36.95],
+          [128.509, 36.805],
+          [128.728, 36.568],
+          [128.9, 36.2],
+          [129.1, 35.9],
+          [129.0413, 35.1151]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "yeongdong",
+        "nameKo": "영동선",
+        "color": "#9B59B6"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.191, 37.132],
+          [128.5, 37.15],
+          [128.986, 37.164],
+          [129.05, 37.35],
+          [129.116, 37.524],
+          [128.899, 37.764]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "donghae",
+        "nameKo": "동해선",
+        "color": "#E91E63"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [129.0413, 35.1151],
+          [129.2, 35.4],
+          [129.365, 36.019],
+          [129.3, 36.5],
+          [129.2, 37],
+          [129.116, 37.524]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "lineId": "janghang",
+        "nameKo": "장항선",
+        "color": "#795548"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [127.15, 36.815],
+          [126.95, 36.78],
+          [126.7, 36.7],
+          [126.62, 36.5],
+          [126.55, 36.15],
+          [126.7, 36],
+          [126.95, 35.941]
+        ]
+      }
+    }
+  ]
+}

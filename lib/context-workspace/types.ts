@@ -152,6 +152,14 @@ export type ContextWorkspaceState = {
    * Soft edits patch this; Scout/Rank consume it. Not a user-facing "filter".
    */
   readonly realityPlan?: import("@/lib/context-workspace/workspace-reality-patch").WorkspaceRealityPlan | null;
+  /**
+   * Append-only Workspace Patch tape (Agent Loop SSOT — never chat essays).
+   */
+  readonly patches?: readonly import("@/lib/context-workspace/workspace-patch/types").WorkspacePatchRecord[];
+  /**
+   * Materialized network absorb projection (rail/metro overlays) — Map reads via bridge.
+   */
+  readonly networkAbsorb?: import("@/lib/reality-provider/network-absorb-projection").NetworkAbsorbProjectionState | null;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];
   readonly surfacePrimary: ContextSurfaceKind;

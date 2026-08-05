@@ -1,0 +1,47 @@
+---
+description: Reality Provider Runtime — Need → Provider → Patch → Projection
+alwaysApply: true
+---
+
+# Reality Provider Runtime (locked)
+
+**Canonical:** `docs/RIMVIO_REALITY_PROVIDER_RUNTIME.md` · ADR-051  
+**Parent:** ADR-050 Agent Runtime · ADR-022 Workspace  
+**Wire:** `lib/reality-provider/`
+
+```text
+Intent → Need Resolution → Reality Provider Resolution
+  → Acquire → Normalize → Workspace Patch → Projection
+```
+
+> External world facts enter Workspace only through this loop.  
+> JR · bus · cherry blossom · ATM = **different Providers**, same Runtime.
+
+## Vocabulary
+
+| Term | Meaning |
+|------|---------|
+| **Need** | What to absorb (`rail_network`, `event_set`, …) |
+| **Reality Provider** | Where from (`cached_overlay`, `gtfs`, `osm`, `vendor_api`) |
+| Not this layer | ADR-006 Capability Graph (travel execution) |
+
+## Do
+
+- Unknown absorb intents: `resolveRealityNeedFromUtterance` → `resolveRealityProvider` before acquire  
+- Existing GeoJSON overlays = `cached_overlay` Provider (not a parallel product Runtime)  
+- Normalize to Line/Station/POI Reality Objects → **Workspace Patch only**  
+- Fail-closed when required Provider fails  
+- Network absorb UI/agent ingress = **only** `tryApplyRealityAbsorbFromUtterance`  
+- Visibility SSOT = Workspace `networkAbsorb` (+ session bridge) — **not** domain overlay stores  
+- Do not sync domain overlay stores from absorb (Map reads absorb SSOT only)  
+
+## PR reject
+
+- Domain-private Acquire→Projection (JR-only / bus-only runtime)  
+- UI/agent calling `tryApply*OverlayFromUtterance` for networks  
+- Map reading domain overlay stores as source of truth (bypass absorb SSOT)  
+- Absorb Runtime writing domain overlay stores as dual SSOT  
+- New `*-jr-runtime` package (ADR-045)  
+- Chat essay as network SSOT  
+- Capability Generation (codegen) in absorb MVP  
+- Confusing this layer with ADR-006 Capability Graph
