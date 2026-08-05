@@ -35,7 +35,7 @@ import {
   resolveNextWorkAction,
 } from "@/lib/workstream/resolve-next-work-action";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
-import { runAgentP0Guards } from "@/lib/agent-policy/run-agent-p0-guards";
+import { runAgentP1Guards } from "@/lib/agent-policy/run-agent-p1-guards";
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
 import {
@@ -54,8 +54,16 @@ import {
   distanceGateNearScout,
   gateNearScoutAnchorAsync,
   DEFAULT_NEAR_RADIUS_METERS,
+  type GateNearScoutAnchorResult,
 } from "@/lib/context-workspace/reality-anchor";
 import { assertWorkspacePostcondition } from "@/lib/context-workspace/assert-workspace-postcondition";
+import {
+  assertScoutRetryProposal,
+  createScoutRetryLock,
+  MAX_SCOUT_ATTEMPTS,
+  resolveAfterScoutEmpty,
+  type ScoutRetryLock,
+} from "@/lib/agent-policy/scout-retry-policy";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -339,28 +347,70 @@ async function rescoutWorkspace(input: {
     });
   }
 
-  const p0 = runAgentP0Guards({
+  const p1 = runAgentP1Guards({
     contextEventId: input.contextEventId,
     utterance: input.utterance,
     lat: nearGate.gated && nearGate.ok ? nearGate.anchor.lat : null,
     lng: nearGate.gated && nearGate.ok ? nearGate.anchor.lng : null,
     scoutMode: input.mode === "add" ? "add" : "replace",
   });
+  if (!p1.ok) {
+    return {
+      handled: true,
+      replyKo: p1.statusKo,
+      committed: false,
+    };
+  }
+
+  // Target-stack inherit: resolve Spatial from carried near into scout utterance.
+  let effectiveNear: GateNearScoutAnchorResult = nearGate;
+  if (
+    (!nearGate.gated || !nearGate.ok) &&
+    p1.carry.inheritedSpatialFromStack &&
+    p1.carry.bagForScout.nearLabelKo
+  ) {
+    effectiveNear = await gateNearScoutAnchorAsync({
+      utterance: p1.scoutUtterance,
+    });
+    if (effectiveNear.gated && effectiveNear.ok) {
+      ensureWorkspaceAnchorNode({
+        contextEventId: input.contextEventId,
+        anchor: {
+          entityId: effectiveNear.anchor.id,
+          titleKo: effectiveNear.anchor.labelKo,
+          labelKo: effectiveNear.anchor.labelKo,
+          kind:
+            effectiveNear.anchor.kind === "station" ? "station" : "attraction",
+          lat: effectiveNear.anchor.lat,
+          lng: effectiveNear.anchor.lng,
+        },
+        geoId: effectiveNear.anchor.id,
+        summaryKo: `${effectiveNear.anchor.labelKo} · 검색 기준점`,
+      });
+    } else if (effectiveNear.gated && !effectiveNear.ok) {
+      return {
+        handled: true,
+        replyKo: effectiveNear.statusKo,
+        committed: false,
+      };
+    }
+  }
+
   // Stale / clear → always replace inventory (never silent refine of old set).
   const effectiveMode =
-    p0.forceReplaceScout && input.mode === "add" ? "replace" : input.mode;
+    p1.forceReplaceScout && input.mode === "add" ? "replace" : input.mode;
 
   const activeDomain = resolveWorkspaceSearchDomain(
-    input.utterance,
+    p1.scoutUtterance,
     state.domain,
   );
   // Near + resolved Anchor → seed ONLY from that Anchor (not old lodging pick).
   const seed =
-    nearGate.gated && nearGate.ok
+    effectiveNear.gated && effectiveNear.ok
       ? {
-          lat: nearGate.anchor.lat,
-          lng: nearGate.anchor.lng,
-          title: nearGate.anchor.labelKo,
+          lat: effectiveNear.anchor.lat,
+          lng: effectiveNear.anchor.lng,
+          title: effectiveNear.anchor.labelKo,
         }
       : (state.nodes.find(
           (n) =>
@@ -377,84 +427,150 @@ async function rescoutWorkspace(input: {
         state.nodes.find((n) => n.bookmarked && n.visible) ??
         state.nodes.find((n) => n.visible) ??
         null);
-    const toolDomain = resolveToolDomain(activeDomain);
-    const toolId = resolveLookupToolId(toolDomain, input.utterance);
-    // Fail-Closed: never pass trip summary (Namba/Osaka) as placeName when Anchor is set.
-    const areaHint =
-      nearGate.gated && nearGate.ok
-        ? nearGate.anchor.labelKo
-        : state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
-          state.realityDraft?.destinationKo?.trim() ||
-          state.query?.replace(/\s*(숙소|호텔|여행).*$/u, "").trim() ||
-          null;
-    const stayKw =
-      toolDomain === "lodging"
-        ? resolveLodgingStaySearchKeyword({
-            message: input.utterance,
-            areaHint,
-          })
-        : null;
-    const query =
-      stayKw ||
-      input.utterance.trim() ||
-      state.query ||
-      `${domainLabelKo(activeDomain)} 찾기`;
-    try {
-      const invokeDomain =
-        toolDomain === "amenity" ? "poi" : toolDomain;
+  const toolDomain = resolveToolDomain(activeDomain);
+  const toolId = resolveLookupToolId(toolDomain, p1.scoutUtterance);
+  // Fail-Closed: never pass trip summary (Namba/Osaka) as placeName when Anchor is set.
+  const areaHint =
+    effectiveNear.gated && effectiveNear.ok
+      ? effectiveNear.anchor.labelKo
+      : state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
+        state.realityDraft?.destinationKo?.trim() ||
+        state.query?.replace(/\s*(숙소|호텔|여행).*$/u, "").trim() ||
+        null;
+  const stayKw =
+    toolDomain === "lodging"
+      ? resolveLodgingStaySearchKeyword({
+          message: p1.scoutUtterance,
+          areaHint,
+        })
+      : null;
+  const query =
+    stayKw ||
+    p1.scoutUtterance.trim() ||
+    state.query ||
+    `${domainLabelKo(activeDomain)} 찾기`;
+
+  // T7 — freeze Job + Anchor + query for retry; never Namba trip fallback.
+  const scoutLock: ScoutRetryLock | null =
+    effectiveNear.gated && effectiveNear.ok
+      ? createScoutRetryLock({
+          jobId: p1.job.id,
+          anchorId: effectiveNear.anchor.id,
+          anchorLat: effectiveNear.anchor.lat,
+          anchorLng: effectiveNear.anchor.lng,
+          nearLabelKo: effectiveNear.anchor.labelKo,
+          scoutUtterance: p1.scoutUtterance,
+          areaHint: effectiveNear.anchor.labelKo,
+        })
+      : null;
+  const maxScoutAttempts = scoutLock ? MAX_SCOUT_ATTEMPTS : 1;
+
+  try {
+    const invokeDomain = toolDomain === "amenity" ? "poi" : toolDomain;
+    const patchMeters = (() => {
+      const patches = state.patches ?? [];
+      for (let i = patches.length - 1; i >= 0; i -= 1) {
+        const p = patches[i]?.patch;
+        if (
+          p &&
+          p.kind === "spatial_constraint" &&
+          typeof p.meters === "number" &&
+          p.meters > 0
+        ) {
+          return p.meters;
+        }
+      }
+      return null;
+    })();
+
+    let candidates: SearchToolCandidate[] = [];
+    let distanceStatusKo: string | null = null;
+    let toolSummaryKo: string | null = null;
+
+    for (let attempt = 1; attempt <= maxScoutAttempts; attempt += 1) {
+      if (scoutLock) {
+        const retryGate = assertScoutRetryProposal({
+          lock: scoutLock,
+          proposed: {
+            jobId: p1.job.id,
+            anchorId: scoutLock.anchorId,
+            scoutUtterance: p1.scoutUtterance,
+            areaHint: scoutLock.areaHint,
+            lat: seed?.lat ?? scoutLock.anchorLat,
+            lng: seed?.lng ?? scoutLock.anchorLng,
+          },
+        });
+        if (!retryGate.ok) {
+          return {
+            handled: true,
+            replyKo: retryGate.statusKo,
+            committed: false,
+            openedForReview: false,
+          };
+        }
+      }
+
       const tool = await invokeRimvioToolAsync(toolId, {
         query,
         domain: invokeDomain,
-        lat: seed?.lat,
-        lng: seed?.lng,
-        utterance: input.utterance,
+        lat: scoutLock ? scoutLock.anchorLat : seed?.lat,
+        lng: scoutLock ? scoutLock.anchorLng : seed?.lng,
+        utterance: p1.scoutUtterance,
         contextEventId: input.contextEventId,
-        placeName: areaHint || undefined,
-        contextLabelKo: areaHint,
+        placeName: (scoutLock?.areaHint ?? areaHint) || undefined,
+        contextLabelKo: scoutLock?.areaHint ?? areaHint,
       });
-    const candidatesRaw = (tool.candidates ?? []).filter((c) => {
-      const id = c.id ?? "";
-      if (id.startsWith("search:")) return false;
-      if (/^(?:eatery|lodging|poi|amenity):osaka:/i.test(id)) return true;
-      if (c.source === "seed") return false;
-      return true;
-    });
-    // Slice B — Distance Gate after Scout (Spatial correctness).
-    let candidates = candidatesRaw;
-    let distanceStatusKo: string | null = null;
-    if (
-      nearGate.gated &&
-      nearGate.ok &&
-      Number.isFinite(nearGate.anchor.lat) &&
-      Number.isFinite(nearGate.anchor.lng)
-    ) {
-      const patchMeters = (() => {
-        const patches = state.patches ?? [];
-        for (let i = patches.length - 1; i >= 0; i -= 1) {
-          const p = patches[i]?.patch;
-          if (
-            p &&
-            p.kind === "spatial_constraint" &&
-            typeof p.meters === "number" &&
-            p.meters > 0
-          ) {
-            return p.meters;
-          }
-        }
-        return null;
-      })();
-      const gated = distanceGateNearScout({
-        anchor: {
-          lat: nearGate.anchor.lat,
-          lng: nearGate.anchor.lng,
-          labelKo: nearGate.anchor.labelKo,
-        },
-        candidates: candidatesRaw,
-        patchMeters,
+      toolSummaryKo = tool.summaryKo?.trim() || null;
+      const candidatesRaw = (tool.candidates ?? []).filter((c) => {
+        const id = c.id ?? "";
+        if (id.startsWith("search:")) return false;
+        if (/^(?:eatery|lodging|poi|amenity):osaka:/i.test(id)) return true;
+        if (c.source === "seed") return false;
+        return true;
       });
-      candidates = [...gated.kept];
-      distanceStatusKo = gated.statusKo;
+
+      candidates = candidatesRaw;
+      distanceStatusKo = null;
+      if (
+        effectiveNear.gated &&
+        effectiveNear.ok &&
+        Number.isFinite(effectiveNear.anchor.lat) &&
+        Number.isFinite(effectiveNear.anchor.lng)
+      ) {
+        const gated = distanceGateNearScout({
+          anchor: {
+            lat: effectiveNear.anchor.lat,
+            lng: effectiveNear.anchor.lng,
+            labelKo: effectiveNear.anchor.labelKo,
+          },
+          candidates: candidatesRaw,
+          patchMeters,
+        });
+        candidates = [...gated.kept];
+        distanceStatusKo = gated.statusKo;
+      }
+
+      if (candidates.length > 0) break;
+
+      if (!scoutLock) {
+        break;
+      }
+
+      const afterEmpty = resolveAfterScoutEmpty({
+        attempt,
+        maxAttempts: maxScoutAttempts,
+        nearLabelKo: scoutLock.nearLabelKo,
+      });
+      if (!afterEmpty.retry) {
+        return {
+          handled: true,
+          replyKo: distanceStatusKo ?? afterEmpty.statusKo,
+          committed: false,
+          openedForReview: false,
+        };
+      }
     }
+
     const label = searchDomainLabelKo(activeDomain, input.utterance);
     if (candidates.length === 0) {
       return {
@@ -501,7 +617,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: p0.allowSoftNextAuto,
+        autoRun: p1.allowSoftNextAuto,
         delayMs: 720,
       });
       return {
@@ -521,7 +637,7 @@ async function rescoutWorkspace(input: {
       query,
       summaryKo:
         distanceStatusKo ||
-        tool.summaryKo?.trim() ||
+        toolSummaryKo ||
         `${label} 후보 ${candidates.length}곳 · 작업장에서 확인`,
       candidates,
       source: "scout_patch",
@@ -549,7 +665,7 @@ async function rescoutWorkspace(input: {
         : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`;
 
     // Postcondition — near scout must leave Anchor + in-radius candidates.
-    if (nearGate.gated && nearGate.ok) {
+    if (effectiveNear.gated && effectiveNear.ok) {
       const candidateKind =
         activeDomain === "eatery"
           ? "eatery"
@@ -560,9 +676,9 @@ async function rescoutWorkspace(input: {
         state: freshState,
         expect: {
           kind: "near_scout",
-          anchorId: nearGate.anchor.id,
-          anchorLat: nearGate.anchor.lat,
-          anchorLng: nearGate.anchor.lng,
+          anchorId: effectiveNear.anchor.id,
+          anchorLat: effectiveNear.anchor.lat,
+          anchorLng: effectiveNear.anchor.lng,
           radiusMeters: DEFAULT_NEAR_RADIUS_METERS,
           candidateKind,
           minCandidates: 1,
@@ -583,7 +699,7 @@ async function rescoutWorkspace(input: {
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: p0.allowSoftNextAuto,
+        autoRun: p1.allowSoftNextAuto,
         delayMs: 720,
       });
       if (soft.continued && soft.replyKo) {

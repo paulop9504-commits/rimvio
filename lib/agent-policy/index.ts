@@ -44,8 +44,35 @@ export {
 
 export {
   runAgentP0Guards,
+  evaluateAgentP0Guards,
   type AgentP0GuardResult,
 } from "@/lib/agent-policy/run-agent-p0-guards";
+
+export {
+  classifyAgentJobTurn,
+  type JobTurnClassification,
+} from "@/lib/agent-policy/classify-agent-job-turn";
+
+export {
+  evaluateAgentGuardPipeline,
+  type AgentGuardPipelineResult,
+  type AgentGuardContinuePayload,
+} from "@/lib/agent-policy/run-agent-guard-pipeline";
+
+export { commitAgentGuardContinue } from "@/lib/agent-policy/commit-agent-guard-continue";
+
+export type {
+  GuardDecision,
+  AgentGuardCode,
+} from "@/lib/agent-policy/guard-decision";
+
+export {
+  planConstraintInheritance,
+  isDestinationPivotUtterance,
+  type ConstraintInheritDecision,
+} from "@/lib/agent-policy/constraint-inheritance-policy";
+
+export { readWorkspaceRevision } from "@/lib/agent-policy/workspace-revision";
 
 export {
   runAgentP1Guards,
@@ -91,6 +118,16 @@ export {
   resolveIdempotencyGate,
   type IdempotencyGateResult,
 } from "@/lib/agent-policy/idempotency-gate";
+
+export {
+  createScoutRetryLock,
+  assertScoutRetryProposal,
+  resolveAfterScoutEmpty,
+  MAX_SCOUT_ATTEMPTS,
+  type ScoutRetryLock,
+  type ScoutRetryProposal,
+  type AfterScoutEmpty,
+} from "@/lib/agent-policy/scout-retry-policy";
 
 export {
   projectAgentTurnSurfaces,

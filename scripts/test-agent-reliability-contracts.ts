@@ -1,6 +1,6 @@
 /**
  * Agent reliability contracts — wrong-success is failure.
- * Order: T1 Job · T2a Target stack · T3 Fail-closed · T4 Distance · T6 Verify
+ * Order: T1 Job · T2a Target stack (+ wire) · T3 Fail-closed · T4 Distance · T6 Verify · T7 Retry
  *
  * Run: npx tsx scripts/test-agent-reliability-contracts.ts
  */
@@ -11,7 +11,13 @@ import {
   isTargetStackUtterance,
   resolveConstraintCarryOver,
 } from "@/lib/agent-policy/constraint-carry-over";
+import { applyConstraintMemoryToScoutQuery } from "@/lib/agent-policy/constraint-memory";
 import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
+import {
+  assertScoutRetryProposal,
+  createScoutRetryLock,
+  resolveAfterScoutEmpty,
+} from "@/lib/agent-policy/scout-retry-policy";
 import {
   distanceGateNearScout,
   gateNearScoutAnchor,
@@ -19,6 +25,20 @@ import {
 } from "@/lib/context-workspace/reality-anchor";
 import { assertWorkspacePostcondition } from "@/lib/context-workspace/assert-workspace-postcondition";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
+
+// Wrong-success matrix (must never appear)
+const WRONG_SUCCESS = {
+  anchorFail: "default Osaka results",
+  jobChange: "previous Job Target",
+  destinationChange: "previous Destination Anchor",
+  targetStack: "NEW Job that dropped Spatial",
+  deixis: "Spatial deleted",
+  distanceOver: "Workspace candidate beyond radius",
+  patchFail: "완료했습니다",
+  verifyFail: "SUCCESS",
+  duplicateRequest: "duplicate Entity",
+  scoutRetryFallback: "Namba fallback",
+} as const;
 
 // ─── T1 — Job Boundary: Namba lodging → Fukuoka eatery ───────────────
 {
@@ -55,6 +75,11 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
   assert.equal(carry.droppedNear, true, "T1: Namba must not leak");
   assert.notEqual(carry.bagForScout.nearLabelKo, "난바");
   assert.equal(carry.inheritedSpatialFromStack, false);
+  assert.notEqual(
+    carry.bagForScout.nearLabelKo,
+    "난바",
+    `wrong-success forbidden: ${WRONG_SUCCESS.destinationChange}`,
+  );
 }
 
 // ─── T2a — Target stack: NEW Job + inherit Spatial ───────────────────
@@ -93,6 +118,23 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
   assert.equal(carry.droppedNear, false);
   assert.equal(carry.droppedStayType, true, "T2a: drop lodging stayType");
   assert.equal(carry.bagForScout.stayType, null);
+  assert.ok(
+    carry.bagForScout.nearLabelKo,
+    `wrong-success forbidden: ${WRONG_SUCCESS.targetStack}`,
+  );
+
+  // Wire: scout utterance must rehydrate Anchor (not drop Spatial)
+  const scoutUtt = applyConstraintMemoryToScoutQuery(
+    "맛집도 찾아줘",
+    carry.bagForScout,
+  );
+  assert.match(scoutUtt, /난바/);
+  const rehydrate = gateNearScoutAnchor({ utterance: scoutUtt });
+  assert.equal(rehydrate.gated, true);
+  assert.ok(rehydrate.ok, "T2a wire: inherited near must resolve Anchor");
+  if (rehydrate.ok) {
+    assert.match(rehydrate.anchor.labelKo, /난바/);
+  }
 }
 
 // ─── T3 — Fail-closed: no scout when Anchor missing ──────────────────
@@ -110,6 +152,11 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
   assert.equal(scoutInvoked, false, "T3: Scout must not run");
   const patchCount = 0;
   assert.equal(patchCount, 0, "T3: Patch must not run");
+  assert.notEqual(
+    gate.ok,
+    true,
+    `wrong-success forbidden: ${WRONG_SUCCESS.anchorFail}`,
+  );
 }
 
 // ─── T4 — DistanceGate hard reject before Patch ──────────────────────
@@ -141,9 +188,14 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
       lng: gate.anchor.lng,
     },
   ];
-  // Sanity on intended distances
-  assert.ok(metersBetween(gate.anchor.lat, gate.anchor.lng, rows[1]!.lat, rows[1]!.lng) < 800);
-  assert.ok(metersBetween(gate.anchor.lat, gate.anchor.lng, rows[3]!.lat, rows[3]!.lng) > 2000);
+  assert.ok(
+    metersBetween(gate.anchor.lat, gate.anchor.lng, rows[1]!.lat, rows[1]!.lng) <
+      800,
+  );
+  assert.ok(
+    metersBetween(gate.anchor.lat, gate.anchor.lng, rows[3]!.lat, rows[3]!.lng) >
+      2000,
+  );
 
   const gated = distanceGateNearScout({
     anchor: {
@@ -157,6 +209,10 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
   assert.ok(gated.kept.every((k) => k.id !== "d"), "T4: 2.8km must not enter Patch");
   assert.ok(gated.dropped.some((d) => d.id === "d"));
   assert.ok(gated.kept.length >= 1);
+  assert.ok(
+    !gated.kept.some((k) => k.id === "d"),
+    `wrong-success forbidden: ${WRONG_SUCCESS.distanceOver}`,
+  );
 }
 
 // ─── T6 — tool.ok !== job.success ────────────────────────────────────
@@ -175,7 +231,7 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
     domain: "lodging",
     query: "usj",
     summaryKo: "test",
-    nodes: [], // Tool claimed ok but Workspace has no USJ / candidates
+    nodes: [],
     compilerIr: null,
     filter: { maxPriceBand: null, minRating: null, queryIncludes: null },
     selectedIds: [],
@@ -206,6 +262,89 @@ import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
   const jobSuccess = toolOk && post.ok;
   assert.equal(jobSuccess, false, "T6: tool.ok !== job.success");
   assert.notEqual(post.code, "PASS");
+  assert.notEqual(
+    jobSuccess,
+    true,
+    `wrong-success forbidden: ${WRONG_SUCCESS.verifyFail}`,
+  );
 }
 
-console.log("OK — agent-reliability-contracts (T1·T2a·T3·T4·T6)");
+// ─── T7 — Scout retry: same Job/Anchor; no Namba fallback; 2× → SCOUT_FAILED
+{
+  const lock = createScoutRetryLock({
+    jobId: "job_morinomiya",
+    anchorId: "geo:jp:osaka:morinomiya-station",
+    anchorLat: 34.6812,
+    anchorLng: 135.5345,
+    nearLabelKo: "모리노미아역",
+    scoutUtterance: "모리노미아역 근처 맛집",
+    areaHint: "모리노미아역",
+  });
+
+  const same = assertScoutRetryProposal({
+    lock,
+    proposed: {
+      jobId: lock.jobId,
+      anchorId: lock.anchorId,
+      scoutUtterance: lock.scoutUtterance,
+      areaHint: lock.areaHint,
+      lat: lock.anchorLat,
+      lng: lock.anchorLng,
+    },
+  });
+  assert.equal(same.ok, true, "T7: same lock must pass");
+
+  const nambaFallback = assertScoutRetryProposal({
+    lock,
+    proposed: {
+      jobId: lock.jobId,
+      anchorId: lock.anchorId,
+      scoutUtterance: lock.scoutUtterance,
+      areaHint: "난바",
+      lat: lock.anchorLat,
+      lng: lock.anchorLng,
+    },
+  });
+  assert.equal(nambaFallback.ok, false, "T7: Namba fallback rejected");
+  if (!nambaFallback.ok) {
+    assert.equal(nambaFallback.code, "SCOUT_FALLBACK_REJECTED");
+  }
+  assert.notEqual(
+    nambaFallback.ok,
+    true,
+    `wrong-success forbidden: ${WRONG_SUCCESS.scoutRetryFallback}`,
+  );
+
+  const driftJob = assertScoutRetryProposal({
+    lock,
+    proposed: {
+      jobId: "job_other",
+      anchorId: lock.anchorId,
+      scoutUtterance: lock.scoutUtterance,
+      areaHint: lock.areaHint,
+      lat: lock.anchorLat,
+      lng: lock.anchorLng,
+    },
+  });
+  assert.equal(driftJob.ok, false);
+  if (!driftJob.ok) assert.equal(driftJob.code, "SCOUT_LOCK_DRIFT");
+
+  const firstEmpty = resolveAfterScoutEmpty({
+    attempt: 1,
+    maxAttempts: 2,
+    nearLabelKo: lock.nearLabelKo,
+  });
+  assert.equal(firstEmpty.retry, true, "T7: attempt1 empty → retry");
+
+  const secondEmpty = resolveAfterScoutEmpty({
+    attempt: 2,
+    maxAttempts: 2,
+    nearLabelKo: lock.nearLabelKo,
+  });
+  assert.equal(secondEmpty.retry, false, "T7: attempt2 empty → stop");
+  if (!secondEmpty.retry) {
+    assert.equal(secondEmpty.code, "SCOUT_FAILED");
+  }
+}
+
+console.log("OK — agent-reliability-contracts (T1·T2a·T3·T4·T6·T7)");
