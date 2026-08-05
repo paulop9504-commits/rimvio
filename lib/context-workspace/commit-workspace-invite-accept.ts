@@ -40,11 +40,11 @@ export async function commitWorkspaceInviteAccept(input: {
     viewerUserId: input.viewerUserId,
   });
 
-  const title =
+  const workspaceTitle: string =
     bridge.title?.trim() ||
     bridge.placeLabel?.trim() ||
-    bridge.eventSnapshot?.title?.trim() ||
-    null;
+    bridge.eventSnapshot.title?.trim() ||
+    "공유 작업장";
   const host =
     input.state.participants.find((p) => p.role === "host")?.displayName?.trim() ||
     "친구";
@@ -54,8 +54,8 @@ export async function commitWorkspaceInviteAccept(input: {
     openMapContextWorkspace({
       contextEventId: eventId,
       domain: "poi",
-      query: title,
-      summaryKo: title,
+      query: workspaceTitle,
+      summaryKo: workspaceTitle,
       candidates: [],
       source: "bridge_invite_commit",
     });
@@ -101,7 +101,7 @@ export async function commitWorkspaceInviteAccept(input: {
   const session: SharedWorkspaceSession = {
     contextEventId: eventId,
     bridgeEventId: eventId,
-    title,
+    title: workspaceTitle,
     hostDisplayName: host,
     peerThreadId: input.peerThreadId ?? bridge.peerThreadId ?? null,
     committedAtIso: new Date().toISOString(),
