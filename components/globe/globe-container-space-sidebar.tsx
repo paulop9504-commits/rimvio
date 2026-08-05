@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft,
-  Plus,
+  Filter,
   Search,
+  Settings2,
   SquarePen,
   Trash2,
   X,
@@ -17,9 +18,12 @@ import {
 import { GlobeContextRuntimePanel } from "@/components/globe/globe-context-runtime-panel";
 import { toast } from "sonner";
 import { GlobeContainerSpaceFilters } from "@/components/globe/globe-container-space-filters";
-import { GlobeContainerSpaceSidebarSection } from "@/components/globe/globe-container-space-sidebar-section";
 import { GlobeContainerSpaceToolbar } from "@/components/globe/globe-container-space-toolbar";
+import { GlobeResumeInviteSection } from "@/components/globe/globe-resume-invite-section";
+import { GlobeResumeSidebarList } from "@/components/globe/globe-resume-sidebar-list";
 import { GlobeTrendBridgePulseChip } from "@/components/globe/globe-trend-bridge-pulse-chip";
+import { fetchSocialLayer } from "@/lib/peer-chat/peer-chat-client";
+import type { SocialBubblePeer } from "@/lib/social/bubble-state";
 import {
   describeGlobeContextDeleteSelection,
   toastLineForGlobeContextDelete,
@@ -40,6 +44,7 @@ import {
   listLifeEventCandidates,
 } from "@/lib/life-read-model";
 import { PERSONAL_GLOBE_PINS_UPDATED } from "@/lib/globe/personal-globe-pin-store";
+import { formatResumeRelativeTime } from "@/lib/globe/resume-sidebar/format-resume-relative-time";
 import { copy } from "@/lib/copy/human-ko";
 import {
   armGlobeContextAgent,
@@ -49,6 +54,7 @@ import {
   subscribeGlobeContextAgent,
 } from "@/lib/globe/context-agent";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 export type GlobeContainerSpaceSidebarProps = {
   open: boolean;
@@ -97,11 +103,6 @@ export type GlobeContainerSpaceSidebarProps = {
   } | null;
 };
 
-function contextAccent(title: string): string {
-  const trimmed = title.trim();
-  return trimmed ? trimmed.slice(0, 1) : "·";
-}
-
 function flattenRecentEntries(
   timeline: ReturnType<typeof listGlobeContextTimeline>,
   limit = 14,
@@ -113,12 +114,12 @@ function flattenRecentEntries(
 
 const SIDEBAR_SECTION_STORAGE_KEY = "rimvio-container-space-sections";
 
-type SidebarSectionKey = "tools" | "filters" | "trend";
+type SidebarSectionKey = "customize";
 
 type SidebarSectionState = Record<SidebarSectionKey, boolean>;
 
 function defaultSidebarSections(): SidebarSectionState {
-  return { tools: false, filters: false, trend: false };
+  return { customize: false };
 }
 
 function readSidebarSections(): SidebarSectionState {
@@ -148,6 +149,48 @@ function writeSidebarSections(state: SidebarSectionState): void {
   }
 }
 
+function CursorActionRow({
+  icon: Icon,
+  label,
+  onClick,
+  active,
+  badge,
+  disabled,
+  dataId,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  badge?: string | null;
+  disabled?: boolean;
+  dataId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      data-globe-container-space-action={dataId}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-left text-[13px] transition-colors",
+        active
+          ? "bg-white/[0.08] text-white"
+          : "text-white/80 hover:bg-white/[0.05] hover:text-white",
+        disabled && "pointer-events-none opacity-35",
+      )}
+    >
+      <Icon className="size-[15px] shrink-0 text-white/55" aria-hidden />
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+      {badge ? (
+        <span className="shrink-0 rounded-full bg-[#3b82f6] px-1.5 py-px text-[9px] font-bold leading-none text-white">
+          {badge}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 function SidebarRow({
   entry,
   active,
@@ -172,6 +215,9 @@ function SidebarRow({
     }
     onSelect(entry);
   };
+  const relative = formatResumeRelativeTime(
+    new Date(entry.sortMs).toISOString(),
+  );
 
   return (
     <button
@@ -180,40 +226,45 @@ function SidebarRow({
       data-globe-container-space-item={entry.eventId}
       data-globe-container-space-selected={selectMode && selected ? "true" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors",
+        "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
         selectMode && selected
-          ? "bg-[#ff6b4a]/15 text-white ring-1 ring-[#ff6b4a]/35"
+          ? "bg-[#ff6b4a]/12 text-white"
           : agentPickMode
-            ? "text-white ring-1 ring-[#0071e3]/40 hover:bg-[#0071e3]/15 active:bg-[#0071e3]/20"
-          : active
-            ? "bg-white/10 text-white"
-            : "text-white/85 hover:bg-white/[0.06] active:bg-white/10",
+            ? "text-white hover:bg-[#0071e3]/12"
+            : active
+              ? "bg-white/[0.09] text-white"
+              : "text-white/85 hover:bg-white/[0.05]",
       )}
     >
       {selectMode ? (
-        <span className="flex size-8 shrink-0 items-center justify-center" aria-hidden>
+        <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center" aria-hidden>
           {selected ? (
-            <CheckSquare className="size-[18px] text-[#ff6b4a]" />
+            <CheckSquare className="size-3.5 text-[#ff6b4a]" />
           ) : (
-            <Square className="size-[18px] text-white/40" />
+            <Square className="size-3.5 text-white/35" />
           )}
         </span>
       ) : (
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold",
-            active ? "bg-[#ff6b4a]/90 text-white" : "bg-white/10 text-white/90",
+            "mt-1.5 size-1.5 shrink-0 rounded-full",
+            active ? "bg-[#3182f6]" : "bg-white/25",
           )}
           aria-hidden
-        >
-          {contextAccent(entry.title)}
-        </span>
+        />
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium leading-snug">
-          {entry.title}
+        <span className="flex items-baseline justify-between gap-2">
+          <span className="truncate text-[13px] font-medium leading-snug">
+            {entry.title}
+          </span>
+          {relative ? (
+            <span className="shrink-0 text-[11px] tabular-nums text-white/35">
+              {relative}
+            </span>
+          ) : null}
         </span>
-        <span className="block truncate text-[11px] text-white/45">
+        <span className="mt-0.5 block truncate text-[11px] text-white/40">
           {entry.place || entry.rangeLabel || entry.dateLabel || "맥락"}
         </span>
       </span>
@@ -265,9 +316,12 @@ export function GlobeContainerSpaceSidebar({
   const [sections, setSections] = useState<SidebarSectionState>(() =>
     readSidebarSections(),
   );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [detailEntry, setDetailEntry] = useState<GlobeContextTimelineEntry | null>(
     null,
   );
+  const [socialPeers, setSocialPeers] = useState<SocialBubblePeer[] | null>(null);
   const pendingAgentBindRef = useRef(false);
   const agentPressBusyRef = useRef(false);
 
@@ -278,6 +332,11 @@ export function GlobeContainerSpaceSidebar({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -303,9 +362,19 @@ export function GlobeContainerSpaceSidebar({
     const session = readGlobeContextAgentSession();
     setAgentArming(session.phase === "arming");
     setAgentPickMode(session.phase === "arming");
+    let cancelled = false;
+    void fetchSocialLayer()
+      .then((layer) => {
+        if (cancelled) return;
+        setSocialPeers([...layer.pinned, ...layer.archive]);
+      })
+      .catch(() => {
+        if (!cancelled) setSocialPeers(null);
+      });
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
+      cancelled = true;
       document.body.style.overflow = prev;
     };
   }, [open]);
@@ -350,7 +419,14 @@ export function GlobeContainerSpaceSidebar({
     return recent.find((row) => row.eventId === id) ?? null;
   }, [activeEventId, recent]);
 
-  const stripEntries = useMemo(() => recent.slice(0, 4), [recent]);
+  const findEntryByEventId = useCallback(
+    (eventId: string): GlobeContextTimelineEntry | null => {
+      const id = eventId.trim();
+      if (!id) return null;
+      return recent.find((row) => row.eventId === id) ?? null;
+    },
+    [recent],
+  );
 
   const deleteSelection = useMemo(() => {
     let detachLocal = 0;
@@ -509,35 +585,6 @@ export function GlobeContainerSpaceSidebar({
   const agentCtaDisabled =
     !detailEntry && recent.length === 0 && listEntries.length === 0 && !pinned;
 
-  const renderAgentCta = (className?: string) => {
-    if (!showAgentCta) {
-      return null;
-    }
-    return (
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          void handleAgentPress();
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-        disabled={agentCtaDisabled}
-        className={cn(
-          "flex min-h-11 w-full touch-manipulation items-center gap-2 rounded-full px-3.5 py-2.5 text-left text-[14px] font-semibold ring-1 transition-colors active:scale-[0.99]",
-          isAgentArming
-            ? "bg-white/12 text-white ring-white/20"
-            : "bg-[#0071e3]/20 text-[#9fd0ff] ring-[#0071e3]/35 active:bg-[#0071e3]/28",
-          agentCtaDisabled && "pointer-events-none opacity-40",
-          className,
-        )}
-        data-globe-container-space-agent
-      >
-        <Sparkles className="size-4 shrink-0" aria-hidden />
-        {agentCtaLabel}
-      </button>
-    );
-  };
-
   const handleNew = () => {
     onNewContext?.();
     onOpenChange(false);
@@ -548,6 +595,21 @@ export function GlobeContainerSpaceSidebar({
   const showPersonalTools = layerMode === "personal";
   const showTrendBridge =
     showPersonalTools && !activeEventId?.trim() && trendBridge != null;
+  const showCustomizeToggle =
+    showPersonalTools &&
+    !detailEntry &&
+    (Boolean(
+      onCreatePhoto &&
+        onOpenList &&
+        onOpenManage &&
+        onOpenInbox &&
+        onOpenMediaPool &&
+        onOpenSettings &&
+        onOpenWorkQueue &&
+        onPortalPeekToggle,
+    ) ||
+      Boolean(onTimeFilterChange) ||
+      showTrendBridge);
 
   const filtersActive =
     timeFilter !== "all" || Boolean(peopleFilter?.trim());
@@ -561,11 +623,22 @@ export function GlobeContainerSpaceSidebar({
           ? "9+"
           : String(workQueueCount)
         : null;
-  const filtersBadge = filtersActive ? "·" : null;
-  const trendBadge =
-    showTrendBridge && trendBridge?.enabled
+  const customizeBadge =
+    toolsBadge ??
+    (filtersActive ? "·" : null) ??
+    (showTrendBridge && trendBridge?.enabled
       ? copy.globe.trendBridgePulseChipOn
-      : null;
+      : null);
+  const customizeOpen = sections.customize;
+
+  const openResumeWorkspace = (contextEventId: string) => {
+    const entry = findEntryByEventId(contextEventId);
+    if (entry) {
+      handleSelect(entry);
+      return;
+    }
+    onOpenChange(false);
+  };
 
   if (!mounted) {
     return null;
@@ -592,38 +665,38 @@ export function GlobeContainerSpaceSidebar({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
-            className="fixed bottom-0 left-0 top-0 z-[10041] flex w-[min(88vw,19.5rem)] flex-col bg-[#0a0f18] text-white shadow-2xl ring-1 ring-white/10"
+            className="fixed bottom-0 left-0 top-0 z-[10041] flex w-[min(88vw,18.5rem)] flex-col bg-[#0c0e12] text-white shadow-2xl ring-1 ring-white/8"
             data-globe-container-space-sidebar
             onClick={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1">
+            <div className="shrink-0 px-2.5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]">
+              <div className="mb-1 flex items-center justify-between gap-1 px-1">
+                <div className="flex min-w-0 items-center gap-0.5">
                   {detailEntry ? (
                     <button
                       type="button"
                       onClick={() => setDetailEntry(null)}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-white/70 active:bg-white/10"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-white/65 hover:bg-white/[0.06]"
                       aria-label={copy.globe.containerSpaceRuntimeBack}
                     >
-                      <ChevronLeft className="size-5" aria-hidden />
+                      <ChevronLeft className="size-4" aria-hidden />
                     </button>
                   ) : null}
                   <div className="min-w-0">
-                    <p className="truncate text-[17px] font-semibold tracking-tight">
+                    <p className="truncate text-[13px] font-semibold tracking-tight text-white/90">
                       {detailEntry
                         ? copy.globe.containerSpaceRuntimeTitle
                         : copy.globe.containerSpaceTitle}
                     </p>
                     {detailEntry ? (
-                      <p className="truncate text-[12px] text-white/45">
+                      <p className="truncate text-[11px] text-white/40">
                         {detailEntry.title}
                       </p>
                     ) : null}
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   {filteredRecent.length > 0 && !isAgentArming && !detailEntry ? (
                     <button
                       type="button"
@@ -634,12 +707,18 @@ export function GlobeContainerSpaceSidebar({
                           return;
                         }
                         setSelectMode(true);
+                        setSearchOpen(false);
+                        setSections((prev) => {
+                          const next = { ...prev, customize: false };
+                          writeSidebarSections(next);
+                          return next;
+                        });
                       }}
                       className={cn(
-                        "rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+                        "rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
                         selectMode
-                          ? "bg-white/12 text-white"
-                          : "text-white/55 active:bg-white/10",
+                          ? "bg-white/10 text-white"
+                          : "text-white/45 hover:bg-white/[0.06] hover:text-white/80",
                       )}
                       data-globe-container-space-select-toggle
                     >
@@ -651,149 +730,153 @@ export function GlobeContainerSpaceSidebar({
                   <button
                     type="button"
                     onClick={() => onOpenChange(false)}
-                    className="flex size-9 items-center justify-center rounded-full text-white/70 active:bg-white/10"
+                    className="flex size-8 items-center justify-center rounded-md text-white/55 hover:bg-white/[0.06] hover:text-white/80"
                     aria-label={copy.globe.containerSpaceCloseAria}
                   >
-                    <X className="size-5" aria-hidden />
+                    <X className="size-4" aria-hidden />
                   </button>
                 </div>
               </div>
 
-              {!selectMode && !isAgentArming && !detailEntry ? (
-              <button
-                type="button"
-                onClick={handleNew}
-                className="mt-3 flex w-full items-center gap-2 rounded-full bg-white/[0.08] px-3.5 py-2.5 text-left text-[14px] font-semibold text-white ring-1 ring-white/10 active:bg-white/12"
-                data-globe-container-space-new
-              >
-                <SquarePen className="size-4 shrink-0 text-white/80" aria-hidden />
-                {copy.globe.containerSpaceNewContext}
-              </button>
+              {!detailEntry && !selectMode && !isAgentArming ? (
+                <div className="space-y-0.5 px-0.5" data-globe-container-space-actions>
+                  <CursorActionRow
+                    icon={SquarePen}
+                    label={copy.globe.containerSpaceNewContext}
+                    onClick={handleNew}
+                    dataId="new"
+                  />
+                  <CursorActionRow
+                    icon={Search}
+                    label={copy.globe.containerSpaceActionSearch}
+                    onClick={() => setSearchOpen((value) => !value)}
+                    active={searchOpen || Boolean(query.trim())}
+                    dataId="search"
+                  />
+                  {showAgentCta ? (
+                    <CursorActionRow
+                      icon={Sparkles}
+                      label={agentCtaLabel}
+                      onClick={() => void handleAgentPress()}
+                      active={isAgentArming}
+                      disabled={agentCtaDisabled}
+                      dataId="agent"
+                    />
+                  ) : null}
+                  {showCustomizeToggle ? (
+                    <CursorActionRow
+                      icon={Settings2}
+                      label={copy.globe.containerSpaceActionCustomize}
+                      onClick={() => toggleSection("customize")}
+                      active={customizeOpen}
+                      badge={customizeBadge}
+                      dataId="customize"
+                    />
+                  ) : null}
+                </div>
               ) : isAgentArming ? (
-                <p className="mt-3 px-1 text-[12px] leading-relaxed text-[#7eb6ff]">
+                <p className="px-2 py-1.5 text-[12px] leading-relaxed text-[#7eb6ff]">
                   {copy.globe.containerSpaceAgentSidebarPickHint}
                 </p>
-              ) : (
-                <p className="mt-3 px-1 text-[12px] leading-relaxed text-white/50">
+              ) : selectMode ? (
+                <p className="px-2 py-1.5 text-[12px] leading-relaxed text-white/45">
                   {copy.globe.containerSpaceSelectHint}
                 </p>
-              )}
+              ) : null}
 
-              {renderAgentCta("mt-2")}
-
-              {!detailEntry ? (
-              <label className="relative mt-2.5 block">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/35"
-                  aria-hidden
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={copy.globe.containerSpaceSearchPlaceholder}
-                  className="w-full rounded-full border-0 bg-white/[0.06] py-2 pl-9 pr-3 text-[13px] text-white placeholder:text-white/35 outline-none ring-1 ring-white/8 focus:ring-white/20"
-                />
-              </label>
+              {!detailEntry && (searchOpen || query.trim()) ? (
+                <label className="relative mt-1.5 block px-0.5">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-white/30"
+                    aria-hidden
+                  />
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={copy.globe.containerSpaceSearchPlaceholder}
+                    className="w-full rounded-md border-0 bg-white/[0.05] py-1.5 pl-8 pr-2 text-[12px] text-white placeholder:text-white/30 outline-none ring-1 ring-white/8 focus:ring-white/18"
+                  />
+                </label>
               ) : null}
             </div>
 
-            {!detailEntry && showPersonalTools &&
-            onCreatePhoto &&
-            onOpenList &&
-            onOpenManage &&
-            onOpenInbox &&
-            onOpenMediaPool &&
-            onOpenSettings &&
-            onOpenWorkQueue &&
-            onPortalPeekToggle ? (
-              <GlobeContainerSpaceSidebarSection
-                sectionId="tools"
-                title={copy.globe.containerSpaceToolsSection}
-                expanded={sections.tools}
-                onToggle={() => toggleSection("tools")}
-                badge={toolsBadge}
-                expandAriaLabel={copy.globe.containerSpaceSectionExpand(
-                  copy.globe.containerSpaceToolsSection,
-                )}
-                collapseAriaLabel={copy.globe.containerSpaceSectionCollapse(
-                  copy.globe.containerSpaceToolsSection,
-                )}
+            {customizeOpen && !detailEntry && !selectMode && !isAgentArming ? (
+              <div
+                className="shrink-0 space-y-3 border-b border-white/6 px-2.5 py-2.5"
+                data-globe-container-space-customize
               >
-                <GlobeContainerSpaceToolbar
-                  showSectionTitle={false}
-                  onCreatePhoto={onCreatePhoto}
-                  onOpenList={onOpenList}
-                  onOpenManage={onOpenManage}
-                  onPortalPeekToggle={onPortalPeekToggle}
-                  inboxCount={inboxCount}
-                  mediaPoolCount={mediaPoolCount}
-                  marketManageCount={marketManageCount}
-                  workQueueCount={workQueueCount}
-                  onOpenInbox={onOpenInbox}
-                  onOpenMediaPool={onOpenMediaPool}
-                  onOpenMarketManage={onOpenMarketManage}
-                  onOpenSettings={onOpenSettings}
-                  onOpenWorkQueue={onOpenWorkQueue}
-                  onAfterAction={closeAfter}
-                  memoryRecall={memoryRecall}
-                />
-              </GlobeContainerSpaceSidebarSection>
+                {showPersonalTools &&
+                onCreatePhoto &&
+                onOpenList &&
+                onOpenManage &&
+                onOpenInbox &&
+                onOpenMediaPool &&
+                onOpenSettings &&
+                onOpenWorkQueue &&
+                onPortalPeekToggle ? (
+                  <div>
+                    <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                      {copy.globe.containerSpaceToolsSection}
+                    </p>
+                    <GlobeContainerSpaceToolbar
+                      showSectionTitle={false}
+                      onCreatePhoto={onCreatePhoto}
+                      onOpenList={onOpenList}
+                      onOpenManage={onOpenManage}
+                      onPortalPeekToggle={onPortalPeekToggle}
+                      inboxCount={inboxCount}
+                      mediaPoolCount={mediaPoolCount}
+                      marketManageCount={marketManageCount}
+                      workQueueCount={workQueueCount}
+                      onOpenInbox={onOpenInbox}
+                      onOpenMediaPool={onOpenMediaPool}
+                      onOpenMarketManage={onOpenMarketManage}
+                      onOpenSettings={onOpenSettings}
+                      onOpenWorkQueue={onOpenWorkQueue}
+                      onAfterAction={closeAfter}
+                      memoryRecall={memoryRecall}
+                    />
+                  </div>
+                ) : null}
+                {showPersonalTools && onTimeFilterChange ? (
+                  <div>
+                    <p className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                      <Filter className="size-3" aria-hidden />
+                      {copy.globe.containerSpaceFiltersSection}
+                    </p>
+                    <GlobeContainerSpaceFilters
+                      showSectionTitle={false}
+                      timeFilter={timeFilter}
+                      onTimeFilterChange={onTimeFilterChange}
+                      peopleFilter={peopleFilter}
+                      onPeopleFilterChange={onPeopleFilterChange}
+                      peerOptions={peerOptions}
+                      onFlyToHere={onFlyToHere}
+                    />
+                  </div>
+                ) : null}
+                {showTrendBridge && trendBridge ? (
+                  <div>
+                    <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                      {copy.globe.trendBridgePulseChipLabel}
+                    </p>
+                    <GlobeTrendBridgePulseChip
+                      enabled={trendBridge.enabled}
+                      activeBridgeId={trendBridge.activeBridgeId}
+                      pulseIntent={trendBridge.pulseIntent}
+                      onToggle={trendBridge.onToggle}
+                      onBridgeSelect={trendBridge.onBridgeSelect}
+                      onPulseIntentChange={trendBridge.onPulseIntentChange}
+                      className="max-w-none"
+                    />
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
-            {showPersonalTools && !detailEntry && onTimeFilterChange ? (
-              <GlobeContainerSpaceSidebarSection
-                sectionId="filters"
-                title={copy.globe.containerSpaceFiltersSection}
-                expanded={sections.filters}
-                onToggle={() => toggleSection("filters")}
-                badge={filtersBadge}
-                expandAriaLabel={copy.globe.containerSpaceSectionExpand(
-                  copy.globe.containerSpaceFiltersSection,
-                )}
-                collapseAriaLabel={copy.globe.containerSpaceSectionCollapse(
-                  copy.globe.containerSpaceFiltersSection,
-                )}
-              >
-                <GlobeContainerSpaceFilters
-                  showSectionTitle={false}
-                  timeFilter={timeFilter}
-                  onTimeFilterChange={onTimeFilterChange}
-                  peopleFilter={peopleFilter}
-                  onPeopleFilterChange={onPeopleFilterChange}
-                  peerOptions={peerOptions}
-                  onFlyToHere={onFlyToHere}
-                />
-              </GlobeContainerSpaceSidebarSection>
-            ) : null}
-
-            {showTrendBridge && !detailEntry && trendBridge ? (
-              <GlobeContainerSpaceSidebarSection
-                sectionId="trend"
-                title={copy.globe.trendBridgePulseChipLabel}
-                expanded={sections.trend}
-                onToggle={() => toggleSection("trend")}
-                badge={trendBadge}
-                expandAriaLabel={copy.globe.containerSpaceSectionExpand(
-                  copy.globe.trendBridgePulseChipLabel,
-                )}
-                collapseAriaLabel={copy.globe.containerSpaceSectionCollapse(
-                  copy.globe.trendBridgePulseChipLabel,
-                )}
-              >
-                <GlobeTrendBridgePulseChip
-                  enabled={trendBridge.enabled}
-                  activeBridgeId={trendBridge.activeBridgeId}
-                  pulseIntent={trendBridge.pulseIntent}
-                  onToggle={trendBridge.onToggle}
-                  onBridgeSelect={trendBridge.onBridgeSelect}
-                  onPulseIntentChange={trendBridge.onPulseIntentChange}
-                  className="max-w-none"
-                />
-              </GlobeContainerSpaceSidebarSection>
-            ) : null}
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 [scrollbar-width:thin]">
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 [scrollbar-width:thin]">
               {detailEntry ? (
                 detailEvent ? (
                   <GlobeContextRuntimePanel
@@ -811,116 +894,123 @@ export function GlobeContainerSpaceSidebar({
                     ))}
                   </p>
                 )
-              ) : (
+              ) : selectMode || isAgentArming ? (
                 <>
-              {pinned ? (
-                <section className="mb-4 px-1" data-globe-container-space-pinned>
-                  <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                    {copy.globe.containerSpacePinned}
-                  </p>
-                  <SidebarRow
-                    entry={pinned}
-                    active
-                    selectMode={selectMode}
-                    selected={selected.has(pinned.eventId)}
-                    agentPickMode={isAgentArming}
-                    onSelect={handleSelect}
-                    onToggleSelect={toggleSelect}
-                  />
-                </section>
-              ) : null}
-
-              <section className="px-1" data-globe-container-space-recent>
-                <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                  {copy.globe.containerSpaceRecent}
-                </p>
-                {filteredRecent.length === 0 ? (
-                  <p className="px-2 py-6 text-[13px] leading-relaxed text-white/45">
-                {copy.globe.containerSpaceEmpty.split("\n").map((line, index) => (
-                  <span key={line}>
-                    {index > 0 ? <br /> : null}
-                    {line}
-                  </span>
-                ))}
-                  </p>
-                ) : (
-                  <div className="space-y-0.5">
-                    {listEntries.map((entry) => (
-                        <SidebarRow
-                          key={entry.eventId}
-                          entry={entry}
-                          selectMode={selectMode}
-                          selected={selected.has(entry.eventId)}
-                          agentPickMode={isAgentArming}
-                          onSelect={handleSelect}
-                          onToggleSelect={toggleSelect}
-                        />
-                      ))}
-                  </div>
-                )}
-              </section>
+                  {pinned ? (
+                    <section className="mb-3 px-0.5" data-globe-container-space-pinned>
+                      <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                        {copy.globe.containerSpacePinned}
+                      </p>
+                      <SidebarRow
+                        entry={pinned}
+                        active
+                        selectMode={selectMode}
+                        selected={selected.has(pinned.eventId)}
+                        agentPickMode={isAgentArming}
+                        onSelect={handleSelect}
+                        onToggleSelect={toggleSelect}
+                      />
+                    </section>
+                  ) : null}
+                  <section className="px-0.5" data-globe-container-space-recent>
+                    <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                      {copy.globe.containerSpaceRecent}
+                    </p>
+                    {filteredRecent.length === 0 ? (
+                      <p className="px-2 py-6 text-[13px] leading-relaxed text-white/45">
+                        {copy.globe.containerSpaceEmpty.split("\n").map((line, index) => (
+                          <span key={line}>
+                            {index > 0 ? <br /> : null}
+                            {line}
+                          </span>
+                        ))}
+                      </p>
+                    ) : (
+                      <div className="space-y-px">
+                        {listEntries.map((entry) => (
+                          <SidebarRow
+                            key={entry.eventId}
+                            entry={entry}
+                            selectMode={selectMode}
+                            selected={selected.has(entry.eventId)}
+                            agentPickMode={isAgentArming}
+                            onSelect={handleSelect}
+                            onToggleSelect={toggleSelect}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 </>
+              ) : (
+                <div className="px-0.5 pt-1">
+                  <p className="mb-1.5 flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+                    <span>{copy.globe.containerSpaceExplorer}</span>
+                  </p>
+                  <GlobeResumeInviteSection
+                    enabled={open}
+                    onAccepted={(contextEventId) => {
+                      openResumeWorkspace(contextEventId);
+                      setRevision((value) => value + 1);
+                    }}
+                  />
+                  <GlobeResumeSidebarList
+                    activeEventId={activeEventId}
+                    socialPeers={socialPeers}
+                    query={query}
+                    revision={revision}
+                    onWorkspaceOpened={(contextEventId) => {
+                      openResumeWorkspace(contextEventId);
+                    }}
+                    onWorkspaceFallback={(contextEventId) => {
+                      openResumeWorkspace(contextEventId);
+                    }}
+                    onFriendOpened={() => onOpenChange(false)}
+                  />
+                </div>
               )}
             </div>
 
-            <div className="shrink-0 border-t border-white/8 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-              {!detailEntry && !selectMode && stripEntries.length > 0 ? (
-                <div className="mb-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {stripEntries.map((entry) => {
-                    const active = entry.eventId === activeEventId;
-                    return (
-                      <button
-                        key={entry.eventId}
-                        type="button"
-                        onClick={() => handleSelect(entry)}
-                        className={cn(
-                          "flex size-12 shrink-0 flex-col items-center justify-center rounded-xl text-[11px] font-semibold ring-1 transition-colors",
-                          active
-                            ? "bg-[#ff6b4a]/90 text-white ring-[#ff6b4a]/50"
-                            : "bg-white/8 text-white/85 ring-white/10 active:bg-white/12",
-                        )}
-                        title={entry.title}
-                      >
-                        {contextAccent(entry.title)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+            <div className="shrink-0 border-t border-white/6 px-2.5 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2">
               {selectMode ? (
                 <button
                   type="button"
                   disabled={!someSelected || deleting || !deleteSelection.actionable}
                   onClick={() => void handleDeleteSelected()}
                   className={cn(
-                    "flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold shadow-lg transition-opacity",
+                    "flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-[12px] font-semibold transition-opacity",
                     someSelected && deleteSelection.actionable
                       ? "bg-[#ef4444] text-white active:opacity-90"
-                      : "bg-white/10 text-white/40",
+                      : "bg-white/8 text-white/35",
                   )}
                   data-globe-container-space-delete
                 >
-                  <Trash2 className="size-4 shrink-0" aria-hidden />
+                  <Trash2 className="size-3.5 shrink-0" aria-hidden />
                   {deleting
                     ? copy.globe.containerSpaceDeleting
                     : someSelected
                       ? deleteSelection.label
                       : copy.globe.containerSpaceSelectPrompt}
                 </button>
-              ) : detailEntry || isAgentArming ? (
-                renderAgentCta()
-              ) : !detailEntry ? (
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={handleNew}
-                  className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#3b82f6] px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg active:opacity-90"
-                  data-globe-container-space-compose
-                >
-                  <Plus className="size-4 shrink-0" aria-hidden />
-                  {copy.globe.containerSpaceComposeCta}
-                </button>
-              </div>
+              ) : detailEntry && showAgentCta ? (
+                <CursorActionRow
+                  icon={Sparkles}
+                  label={agentCtaLabel}
+                  onClick={() => void handleAgentPress()}
+                  active={isAgentArming}
+                  disabled={agentCtaDisabled}
+                  dataId="agent-detail"
+                />
+              ) : onOpenSettings && !detailEntry && !isAgentArming ? (
+                <CursorActionRow
+                  icon={Settings2}
+                  label={copy.globe.containerSpaceSettings}
+                  onClick={() => {
+                    onOpenSettings();
+                    closeAfter();
+                  }}
+                  dataId="settings"
+                />
               ) : null}
             </div>
           </motion.aside>
