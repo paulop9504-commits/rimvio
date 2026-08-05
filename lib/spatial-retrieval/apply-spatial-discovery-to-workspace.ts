@@ -36,6 +36,7 @@ import {
 import { writeAgentRuntimeProjectionFromWorkspace } from "@/lib/context-run/agent-runtime-projection";
 import {
   ensureWorkspaceAnchorNode,
+  distanceGateNearScout,
   gateNearScoutAnchor,
   isNearScoutUtterance,
   resolveRealityAnchorFromUtterance,
@@ -240,7 +241,7 @@ export function applySpatialDiscoveryToWorkspace(input: {
   }
 
   const domain = domainFromTarget(retrieval.intent.targetEntity);
-  const discovered = retrieval.entities;
+  let discovered = retrieval.entities;
 
   // Reality Anchor Projection — stamp Anchor Object before candidates
   const realityAnchor = resolveRealityAnchorFromUtterance(utterance);
@@ -257,6 +258,49 @@ export function applySpatialDiscoveryToWorkspace(input: {
     geoId: realityAnchor?.geoId ?? null,
     summaryKo: `${retrieval.anchor.labelKo} · 기준점`,
   });
+
+  // Slice B — Distance Gate on spatial retrieval entities.
+  const gateAnchorLat = realityAnchor?.lat ?? retrieval.anchor.lat;
+  const gateAnchorLng = realityAnchor?.lng ?? retrieval.anchor.lng;
+  let distanceStatusKo: string | null = null;
+  if (
+    gateAnchorLat != null &&
+    gateAnchorLng != null &&
+    Number.isFinite(gateAnchorLat) &&
+    Number.isFinite(gateAnchorLng)
+  ) {
+    const radius =
+      retrieval.intent.constraints.distance ??
+      retrieval.query.radiusMeters ??
+      800;
+    const gated = distanceGateNearScout({
+      anchor: {
+        lat: gateAnchorLat,
+        lng: gateAnchorLng,
+        labelKo: realityAnchor?.labelKo ?? retrieval.anchor.labelKo,
+      },
+      candidates: discovered.map((e) => ({
+        id: e.entityId,
+        labelKo: e.titleKo,
+        lat: e.lat,
+        lng: e.lng,
+      })),
+      radiusMeters: radius,
+    });
+    const keepIds = new Set(gated.kept.map((c) => c.id));
+    discovered = discovered.filter((e) => keepIds.has(e.entityId));
+    distanceStatusKo = gated.statusKo;
+    if (discovered.length === 0) {
+      return {
+        handled: true,
+        statusKo: distanceStatusKo ?? "반경 안 후보 없음",
+        entityCount: 0,
+        relationCount: 0,
+        calloutCount: 0,
+        anchorTitleKo: retrieval.anchor.labelKo,
+      };
+    }
+  }
 
   // STEP 4–5 — Enrich + Evaluate before Workspace Patch (ADR-050).
   const rawCandidates = discovered.map(entityToSearchCandidate);

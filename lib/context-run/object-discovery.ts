@@ -18,6 +18,8 @@ import {
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import {
+  DEFAULT_NEAR_RADIUS_METERS,
+  distanceGateNearScout,
   gateNearScoutAnchor,
   resolveRealityAnchorFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
@@ -212,11 +214,38 @@ export async function runObjectDiscovery(
       }
     }
 
+    // Slice B — near scout Distance Gate (Anchor correctness already in plan).
+    const nearGate = gateNearScoutAnchor({ utterance: plan.utterance });
+    let distanceStatusKo: string | null = null;
+    if (nearGate.gated && nearGate.ok) {
+      const gated = distanceGateNearScout({
+        anchor: {
+          lat: nearGate.anchor.lat,
+          lng: nearGate.anchor.lng,
+          labelKo: nearGate.anchor.labelKo,
+        },
+        candidates,
+        radiusMeters: DEFAULT_NEAR_RADIUS_METERS,
+      });
+      candidates = [...gated.kept];
+      distanceStatusKo = gated.statusKo;
+      if (candidates.length === 0) {
+        return {
+          ok: false,
+          plan,
+          candidates: [],
+          summaryKo: distanceStatusKo,
+          reasonKo: distanceStatusKo,
+        };
+      }
+    }
+
     return {
       ok: true,
       plan,
       candidates,
       summaryKo:
+        distanceStatusKo ||
         tool.summaryKo?.trim() ||
         (candidates[0] ? `${candidates[0].labelKo}을 찾았어요` : null),
       reasonKo: null,

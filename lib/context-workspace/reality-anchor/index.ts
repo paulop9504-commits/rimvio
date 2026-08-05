@@ -22,6 +22,15 @@ export {
   type GateNearScoutAnchorResult,
 } from "@/lib/context-workspace/reality-anchor/gate-near-scout-anchor";
 
+export {
+  DEFAULT_NEAR_RADIUS_METERS,
+  distanceGateNearScout,
+  metersBetween,
+  resolveNearRadiusMeters,
+  type DistanceGateAnchor,
+  type DistanceGateResult,
+} from "@/lib/context-workspace/reality-anchor/distance-gate";
+
 export { ensureWorkspaceAnchorNode } from "@/lib/context-workspace/reality-anchor/ensure-workspace-anchor-node";
 
 export {

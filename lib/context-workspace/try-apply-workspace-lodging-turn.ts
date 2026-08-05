@@ -51,6 +51,7 @@ import {
 } from "@/lib/reality-provider/apply-network-absorb-workspace-turn";
 import {
   ensureWorkspaceAnchorNode,
+  distanceGateNearScout,
   gateNearScoutAnchorAsync,
 } from "@/lib/context-workspace/reality-anchor";
 
@@ -395,23 +396,60 @@ async function rescoutWorkspace(input: {
         placeName: areaHint || undefined,
         contextLabelKo: areaHint,
       });
-    const candidates = (tool.candidates ?? []).filter((c) => {
+    const candidatesRaw = (tool.candidates ?? []).filter((c) => {
       const id = c.id ?? "";
       if (id.startsWith("search:")) return false;
       if (/^(?:eatery|lodging|poi|amenity):osaka:/i.test(id)) return true;
       if (c.source === "seed") return false;
       return true;
     });
+    // Slice B — Distance Gate after Scout (Spatial correctness).
+    let candidates = candidatesRaw;
+    let distanceStatusKo: string | null = null;
+    if (
+      nearGate.gated &&
+      nearGate.ok &&
+      Number.isFinite(nearGate.anchor.lat) &&
+      Number.isFinite(nearGate.anchor.lng)
+    ) {
+      const patchMeters = (() => {
+        const patches = state.patches ?? [];
+        for (let i = patches.length - 1; i >= 0; i -= 1) {
+          const p = patches[i]?.patch;
+          if (
+            p &&
+            p.kind === "spatial_constraint" &&
+            typeof p.meters === "number" &&
+            p.meters > 0
+          ) {
+            return p.meters;
+          }
+        }
+        return null;
+      })();
+      const gated = distanceGateNearScout({
+        anchor: {
+          lat: nearGate.anchor.lat,
+          lng: nearGate.anchor.lng,
+          labelKo: nearGate.anchor.labelKo,
+        },
+        candidates: candidatesRaw,
+        patchMeters,
+      });
+      candidates = [...gated.kept];
+      distanceStatusKo = gated.statusKo;
+    }
     const label = searchDomainLabelKo(activeDomain, input.utterance);
     if (candidates.length === 0) {
       return {
         handled: true,
         replyKo:
-          activeDomain === "eatery"
+          distanceStatusKo ??
+          (activeDomain === "eatery"
             ? "근처 맛집을 아직 못 찾았어요 · 동네나 메뉴를 더 말해 주세요"
             : activeDomain === "poi"
               ? "근처 놀거리를 아직 못 찾았어요 · 명소·테마파크처럼 더 말해 주세요"
-              : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`,
+              : `${label}을 아직 못 찾았어요 · 조건을 짧게 말해 보세요`),
         committed: false,
         openedForReview: false,
       };
@@ -433,11 +471,14 @@ async function rescoutWorkspace(input: {
       const baseReply =
         next?.lastChangeKo ??
         `${label} ${candidates.length}곳 더 넣었어요 · 작업장에서 확인`;
+      const withDistance = distanceStatusKo
+        ? `${baseReply} · ${distanceStatusKo}`
+        : baseReply;
       if (after) {
         appendWorkspaceSyncedAssistantTurn({
           contextEventId: input.contextEventId,
           state: after,
-          textKo: baseReply,
+          textKo: withDistance,
         });
       }
       const jobBoundary = resolveWorkspaceJobBoundary({
@@ -455,8 +496,8 @@ async function rescoutWorkspace(input: {
       return {
         handled: true,
         replyKo: soft.continued && soft.replyKo
-          ? `${baseReply}\n${soft.replyKo}`
-          : baseReply,
+          ? `${withDistance}\n${soft.replyKo}`
+          : withDistance,
         committed: false,
         openedForReview: true,
       };
@@ -468,6 +509,7 @@ async function rescoutWorkspace(input: {
       domain: activeDomain,
       query,
       summaryKo:
+        distanceStatusKo ||
         tool.summaryKo?.trim() ||
         `${label} 후보 ${candidates.length}곳 · 작업장에서 확인`,
       candidates,
