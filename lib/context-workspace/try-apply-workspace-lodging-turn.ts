@@ -35,7 +35,7 @@ import {
   resolveNextWorkAction,
 } from "@/lib/workstream/resolve-next-work-action";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
-import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
+import { runAgentP0Guards } from "@/lib/agent-policy/run-agent-p0-guards";
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
 import {
@@ -337,6 +337,17 @@ async function rescoutWorkspace(input: {
     });
   }
 
+  const p0 = runAgentP0Guards({
+    contextEventId: input.contextEventId,
+    utterance: input.utterance,
+    lat: nearGate.gated && nearGate.ok ? nearGate.anchor.lat : null,
+    lng: nearGate.gated && nearGate.ok ? nearGate.anchor.lng : null,
+    scoutMode: input.mode === "add" ? "add" : "replace",
+  });
+  // Stale / clear → always replace inventory (never silent refine of old set).
+  const effectiveMode =
+    p0.forceReplaceScout && input.mode === "add" ? "replace" : input.mode;
+
   const activeDomain = resolveWorkspaceSearchDomain(
     input.utterance,
     state.domain,
@@ -366,11 +377,14 @@ async function rescoutWorkspace(input: {
         null);
     const toolDomain = resolveToolDomain(activeDomain);
     const toolId = resolveLookupToolId(toolDomain, input.utterance);
+    // Fail-Closed: never pass trip summary (Namba/Osaka) as placeName when Anchor is set.
     const areaHint =
-      state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
-      state.realityDraft?.destinationKo?.trim() ||
-      state.query?.replace(/\s*(숙소|호텔|여행).*$/u, "").trim() ||
-      null;
+      nearGate.gated && nearGate.ok
+        ? nearGate.anchor.labelKo
+        : state.summaryKo?.replace(/\s*여행.*$/u, "").trim() ||
+          state.realityDraft?.destinationKo?.trim() ||
+          state.query?.replace(/\s*(숙소|호텔|여행).*$/u, "").trim() ||
+          null;
     const stayKw =
       toolDomain === "lodging"
         ? resolveLodgingStaySearchKeyword({
@@ -454,7 +468,7 @@ async function rescoutWorkspace(input: {
         openedForReview: false,
       };
     }
-    if (input.mode === "add") {
+    if (effectiveMode === "add") {
       const next = applyWorkspaceTransition({
         contextEventId: input.contextEventId,
         op: "find_similar",
@@ -481,16 +495,11 @@ async function rescoutWorkspace(input: {
           textKo: withDistance,
         });
       }
-      const jobBoundary = resolveWorkspaceJobBoundary({
-        utterance: input.utterance,
-        hasVisibleCandidates: true,
-      });
       const soft = offerSoftNextWorkAfterAct({
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        // Clear/new job — don't auto-chain into A's next soft gap (e.g. 맛집).
-        autoRun: !jobBoundary.switchJob && !jobBoundary.abortSoftContinue,
+        autoRun: p0.allowSoftNextAuto,
         delayMs: 720,
       });
       return {
@@ -542,15 +551,11 @@ async function rescoutWorkspace(input: {
         state: freshState,
         textKo: replyKo,
       });
-      const jobBoundary = resolveWorkspaceJobBoundary({
-        utterance: input.utterance,
-        hasVisibleCandidates: true,
-      });
       const soft = offerSoftNextWorkAfterAct({
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: !jobBoundary.switchJob && !jobBoundary.abortSoftContinue,
+        autoRun: p0.allowSoftNextAuto,
         delayMs: 720,
       });
       if (soft.continued && soft.replyKo) {

@@ -15,6 +15,8 @@ import {
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
+import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
+import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
 import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
 import {
   readContextWorkspace,
@@ -171,6 +173,10 @@ export function WorkspaceCursorDock({
   );
   const autoContinueRef = useRef<string | null>(null);
   const autoContinueCountRef = useRef(0);
+  const autoContinueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const turnGenRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
@@ -245,6 +251,33 @@ export function WorkspaceCursorDock({
     async (raw: string) => {
       const text = raw.trim();
       if (!text || !eventId || busy) return;
+
+      const wsForJob = readContextWorkspace(eventId);
+      const jobBoundary = resolveWorkspaceJobBoundary({
+        utterance: text,
+        hasVisibleCandidates: Boolean(
+          wsForJob?.nodes.some((n) => n.visible),
+        ),
+        previousJob: wsForJob?.agentJob ?? null,
+      });
+      // Job B / interrupt — kill pending dock「계속해」and soft-next from Job A.
+      if (!jobBoundary.isContinueCue) {
+        if (autoContinueTimerRef.current) {
+          clearTimeout(autoContinueTimerRef.current);
+          autoContinueTimerRef.current = null;
+        }
+        turnGenRef.current += 1;
+        if (jobBoundary.abortSoftContinue) {
+          autoContinueCountRef.current = 99;
+          autoContinueRef.current = null;
+          bumpSoftNextWorkGeneration(eventId);
+        } else {
+          // Soft refine — allow at most one auto-continue after this turn.
+          autoContinueCountRef.current = 0;
+          autoContinueRef.current = null;
+        }
+      }
+
       setBusy(true);
       setTranscriptOpen(true);
       setAgentExpanded(false);
@@ -386,7 +419,7 @@ export function WorkspaceCursorDock({
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
 
-  // Cursor-like: auto-run next soft step once — no tap wall.
+  // Cursor-like: soft auto-continue once — never after clear/new Job B.
   useEffect(() => {
     if (!eventId || busy || !nextLabel) return;
     if (autoContinueCountRef.current >= 1) return;
@@ -394,15 +427,31 @@ export function WorkspaceCursorDock({
     if (autoContinueRef.current === key) return;
     autoContinueRef.current = key;
     autoContinueCountRef.current += 1;
-    const timer = window.setTimeout(() => {
+    const scheduledGen = turnGenRef.current;
+    if (autoContinueTimerRef.current) {
+      clearTimeout(autoContinueTimerRef.current);
+    }
+    autoContinueTimerRef.current = setTimeout(() => {
+      autoContinueTimerRef.current = null;
+      if (turnGenRef.current !== scheduledGen) return;
       void runTurn("계속해");
     }, 700);
-    return () => window.clearTimeout(timer);
+    return () => {
+      if (autoContinueTimerRef.current) {
+        clearTimeout(autoContinueTimerRef.current);
+        autoContinueTimerRef.current = null;
+      }
+    };
   }, [busy, eventId, nextLabel, runTurn]);
 
   useEffect(() => {
     autoContinueCountRef.current = 0;
     autoContinueRef.current = null;
+    turnGenRef.current += 1;
+    if (autoContinueTimerRef.current) {
+      clearTimeout(autoContinueTimerRef.current);
+      autoContinueTimerRef.current = null;
+    }
   }, [eventId]);
 
   return (

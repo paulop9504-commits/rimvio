@@ -38,9 +38,7 @@ import {
   extractNearPlaceLabelFromUtterance,
   gateNearScoutAnchorAsync,
 } from "@/lib/context-workspace/reality-anchor";
-import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
-import { stampAgentConstitutionOnWorkspace } from "@/lib/agent-policy/stamp-constitution-on-workspace";
-import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
+import { runAgentP0Guards } from "@/lib/agent-policy/run-agent-p0-guards";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -211,28 +209,16 @@ export async function runWorkspaceAgentLoop(input: {
     }
   }
 
-  // Job boundary — B must not inherit A's soft-continue / seed inertia.
-  const hasVisible = (ctx.nodes ?? []).some((n) => n.visible);
-  const jobBoundary = resolveWorkspaceJobBoundary({
+  // P0 guards — Job · Scope · Stale (Anchor gate runs on spatial / rescout).
+  const p0 = runAgentP0Guards({
+    contextEventId,
     utterance,
-    hasVisibleCandidates: hasVisible,
     patchKind: understood.patch?.kind ?? null,
   });
-  if (jobBoundary.abortSoftContinue) {
-    bumpSoftNextWorkGeneration(contextEventId);
-  }
-  if (jobBoundary.switchJob && jobBoundary.mutation.mode !== "none") {
-    stampAgentConstitutionOnWorkspace({
-      contextEventId,
-      utterance,
-      mutationMode: jobBoundary.mutation.mode,
-      beforeSummaryKo: ctx.summaryKo,
-    });
-  }
 
   // 5. Execute Patch / Tool
   phases.push("execute_patch");
-  let statusKo: string | null = jobBoundary.statusHintKo;
+  let statusKo: string | null = p0.statusHintKo;
   let patchKind: string | null = null;
   let patchRecord: import("@/lib/context-workspace/workspace-patch/types").WorkspacePatchRecord | null =
     null;
@@ -288,10 +274,10 @@ export async function runWorkspaceAgentLoop(input: {
       });
     }
     statusKo = applied.statusKo;
-    if (jobBoundary.statusHintKo && applied.statusKo) {
-      statusKo = `${jobBoundary.statusHintKo} · ${applied.statusKo}`;
-    } else if (jobBoundary.statusHintKo) {
-      statusKo = jobBoundary.statusHintKo;
+    if (p0.statusHintKo && applied.statusKo) {
+      statusKo = `${p0.statusHintKo} · ${applied.statusKo}`;
+    } else if (p0.statusHintKo) {
+      statusKo = p0.statusHintKo;
     }
     patchKind = understood.patch.kind;
     patchRecord = applied.record;

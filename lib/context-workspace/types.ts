@@ -160,6 +160,16 @@ export type ContextWorkspaceState = {
    * Materialized network absorb projection (rail/metro overlays) — Map reads via bridge.
    */
   readonly networkAbsorb?: import("@/lib/reality-provider/network-absorb-projection").NetworkAbsorbProjectionState | null;
+  /**
+   * Soft-refine constraint bag — survives replace/rescout on the same Context (Law 15).
+   */
+  readonly constraintMemory?: import("@/lib/agent-policy/constraint-memory").ConstraintMemoryBag | null;
+  /** Agent breadcrumb tape (Law 25). */
+  readonly agentTrace?: readonly import("@/lib/agent-policy/agent-trace").AgentTraceEntry[];
+  /** Active Agent Job — Job Boundary / Scope Lock SSOT (P0). */
+  readonly agentJob?: import("@/lib/agent-policy/agent-job").AgentJob | null;
+  /** Last scout fingerprint — stale when next turn differs (P0). */
+  readonly lastScoutFingerprint?: string | null;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];
   readonly surfacePrimary: ContextSurfaceKind;
