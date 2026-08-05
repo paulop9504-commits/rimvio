@@ -334,6 +334,7 @@ export function GlobeContainerSpaceSidebar({
     null,
   );
   const [socialPeers, setSocialPeers] = useState<SocialBubblePeer[] | null>(null);
+  void socialPeers;
   const pendingAgentBindRef = useRef(false);
   const agentPressBusyRef = useRef(false);
 
@@ -633,15 +634,6 @@ export function GlobeContainerSpaceSidebar({
       ? copy.globe.trendBridgePulseChipOn
       : null);
   const customizeOpen = sections.customize;
-
-  const openResumeWorkspace = (contextEventId: string) => {
-    const entry = findEntryByEventId(contextEventId);
-    if (entry) {
-      handleSelect(entry);
-      return;
-    }
-    onOpenChange(false);
-  };
 
   if (!mounted) {
     return null;
