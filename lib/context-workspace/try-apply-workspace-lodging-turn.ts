@@ -679,7 +679,8 @@ async function rescoutWorkspace(input: {
         `${label} 후보 ${candidates.length}곳 · 작업장에서 확인`,
       candidates,
       source: "scout_patch",
-      inventoryMode: effectiveMode === "add" ? "add" : "replace",
+      // Add path returned above; this branch is replace-domain inventory.
+      inventoryMode: "replace",
     });
     const focus =
       opened.nodes.find((n) => !n.bookmarked && n.visible && n.kind === activeDomain) ??
