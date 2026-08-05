@@ -44,26 +44,31 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
   }
 
   // "난바역 근처" / "역 근처" → Spatial Constraint Patch
+  // Compound: 「교바시역 근처 캡슐호텔」keeps stayType on the same patch.
   if (
     /역\s*근처|역앞|역세권|station\s*near|near\s*(the\s*)?station/iu.test(text) ||
     /([가-힣A-Za-z0-9]+역)\s*(근처|주변|앞)/u.test(text)
   ) {
     const named = text.match(/([가-힣A-Za-z0-9]+역)/u);
+    const stayType = parseLodgingStayTypeFromText(text);
     return {
       kind: "spatial_constraint",
       nearLabelKo: named?.[1]?.trim() || "역",
       stationNear: true,
       meters: 800,
+      stayType: stayType ?? null,
     };
   }
   if (/근처|주변|near/iu.test(text) && /난바|도톤|우메다|namba|umeda/iu.test(text)) {
     const place =
       text.match(/(난바|도톤보리|우메다|Namba|Umeda)/iu)?.[1] ?? "근처";
+    const stayType = parseLodgingStayTypeFromText(text);
     return {
       kind: "spatial_constraint",
       nearLabelKo: place,
       stationNear: /역/u.test(text),
       meters: 1000,
+      stayType: stayType ?? null,
     };
   }
 
@@ -72,11 +77,13 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
     /근처|주변|near/iu.test(text) &&
     /USJ|유니버설|유니버셜|universal/iu.test(text)
   ) {
+    const stayType = parseLodgingStayTypeFromText(text);
     return {
       kind: "spatial_constraint",
       nearLabelKo: "유니버설 스튜디오 재팬",
       stationNear: false,
       meters: 1500,
+      stayType: stayType ?? null,
     };
   }
 

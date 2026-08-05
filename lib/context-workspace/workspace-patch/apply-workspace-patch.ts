@@ -18,6 +18,10 @@ import { runAutoProjectionAfterPatch } from "@/lib/context-workspace/auto-projec
 import { applyNetworkAbsorbVisibilityPatch } from "@/lib/reality-provider/network-absorb-projection-store";
 import { buildRealityDraft } from "@/lib/context-workspace/reality-draft";
 import type { ContextWorkspaceNode } from "@/lib/context-workspace/types";
+import {
+  parseLodgingStayTypeFromText,
+  resolveLodgingStaySearchKeyword,
+} from "@/lib/globe/lodging/lodging-stay-types";
 
 const DAY_TAG_RE = /^day[_-]?\d+$/iu;
 
@@ -149,11 +153,16 @@ export function applyWorkspacePatch(input: {
       break;
     }
     case "spatial_constraint": {
+      const stayType =
+        patch.stayType ??
+        parseLodgingStayTypeFromText(utterance ?? "") ??
+        null;
       const reality = applyWorkspaceRealityPatch({
         contextEventId,
         utterance: utterance ?? `${patch.nearLabelKo} 근처`,
         patch: {
           stationNear: patch.stationNear === true,
+          ...(stayType ? { stayType: stayType as never } : {}),
         },
       });
       const anchorHit = resolveRealityAnchorFromUtterance(
@@ -181,15 +190,34 @@ export function applyWorkspacePatch(input: {
         filter: {
           queryIncludes: patch.nearLabelKo,
         },
-        changeKo: `${patch.nearLabelKo} 근처 제약`,
+        changeKo: stayType
+          ? `${patch.nearLabelKo} 근처 · ${stayType}`
+          : `${patch.nearLabelKo} 근처 제약`,
       });
       statusKo =
-        reality.replyKo ?? `공간 제약 · ${patch.nearLabelKo} 근처`;
+        reality.replyKo ??
+        (stayType
+          ? `공간 제약 · ${patch.nearLabelKo} 근처 ${stayType}`
+          : `공간 제약 · ${patch.nearLabelKo} 근처`);
       needsRescout = true;
       const lodgingCue =
+        Boolean(stayType) ||
         /숙소|호텔|lodging|hotel|캡슐|료칸/iu.test(utterance ?? "") ||
         state.domain === "lodging";
-      scoutQuery = `${patch.nearLabelKo} 근처 ${lodgingCue ? "숙소" : "장소"}`;
+      const stayKw = lodgingCue
+        ? resolveLodgingStaySearchKeyword({
+            stayType,
+            message: utterance,
+            areaHint: patch.nearLabelKo,
+          })
+        : null;
+      scoutQuery =
+        stayKw ||
+        `${patch.nearLabelKo} 근처 ${lodgingCue ? "숙소" : "장소"}`;
+      // Prefer full NL so lodging rescout keeps Anchor + stay cues.
+      if (utterance?.trim() && lodgingCue) {
+        scoutQuery = utterance.trim();
+      }
       break;
     }
     case "filter_entity": {

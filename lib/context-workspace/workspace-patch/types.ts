@@ -98,6 +98,8 @@ export type WorkspacePatch =
       readonly nearLabelKo: string;
       readonly stationNear?: boolean;
       readonly meters?: number | null;
+      /** Lodging stay when 「역 근처 캡슐호텔」compound intent */
+      readonly stayType?: string | null;
     }
   | {
       readonly kind: "absorb_network";

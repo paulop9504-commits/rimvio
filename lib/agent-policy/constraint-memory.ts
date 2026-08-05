@@ -84,7 +84,18 @@ export function applyConstraintMemoryToScoutQuery(
   if (!bag) return base;
   const bits: string[] = [];
   if (bag.nearLabelKo) bits.push(`${bag.nearLabelKo} 근처`);
-  if (bag.stayType) bits.push(bag.stayType);
+  if (bag.stayType) {
+    // Prefer Korean scout noun over internal id (capsule → 캡슐호텔).
+    const stayKo =
+      bag.stayType === "capsule"
+        ? "캡슐호텔"
+        : bag.stayType === "ryokan"
+          ? "료칸"
+          : bag.stayType === "hotel"
+            ? "호텔"
+            : bag.stayType;
+    bits.push(stayKo);
+  }
   if (bag.maxNightlyPriceKrw != null) {
     bits.push(`1박 ${Math.round(bag.maxNightlyPriceKrw / 10_000)}만원대`);
   } else if (bag.maxPriceBand != null && bag.maxPriceBand <= 2) {
@@ -93,9 +104,19 @@ export function applyConstraintMemoryToScoutQuery(
   if (bag.minRating != null) bits.push(`평점 ${bag.minRating}+`);
   if (bits.length === 0) return base;
   // Avoid duplicating tokens already in utterance.
-  const extra = bits.filter((b) => !base.includes(b.replace(/\s+/g, "")));
-  if (extra.length === 0) return base;
-  return `${base} ${extra.join(" ")}`.trim();
+  const extra = bits.filter((b) => {
+    const compact = b.replace(/\s+/g, "");
+    return compact && !base.includes(compact) && !base.includes(b);
+  });
+  // 「캡슐」 already in utterance → skip English/alias stay bit
+  const filtered = extra.filter((b) => {
+    if (/캡슐호텔|료칸|호텔/u.test(b) && /캡슐|료칸|호텔/u.test(base)) {
+      return false;
+    }
+    return true;
+  });
+  if (filtered.length === 0) return base;
+  return `${base} ${filtered.join(" ")}`.trim();
 }
 
 export function constraintMemoryLinesKo(

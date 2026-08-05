@@ -36,6 +36,14 @@ assert.equal(parseWorkspacePatch("난바역 근처")?.kind, "spatial_constraint"
     assert.equal(compound.ordinalIndex, 1);
   }
 }
+{
+  const kyobashi = parseWorkspacePatch("교바시역 근처 캡슐호텔 찾아줘");
+  assert.equal(kyobashi?.kind, "spatial_constraint");
+  if (kyobashi?.kind === "spatial_constraint") {
+    assert.equal(kyobashi.nearLabelKo, "교바시역");
+    assert.equal(kyobashi.stayType, "capsule");
+  }
+}
 
 const CTX = "ctx_patch_only";
 clearContextWorkspace(CTX);
