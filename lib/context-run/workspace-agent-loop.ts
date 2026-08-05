@@ -33,6 +33,14 @@ import {
   readLastAgentProductTurn,
 } from "@/lib/context-run/agent-product-pipeline";
 import { writeAgentRuntimeProjectionFromWorkspace } from "@/lib/context-run/agent-runtime-projection";
+import {
+  ensureWorkspaceAnchorNode,
+  extractNearPlaceLabelFromUtterance,
+  gateNearScoutAnchorAsync,
+} from "@/lib/context-workspace/reality-anchor";
+import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
+import { stampAgentConstitutionOnWorkspace } from "@/lib/agent-policy/stamp-constitution-on-workspace";
+import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -203,9 +211,28 @@ export async function runWorkspaceAgentLoop(input: {
     }
   }
 
+  // Job boundary — B must not inherit A's soft-continue / seed inertia.
+  const hasVisible = (ctx.nodes ?? []).some((n) => n.visible);
+  const jobBoundary = resolveWorkspaceJobBoundary({
+    utterance,
+    hasVisibleCandidates: hasVisible,
+    patchKind: understood.patch?.kind ?? null,
+  });
+  if (jobBoundary.abortSoftContinue) {
+    bumpSoftNextWorkGeneration(contextEventId);
+  }
+  if (jobBoundary.switchJob && jobBoundary.mutation.mode !== "none") {
+    stampAgentConstitutionOnWorkspace({
+      contextEventId,
+      utterance,
+      mutationMode: jobBoundary.mutation.mode,
+      beforeSummaryKo: ctx.summaryKo,
+    });
+  }
+
   // 5. Execute Patch / Tool
   phases.push("execute_patch");
-  let statusKo: string | null = null;
+  let statusKo: string | null = jobBoundary.statusHintKo;
   let patchKind: string | null = null;
   let patchRecord: import("@/lib/context-workspace/workspace-patch/types").WorkspacePatchRecord | null =
     null;
@@ -214,6 +241,39 @@ export async function runWorkspaceAgentLoop(input: {
   let focusIds: string[] | null = null;
 
   if (toolId === "workspace_patch" && understood.patch) {
+    // Spatial constraint — pin Reality Anchor before Patch/scout (catalog → metro → geocode).
+    if (understood.patch.kind === "spatial_constraint") {
+      const nearLabel =
+        understood.patch.nearLabelKo ||
+        extractNearPlaceLabelFromUtterance(utterance);
+      const nearGate = await gateNearScoutAnchorAsync({ utterance });
+      // spatial_constraint always implies near — assert even if detector missed.
+      if (!nearGate.gated || !nearGate.ok) {
+        const statusKo =
+          nearGate.gated && !nearGate.ok
+            ? nearGate.statusKo
+            : `${nearLabel || "그곳"} 위치를 정확히 확인하지 못했어요`;
+        return fail({
+          statusKo: shorten(statusKo),
+          contextEventId,
+          toolId,
+        });
+      }
+      ensureWorkspaceAnchorNode({
+        contextEventId,
+        anchor: {
+          entityId: nearGate.anchor.id,
+          titleKo: nearGate.anchor.labelKo,
+          labelKo: nearGate.anchor.labelKo,
+          kind: nearGate.anchor.kind === "station" ? "station" : "attraction",
+          lat: nearGate.anchor.lat,
+          lng: nearGate.anchor.lng,
+        },
+        geoId: nearGate.anchor.id,
+        summaryKo: `${nearGate.anchor.labelKo} · 검색 기준점`,
+      });
+    }
+
     const applied = applyWorkspacePatch({
       contextEventId,
       patch: understood.patch,
@@ -228,6 +288,11 @@ export async function runWorkspaceAgentLoop(input: {
       });
     }
     statusKo = applied.statusKo;
+    if (jobBoundary.statusHintKo && applied.statusKo) {
+      statusKo = `${jobBoundary.statusHintKo} · ${applied.statusKo}`;
+    } else if (jobBoundary.statusHintKo) {
+      statusKo = jobBoundary.statusHintKo;
+    }
     patchKind = understood.patch.kind;
     patchRecord = applied.record;
     workspaceMutated = true;

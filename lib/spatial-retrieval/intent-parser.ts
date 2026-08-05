@@ -40,14 +40,18 @@ function looksLikeSpatialDiscovery(text: string): boolean {
 function resolveTarget(text: string): SpatialTargetEntity {
   if (/카페|cafe|커피/iu.test(text)) return "cafe";
   if (/숙소|호텔|hotel|lodging/iu.test(text) && /근처|주변|near|기준/iu.test(text)) {
-    // "USJ 근처 숙소" → target hotel
-    if (/USJ|유니버설|도톤보리|역|attraction|관광|놀거리/iu.test(text)) {
+    // "USJ 근처 숙소" → target hotel (유니버설 · 유니버셜)
+    if (
+      /USJ|유니버설|유니버셜|도톤보리|역|attraction|관광|놀거리/iu.test(text)
+    ) {
       return "hotel";
     }
   }
   if (/놀거리|관광|attraction|테마파|아쿠아/iu.test(text)) return "attraction";
   if (/편의|약국|amenity/iu.test(text)) return "amenity";
   if (/맛집|식당|먹을|restaurant|food|맛\s*집/iu.test(text)) return "restaurant";
+  // Bare lodging find (no 근처) still hotel when stay words dominate.
+  if (/숙소|호텔|hotel|lodging/iu.test(text)) return "hotel";
   return "restaurant";
 }
 
@@ -55,10 +59,13 @@ function resolveAnchorType(text: string): SpatialAnchorEntity {
   if (/내\s*위치|현재\s*위치|my\s*location|gps/iu.test(text)) {
     return "user_location";
   }
-  if (/USJ|유니버설/iu.test(text) && /근처|주변|near/iu.test(text)) {
+  if (/USJ|유니버설|유니버셜/iu.test(text) && /근처|주변|near/iu.test(text)) {
     return "attraction";
   }
-  if (/역\s*근처|station/iu.test(text)) return "station";
+  // 「모리노미아역 근처」— station wins over hotel-word in the same utterance.
+  if (/역|駅|station/iu.test(text) && /근처|주변|near|around/iu.test(text)) {
+    return "station";
+  }
   if (/호텔|숙소|hotel|namba|난바/iu.test(text)) return "hotel";
   return "hotel";
 }

@@ -259,38 +259,8 @@ export function resolveSpatialAnchorDetailed(input: {
     return ok(nl.candidate, intent, contextId, "nl_match");
   }
 
-  // Fallback seed when pool empty but NL names known landmark
-  if (
-    pool.length === 0 &&
-    intent.anchorEntity === "hotel" &&
-    /난바|namba/iu.test(intent.rawText)
-  ) {
-    const seed: SpatialAnchorCandidate = {
-      entityId: "ent_namba_hotel",
-      titleKo: "Namba Hotel",
-      kind: "hotel",
-      lat: 34.6654,
-      lng: 135.501,
-    };
-    return ok(seed, intent, contextId, "fallback_seed");
-  }
-
-  if (
-    pool.length === 0 &&
-    intent.anchorEntity === "attraction" &&
-    /USJ|유니버설/iu.test(intent.rawText)
-  ) {
-    const seed: SpatialAnchorCandidate = {
-      entityId: "ent_usj",
-      titleKo: "USJ",
-      kind: "attraction",
-      lat: 34.6654,
-      lng: 135.4323,
-    };
-    return ok(seed, intent, contextId, "fallback_seed");
-  }
-
-  // Failure → project ≤3 candidates (never AI question)
+  // Slice A — never invent Namba / USJ when the Workspace pool has no Anchor.
+  // Fail closed → project ≤3 candidates (never silent Osaka seed).
   return ambiguous(
     pool,
     all,

@@ -35,6 +35,7 @@ import {
   resolveNextWorkAction,
 } from "@/lib/workstream/resolve-next-work-action";
 import { offerSoftNextWorkAfterAct } from "@/lib/workstream/offer-soft-next-work-after-act";
+import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
 import { isCompoundActionUtterance } from "@/lib/action-planner/build-compare-reserve-plan";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner/try-run-context-nl-action";
 import {
@@ -48,6 +49,10 @@ import {
   tryApplyNetworkAbsorbWorkspaceTurn,
   type NetworkAbsorbSoftChip,
 } from "@/lib/reality-provider/apply-network-absorb-workspace-turn";
+import {
+  ensureWorkspaceAnchorNode,
+  gateNearScoutAnchorAsync,
+} from "@/lib/context-workspace/reality-anchor";
 
 export type WorkspacePromptTurnResult = {
   handled: boolean;
@@ -303,15 +308,61 @@ async function rescoutWorkspace(input: {
   if (!state) {
     return { handled: false, replyKo: null, committed: false };
   }
+
+  // Slice A — near scout never invents Osaka/Namba without resolved Anchor.
+  const nearGate = await gateNearScoutAnchorAsync({
+    utterance: input.utterance,
+  });
+  if (nearGate.gated && !nearGate.ok) {
+    return {
+      handled: true,
+      replyKo: nearGate.statusKo,
+      committed: false,
+    };
+  }
+  if (nearGate.gated && nearGate.ok) {
+    ensureWorkspaceAnchorNode({
+      contextEventId: input.contextEventId,
+      anchor: {
+        entityId: nearGate.anchor.id,
+        titleKo: nearGate.anchor.labelKo,
+        labelKo: nearGate.anchor.labelKo,
+        kind: nearGate.anchor.kind === "station" ? "station" : "attraction",
+        lat: nearGate.anchor.lat,
+        lng: nearGate.anchor.lng,
+      },
+      geoId: nearGate.anchor.id,
+      summaryKo: `${nearGate.anchor.labelKo} · 검색 기준점`,
+    });
+  }
+
   const activeDomain = resolveWorkspaceSearchDomain(
     input.utterance,
     state.domain,
   );
+  // Near + resolved Anchor → seed ONLY from that Anchor (not old lodging pick).
   const seed =
-    state.nodes.find((n) => n.selected) ??
-    state.nodes.find((n) => n.bookmarked && n.visible) ??
-    state.nodes.find((n) => n.visible) ??
-    null;
+    nearGate.gated && nearGate.ok
+      ? {
+          lat: nearGate.anchor.lat,
+          lng: nearGate.anchor.lng,
+          title: nearGate.anchor.labelKo,
+        }
+      : (state.nodes.find(
+          (n) =>
+            n.source === "reality_anchor" ||
+            n.tags.includes("place_locate") ||
+            n.tags.includes("reality_anchor") ||
+            (typeof n.placeId === "string" &&
+              n.placeId.startsWith("geo:jp:osaka:metro:")),
+        ) ??
+        state.nodes.find(
+          (n) => n.selected && (n.kind === "poi" || n.kind === "amenity"),
+        ) ??
+        state.nodes.find((n) => n.selected) ??
+        state.nodes.find((n) => n.bookmarked && n.visible) ??
+        state.nodes.find((n) => n.visible) ??
+        null);
     const toolDomain = resolveToolDomain(activeDomain);
     const toolId = resolveLookupToolId(toolDomain, input.utterance);
     const areaHint =
@@ -389,11 +440,16 @@ async function rescoutWorkspace(input: {
           textKo: baseReply,
         });
       }
+      const jobBoundary = resolveWorkspaceJobBoundary({
+        utterance: input.utterance,
+        hasVisibleCandidates: true,
+      });
       const soft = offerSoftNextWorkAfterAct({
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: true,
+        // Clear/new job — don't auto-chain into A's next soft gap (e.g. 맛집).
+        autoRun: !jobBoundary.switchJob && !jobBoundary.abortSoftContinue,
         delayMs: 720,
       });
       return {
@@ -444,11 +500,15 @@ async function rescoutWorkspace(input: {
         state: freshState,
         textKo: replyKo,
       });
+      const jobBoundary = resolveWorkspaceJobBoundary({
+        utterance: input.utterance,
+        hasVisibleCandidates: true,
+      });
       const soft = offerSoftNextWorkAfterAct({
         contextEventId: input.contextEventId,
         lastAct: "search",
         lastUtterance: input.utterance,
-        autoRun: true,
+        autoRun: !jobBoundary.switchJob && !jobBoundary.abortSoftContinue,
         delayMs: 720,
       });
       if (soft.continued && soft.replyKo) {
