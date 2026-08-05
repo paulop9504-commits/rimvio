@@ -52,11 +52,13 @@ import { GlobeIntelligentDiscoveryStage } from "@/components/globe/globe-intelli
 import { GlobePlaceMapYoutubeStage } from "@/components/globe/globe-place-map-youtube-stage";
 import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
 import {
-  resumeCapsuleWorkspace,
   tryOpenContextAnchorWorkspace,
 } from "@/lib/context-workspace";
+import { openWorkspaceOneTouch } from "@/lib/context-workspace/open-workspace-one-touch";
+import { GlobeWorkspaceOneTouchChip } from "@/components/globe/globe-workspace-one-touch-chip";
 import {
   CONTEXT_WORKSPACE_CLOSE,
+  CONTEXT_WORKSPACE_OPEN,
   readContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
@@ -718,10 +720,13 @@ function GlobeHomeBody() {
       setMapMediaReplayDismissedEventId(id);
     });
     const onClose = () => bumpOwner();
+    const onOpen = () => bumpOwner();
     window.addEventListener(CONTEXT_WORKSPACE_CLOSE, onClose);
+    window.addEventListener(CONTEXT_WORKSPACE_OPEN, onOpen);
     return () => {
       unsubExpand();
       window.removeEventListener(CONTEXT_WORKSPACE_CLOSE, onClose);
+      window.removeEventListener(CONTEXT_WORKSPACE_OPEN, onOpen);
     };
   }, []);
 
@@ -800,7 +805,9 @@ function GlobeHomeBody() {
       lng: anchorCluster?.lng ?? null,
     });
 
-    if (!eventId && contextAgentSession.phase === "idle") {
+    // Only clear when a stale arm/bind remains with no pin — never re-emit
+    // idle→idle (that re-triggers this effect via a new session object → #185).
+    if (!eventId && contextAgentSession.phase !== "idle") {
       setContextConditionPanelOpen(false);
       closeGlobeContextConditionPanel();
       clearGlobeContextAgent();
@@ -809,7 +816,11 @@ function GlobeHomeBody() {
 
   useEffect(() => {
     return subscribeGlobeContextAgent((detail) => {
-      setContextAgentSession(detail);
+      setContextAgentSession((prev) =>
+        prev.phase === detail.phase && prev.boundEventId === detail.boundEventId
+          ? prev
+          : detail,
+      );
     });
   }, []);
 
@@ -853,17 +864,19 @@ function GlobeHomeBody() {
   }, []);
 
   useEffect(() => {
+    let wasOpen = false;
     return subscribeGlobeContextConditionPanel((detail) => {
       // Open/close only — bind + dismiss already ran in bindContextAgentToEventId.
       setContextConditionPanelOpen(detail.open);
       const nextId = detail.eventId?.trim() || null;
       setContextConditionPanelEventId(detail.open ? nextId : null);
-      if (!detail.open) {
+      if (!detail.open && wasOpen) {
         // Flush snapshots skipped while the assistant panel owned the main thread.
         setGlobeClusters(clustersRef.current);
         setClustersRevision((value) => value + 1);
         setGraphCommandRevision((value) => value + 1);
       }
+      wasOpen = detail.open;
     });
   }, []);
 
@@ -1270,7 +1283,6 @@ function GlobeHomeBody() {
     contextAgentBoundEventId,
     contextConditionPanelEventId,
     eventsHydrated,
-    mediaStoreRevision,
   ]);
 
   const discoveryFeedFocus = useIntelligentDiscoveryFeedFocus(activeContextEvent?.id);
@@ -2313,12 +2325,16 @@ function GlobeHomeBody() {
     Boolean(activeCluster?.eventId) &&
     mapMediaReplayDismissedEventId === activeCluster?.eventId;
 
+  // Suspend 3D media only when Workspace shell is actually mounted — LS expand alone
+  // used to blank the globe while chat/PLAN stayed up (black Earth hole).
   const workspaceOwnsMapMedia = Boolean(
     workspaceMapOwnerTick >= 0 &&
       (hubEventId?.trim() || activeCluster?.eventId?.trim()) &&
       readContextWorkspaceExpanded(
         (hubEventId?.trim() || activeCluster?.eventId?.trim())!,
-      ),
+      ) &&
+      typeof document !== "undefined" &&
+      Boolean(document.querySelector("[data-context-workspace-open]")),
   );
 
   const showMapVideoReplay = Boolean(
@@ -4973,15 +4989,14 @@ function GlobeHomeBody() {
       const eventId = session.eventId.trim();
       if (!eventId) return;
 
-      // Reality OS: Context resume → Workspace (not PinOpenSheet / Bridge).
+      // Reality OS: Context resume → Workspace one-touch (not PinOpenSheet / Bridge).
       if (session.kind === "context") {
-        const resumed = resumeCapsuleWorkspace({
+        const opened = openWorkspaceOneTouch({
           contextEventId: eventId,
           utterance: session.title,
-          expand: true,
         });
-        if (resumed) {
-          toast.message(copy.globe.workspaceResumeToast);
+        if (opened.ok) {
+          toast.message(opened.statusKo);
           return;
         }
       }
@@ -5150,6 +5165,9 @@ function GlobeHomeBody() {
           osakaDemoTheater.commitPulseLabelKo?.trim() ||
           copy.globe.field.realityCommitPulseBadge
         }
+      />
+      <GlobeWorkspaceOneTouchChip
+        contextEventId={hubEventId ?? activeCluster?.eventId ?? null}
       />
       {/* —— L1 Globe stage (pins · recall) —— */}
       <div

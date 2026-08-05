@@ -64,6 +64,9 @@ export function openGlobeContextConditionPanel(eventId?: string | null): void {
 }
 
 export function closeGlobeContextConditionPanel(): void {
+  if (!panelOpen) {
+    return;
+  }
   emitPanel(false);
 }
 

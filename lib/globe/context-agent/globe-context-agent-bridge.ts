@@ -54,6 +54,9 @@ export function armGlobeContextAgent(): void {
 }
 
 export function cancelGlobeContextAgentArm(): void {
+  if (session.phase === "idle" && !session.boundEventId) {
+    return;
+  }
   emit({ phase: "idle", boundEventId: null });
 }
 
@@ -67,8 +70,11 @@ export function bindGlobeContextAgent(eventId: string): void {
 }
 
 export function clearGlobeContextAgent(): void {
+  const alreadyIdle = session.phase === "idle" && !session.boundEventId;
   const boundId = session.boundEventId;
-  emit({ phase: "idle", boundEventId: null });
+  if (!alreadyIdle) {
+    emit({ phase: "idle", boundEventId: null });
+  }
   resetContextAgentSession();
   clearContextActionInjection();
   if (boundId) {
