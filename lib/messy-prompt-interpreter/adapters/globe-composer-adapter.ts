@@ -13,7 +13,9 @@ export type GlobeComposerInterpretInput = {
 };
 
 export type GlobeComposerInterpretResult = {
+  /** Always the user's typed NL (Cursor-style). */
   dispatchText: string;
+  /** Never rewrite the composer — IR stays off the chat path. */
   understandingKo: string | null;
   interpretation: InterpretAndExecuteResult | null;
 };
@@ -37,7 +39,10 @@ function buildGlobeSituation(
   return situation;
 }
 
-/** Globe composer — messy NL → refined dispatch text + optional understanding line. */
+/**
+ * Globe composer — interpret messy NL for internal IR only.
+ * Dispatch + chat always keep the original typed text.
+ */
 export async function interpretMessyForGlobeComposer(
   input: GlobeComposerInterpretInput,
 ): Promise<GlobeComposerInterpretResult> {
@@ -53,21 +58,14 @@ export async function interpretMessyForGlobeComposer(
   const interpretation = await interpretMessyPromptHybrid(trimmed, {
     situation: buildGlobeSituation(input),
     useLlm: input.useLlm,
-    onStage: (stageResult, stage) => {
-      const line = stageResult.plan.understandingKo.trim();
-      if (line) {
-        input.onUnderstanding?.(line, stage);
-      }
-    },
+    // Do not surface rewrite lines into the composer (Cursor-style).
   });
 
-  const dispatchText = refineMessageForPipeline(trimmed, interpretation);
-  const understandingKo =
-    dispatchText !== trimmed ? interpretation.plan.understandingKo.trim() : null;
+  void refineMessageForPipeline(trimmed, interpretation);
 
   return {
-    dispatchText,
-    understandingKo,
+    dispatchText: trimmed,
+    understandingKo: null,
     interpretation,
   };
 }

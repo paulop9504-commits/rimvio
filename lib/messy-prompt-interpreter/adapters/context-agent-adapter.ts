@@ -2,7 +2,6 @@ import { interpretMessyPromptHybrid } from "@/lib/messy-prompt-interpreter/inter
 import { refineMessageForPipeline } from "@/lib/messy-prompt-interpreter/refine-message-for-pipeline";
 import { shouldInterpretMessyInput } from "@/lib/messy-prompt-interpreter/should-interpret-messy-input";
 import type { InterpretAndExecuteResult } from "@/lib/messy-prompt-interpreter/types";
-import { publishContextAgentInterpretation } from "@/lib/globe/context-agent/context-agent-interpretation-store";
 
 export type ContextAgentInterpretInput = {
   messyInput: string;
@@ -39,27 +38,7 @@ function buildContextSituation(
   return situation;
 }
 
-function publishInterpretationStage(
-  input: ContextAgentInterpretInput,
-  interpretation: InterpretAndExecuteResult,
-  originalMessage: string,
-): void {
-  const refinedMessage = refineMessageForPipeline(originalMessage, interpretation);
-  const understandingKo = interpretation.plan.understandingKo.trim();
-  if (!understandingKo || refinedMessage === originalMessage) {
-    return;
-  }
-  publishContextAgentInterpretation({
-    eventId: input.contextEventId,
-    originalMessage,
-    refinedMessage,
-    understandingKo,
-    visualization: interpretation.visualization,
-    atIso: new Date().toISOString(),
-  });
-}
-
-/** Context-bound agent — messy NL → refined trigger for local discovery pipeline. */
+/** Context-bound agent — keep typed NL; do not publish rewrite into chat. */
 export async function interpretMessyForContextAgent(
   input: ContextAgentInterpretInput,
 ): Promise<ContextAgentInterpretResult> {
@@ -72,22 +51,16 @@ export async function interpretMessyForContextAgent(
     };
   }
 
-  const situation = buildContextSituation(input);
   const interpretation = await interpretMessyPromptHybrid(trimmed, {
-    situation,
+    situation: buildContextSituation(input),
     useLlm: input.useLlm,
-    onStage: (stageResult) => {
-      publishInterpretationStage(input, stageResult, trimmed);
-    },
   });
 
-  const refinedMessage = refineMessageForPipeline(trimmed, interpretation);
-  const understandingKo =
-    refinedMessage !== trimmed ? interpretation.plan.understandingKo.trim() : null;
+  void refineMessageForPipeline(trimmed, interpretation);
 
   return {
-    refinedMessage,
-    understandingKo,
+    refinedMessage: trimmed,
+    understandingKo: null,
     interpretation,
   };
 }

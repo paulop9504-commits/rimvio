@@ -34,7 +34,7 @@ function buildPersonalAskSituation(
   return situation;
 }
 
-/** Capture ask sheet — messy NL → refined recall query. */
+/** Capture ask sheet — keep typed NL; IR internal only. */
 export async function interpretMessyForPersonalAsk(
   input: PersonalAskInterpretInput,
 ): Promise<PersonalAskInterpretResult> {
@@ -50,21 +50,13 @@ export async function interpretMessyForPersonalAsk(
   const interpretation = await interpretMessyPromptHybrid(trimmed, {
     situation: buildPersonalAskSituation(input),
     useLlm: input.useLlm,
-    onStage: (stageResult, stage) => {
-      const line = stageResult.plan.understandingKo.trim();
-      if (line) {
-        input.onUnderstanding?.(line, stage);
-      }
-    },
   });
 
-  const refinedMessage = refineMessageForPipeline(trimmed, interpretation);
-  const understandingKo =
-    refinedMessage !== trimmed ? interpretation.plan.understandingKo.trim() : null;
+  void refineMessageForPipeline(trimmed, interpretation);
 
   return {
-    refinedMessage,
-    understandingKo,
+    refinedMessage: trimmed,
+    understandingKo: null,
     interpretation,
   };
 }
