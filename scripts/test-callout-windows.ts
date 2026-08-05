@@ -10,6 +10,7 @@ import {
   closeCalloutWindow,
   findCalloutWindowByEntity,
   focusCalloutWindow,
+  getCalloutWindowsSnapshot,
   getFocusedCalloutWindowId,
   listActiveCalloutWindows,
   openCalloutWindow,
@@ -74,6 +75,12 @@ openCalloutWindow({ entityId: "hotel_d" });
 assert.equal(listActiveCalloutWindows().length, 3);
 assert.equal(findCalloutWindowByEntity("hotel_a"), null);
 assert.ok(findCalloutWindowByEntity("hotel_d"));
+
+{
+  const s1 = getCalloutWindowsSnapshot();
+  const s2 = getCalloutWindowsSnapshot();
+  assert.equal(s1, s2, "getCalloutWindowsSnapshot must be referentially stable");
+}
 
 const agentOpened = openCalloutWindowsFromAgent(["food_1", "food_2"]);
 assert.ok(agentOpened.length >= 1);

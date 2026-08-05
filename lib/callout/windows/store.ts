@@ -22,7 +22,24 @@ let focusedWindowId: string | null = null;
 let zCounter = 10;
 const listeners = new Set<() => void>();
 
+/**
+ * useSyncExternalStore requires getSnapshot to return the same reference
+ * until the store mutates — allocating a fresh [] each call causes React #185.
+ */
+const EMPTY_WINDOWS: readonly CalloutWindow[] = Object.freeze([]);
+let windowsSnapshot: readonly CalloutWindow[] = EMPTY_WINDOWS;
+
+function recomputeWindowsSnapshot(): void {
+  windowsSnapshot =
+    openOrder.length === 0
+      ? EMPTY_WINDOWS
+      : openOrder
+          .map((id) => byId.get(id))
+          .filter((w): w is CalloutWindow => Boolean(w));
+}
+
 function emit(): void {
+  recomputeWindowsSnapshot();
   for (const l of listeners) l();
 }
 
@@ -53,9 +70,7 @@ export function subscribeCalloutWindows(listener: () => void): () => void {
 }
 
 export function getCalloutWindowsSnapshot(): readonly CalloutWindow[] {
-  return openOrder
-    .map((id) => byId.get(id))
-    .filter((w): w is CalloutWindow => Boolean(w));
+  return windowsSnapshot;
 }
 
 export function getFocusedCalloutWindowId(): string | null {
@@ -246,6 +261,10 @@ export function openCalloutWindowsFromAgent(
 }
 
 export function clearCalloutWindowsForTests(): void {
+  if (byId.size === 0 && openOrder.length === 0 && focusedWindowId === null) {
+    windowsSnapshot = EMPTY_WINDOWS;
+    return;
+  }
   byId.clear();
   openOrder.length = 0;
   focusedWindowId = null;
