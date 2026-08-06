@@ -57,8 +57,8 @@ export function nodesForCapabilityDay(
   }
 
   const routeOrdered = (state.relationshipEdges ?? [])
-    .filter((e) => e.kind === "route" || e.kind === "schedule")
-    .flatMap((e) => [e.fromNodeId, e.toNodeId]);
+    .filter((e) => e.kind === "route")
+    .flatMap((e) => [e.fromId, e.toId]);
   if (routeOrdered.length > 0) {
     const byId = new Map(state.nodes.map((n) => [n.id, n] as const));
     const seen = new Set<string>();
