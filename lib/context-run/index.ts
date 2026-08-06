@@ -149,9 +149,22 @@ export {
 
 export {
   applyGlobeWorkspaceAgentTurn,
+  expandWorkspaceFromTrail,
   shortenWorkspaceAgentStatus,
   type GlobeWorkspaceAgentTurnResult,
 } from "@/lib/context-run/apply-globe-workspace-agent-turn";
+
+export {
+  WORKSPACE_EXPAND_CHOICE_ID,
+  WORKSPACE_EXPAND_SLOT_ID,
+  beginAgentActivityTrail,
+  finishAgentActivityTrail,
+  offerWorkspaceExpandChip,
+  syncAgentActivityEventToFeed,
+  syncAgentTrailStatusToChat,
+} from "@/lib/context-run/sync-agent-activity-trail";
+
+export { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
 
 export {
   runWorkspaceAgentLoop,
@@ -168,6 +181,15 @@ export {
   runWorkspaceAgentPlan,
   type WorkspaceAgentPlanRunResult,
 } from "@/lib/context-run/run-workspace-agent-plan";
+export {
+  detectWorkspacePlanConflict,
+  type WorkspacePlanConflict,
+  type WorkspacePlanConflictKind,
+} from "@/lib/context-run/detect-workspace-plan-conflict";
+export {
+  compileConflictReplanSteps,
+  attachConflictReplan,
+} from "@/lib/context-run/replan-workspace-agent-plan";
 export type {
   WorkspaceAgentPlan,
   WorkspaceAgentPlanStep,
@@ -178,6 +200,11 @@ export type {
 export { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 export { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
 export { looksLikeAgentFreeTalk } from "@/lib/context-run/looks-like-agent-free-talk";
+export {
+  resolveCurrentMessageIntent,
+  type CurrentMessageIntent,
+  type CurrentMessageIntentKind,
+} from "@/lib/context-run/resolve-current-message-intent";
 export { tryApplyAgentFreeTalkTurn } from "@/lib/context-run/try-apply-agent-free-talk-turn";
 export {
   composeAgentVagueClarifyKo,
