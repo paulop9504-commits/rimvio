@@ -127,6 +127,15 @@ export type {
 } from "@/lib/context-run/agent-activity-transcript";
 
 export {
+  AGENT_ACTIVITY_KINDS,
+  appendAgentActivityEvent,
+  appendAgentActivityForStage,
+  beginAgentActivityTranscript,
+  clearAgentActivityTranscriptForTests,
+  finishAgentActivityTranscript,
+  formatAgentActivityElapsed,
+  readAgentActivityTranscript,
+  subscribeAgentActivityTranscript,
   yieldAgentActivityFrame,
 } from "@/lib/context-run/agent-activity-transcript";
 
