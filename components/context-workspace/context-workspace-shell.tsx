@@ -1598,7 +1598,7 @@ export function ContextWorkspaceShell({
                 }}
               />
               {listOpen && !compareDecisionActive ? (
-                <div className="pointer-events-none absolute inset-y-3 right-3 z-[5] flex justify-end">
+                <div className="pointer-events-none absolute inset-y-3 right-3 z-[12] flex justify-end">
                   <WorkspaceGptPlaceListPanel
                     open={listOpen}
                     contextEventId={eventId}
@@ -1607,10 +1607,8 @@ export function ContextWorkspaceShell({
                     selectedId={selectedId}
                     searching={carouselNodes.length === 0}
                     onSelect={(nodeId) => {
-                      // Soft focus only — list stays open until user hits × (GPT Maps style).
-                      setFocusedId(nodeId);
-                      setPeekClosed(true);
-                      setEvidenceHighlight(null);
+                      // GPT Maps: list stays open; click opens Callout / detail (same as map pin).
+                      onSelect(nodeId);
                     }}
                     onClose={() => setListOpen(false)}
                   />
@@ -1906,7 +1904,7 @@ export function ContextWorkspaceShell({
         ) : null}
 
         {listOpen && !compareDecisionActive ? (
-          <div className="pointer-events-none absolute inset-y-3 right-3 z-[5] flex justify-end">
+          <div className="pointer-events-none absolute inset-y-3 right-3 z-[12] flex justify-end">
             <WorkspaceGptPlaceListPanel
               open={listOpen}
               contextEventId={eventId}
@@ -1915,10 +1913,8 @@ export function ContextWorkspaceShell({
               selectedId={selectedId}
               searching={carouselNodes.length === 0}
               onSelect={(nodeId) => {
-                // Soft focus only — list stays open until user hits × (GPT Maps style).
-                setFocusedId(nodeId);
-                setPeekClosed(true);
-                setEvidenceHighlight(null);
+                // GPT Maps: list stays open; click opens Callout / detail (same as map pin).
+                onSelect(nodeId);
               }}
               onClose={() => setListOpen(false)}
             />
