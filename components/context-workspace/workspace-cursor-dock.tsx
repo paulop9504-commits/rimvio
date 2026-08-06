@@ -54,10 +54,17 @@ import {
 import { RealityDraftItineraryCard } from "@/components/context-workspace/reality-draft-itinerary-card";
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
+import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
 import {
   dispatchRealityJump,
   type RealityJumpTarget,
 } from "@/lib/globe/reality-jump";
+import {
+  readAgentActivityTranscript,
+  subscribeAgentActivityTranscript,
+  type AgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+import { buildCursorAgentTrailView } from "@/lib/ui/build-cursor-agent-trail-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { copy } from "@/lib/copy/human-ko";
@@ -134,19 +141,16 @@ function AssistantBubble(props: {
         </div>
       ) : null}
       {turn.objects && turn.objects.length > 0 ? (
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-          {turn.objects.slice(0, dense ? 3 : 4).map((card) => (
+        <div className="flex flex-wrap gap-1.5">
+          {turn.objects.slice(0, dense ? 4 : 6).map((card) => (
             <button
               key={card.nodeId}
               type="button"
-              className="min-w-[8.75rem] max-w-[10rem] shrink-0 rounded-xl bg-white px-2.5 py-1.5 text-left ring-1 ring-black/[0.04]"
+              className="max-w-[11rem] rounded-full bg-white/90 px-2.5 py-1 text-left ring-1 ring-black/[0.06] transition hover:bg-[#f2f4f6] active:scale-[0.98]"
               onClick={() => props.onFocusNode?.(card.nodeId)}
             >
-              <p className="line-clamp-2 text-[11px] font-semibold leading-snug">
+              <p className="truncate text-[11px] font-semibold leading-snug text-[#191f28]">
                 {card.title}
-              </p>
-              <p className="mt-0.5 truncate text-[9px] text-[#8b95a1]">
-                {card.subtitleKo}
               </p>
             </button>
           ))}
@@ -173,6 +177,9 @@ export function WorkspaceCursorDock({
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [turns, setTurns] = useState<readonly WorkspaceChatTurn[]>([]);
   const [agent, setAgent] = useState<AgentExecutionState | null>(null);
+  const [activity, setActivity] = useState<AgentActivityTranscript | null>(
+    null,
+  );
   const [softChips, setSoftChips] = useState<readonly NetworkAbsorbSoftChip[]>(
     [],
   );
@@ -200,7 +207,7 @@ export function WorkspaceCursorDock({
       setTranscriptOpen(false);
       setAgentExpanded(false);
       collapseTimerRef.current = null;
-    }, 5_500);
+    }, 8_000);
   }, []);
   useEffect(() => {
     if (!eventId) return;
@@ -241,10 +248,31 @@ export function WorkspaceCursorDock({
   }, [eventId]);
 
   useEffect(() => {
-    if (!transcriptOpen && !busy) return;
+    if (!eventId) {
+      setActivity(null);
+      return;
+    }
+    const refresh = () => {
+      const tape = readAgentActivityTranscript();
+      setActivity(tape?.contextEventId === eventId ? tape : null);
+    };
+    refresh();
+    return subscribeAgentActivityTranscript(refresh);
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!transcriptOpen && !busy && !(activity?.running)) return;
     const el = scrollerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [turns, transcriptOpen, busy, agent?.percent, agent?.completedSteps.length]);
+  }, [
+    turns,
+    transcriptOpen,
+    busy,
+    activity?.running,
+    activity?.events.length,
+    agent?.percent,
+    agent?.completedSteps.length,
+  ]);
 
   const runTurn = useCallback(
     async (raw: string) => {
@@ -410,14 +438,48 @@ export function WorkspaceCursorDock({
     agent?.currentTaskKo ||
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
+  const trailView = buildCursorAgentTrailView(activity);
+  const streamOpen =
+    transcriptOpen || busy || Boolean(activity?.running);
+  const liveWorking = busy || Boolean(activity?.running);
 
   // Continue is human-only (Status Panel / dock button). Never auto-send 「계속해」.
+
+  const composer = (
+    <form
+      className="flex items-center gap-1.5 rounded-[18px] bg-[#f5f5f7] px-2.5 py-1 ring-1 ring-black/[0.04]"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void runTurn(value);
+      }}
+    >
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={placeholder}
+        disabled={busy}
+        className="min-w-0 flex-1 border-0 bg-transparent px-1 py-1.5 text-[13px] text-[#1d1d1f] outline-none placeholder:text-[#aeaeb2]"
+        aria-label={placeholder}
+        autoComplete="off"
+      />
+      <button
+        type="submit"
+        disabled={busy || !value.trim()}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40"
+        style={{ background: GLOBE_TOSS_THEME.blue }}
+        aria-label="보내기"
+      >
+        <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    </form>
+  );
 
   return (
     <div
       className={cn(
         "pointer-events-auto w-full shrink-0",
-        !embedded && "mx-auto max-w-[min(96vw,400px)]",
+        !embedded && "mx-auto max-w-[min(96vw,420px)]",
         className,
       )}
       data-workspace-cursor-dock
@@ -452,261 +514,209 @@ export function WorkspaceCursorDock({
             <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </form>
-      ) : compact ? (
+      ) : (
         <div
-          className="overflow-hidden rounded-[22px] bg-white/96 shadow-[0_8px_28px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.06]"
-          data-workspace-cursor-dock-compact
+          className={cn(
+            "flex flex-col overflow-hidden bg-white/96 backdrop-blur-xl",
+            "rounded-[22px] shadow-[0_12px_40px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.06]",
+            streamOpen
+              ? "max-h-[min(48dvh,380px)]"
+              : compact
+                ? ""
+                : "max-h-[min(42dvh,320px)]",
+          )}
+          data-workspace-work-stream
         >
-          <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-            <span className="text-[10px] font-bold tracking-wide text-[#3182f6]">
+          <button
+            type="button"
+            className="flex w-full shrink-0 items-center gap-2 px-3.5 py-2.5 text-left"
+            onClick={() => {
+              if (collapseTimerRef.current) {
+                clearTimeout(collapseTimerRef.current);
+                collapseTimerRef.current = null;
+              }
+              setTranscriptOpen((v) => !v);
+              if (transcriptOpen) setAgentExpanded(false);
+            }}
+            aria-expanded={streamOpen}
+          >
+            <span
+              className={cn(
+                "h-1.5 w-1.5 shrink-0 rounded-full",
+                liveWorking
+                  ? "animate-pulse bg-[#3182f6]"
+                  : "bg-[#d2d2d7]",
+              )}
+              aria-hidden
+            />
+            <span className="text-[11px] font-semibold tracking-tight text-[#1d1d1f]">
               Agent
             </span>
-            <span className="tabular-nums text-[11px] font-extrabold text-[#191f28]">
-              {percent}%
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#8b95a1]">
-              {statusLabel} · {taskLine}
-            </span>
-          </div>
-          <form
-            className="flex items-center gap-1.5 px-2.5 pb-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void runTurn(value);
-            }}
-          >
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={placeholder}
-              disabled={busy}
-              className="min-w-0 flex-1 rounded-[16px] border-0 bg-[#f7f8fa] px-3 py-2 text-[13px] text-[#191f28] outline-none ring-1 ring-black/[0.04] placeholder:text-[#8b95a1]"
-              aria-label={placeholder}
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              disabled={busy || !value.trim()}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40"
-              style={{ background: GLOBE_TOSS_THEME.blue }}
-              aria-label="보내기"
-            >
-              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-          </form>
-        </div>
-      ) : (
-      <div
-        className={cn(
-          "flex max-h-[min(42dvh,320px)] flex-col overflow-hidden bg-white ring-1 ring-black/[0.06]",
-          "rounded-[20px] shadow-[0_8px_28px_rgba(25,31,40,0.12)]",
-        )}
-        data-workspace-work-stream
-      >
-        {/* One stream chrome — Agent % + open/collapse (no nested Agent panel). */}
-        <button
-          type="button"
-          className="flex w-full shrink-0 items-center gap-2 border-b border-black/[0.04] px-3 py-2 text-left"
-          onClick={() => {
-            if (collapseTimerRef.current) {
-              clearTimeout(collapseTimerRef.current);
-              collapseTimerRef.current = null;
-            }
-            setTranscriptOpen((v) => !v);
-            if (transcriptOpen) setAgentExpanded(false);
-          }}
-          aria-expanded={transcriptOpen || busy}
-        >
-          <span className="text-[10px] font-bold tracking-wide text-[#3182f6]">
-            Agent
-          </span>
-          {busy || percent > 0 ? (
-            <span className="tabular-nums text-[11px] font-extrabold text-[#191f28]">
-              {percent}%
-            </span>
-          ) : null}
-          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#8b95a1]">
-            {busy
-              ? `${statusLabel} · ${taskLine}`
-              : copy.globe.workspaceChatTitle}
-          </span>
-          <span className="shrink-0 text-[10px] font-medium text-[#8b95a1]">
-            {transcriptOpen || busy
-              ? copy.globe.workspaceWorkStreamCollapse
-              : copy.globe.workspaceWorkStreamExpand(turns.length)}
-          </span>
-          {transcriptOpen || busy ? (
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
-          ) : (
-            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[#8b95a1]" />
-          )}
-        </button>
-
-        {/* Single scroll: live steps → collapse chip → final turns/artifacts */}
-        {(transcriptOpen || busy) && (
-          <div
-            ref={scrollerRef}
-            className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-3 py-1.5"
-          >
-            {busy && agent ? (
-              <div className="space-y-1 rounded-xl bg-[#f7f8fa] px-2.5 py-2 text-[11px] leading-snug text-[#4e5968]">
-                <p className="font-semibold text-[#191f28]">{agent.goalKo}</p>
-                <div className="h-1.5 overflow-hidden rounded-full bg-[#eef2f7]">
-                  <div
-                    className="h-full rounded-full bg-[#3182f6] transition-[width]"
-                    style={{
-                      width: `${Math.max(2, Math.min(100, percent))}%`,
-                    }}
-                  />
-                </div>
-                {agent.completedSteps.map((s) => (
-                  <p key={s.id} className="text-[#8b95a1]">
-                    ✓ {s.labelKo}
-                  </p>
-                ))}
-                {nextLabel ? (
-                  <p className="animate-pulse font-medium text-[#3182f6]">
-                    · {nextLabel}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {!busy && agent && agent.completedSteps.length > 0 ? (
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-lg bg-[#eef1f4] px-2.5 py-1.5 text-left"
-                onClick={() => setAgentExpanded((v) => !v)}
-                aria-expanded={agentExpanded}
-                data-agent-step-collapse
-              >
-                <span
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#dfe3e8] text-[9px] font-bold text-[#4e5968]"
-                  aria-hidden
-                >
-                  ✓
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#4e5968]">
-                  {agent.completedSteps
-                    .slice(-2)
-                    .map((s) => s.labelKo)
-                    .join(" · ")}
-                </span>
-                {agentExpanded ? (
-                  <ChevronDown className="h-3 w-3 shrink-0 text-[#b0b8c1]" />
-                ) : (
-                  <ChevronUp className="h-3 w-3 shrink-0 text-[#b0b8c1]" />
-                )}
-              </button>
-            ) : null}
-
-            {!busy && agentExpanded && agent ? (
-              <div className="space-y-1 px-0.5 text-[11px] text-[#8b95a1]">
-                {agent.completedSteps.map((s) => (
-                  <p key={`d-${s.id}`}>✓ {s.labelKo}</p>
-                ))}
-              </div>
-            ) : null}
-
-            {turns.length === 0 && !busy ? (
-              <p className="py-2 text-center text-[11px] text-[#8b95a1]">
-                {copy.globe.workspaceChatEmptyBody}
-              </p>
-            ) : (
-              turns.slice(-4).map((turn) => (
-                <div
-                  key={turn.id}
-                  className={cn(
-                    "flex",
-                    turn.role === "user" ? "justify-end" : "justify-start",
-                  )}
-                >
-                  {turn.role === "user" ? (
-                    <div className="max-w-[88%] rounded-[16px] rounded-br-[6px] bg-[#3182f6] px-2.5 py-1.5 text-[12px] font-medium text-white">
-                      {turn.text}
-                    </div>
-                  ) : (
-                    <AssistantBubble
-                      turn={turn}
-                      dense
-                      contextEventId={eventId}
-                      onFocusNode={onFocusNode}
-                      onBriefReplay={onBriefReplay}
-                      briefReplayGroundIndex={briefReplayGroundIndex}
-                      activeDraftNodeId={activeDraftNodeId}
-                    />
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        <div className="shrink-0 space-y-1.5 border-t border-black/[0.04] px-2.5 py-2">
-          {nextLabel && busy ? (
-            <p className="px-1 pb-0.5 text-center text-[11px] font-semibold text-[#3182f6]">
-              {copy.globe.workspaceAgentAutoSetting}
-              <span className="ml-1 font-medium text-[#8b95a1]">
-                · {nextLabel}
+            {liveWorking || percent > 0 ? (
+              <span className="tabular-nums text-[11px] font-semibold text-[#86868b]">
+                {Math.round(percent)}%
               </span>
-            </p>
-          ) : null}
-          {softChips.length > 0 ? (
-            <div
-              className="flex flex-wrap gap-1.5 px-0.5"
-              data-network-absorb-soft-chips
-            >
-              {softChips.map((chip) => (
-                <button
-                  key={`${chip.labelKo}:${chip.utterance}`}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    if (chip.utterance === ANCHOR_RETYPE_CHIP_UTTERANCE) {
-                      setSoftChips([]);
-                      setValue("");
-                      setTranscriptOpen(true);
-                      return;
-                    }
-                    void runTurn(chip.utterance);
-                  }}
-                  className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[#4e5968] ring-1 ring-black/[0.06] disabled:opacity-40"
-                >
-                  {chip.labelKo}
-                </button>
-              ))}
+            ) : null}
+            <span className="min-w-0 flex-1 truncate text-[11px] text-[#86868b]">
+              {liveWorking
+                ? trailView?.phaseLineKo ||
+                  trailView?.nested?.titleKo ||
+                  `${statusLabel} · ${taskLine}`
+                : copy.globe.workspaceChatTitle}
+            </span>
+            <span className="shrink-0 text-[10px] font-medium text-[#aeaeb2]">
+              {streamOpen
+                ? copy.globe.workspaceWorkStreamCollapse
+                : copy.globe.workspaceWorkStreamExpand(turns.length)}
+            </span>
+            {streamOpen ? (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#aeaeb2]" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-[#aeaeb2]" />
+            )}
+          </button>
+
+          {liveWorking ? (
+            <div className="mx-3.5 mb-1 h-[2px] overflow-hidden rounded-full bg-[#e8e8ed]">
+              <div
+                className="h-full rounded-full bg-[#3182f6] transition-[width] duration-500 ease-out"
+                style={{
+                  width: `${Math.max(8, Math.min(100, percent || 12))}%`,
+                }}
+              />
             </div>
           ) : null}
-          <form
-            className="flex items-center gap-1.5 rounded-[18px] bg-[#f7f8fa] px-2.5 py-1 ring-1 ring-black/[0.04]"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void runTurn(value);
-            }}
-          >
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={placeholder}
-              disabled={busy}
-              className="min-w-0 flex-1 border-0 bg-transparent px-1 py-1.5 text-[13px] text-[#191f28] outline-none placeholder:text-[#8b95a1]"
-              aria-label={placeholder}
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              disabled={busy || !value.trim()}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40"
-              style={{ background: GLOBE_TOSS_THEME.blue }}
-              aria-label="보내기"
+
+          {streamOpen ? (
+            <div
+              ref={scrollerRef}
+              className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3.5 pb-1 pt-0.5"
             >
-              <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-          </form>
+              {trailView ? (
+                <div
+                  className="rounded-2xl bg-[#f5f5f7]/95 px-3 py-2.5 ring-1 ring-black/[0.03]"
+                  data-workspace-cursor-trail
+                >
+                  <CursorAgentActivityTrail view={trailView} />
+                </div>
+              ) : liveWorking && agent ? (
+                <div className="rounded-2xl bg-[#f5f5f7]/95 px-3 py-2.5 ring-1 ring-black/[0.03]">
+                  <p className="text-[11px] text-[#86868b]">
+                    {copy.globe.activityTrail.ranCommands(
+                      Math.max(1, agent.completedSteps.length),
+                    )}
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium leading-snug text-[#1d1d1f]">
+                    {agent.goalKo || taskLine}
+                  </p>
+                  <p className="mt-1.5 animate-pulse text-[11px] text-[#86868b]">
+                    {nextLabel ||
+                      agent.liveHeadlineKo ||
+                      copy.globe.activityTrail.waitingAgent}
+                  </p>
+                </div>
+              ) : null}
+
+              {!liveWorking && agent && agent.completedSteps.length > 0 ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-xl bg-[#f5f5f7] px-2.5 py-1.5 text-left"
+                  onClick={() => setAgentExpanded((v) => !v)}
+                  aria-expanded={agentExpanded}
+                  data-agent-step-collapse
+                >
+                  <span
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#e8e8ed] text-[9px] font-bold text-[#6e6e73]"
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-[#6e6e73]">
+                    {agent.completedSteps
+                      .slice(-2)
+                      .map((s) => s.labelKo)
+                      .join(" · ")}
+                  </span>
+                  {agentExpanded ? (
+                    <ChevronDown className="h-3 w-3 shrink-0 text-[#aeaeb2]" />
+                  ) : (
+                    <ChevronUp className="h-3 w-3 shrink-0 text-[#aeaeb2]" />
+                  )}
+                </button>
+              ) : null}
+
+              {!liveWorking && agentExpanded && agent ? (
+                <div className="space-y-1 px-0.5 text-[11px] text-[#86868b]">
+                  {agent.completedSteps.map((s) => (
+                    <p key={`d-${s.id}`}>✓ {s.labelKo}</p>
+                  ))}
+                </div>
+              ) : null}
+
+              {turns.length === 0 && !liveWorking ? (
+                <p className="py-2 text-center text-[11px] text-[#aeaeb2]">
+                  {copy.globe.workspaceChatEmptyBody}
+                </p>
+              ) : (
+                turns.slice(-5).map((turn) => (
+                  <div
+                    key={turn.id}
+                    className={cn(
+                      "flex",
+                      turn.role === "user" ? "justify-end" : "justify-start",
+                    )}
+                  >
+                    {turn.role === "user" ? (
+                      <div className="max-w-[88%] rounded-[18px] rounded-br-[6px] bg-[#3182f6] px-3 py-1.5 text-[13px] font-medium leading-snug text-white">
+                        {turn.text}
+                      </div>
+                    ) : (
+                      <AssistantBubble
+                        turn={turn}
+                        dense
+                        contextEventId={eventId}
+                        onFocusNode={onFocusNode}
+                        onBriefReplay={onBriefReplay}
+                        briefReplayGroundIndex={briefReplayGroundIndex}
+                        activeDraftNodeId={activeDraftNodeId}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
+
+          <div className="shrink-0 space-y-1.5 border-t border-black/[0.04] px-2.5 py-2">
+            {softChips.length > 0 ? (
+              <div
+                className="flex flex-wrap gap-1.5 px-0.5"
+                data-network-absorb-soft-chips
+              >
+                {softChips.map((chip) => (
+                  <button
+                    key={`${chip.labelKo}:${chip.utterance}`}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (chip.utterance === ANCHOR_RETYPE_CHIP_UTTERANCE) {
+                        setSoftChips([]);
+                        setValue("");
+                        setTranscriptOpen(true);
+                        return;
+                      }
+                      void runTurn(chip.utterance);
+                    }}
+                    className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[#4e5968] ring-1 ring-black/[0.06] disabled:opacity-40"
+                  >
+                    {chip.labelKo}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {composer}
+          </div>
         </div>
-      </div>
       )}
     </div>
   );

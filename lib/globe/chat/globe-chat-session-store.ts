@@ -185,6 +185,11 @@ export function resetGlobeChatSessionStoreForTests(): void {
   clearGlobeChatSession();
 }
 
+/** Graph ids with an in-memory chat session (hint / tests / execute inherit). */
+export function listGlobeChatSessionGraphIds(): readonly string[] {
+  return [...sessions.keys()];
+}
+
 export function subscribeGlobeChatSessionChange(
   listener: (detail: { graphId: string; session: GlobeChatSession | null }) => void,
 ): () => void {

@@ -31,6 +31,7 @@ import {
   resolveActiveWorkspaceContextId,
 } from "@/lib/context-run/resolve-active-workspace-context";
 import { looksLikeStrictConversationalAsk } from "@/lib/context-run/try-apply-conversational-turn";
+import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
 
 function planPortalComposeResumeIfEligible(
   bound: BoundSituation,
@@ -40,6 +41,15 @@ function planPortalComposeResumeIfEligible(
     pending?.status !== "waiting_slot" &&
     pending?.status !== "drafting" &&
     pending?.status !== "conversing"
+  ) {
+    return null;
+  }
+  const text = bound.goalKo.trim();
+  // Execute / trip create must break out of portal converse clarify loops.
+  if (
+    isAgentExecuteVerbUtterance(text) ||
+    isNewTripGlobeIngressUtterance(text) ||
+    isWorkspaceAgentWorkUtterance(text)
   ) {
     return null;
   }
@@ -156,6 +166,27 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return recallPlan;
   }
 
+  // Execute verb first — never trap 「계획 너가 세워줘」in portal/small_talk.
+  if (
+    ingress.surface === "composer" &&
+    ingress.layerMode === "personal" &&
+    isAgentExecuteVerbUtterance(text)
+  ) {
+    const explicit = ingress.contextEventId?.trim() || null;
+    const workspaceAgentContextEventId =
+      resolveActiveWorkspaceContextId({
+        explicitContextEventId: explicit,
+      }) ??
+      explicit ??
+      undefined;
+    return {
+      kind: "workspace_agent",
+      workspaceAgentContextEventId,
+      composeAmbientChat: true,
+      ...base,
+    };
+  }
+
   const portalResume = planPortalComposeResumeIfEligible(bound);
   if (portalResume) {
     return portalResume;
@@ -166,7 +197,8 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   if (
     ingress.surface === "composer" &&
     looksLikeStrictConversationalAsk(text) &&
-    !isNewTripGlobeIngressUtterance(text)
+    !isNewTripGlobeIngressUtterance(text) &&
+    !isAgentExecuteVerbUtterance(text)
   ) {
     const smallTalk = resolveSmallTalk({ text });
     return {

@@ -127,17 +127,13 @@ export type {
 } from "@/lib/context-run/agent-activity-transcript";
 
 export {
-  AGENT_ACTIVITY_KINDS,
-  appendAgentActivityEvent,
-  appendAgentActivityForStage,
-  beginAgentActivityTranscript,
-  clearAgentActivityTranscriptForTests,
-  finishAgentActivityTranscript,
-  formatAgentActivityElapsed,
-  readAgentActivityTranscript,
-  subscribeAgentActivityTranscript,
   yieldAgentActivityFrame,
 } from "@/lib/context-run/agent-activity-transcript";
+
+export {
+  streamCursorStyleBootstrapTape,
+  yieldBetweenAgentStages,
+} from "@/lib/context-run/stream-cursor-style-bootstrap-tape";
 
 export {
   AGENT_PRODUCT_PIPELINE_STAGES,
@@ -165,6 +161,7 @@ export {
 } from "@/lib/context-run/sync-agent-activity-trail";
 
 export { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
+export { resolveRecentTravelDestinationHint } from "@/lib/context-run/resolve-recent-travel-destination-hint";
 
 export {
   runWorkspaceAgentLoop,
@@ -208,8 +205,10 @@ export {
 export { tryApplyAgentFreeTalkTurn } from "@/lib/context-run/try-apply-agent-free-talk-turn";
 export {
   composeAgentVagueClarifyKo,
+  composeAgentVagueClarifyFromWorkspace,
   shouldSkipAgentLoopForConversation,
   AGENT_VAGUE_CLARIFY_KO,
+  AGENT_VAGUE_CLARIFY_CHIP_UTTERANCES,
 } from "@/lib/context-run/compose-agent-vague-clarify";
 
 export {

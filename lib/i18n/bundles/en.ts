@@ -498,9 +498,14 @@ export const copyEn: Copy = {
       ranCommands: (n: number) => (n === 1 ? "Ran 1 command" : `Ran ${n} commands`),
       exploredCommands: (n: number) =>
         n === 1 ? "Explored ran 1 command" : `Explored ran ${n} commands`,
+      exploredSearches: (n: number) =>
+        n === 1 ? "Exploring 1 search" : `Exploring ${n} searches`,
+      thoughtFor: (sec: number) => `Thought for ${sec}s`,
+      runningTool: "Running tool",
       autoBadge: "Auto",
       planningMoves: "Planning next moves",
       waitingAgent: "Waiting for agent",
+      waitingSubagent: "Waiting for subagent",
     },
     workspacePreviewEmptyMap: "Open the map",
     workspaceMapLoadingTitle: "Loading map",

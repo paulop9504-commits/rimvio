@@ -33,13 +33,16 @@ appendAgentActivityEvent({
 
 const running = buildCursorAgentTrailView(readAgentActivityTranscript());
 assert.ok(running);
-assert.match(running!.summaryLineKo, /명령/);
+assert.match(running!.thoughtLineKo, /생각|Thought|초/);
+assert.match(running!.summaryLineKo, /명령|command/i);
 assert.equal(running!.goalKo, "너가 세워줘");
 assert.ok(running!.exploredLineKo);
 assert.equal(running!.nested?.auto, true);
 assert.equal(running!.nested?.active, true);
+assert.ok(running!.phaseLineKo);
 assert.ok(running!.waitLineKo);
 assert.equal(running!.finished, false);
+assert.equal(running!.running, true);
 
 finishAgentActivityTranscript({ summaryKo: "반영 완료" });
 const done = buildCursorAgentTrailView(readAgentActivityTranscript());

@@ -3,6 +3,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -23,6 +24,12 @@ import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import {
+  readAgentActivityTranscript,
+  subscribeAgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
+import { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
 import { offerIngressConvergeChipsClient } from "@/lib/globe-ingress/offer-ingress-converge-chips-client";
 import { interpretMessyForGlobeComposer } from "@/lib/messy-prompt-interpreter/adapters/globe-composer-adapter";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
@@ -187,6 +194,7 @@ export const GlobeContextIngestBar = forwardRef<
   const [text, setText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [trailRunning, setTrailRunning] = useState(false);
   const [clarifyPlaceholder, setClarifyPlaceholder] = useState<string | null>(null);
   const [operatorChoices, setOperatorChoices] = useState<{
     reasonKo: string;
@@ -215,6 +223,14 @@ export const GlobeContextIngestBar = forwardRef<
     },
     [onAttached, showComposerHint],
   );
+
+  useEffect(() => {
+    const sync = () => {
+      setTrailRunning(Boolean(readAgentActivityTranscript()?.running));
+    };
+    sync();
+    return subscribeAgentActivityTranscript(sync);
+  }, []);
 
   const attachHintId = forceAttachToTarget ? targetEventId?.trim() || null : null;
   const routingContextEventId = targetEventId?.trim() || null;
@@ -575,7 +591,14 @@ export const GlobeContextIngestBar = forwardRef<
         }
 
         const operatorGate = gateOperatorBeforeDispatch?.(value);
-        if (operatorGate && !operatorGate.allowed) {
+        // Execute / new-trip never stuck behind Operator destination chips.
+        if (
+          operatorGate &&
+          !operatorGate.allowed &&
+          !isAgentExecuteVerbUtterance(value) &&
+          !isNewTripGlobeIngressUtterance(value) &&
+          !isWorkspaceAgentWorkUtterance(value)
+        ) {
           const question = softenComposerStatusLine(operatorGate.reasonKo);
           showComposerHint(question, { durationMs: 0 });
           setClarifyPlaceholder(question);
@@ -606,8 +629,43 @@ export const GlobeContextIngestBar = forwardRef<
           });
         }
 
-        // Cursor Agent Loop — Activity Trail in chat; Workspace soft + 「펼치기」.
+        // New trip announce → Globe Ingress Continuum (not Agent essay / clarify).
+        if (isNewTripGlobeIngressUtterance(interpreted.dispatchText)) {
+          const result = await dispatchContextRun(
+            {
+              kind: "text",
+              text: interpreted.dispatchText,
+              surface: "composer",
+              layerMode: isDiscovery ? "discovery" : "personal",
+              contextEventId: routingContextEventId,
+              lat: userLat ?? liveLocation?.lat ?? null,
+              lng: userLng ?? liveLocation?.lng ?? null,
+            },
+            contextRunHandlers(),
+          );
+          if (result.status === "done" || result.status === "noop") {
+            if (result.status === "done") {
+              setClarifyPlaceholder(null);
+              setOperatorChoices(null);
+              setText("");
+              setMenuOpen(false);
+            }
+            if (result.status === "done") {
+              return;
+            }
+          }
+          if (result.status === "error") {
+            showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
+              tone: "error",
+              durationMs: 5000,
+            });
+            return;
+          }
+        }
+
+        // Cursor Agent Loop — execute verbs + Workspace work (Trail + soft 펼치기).
         if (isWorkspaceAgentWorkUtterance(interpreted.dispatchText)) {
+          clearComposerHint();
           const agent = await applyGlobeWorkspaceAgentTurn({
             utterance: interpreted.dispatchText,
             explicitContextEventId: routingContextEventId ?? attachHintId,
@@ -627,9 +685,10 @@ export const GlobeContextIngestBar = forwardRef<
             if (agent.contextEventId) {
               onAttached?.(agent.contextEventId);
             }
+            // Brief success only — live progress lived in Activity Trail.
             showComposerHint(line, {
               tone: "success",
-              durationMs: 4500,
+              durationMs: 2800,
             });
             setClarifyPlaceholder(null);
             setOperatorChoices(null);
@@ -800,7 +859,11 @@ export const GlobeContextIngestBar = forwardRef<
       data-globe-ingest-compact={isPill ? "pill" : undefined}
     >
       <GlobeComposerHintStrip
-        text={composerHint?.text ?? null}
+        text={
+          trailRunning && composerHint?.tone !== "error"
+            ? null
+            : (composerHint?.text ?? null)
+        }
         tone={composerHint?.tone}
         mapDark={mapPromptMode && !isDiscovery && !isLightPill}
         lightPill={isLightPill}

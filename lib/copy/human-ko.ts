@@ -508,9 +508,17 @@ export const copy = {
       expandHint: "플랜을 Workspace에 올려 뒀어요 · 펼치기로 열어 보세요",
       ranCommands: (n: number) => `명령 ${n}개 실행`,
       exploredCommands: (n: number) => `탐색 · 명령 ${n}개`,
+      /** Cursor: Exploring N searches */
+      exploredSearches: (n: number) => `탐색 ${n}건`,
+      /** Cursor: Thought for 6s */
+      thoughtFor: (sec: number) => `${sec}초 동안 생각`,
+      /** Cursor: Running tool */
+      runningTool: "도구 실행 중",
       autoBadge: "Auto",
       planningMoves: "다음 단계 짜는 중",
       waitingAgent: "에이전트 응답 대기",
+      /** Cursor: Waiting for subagent */
+      waitingSubagent: "하위 작업 대기",
     },
     workspacePreviewEmptyMap: "지도를 펼쳐 보세요",
     workspaceMapLoadingTitle: "지도 불러오는 중",

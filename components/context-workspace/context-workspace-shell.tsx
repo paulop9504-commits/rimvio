@@ -842,6 +842,29 @@ export function ContextWorkspaceShell({
     setFocusedId((prev) => (prev === nodeId ? prev : nodeId));
   }, []);
 
+  /** GPT place list → open place detail sheet (not soft-focus-only). */
+  const onPlaceListSelect = useCallback(
+    (nodeId: string) => {
+      const id = contextEventId?.trim();
+      if (!id) return;
+      const openGen = ++peekOpenGenerationRef.current;
+      setFocusedId(nodeId);
+      setPeekClosed(false);
+      setEvidenceHighlight(null);
+      void (async () => {
+        const result = await enterWorkspaceSlotFocus({
+          contextEventId: id,
+          nodeId,
+        });
+        if (openGen !== peekOpenGenerationRef.current) return;
+        setMapFocusKind(result.mapFocusKind);
+        setFocusedId(result.focusId);
+        setPeekClosed(false);
+      })();
+    },
+    [contextEventId],
+  );
+
   // GPT place list — open when search candidates land (simple search UX).
   useEffect(() => {
     if (carouselNodes.length > 0) {
@@ -1606,10 +1629,7 @@ export function ContextWorkspaceShell({
                     workspace={state}
                     selectedId={selectedId}
                     searching={carouselNodes.length === 0}
-                    onSelect={(nodeId) => {
-                      // GPT Maps: list stays open; click opens Callout / detail (same as map pin).
-                      onSelect(nodeId);
-                    }}
+                    onSelect={onPlaceListSelect}
                     onClose={() => setListOpen(false)}
                   />
                 </div>
@@ -1912,10 +1932,7 @@ export function ContextWorkspaceShell({
               workspace={state}
               selectedId={selectedId}
               searching={carouselNodes.length === 0}
-              onSelect={(nodeId) => {
-                // GPT Maps: list stays open; click opens Callout / detail (same as map pin).
-                onSelect(nodeId);
-              }}
+              onSelect={onPlaceListSelect}
               onClose={() => setListOpen(false)}
             />
           </div>

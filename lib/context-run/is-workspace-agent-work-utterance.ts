@@ -33,6 +33,15 @@ const ACTIVE_FOLLOW_RE =
 export function isWorkspaceAgentWorkUtterance(utterance: string): boolean {
   const text = utterance.trim();
   if (!text) return false;
+  // Knowledge / explain Q — conversational lane (never Continuum / Agent mint).
+  if (
+    /(?:가|은|는)?\s*뭐야|[?？]\s*$|(?:을|를)?\s*설명해(?:\s*줘)?|tell\s+me\s+about|what\s+is\b|what'?s\b/iu.test(
+      text,
+    ) &&
+    !/(?:찾|예약|준비|더\s*싸|필터|골라|넣어|빼)/iu.test(text)
+  ) {
+    return false;
+  }
   // 「4박5일 오사카」도 Continuum 준비 대상 — Day skeleton은 globe_ingress와 병행 가능.
   if (isNewTripGlobeIngressUtterance(text)) {
     return true;

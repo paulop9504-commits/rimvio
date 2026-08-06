@@ -43,6 +43,8 @@ import {
   publishGlobeProjectionLayerPolicy,
   readGlobeProjectionLayerPolicy,
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
+import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
+import { resolveRecentTravelDestinationHint } from "@/lib/context-run/resolve-recent-travel-destination-hint";
 
 export type GlobeWorkspaceAgentTurnResult = {
   readonly handled: boolean;
@@ -181,11 +183,28 @@ async function tryMintWorkspaceForAgent(input: {
   const kind =
     classifyWorkspaceKind(utterance) ??
     // Soft Travel when lodging/eatery work slipped classifier.
-    (/호텔|숙소|맛집|식당|카페|렌터/iu.test(utterance) ? "travel" : null);
+    (/호텔|숙소|맛집|식당|카페|렌터/iu.test(utterance) ? "travel" : null) ??
+    // 「계획 너가 세워줘」with known dest → mint Travel Continuum.
+    (isAgentExecuteVerbUtterance(utterance) &&
+    resolveRecentTravelDestinationHint(utterance)
+      ? "travel"
+      : null);
 
   if (kind === "travel" || kind === "driver" || kind === "used_goods") {
+    const destHint =
+      kind === "travel"
+        ? resolveRecentTravelDestinationHint(utterance)
+        : null;
+    const continuumUtterance =
+      kind === "travel" &&
+      destHint &&
+      !/호텔|숙소|맛집|일정|동선|계획/iu.test(utterance)
+        ? `${destHint} 여행 계획 세워줘`
+        : destHint && isAgentExecuteVerbUtterance(utterance)
+          ? `${destHint} ${utterance}`
+          : utterance;
     const continuum = runWorkspaceIntentContinuum({
-      utterance,
+      utterance: continuumUtterance,
       graphId: input.explicitContextEventId?.trim() || `agent_${Date.now()}`,
       contextEventId: input.explicitContextEventId,
       createIfMissing: true,
@@ -426,6 +445,11 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     goalKo: utterance,
     contextEventId,
   });
+  // Cursor feel: Thought → Explore → Tool frames paint before tools finish.
+  const { streamCursorStyleBootstrapTape } = await import(
+    "@/lib/context-run/stream-cursor-style-bootstrap-tape"
+  );
+  await streamCursorStyleBootstrapTape();
 
   // Always Plan runner — even single-step gets Observe→Act→Verify→Replan slot.
   const plan =

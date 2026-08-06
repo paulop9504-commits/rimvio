@@ -242,8 +242,10 @@ export function WorkspaceGptPlaceListPanel({
                   key={node.id}
                   type="button"
                   className={cn(
-                    "flex w-full gap-3 rounded-xl px-2 py-3 text-left transition-colors",
-                    selected ? "bg-[#e8f3ff]" : "hover:bg-[#f7f8fa]",
+                    "flex w-full cursor-pointer gap-3 rounded-xl px-2 py-3 text-left transition-colors",
+                    selected
+                      ? "bg-[#e8f3ff] ring-1 ring-[#3182f6]/25"
+                      : "hover:bg-[#f7f8fa] active:bg-[#eef1f4]",
                   )}
                   onClick={() => onSelect(node.id)}
                 >

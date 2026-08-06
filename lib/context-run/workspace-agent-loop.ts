@@ -30,10 +30,14 @@ import type { AutoProjectionResult } from "@/lib/context-workspace/auto-projecti
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
 import {
   advanceAgentProductStage,
+  failAgentProductStage,
   readLastAgentProductTurn,
 } from "@/lib/context-run/agent-product-pipeline";
 import { writeAgentRuntimeProjectionFromWorkspace } from "@/lib/context-run/agent-runtime-projection";
 import { tryEnterCompareDecisionAfterRefine } from "@/lib/context-workspace/projection/try-enter-compare-after-refine";
+import { projectAgentTurnSurfaces } from "@/lib/agent-policy/project-agent-turn-surfaces";
+import { resolveWorkspaceMutationMode } from "@/lib/agent-policy/resolve-workspace-mutation-mode";
+import { composeAgentVagueClarifyFromWorkspace } from "@/lib/context-run/compose-agent-vague-clarify";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -360,8 +364,17 @@ export async function runWorkspaceAgentLoop(input: {
       contextEventId,
     });
     if (!prompt.handled) {
+      const clarify = composeAgentVagueClarifyFromWorkspace({
+        utterance,
+        contextEventId,
+      });
+      const product = readLastAgentProductTurn();
+      if (product?.contextEventId === contextEventId) {
+        failAgentProductStage(product, "workspace_patch", clarify);
+        writeAgentRuntimeProjectionFromWorkspace({ contextEventId });
+      }
       return fail({
-        statusKo: "Patch 없음",
+        statusKo: shorten(clarify, 96),
         contextEventId,
         toolId: "workspace_prompt",
       });
@@ -390,6 +403,79 @@ export async function runWorkspaceAgentLoop(input: {
     (workspaceMutated ||
       after?.updatedAtIso !== before?.updatedAtIso ||
       (after?.patches?.length ?? 0) > (before?.patches?.length ?? 0));
+
+  // Dual surfaces + honest product stage tape (not bare scout string / "Patch 없음")
+  const visible = (after?.nodes ?? []).filter((n) => n.visible);
+  const titles = visible.slice(0, 3).map((n) => n.title);
+  const hadVisibleBefore = Boolean(before?.nodes.some((n) => n.visible));
+  const mutation = resolveWorkspaceMutationMode({
+    utterance,
+    hasVisibleCandidates: hadVisibleBefore || visible.length > 0,
+  });
+  const mutationMode =
+    mutation.mode === "none"
+      ? toolId === "workspace_patch" && understood.patch?.kind === "filter_entity"
+        ? "refine"
+        : "replace"
+      : mutation.mode;
+  const surfaces = projectAgentTurnSurfaces({
+    mutationMode,
+    reasonKo: mutation.replyHintKo ?? statusKo,
+    factsKo: [after?.lastChangeKo ?? null, statusKo].filter(
+      (x): x is string => Boolean(x?.trim()),
+    ),
+    candidateCount: visible.length,
+    entityTitlesKo: titles,
+  });
+  statusKo = surfaces.llmReplyKo || statusKo;
+
+  {
+    let product = readLastAgentProductTurn();
+    if (product?.contextEventId === contextEventId) {
+      const { yieldBetweenAgentStages } = await import(
+        "@/lib/context-run/stream-cursor-style-bootstrap-tape"
+      );
+      const discoveryLike =
+        toolId === "spatial_discovery" ||
+        toolId === "workspace_prompt" ||
+        (toolId === "workspace_patch" &&
+          (understood.patch?.kind === "spatial_constraint" ||
+            understood.patch?.kind === "replace_entity"));
+      if (discoveryLike) {
+        await yieldBetweenAgentStages(70);
+        product = advanceAgentProductStage(
+          product,
+          "object_discovery",
+          `후보 ${visible.length}곳`,
+        );
+        await yieldBetweenAgentStages(70);
+        product = advanceAgentProductStage(product, "object_enrichment");
+        await yieldBetweenAgentStages(70);
+        product = advanceAgentProductStage(
+          product,
+          "candidate_evaluation",
+          surfaces.calloutLinesKo[0] ?? null,
+        );
+      }
+      if (workspaceMutated || toolId === "workspace_patch") {
+        await yieldBetweenAgentStages(60);
+        product = advanceAgentProductStage(
+          product,
+          "workspace_patch",
+          surfaces.calloutLinesKo[0] ?? statusKo,
+        );
+      }
+      await yieldBetweenAgentStages(50);
+      product = advanceAgentProductStage(product, "projection");
+      await yieldBetweenAgentStages(50);
+      advanceAgentProductStage(product, "agent_status", surfaces.llmReplyKo);
+    }
+    writeAgentRuntimeProjectionFromWorkspace({
+      contextEventId,
+      preparePending: commitPending,
+      commitPending,
+    });
+  }
 
   // 8. Wait (human — never auto Commit)
   phases.push("wait");
