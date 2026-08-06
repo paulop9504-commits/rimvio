@@ -54,6 +54,8 @@ export type WorkspaceAgentPlanKind =
   | "day_modify_b"
   | "refine_chain"
   | "add_a"
+  /** Concurrent lodging + eatery (+ refine) without Day verbs. */
+  | "scout_domains"
   /** Scout → Top-N refine → Day place → route (acceptance compound). */
   | "scout_refine_day";
 

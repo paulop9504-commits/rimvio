@@ -26,12 +26,11 @@ import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-k
 import { resolveIngressContextEventId } from "@/lib/context-run/should-spawn-new-context";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 import { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
-import { looksLikeAgentFreeTalk } from "@/lib/context-run/looks-like-agent-free-talk";
-import { composeAgentVagueClarifyKo } from "@/lib/context-run/compose-agent-vague-clarify";
 import {
   hasActiveWorkspaceForGlobePrompt,
   resolveActiveWorkspaceContextId,
 } from "@/lib/context-run/resolve-active-workspace-context";
+import { looksLikeStrictConversationalAsk } from "@/lib/context-run/try-apply-conversational-turn";
 
 function planPortalComposeResumeIfEligible(
   bound: BoundSituation,
@@ -162,16 +161,41 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     return portalResume;
   }
 
-  // Free-talk / greeting BEFORE Workspace Agent — never Patch on「ㅎㅇ」.
-  if (ingress.surface === "composer") {
+  // Free-talk / knowledge BEFORE Workspace Agent — never Patch on「ㅎㅇ」.
+  // Strict gate only (memos · marketplace · trips fall through).
+  if (
+    ingress.surface === "composer" &&
+    looksLikeStrictConversationalAsk(text) &&
+    !isNewTripGlobeIngressUtterance(text)
+  ) {
     const smallTalk = resolveSmallTalk({ text });
-    if (smallTalk || looksLikeAgentFreeTalk(text)) {
-      return {
-        kind: "small_talk",
-        smallTalkReplyKo: smallTalk?.replyKo,
-        composeAmbientChat: true,
-        ...base,
-      };
+    return {
+      kind: "small_talk",
+      smallTalkReplyKo: smallTalk?.replyKo,
+      composeAmbientChat: true,
+      ...base,
+    };
+  }
+
+  // Driver + Marketplace + Travel frame — before vague chat absorption into Agent.
+  // Travel Continuum auto-opens Workspace (no 「작업장 열기」). New-trip + stay
+  // with Day skeleton still prefers globe_ingress below.
+  if (
+    (ingress.surface === "composer" || ingress.surface === "capture_sheet") &&
+    ingress.layerMode === "personal"
+  ) {
+    const workspaceKind = classifyWorkspaceKind(text);
+    if (workspaceKind === "driver" || workspaceKind === "used_goods") {
+      return { kind: "workspace_intent_continuum", ...base };
+    }
+    if (
+      workspaceKind === "travel" &&
+      !isNewTripGlobeIngressUtterance(text) &&
+      !hasActiveWorkspaceForGlobePrompt({
+        explicitContextEventId: ingress.contextEventId,
+      })
+    ) {
+      return { kind: "workspace_intent_continuum", ...base };
     }
   }
 
@@ -197,7 +221,6 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
   }
 
   // Active Workspace → Agent Loop only for real work (Patch/Scout/Prepare).
-  // Vague NL → small_talk clarify (never "Patch 없음").
   if (
     ingress.surface === "composer" &&
     ingress.layerMode === "personal"
@@ -206,23 +229,16 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
     if (
       hasActiveWorkspaceForGlobePrompt({
         explicitContextEventId: explicit,
-      })
+      }) &&
+      isWorkspaceAgentWorkUtterance(text)
     ) {
-      if (isWorkspaceAgentWorkUtterance(text)) {
-        const workspaceAgentContextEventId =
-          resolveActiveWorkspaceContextId({
-            explicitContextEventId: explicit,
-          }) ?? explicit ?? undefined;
-        return {
-          kind: "workspace_agent",
-          workspaceAgentContextEventId,
-          composeAmbientChat: true,
-          ...base,
-        };
-      }
+      const workspaceAgentContextEventId =
+        resolveActiveWorkspaceContextId({
+          explicitContextEventId: explicit,
+        }) ?? explicit ?? undefined;
       return {
-        kind: "small_talk",
-        smallTalkReplyKo: composeAgentVagueClarifyKo(text),
+        kind: "workspace_agent",
+        workspaceAgentContextEventId,
         composeAmbientChat: true,
         ...base,
       };
@@ -264,18 +280,6 @@ export function planContextRun(bound: BoundSituation): ContextRunPlan {
         composeAmbientChat: true,
         ...base,
       };
-    }
-  }
-
-  // Driver + Marketplace — Intent → New Context → Domain Agent (ADR-031/032).
-  // Travel stays on globe_ingress (Article 0 create chip) then continuum on commit.
-  if (
-    (ingress.surface === "composer" || ingress.surface === "capture_sheet") &&
-    ingress.layerMode === "personal"
-  ) {
-    const workspaceKind = classifyWorkspaceKind(text);
-    if (workspaceKind === "driver" || workspaceKind === "used_goods") {
-      return { kind: "workspace_intent_continuum", ...base };
     }
   }
 

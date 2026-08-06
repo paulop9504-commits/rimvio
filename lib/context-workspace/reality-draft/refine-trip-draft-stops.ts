@@ -61,6 +61,14 @@ function hitToStop(
       : hit.domain === "eatery"
         ? ("eatery" as const)
         : ("poi" as const);
+  const gallery =
+    hit.images?.filter((u) => typeof u === "string" && u.trim().length > 0) ??
+    null;
+  const live =
+    hit.source === "maps" ||
+    hit.source === "liteapi" ||
+    hit.source === "booking" ||
+    hit.source === "review";
   return {
     id: hit.id,
     kind,
@@ -72,8 +80,12 @@ function hitToStop(
     tags: [
       ...slot.roleTags,
       "live_burst",
+      `source_${hit.source}`,
       ...extraTags,
       hit.localFavorite ? "local_favorite" : "",
+      live || !hit.id.startsWith("burst:")
+        ? "entity_resolved"
+        : "entity_unresolved",
     ].filter(Boolean),
     rating: hit.rating ?? 4.2,
     indoor:
@@ -81,6 +93,13 @@ function hitToStop(
       kind === "eatery" ||
       guideSeedIsIndoor(hit.id) ||
       /실내|mall|market/iu.test(hit.labelKo),
+    thumbnailUrl: hit.thumbnailUrl ?? gallery?.[0] ?? null,
+    galleryUrls: gallery && gallery.length > 0 ? gallery : null,
+    reviewCount: hit.reviewCount ?? null,
+    priceBand: hit.priceBand ?? null,
+    liteapiOfferId: hit.liteapiOfferId ?? null,
+    placeSource: hit.source,
+    entityResolved: live || !hit.id.startsWith("burst:"),
   };
 }
 

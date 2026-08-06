@@ -11,6 +11,15 @@ const client = new Client({});
 
 const MAX_CANDIDATES = 5;
 
+function buildPlacePhotoUrl(photoReference: string, key: string): string {
+  const params = new URLSearchParams({
+    maxwidth: "800",
+    photo_reference: photoReference,
+    key,
+  });
+  return `https://maps.googleapis.com/maps/api/place/photo?${params.toString()}`;
+}
+
 function toPlaceResult(
   candidate: {
     name?: string;
@@ -20,8 +29,10 @@ function toPlaceResult(
     rating?: number;
     user_ratings_total?: number;
     price_level?: number;
+    photos?: readonly { photo_reference?: string }[];
   },
-  fallbackName: string
+  fallbackName: string,
+  key: string,
 ): LocatePlaceResult | null {
   const lat = candidate.geometry?.location?.lat;
   const lng = candidate.geometry?.location?.lng;
@@ -44,6 +55,10 @@ function toPlaceResult(
     Number.isFinite(candidate.price_level)
       ? Math.round(candidate.price_level)
       : null;
+  const photoReference =
+    candidate.photos?.[0]?.photo_reference?.trim() || null;
+  const thumbnailUrl =
+    photoReference != null ? buildPlacePhotoUrl(photoReference, key) : null;
 
   return {
     place_name: candidate.name?.trim() || fallbackName,
@@ -55,6 +70,8 @@ function toPlaceResult(
     rating,
     reviewCount,
     priceLevel,
+    photoReference,
+    thumbnailUrl,
   };
 }
 
@@ -80,6 +97,7 @@ export async function findPlacesByName(input: {
       "rating",
       "user_ratings_total",
       "price_level",
+      "photos",
     ],
     language: Language.ko,
     key,
@@ -101,7 +119,7 @@ export async function findPlacesByName(input: {
     const results: LocatePlaceResult[] = [];
 
     for (const candidate of response.data.candidates ?? []) {
-      const place = toPlaceResult(candidate, input.placeName);
+      const place = toPlaceResult(candidate, input.placeName, key);
       if (!place) {
         continue;
       }

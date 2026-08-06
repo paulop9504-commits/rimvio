@@ -1124,6 +1124,69 @@ export const OSAKA_METRO_STATIONS: readonly OsakaMetroStation[] = Object.values(
   OSAKA_METRO_STATION_BY_ID,
 );
 
+/** Common Hangul spelling variants for tourist station names. */
+const OSAKA_STATION_NAME_ALIASES: Readonly<Record<string, string>> = {
+  모리노미아: "모리노미야",
+  모리노미야: "모리노미야",
+  morinomiya: "모리노미야",
+  텐노지: "덴노지",
+  신사이바시: "신사이바시",
+  혼마치: "혼마치",
+  혼쪼: "혼마치",
+};
+
+function normalizeStationLookupKey(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\s+/gu, "")
+    .replace(/(?:역|駅|station)$/iu, "")
+    .toLowerCase();
+}
+
+/**
+ * Resolve Osaka Metro / JR Yumesaki station from NL (incl. Hangul aliases).
+ * Used when world-geo catalog misses a tourist station name.
+ */
+export function resolveOsakaMetroStationFromText(
+  text: string,
+): OsakaMetroStation | null {
+  const raw = text.trim();
+  if (!raw) return null;
+
+  const named = raw.match(/([가-힣A-Za-z0-9·]+)역/u)?.[1] ?? raw;
+  const key = normalizeStationLookupKey(named);
+  if (!key) return null;
+
+  const aliasTarget =
+    OSAKA_STATION_NAME_ALIASES[key] ??
+    OSAKA_STATION_NAME_ALIASES[named.trim()] ??
+    null;
+  const targets = new Set<string>(
+    [key, aliasTarget, aliasTarget ? normalizeStationLookupKey(aliasTarget) : null].filter(
+      (v): v is string => Boolean(v),
+    ),
+  );
+
+  let best: OsakaMetroStation | null = null;
+  for (const station of OSAKA_METRO_STATIONS) {
+    const nameKey = normalizeStationLookupKey(station.nameKo);
+    if (targets.has(nameKey)) {
+      // Prefer hub duplicate (e.g. chuo:morinomiya) when same name exists twice
+      if (!best || (station.hub && !best.hub)) best = station;
+      continue;
+    }
+    if (
+      !best &&
+      (nameKey.includes(key) || key.includes(nameKey)) &&
+      key.length >= 2 &&
+      nameKey.length >= 2
+    ) {
+      best = station;
+    }
+  }
+  return best;
+}
+
 export function stationsForVisibleLines(
   visibleLineIds: readonly OsakaMetroLineId[],
   opts?: { readonly hubsOnly?: boolean },

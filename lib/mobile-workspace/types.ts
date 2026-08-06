@@ -29,6 +29,9 @@ export type MobileWorkspaceEntity = {
   readonly score: number | null;
   readonly subtitleKo: string | null;
   readonly priceLabelKo: string | null;
+  readonly thumbnailUrl?: string | null;
+  readonly galleryUrls?: readonly string[] | null;
+  readonly judgmentKo?: string | null;
 };
 
 export type MobileWorkspaceRelationKind =

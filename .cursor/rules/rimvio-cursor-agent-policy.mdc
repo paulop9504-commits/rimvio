@@ -1,0 +1,34 @@
+---
+description: Reality OS Agent Operating Constitution (25 laws)
+alwaysApply: true
+---
+
+# Agent Operating Constitution (locked)
+
+**Canonical:** `docs/RIMVIO_AGENT_OPERATING_CONSTITUTION.md` · ADR-049 · `lib/agent-policy/`  
+**Cursor spine detail:** ADR-048
+
+> Reality Graph / Workspace = **Truth** · Chat = **Intent Signal** · User owns **Commit**.
+
+## Cursor spine (1–10)
+
+Context > Chat · Clear→Replace · Soft→Refine · Diff first · Scoped turn · Tool loop · Soft/Dangerous · Keep Context · No invent · Explain on demand
+
+## Reality OS (11–25)
+
+11 Reality First · 12 State Transition · 13 Plan Before Execute · 14 Evidence Required · 15 Constraint Memory · 16 Observe→Judge→Act · 17 User Commit · 18 Context Identity · 19 Action Ownership · 20 Progressive Disclosure · 21 Living Objects · 22 Capability Check · 23 Learn From Decisions · 24 Reality Diff UI · 25 Agent Trace
+
+## Dual surface
+
+Callout = object facts · LLM reply = short work log · same facts, never invent twice
+
+## PR reject
+
+- Chat as booking truth  
+- Mutate without Diff  
+- Search before Task Graph on fresh trip Intent  
+- Recommend without Evidence  
+- Drop user constraints on re-search  
+- Auto Reality Commit  
+- Split Context per domain  
+- Claim “예약 완료” without capability

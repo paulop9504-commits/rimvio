@@ -162,7 +162,7 @@ export function resolveSmallTalk(input: {
   }
   // Only short, non-actionable messages qualify. An explicit search verb/locator
   // means the user actually wants a search — let it fall through.
-  if (text.length > 30 || HARD_SEARCH.test(text)) {
+  if (text.length > 48 || HARD_SEARCH.test(text)) {
     return null;
   }
   const region = regionPhrase(input.region);

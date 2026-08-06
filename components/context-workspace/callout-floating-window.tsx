@@ -82,6 +82,10 @@ export function CalloutFloatingWindow({
 
   const onDragDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
+      // Chrome buttons (close / mode) — don't capture; otherwise click never fires.
+      if ((event.target as HTMLElement | null)?.closest?.("button")) {
+        return;
+      }
       event.stopPropagation();
       event.preventDefault();
       onFocus();
@@ -271,7 +275,13 @@ export function CalloutFloatingWindow({
               </p>
             ) : null}
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div
+            className="flex shrink-0 items-center gap-0.5"
+            data-callout-window-chrome
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+          >
             <button
               type="button"
               className={cn(
@@ -324,8 +334,12 @@ export function CalloutFloatingWindow({
               <button
                 type="button"
                 className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-[#8b95a1] hover:bg-black/[0.04] hover:text-[#191f28]"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   onClose(win.id);
                 }}
                 aria-label="Close callout"

@@ -12,6 +12,10 @@ import {
 } from "@/lib/context-run/workspace-agent-plan";
 import { parseWorkspacePatch } from "@/lib/context-workspace/workspace-patch";
 import { isSpatialDiscoveryUtterance } from "@/lib/spatial-retrieval/apply-spatial-discovery-to-workspace";
+import { concurrentDiscoveryResourceTypes } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
+import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 
 function stepId(i: number): string {
   return `ws_step_${i + 1}`;
@@ -62,6 +66,16 @@ function detectPlanKind(text: string): WorkspaceAgentPlanKind {
     /(?:day\s*1|1일차|일정|넣어|넣고|추가)/iu.test(text)
   ) {
     return "compound_c";
+  }
+  // Multi-domain scout — 「호텔이랑 맛집」prepare without Day verbs.
+  {
+    const domains = concurrentDiscoveryResourceTypes(text);
+    const lodging = hasLodgingDomainCue(text) || domains.includes("hotel");
+    const eatery = hasEateryDomainCue(text) || domains.includes("restaurant");
+    const activity = domains.includes("activity");
+    if ((lodging && eatery) || (lodging && activity) || (eatery && activity)) {
+      return "scout_domains";
+    }
   }
   // A — also add another lodging near landmark
   if (
@@ -324,6 +338,137 @@ function compileRefineChain(text: string): WorkspaceAgentPlanStep[] {
   ];
 }
 
+function compileScoutDomains(text: string): WorkspaceAgentPlanStep[] {
+  const dest = extractTravelDestination(text)?.trim();
+  const near =
+    text.match(/([가-힣A-Za-z0-9]+역)/u)?.[1] ||
+    text.match(/(난바|도톤보리|우메다|신사이바시|USJ|유니버설)/iu)?.[1] ||
+    dest;
+  const hotelUtt = near
+    ? `${near} 근처 호텔 찾아줘`
+    : dest
+      ? `${dest} 호텔 찾아줘`
+      : "호텔 찾아줘";
+  const eateryUtt = near
+    ? `${near} 근처 맛집 찾아줘`
+    : dest
+      ? `${dest} 맛집 찾아줘`
+      : "맛집 찾아줘";
+  const activityUtt = near
+    ? `${near} 근처 놀거리 찾아줘`
+    : dest
+      ? `${dest} 놀거리 찾아줘`
+      : "놀거리 찾아줘";
+
+  const domains = concurrentDiscoveryResourceTypes(text);
+  const wantHotel =
+    hasLodgingDomainCue(text) || domains.includes("hotel") || domains.length === 0;
+  const wantEatery =
+    hasEateryDomainCue(text) || domains.includes("restaurant");
+  const wantActivity = domains.includes("activity");
+
+  const steps: WorkspaceAgentPlanStep[] = [];
+  let i = 0;
+  if (wantHotel) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_prompt",
+        labelKo: "호텔 검색",
+        utterance: hotelUtt,
+        noteKo: "scout_domains · lodging",
+        expect: {
+          workspaceMutated: true,
+          requireVisibleDomain: true,
+          target: "lodging",
+          minVisible: 1,
+        },
+      }),
+    );
+  }
+  if (wantEatery) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_prompt",
+        labelKo: "맛집 검색",
+        utterance: eateryUtt,
+        noteKo: "scout_domains · eatery",
+        expect: {
+          workspaceMutated: true,
+          requireVisibleDomain: true,
+          target: "eatery",
+          minVisible: 1,
+        },
+      }),
+    );
+  }
+  if (wantActivity) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_prompt",
+        labelKo: "놀거리 검색",
+        utterance: activityUtt,
+        noteKo: "scout_domains · activity",
+        expect: {
+          workspaceMutated: true,
+          minVisible: 1,
+        },
+      }),
+    );
+  }
+
+  const keepN = text.match(
+    /(?:상위\s*)?(\d+)\s*개|(?:만\s*)?(\d+)\s*개\s*(?:만|보여|남|골라)/u,
+  );
+  const keepTopN = Number(keepN?.[1] || keepN?.[2] || "");
+  if (
+    Number.isFinite(keepTopN) &&
+    keepTopN >= 2 &&
+    keepTopN <= 5 &&
+    /가성비|이\s*중|그중|남|골라/iu.test(text)
+  ) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_patch",
+        labelKo: `가성비 TOP ${keepTopN}`,
+        utterance: `이중에 가성비 좋은 것만 ${keepTopN}개`,
+        noteKo: "scout_domains · soft refine",
+        expect: { workspaceMutated: true, minVisible: 1 },
+      }),
+    );
+  } else if (/가성비|더\s*싸|저렴/iu.test(text) && wantHotel) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_patch",
+        labelKo: "가성비 선별",
+        utterance: "이중에 가성비 좋은 것만 남겨줘",
+        noteKo: "scout_domains · value filter",
+        expect: { workspaceMutated: true },
+      }),
+    );
+  }
+
+  const budget = text.match(/(\d+)\s*만\s*원?\s*(?:이하|미만|아래)/u)?.[1];
+  if (budget) {
+    steps.push(
+      mkStep({
+        index: i++,
+        kind: "workspace_patch",
+        labelKo: `예산 ${budget}만 이하`,
+        utterance: `그중 ${budget}만원 이하만 남겨줘`,
+        noteKo: "scout_domains · budget",
+        expect: { workspaceMutated: true },
+      }),
+    );
+  }
+
+  return steps.length > 0 ? steps : compileSingle(text);
+}
+
 function compileAddA(text: string): WorkspaceAgentPlanStep[] {
   return [
     mkStep({
@@ -374,6 +519,9 @@ export function compileWorkspaceAgentPlan(input: {
       break;
     case "refine_chain":
       steps = compileRefineChain(text);
+      break;
+    case "scout_domains":
+      steps = compileScoutDomains(text);
       break;
     case "add_a":
       steps = compileAddA(text);

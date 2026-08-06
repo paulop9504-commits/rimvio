@@ -52,13 +52,24 @@ export {
 } from "@/lib/workspace-capability/open-capability-layout";
 
 export {
+  deriveBudgetRollup,
+  nodesForCapabilityDay,
+  parseAmountLabelKrw,
+  type DerivedBudgetRollup,
+} from "@/lib/workspace-capability/derive-budget-timeline";
+
+export {
   buildWorkspaceCapabilityViewModel,
+  bookableRoleKoForNode,
   capabilityChromeNeeded,
+  isCapabilityBookableNode,
+  isCapabilityDiscoverPlaceNode,
 } from "@/lib/workspace-capability/project-capability-view-model";
 export type {
   CapabilityBookingChip,
   CapabilityBudgetRollup,
   CapabilityDayCard,
+  CapabilityDiscoverPlace,
   CapabilityTimelineRow,
   WorkspaceCapabilityViewModel,
 } from "@/lib/workspace-capability/project-capability-view-model";

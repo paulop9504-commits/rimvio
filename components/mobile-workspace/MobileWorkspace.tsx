@@ -10,12 +10,11 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
-  applyWorkspaceTransition,
   readContextWorkspace,
   subscribeContextWorkspaceUpdated,
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
-import { tryApplyWorkspacePromptTurn } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
+import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import {
@@ -26,9 +25,9 @@ import {
 } from "@/lib/mobile-workspace";
 import { useMobileWorkspace } from "@/lib/mobile-workspace/use-mobile-workspace";
 import { ActionMenu } from "@/components/mobile-workspace/ActionMenu";
-import { BottomSheetWorkspace } from "@/components/mobile-workspace/BottomSheetWorkspace";
-import { CommandBar } from "@/components/mobile-workspace/CommandBar";
+import { AgentChatCard } from "@/components/mobile-workspace/AgentChatCard";
 import { ContextAnchor } from "@/components/mobile-workspace/ContextAnchor";
+import { ObjectPlacePanel } from "@/components/mobile-workspace/ObjectPlacePanel";
 import { RealityMap } from "@/components/mobile-workspace/RealityMap";
 import {
   RelationshipHighlight,
@@ -158,17 +157,18 @@ export function MobileWorkspace({
         text,
       });
 
-      const result = await tryApplyWorkspacePromptTurn({
+      const result = await applyGlobeWorkspaceAgentTurn({
         contextEventId: eventId,
+        explicitContextEventId: eventId,
         utterance: text,
       });
-      if (result.handled && result.replyKo) {
+      if (result.handled && result.statusKo) {
         appendWorkspaceChatTurn({
           contextEventId: eventId,
           role: "assistant",
-          text: result.replyKo,
+          text: result.statusKo,
         });
-        toast.message(result.replyKo);
+        toast.message(result.statusKo);
       }
 
       // Refresh projection after NL mutates Workspace
@@ -293,50 +293,48 @@ export function MobileWorkspace({
         </span>
       </div>
 
-      {/* Expanded / Full sheet */}
+      {/* Expanded place panel — one Object focus */}
       {activeEntity &&
       (mobile?.calloutMode === "expanded" ||
         mobile?.calloutMode === "full") ? (
-        <BottomSheetWorkspace
-          mode={mobile.calloutMode}
-          entity={activeEntity}
-          relations={mobile.relations}
-          evidenceKo={evidenceKo}
-          onExpand={() => dispatchMobileWorkspace({ type: "expand_callout" })}
-          onCollapse={() =>
-            dispatchMobileWorkspace({ type: "collapse_callout" })
-          }
-          onCompare={() => {
-            applyWorkspaceTransition({
-              contextEventId: eventId,
-              op: "compare",
-              nodeIds: [activeEntity.id],
-            });
-            toast.message("비교에 추가했어요");
-          }}
-          onPinAnchor={() => {
-            dispatchMobileWorkspace({
-              type: "set_anchor",
-              entityId: activeEntity.id,
-            });
-            toast.success(`${activeEntity.title} 기준으로 고정`);
-          }}
-          onAddSchedule={() => {
-            toast.message("일정 추가", {
-              description: "Draft 일정 · Commit 아님",
-            });
-          }}
-          onPrepare={() => onPrepareReserve?.(activeEntity.id)}
-        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[45] flex justify-center">
+          <ObjectPlacePanel
+            entity={activeEntity}
+            whyLinesKo={evidenceKo}
+            onClose={() =>
+              dispatchMobileWorkspace({ type: "collapse_callout" })
+            }
+            onPrepare={() => onPrepareReserve?.(activeEntity.id)}
+            className="pointer-events-auto w-full max-w-lg"
+          />
+        </div>
       ) : null}
 
-      {/* Command Layer */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[40] flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
-        <CommandBar
-          placeholder={resolveRimvioCommandPlaceholder("workspace")}
-          onSubmit={(t) => void onCommand(t)}
-        />
-      </div>
+      {/* Agent Chat Card — Command Layer */}
+      {mobile?.calloutMode !== "expanded" &&
+      mobile?.calloutMode !== "full" ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[40] flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+          <AgentChatCard
+            className="pointer-events-auto w-full max-w-lg"
+            contextEventId={eventId}
+            placeholder={resolveRimvioCommandPlaceholder("workspace")}
+            objects={(mobile?.entities ?? []).slice(0, 4).map((e) => ({
+              id: e.id,
+              title: e.title,
+              subtitleKo: e.priceLabelKo,
+            }))}
+            onSubmit={(t) => void onCommand(t)}
+            onFocusObject={(id) => {
+              dispatchMobileWorkspace({ type: "set_active", entityId: id });
+              dispatchMobileWorkspace({
+                type: "set_callout_mode",
+                mode: "expanded",
+              });
+              onSelectPin?.(id);
+            }}
+          />
+        </div>
+      ) : null}
 
       {menuEntity ? (
         <ActionMenu

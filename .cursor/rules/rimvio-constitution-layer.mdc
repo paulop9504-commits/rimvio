@@ -1,0 +1,18 @@
+---
+description: Rimvio Constitution Layer policy index (Intent…Audit)
+alwaysApply: true
+---
+
+# Constitution Layer (locked)
+
+**Canonical:** `docs/RIMVIO_CONSTITUTION_LAYER.md`  
+**Kernel:** Article 0 in `docs/RIMVIO_CONSTITUTION.md` (always wins)  
+**Agent laws:** `docs/RIMVIO_AGENT_OPERATING_CONSTITUTION.md` (ADR-049)
+
+Policy index only — Intent · Context · Entity · Reality Object · Workspace · Planning · Execution · Commit · Memory · Trust · Data · Learning · Interface · Capability · Simulation · Recovery · Audit.
+
+## Intent / Commit (PR reject)
+
+- 「좋은 호텔」→ invent price/location/review weights without clarify
+- Clear find (“캡슐호텔 찾아”) with full candidates → soft-only, no replace/rescout
+- Auto Reality Commit from chat / Agent Loop / soft Workspace edit

@@ -69,6 +69,8 @@ function country(
 const OVERSEAS_CITIES: OverseasPlaceEntry[] = [
   // Americas
   city("하와이", "미국", "Hawaii USA", 21.3069, -157.8583, "하와이", "hawaii"),
+  city("괌", "미국", "Guam USA", 13.4443, 144.7937, "괌", "guam"),
+  city("사이판", "미국", "Saipan Northern Mariana Islands", 15.1778, 145.7508, "사이판", "saipan"),
   city("뉴욕", "미국", "New York USA", 40.7128, -74.006, "뉴욕", "new york"),
   city("로스앤젤레스", "미국", "Los Angeles USA", 34.0522, -118.2437, "로스앤젤레스", "los angeles", "LA"),
   city("라스베이거스", "미국", "Las Vegas USA", 36.1699, -115.1398, "라스베이거스", "las vegas"),
@@ -398,3 +400,27 @@ export const OVERSEAS_PLACE_ENTRIES: readonly OverseasPlaceEntry[] = [
   ...OVERSEAS_CITIES,
   ...OVERSEAS_COUNTRIES,
 ];
+
+function normalizeCountryKey(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Cities registered under a country label (e.g. 프랑스 → 파리 · 니스 · …). */
+export function listOverseasCitiesForCountry(
+  countryLabel: string | null | undefined,
+): readonly OverseasPlaceEntry[] {
+  const raw = countryLabel?.trim();
+  if (!raw) return [];
+  const key = normalizeCountryKey(raw);
+  const aliases: Record<string, string> = {
+    남아공: "남아프리카",
+    터키: "튀르키예",
+    uae: "아랍에미리트",
+    usa: "미국",
+    uk: "영국",
+  };
+  const resolved = normalizeCountryKey(aliases[key] ?? raw);
+  return OVERSEAS_CITIES.filter(
+    (row) => normalizeCountryKey(row.countryLabel) === resolved,
+  );
+}

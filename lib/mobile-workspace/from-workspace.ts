@@ -31,6 +31,9 @@ export function mobileEntitiesFromWorkspaceNodes(
       score: typeof n.rating === "number" ? Math.round(n.rating * 10) : null,
       subtitleKo: n.summaryKo?.trim() || null,
       priceLabelKo: n.amountLabel?.trim() || null,
+      thumbnailUrl: n.thumbnailUrl?.trim() || null,
+      galleryUrls: n.galleryUrls ?? null,
+      judgmentKo: null,
     }));
 }
 
@@ -85,6 +88,39 @@ export function parseMobileWorkspaceCommand(text: string): {
   readonly constraint: Readonly<Record<string, unknown>>;
 } {
   const t = text.trim();
+
+  // Osaka Metro polyline overlay (2D Workspace only — not Commit).
+  {
+    const {
+      resolveOsakaMetroOverlayCommand,
+    } = require("@/lib/geo/osaka-metro/resolve-metro-overlay-command") as typeof import("@/lib/geo/osaka-metro/resolve-metro-overlay-command");
+    const metro = resolveOsakaMetroOverlayCommand(t);
+    if (metro) {
+      if (metro.op === "show_all") {
+        return {
+          action: "toggle_metro_overlay",
+          target: "map",
+          constraint: { lineId: "all", visible: true },
+        };
+      }
+      if (metro.op === "hide_all") {
+        return {
+          action: "toggle_metro_overlay",
+          target: "map",
+          constraint: { lineId: "all", visible: false },
+        };
+      }
+      return {
+        action: "toggle_metro_overlay",
+        target: "map",
+        constraint: {
+          lineId: metro.lineId,
+          visible: metro.op === "show",
+        },
+      };
+    }
+  }
+
   if (/캡슐|capsule/iu.test(t) && /호텔|hotel|보여|보고/iu.test(t)) {
     return {
       action: "filter",

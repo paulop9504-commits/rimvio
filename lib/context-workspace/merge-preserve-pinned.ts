@@ -6,6 +6,7 @@ import type {
   ContextWorkspaceDomain,
   ContextWorkspaceNode,
 } from "@/lib/context-workspace/types";
+import { demoteUnpinnedTripPrepOnScoutReplace } from "@/lib/context-workspace/demote-stale-trip-prep";
 import { isWorkspaceReadySlotNode } from "@/lib/context-workspace/workspace-map-focus";
 
 export function listPinnedWorkspaceNodes(
@@ -31,6 +32,9 @@ export function listCartWorkspaceNodes(
  * Merge incoming search candidates with existing cart.
  * Pinned + draft places stay until explicit unpin/discard —
  * hotel scout must not wipe Universal / Dotonbori pins.
+ *
+ * Order: **incoming scout first** (One Focus / peek), then cart.
+ * Preserve ≠ put draft as Primary Focus after a fresh hotel search.
  */
 export function mergePreservePinnedNodes(
   previous: readonly ContextWorkspaceNode[],
@@ -42,34 +46,33 @@ export function mergePreservePinnedNodes(
   const ordered: ContextWorkspaceNode[] = [];
   const seen = new Set<string>();
 
-  for (const pin of cart) {
-    const match = incoming.find((n) => n.placeId === pin.placeId);
-    const kept: ContextWorkspaceNode = match
+  for (const node of incoming) {
+    const pin = cartByPlace.get(node.placeId);
+    const kept: ContextWorkspaceNode = pin
       ? {
-          ...match,
+          ...node,
           id: pin.id,
           kind: pin.kind,
-          bookmarked: pin.bookmarked || match.bookmarked,
+          bookmarked: pin.bookmarked || node.bookmarked,
           visible: true,
-          selected: pin.selected,
-          source: pin.source === "trip_prep_draft" ? pin.source : match.source,
-          actionReadyState: pin.actionReadyState ?? match.actionReadyState,
-          tags: [...new Set([...pin.tags, ...match.tags])],
+          selected: false,
+          source: pin.source === "trip_prep_draft" ? pin.source : node.source,
+          actionReadyState: pin.actionReadyState ?? node.actionReadyState,
+          tags: [...new Set([...pin.tags, ...node.tags])],
         }
-      : {
-          ...pin,
-          visible: true,
-        };
+      : { ...node, selected: false, visible: true };
     ordered.push(kept);
-    seen.add(pin.placeId);
+    seen.add(node.placeId);
   }
 
-  for (const node of incoming) {
-    if (seen.has(node.placeId)) {
-      continue;
-    }
-    ordered.push(node);
-    seen.add(node.placeId);
+  for (const pin of cart) {
+    if (seen.has(pin.placeId)) continue;
+    ordered.push({
+      ...pin,
+      visible: true,
+      selected: false,
+    });
+    seen.add(pin.placeId);
   }
 
   if (ordered.length === 0 && cartByPlace.size > 0) {
@@ -79,14 +82,12 @@ export function mergePreservePinnedNodes(
   return ordered.slice(0, max);
 }
 
-/** After filter sort — cart stay visible even if filter would hide them. */
+/** After filter sort — bookmarked only (P7: trip_prep demote must stick). */
 export function forcePinnedVisible(
   nodes: readonly ContextWorkspaceNode[],
 ): ContextWorkspaceNode[] {
   return nodes.map((n) =>
-    (n.bookmarked || n.source === "trip_prep_draft") && !n.visible
-      ? { ...n, visible: true }
-      : n,
+    n.bookmarked && !n.visible ? { ...n, visible: true } : n,
   );
 }
 
@@ -94,6 +95,7 @@ export function forcePinnedVisible(
  * P3 — Scout inventory merge.
  * - replace: refresh this domain; keep other domains + same-domain cart.
  * - add: keep entire previous Workspace; append new placeIds only.
+ * P7: replace demotes non-bookmarked other-domain trip_prep.
  */
 export function mergeScoutInventoryNodes(input: {
   readonly previous: readonly ContextWorkspaceNode[];
@@ -114,12 +116,16 @@ export function mergeScoutInventoryNodes(input: {
   const sameMerged = mergePreservePinnedNodes(samePrev, input.incoming, max);
   const seen = new Set<string>();
   const out: ContextWorkspaceNode[] = [];
-  for (const n of [...otherDomain, ...sameMerged]) {
+  // Scouted domain leads — trip_prep POI/food stay, but not as first peek.
+  for (const n of [...sameMerged, ...otherDomain]) {
     if (seen.has(n.placeId)) continue;
     seen.add(n.placeId);
     out.push(n);
   }
-  return out.slice(0, max);
+  return demoteUnpinnedTripPrepOnScoutReplace({
+    nodes: out.slice(0, max),
+    scoutDomain: input.domain,
+  });
 }
 
 /** Target-stack / additive scout — 「호텔도」「맛집도 추가」. */

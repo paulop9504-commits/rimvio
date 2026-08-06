@@ -16,6 +16,8 @@ type GuideSeed = {
   readonly indoor: boolean;
   readonly clusterIds: readonly string[];
   readonly dayParts: readonly string[];
+  readonly amountLabel?: string | null;
+  readonly thumbnailUrl?: string | null;
 };
 
 const OSAKA_GUIDE_SEEDS: readonly GuideSeed[] = [
@@ -84,6 +86,7 @@ const OSAKA_GUIDE_SEEDS: readonly GuideSeed[] = [
     indoor: true,
     clusterIds: ["namba", "dotonbori"],
     dayParts: ["lunch", "dinner"],
+    amountLabel: "₩₩",
   },
   {
     id: "guide:osaka:kushikatsu",
@@ -95,6 +98,7 @@ const OSAKA_GUIDE_SEEDS: readonly GuideSeed[] = [
     indoor: true,
     clusterIds: ["namba", "dotonbori"],
     dayParts: ["dinner", "lunch"],
+    amountLabel: "₩₩",
   },
 ];
 
@@ -111,6 +115,17 @@ const JEJU_GUIDE_SEEDS: readonly GuideSeed[] = [
     dayParts: ["morning", "afternoon"],
   },
   {
+    id: "guide:jeju:hallasan",
+    labelKo: "한라산 어리목",
+    domain: "poi",
+    lat: 33.392,
+    lng: 126.494,
+    rating: 4.5,
+    indoor: false,
+    clusterIds: ["day_1", "day_2", "day_3", "day_4"],
+    dayParts: ["morning", "afternoon"],
+  },
+  {
     id: "guide:jeju:blackpork",
     labelKo: "제주 흑돼지",
     domain: "eatery",
@@ -121,9 +136,32 @@ const JEJU_GUIDE_SEEDS: readonly GuideSeed[] = [
     clusterIds: ["day_1", "day_2", "day_3", "day_4"],
     dayParts: ["dinner", "lunch"],
   },
+  {
+    id: "guide:jeju:haevichi",
+    labelKo: "호텔 해비치",
+    domain: "lodging",
+    lat: 33.457,
+    lng: 126.935,
+    rating: 4.4,
+    indoor: true,
+    clusterIds: ["day_1", "day_2", "day_3", "day_4"],
+    dayParts: ["stay", "arrival"],
+  },
 ];
 
 const TOKYO_GUIDE_SEEDS: readonly GuideSeed[] = [
+  {
+    id: "guide:tokyo:apa-asakusa",
+    labelKo: "APA 아사쿠사",
+    domain: "lodging",
+    lat: 35.7118,
+    lng: 139.7942,
+    rating: 4.2,
+    indoor: true,
+    clusterIds: ["asakusa"],
+    dayParts: ["stay", "arrival"],
+    amountLabel: "₩11만/박",
+  },
   {
     id: "guide:tokyo:sensoji",
     labelKo: "센소지",
@@ -132,19 +170,162 @@ const TOKYO_GUIDE_SEEDS: readonly GuideSeed[] = [
     lng: 139.7967,
     rating: 4.6,
     indoor: false,
-    clusterIds: ["day_1", "day_2", "day_3", "day_4", "day_5"],
+    clusterIds: ["asakusa"],
     dayParts: ["morning", "afternoon"],
   },
   {
-    id: "guide:tokyo:shibuya",
+    id: "guide:tokyo:nakamise",
+    labelKo: "나카미세 거리",
+    domain: "poi",
+    lat: 35.7117,
+    lng: 139.7966,
+    rating: 4.4,
+    indoor: false,
+    clusterIds: ["asakusa"],
+    dayParts: ["afternoon", "morning"],
+  },
+  {
+    id: "guide:tokyo:asakusa-okonomiyaki",
+    labelKo: "아사쿠사 오코노미야키",
+    domain: "eatery",
+    lat: 35.7125,
+    lng: 139.7948,
+    rating: 4.4,
+    indoor: true,
+    clusterIds: ["asakusa"],
+    dayParts: ["lunch", "dinner"],
+  },
+  {
+    id: "guide:tokyo:shibuya-scramble",
     labelKo: "시부야 스크램블",
     domain: "poi",
     lat: 35.6595,
     lng: 139.7004,
     rating: 4.5,
     indoor: false,
-    clusterIds: ["day_1", "day_2", "day_3", "day_4", "day_5"],
+    clusterIds: ["shibuya"],
+    dayParts: ["afternoon", "morning"],
+  },
+  {
+    id: "guide:tokyo:harajuku",
+    labelKo: "하라주쿠 Takeshita",
+    domain: "poi",
+    lat: 35.6702,
+    lng: 139.7026,
+    rating: 4.3,
+    indoor: false,
+    clusterIds: ["shibuya"],
+    dayParts: ["morning", "afternoon"],
+  },
+  {
+    id: "guide:tokyo:shibuya-ramen",
+    labelKo: "시부야 라멘",
+    domain: "eatery",
+    lat: 35.6581,
+    lng: 139.7017,
+    rating: 4.5,
+    indoor: true,
+    clusterIds: ["shibuya"],
+    dayParts: ["lunch", "dinner"],
+  },
+  {
+    id: "guide:tokyo:shinjuku-gyoen",
+    labelKo: "신주쿠 교엔",
+    domain: "poi",
+    lat: 35.6852,
+    lng: 139.7101,
+    rating: 4.6,
+    indoor: false,
+    clusterIds: ["shinjuku"],
+    dayParts: ["morning", "afternoon"],
+  },
+  {
+    id: "guide:tokyo:kabukicho",
+    labelKo: "가부키초",
+    domain: "poi",
+    lat: 35.6938,
+    lng: 139.7034,
+    rating: 4.2,
+    indoor: false,
+    clusterIds: ["shinjuku"],
     dayParts: ["afternoon", "dinner"],
+  },
+  {
+    id: "guide:tokyo:shinjuku-izakaya",
+    labelKo: "신주쿠 이자카야",
+    domain: "eatery",
+    lat: 35.6935,
+    lng: 139.7018,
+    rating: 4.4,
+    indoor: true,
+    clusterIds: ["shinjuku"],
+    dayParts: ["dinner", "lunch"],
+  },
+  {
+    id: "guide:tokyo:ueno-park",
+    labelKo: "우에노 공원",
+    domain: "poi",
+    lat: 35.7141,
+    lng: 139.7745,
+    rating: 4.5,
+    indoor: false,
+    clusterIds: ["ueno"],
+    dayParts: ["morning", "afternoon"],
+  },
+  {
+    id: "guide:tokyo:ameyoko",
+    labelKo: "아메요코",
+    domain: "poi",
+    lat: 35.7098,
+    lng: 139.7747,
+    rating: 4.4,
+    indoor: false,
+    clusterIds: ["ueno"],
+    dayParts: ["afternoon", "lunch"],
+  },
+  {
+    id: "guide:tokyo:ueno-tonkatsu",
+    labelKo: "우에노 돈카츠",
+    domain: "eatery",
+    lat: 35.7112,
+    lng: 139.776,
+    rating: 4.5,
+    indoor: true,
+    clusterIds: ["ueno"],
+    dayParts: ["lunch", "dinner"],
+  },
+  {
+    id: "guide:tokyo:ginza",
+    labelKo: "긴자 거리",
+    domain: "poi",
+    lat: 35.6717,
+    lng: 139.765,
+    rating: 4.5,
+    indoor: false,
+    clusterIds: ["ginza"],
+    dayParts: ["afternoon", "morning"],
+  },
+  {
+    id: "guide:tokyo:tsukiji",
+    labelKo: "도요스·쓰키지 시장",
+    domain: "poi",
+    lat: 35.6654,
+    lng: 139.7707,
+    rating: 4.4,
+    indoor: true,
+    clusterIds: ["ginza"],
+    dayParts: ["morning", "lunch"],
+  },
+  {
+    id: "guide:tokyo:ginza-sushi",
+    labelKo: "긴자 스시",
+    domain: "eatery",
+    lat: 35.6721,
+    lng: 139.7638,
+    rating: 4.6,
+    indoor: true,
+    clusterIds: ["ginza"],
+    dayParts: ["dinner", "lunch"],
   },
 ];
 
@@ -156,6 +337,7 @@ function seedsForDestination(destinationKo: string): readonly GuideSeed[] {
 }
 
 function toHit(seed: GuideSeed): PlaceSearchHit {
+  const thumb = seed.thumbnailUrl?.trim() || null;
   return {
     id: seed.id,
     labelKo: seed.labelKo,
@@ -164,12 +346,14 @@ function toHit(seed: GuideSeed): PlaceSearchHit {
     lng: seed.lng,
     rating: seed.rating,
     walkMinutes: 10,
-    reservable: seed.domain === "eatery",
+    reservable: seed.domain === "lodging",
     localFavorite: true,
-    priceBand: 2,
+    priceBand: seed.amountLabel ? 2 : null,
     source: "review",
-    amountLabel: null,
+    amountLabel: seed.amountLabel ?? null,
     reasonKo: "가이드 정석 코스",
+    thumbnailUrl: thumb,
+    images: thumb ? [thumb] : null,
   };
 }
 
@@ -187,8 +371,7 @@ export function guideWebSeedHits(input: {
     .filter(
       (s) =>
         s.domain === input.domain &&
-        (s.clusterIds.includes(input.clusterId) ||
-          s.clusterIds.some((id) => id.startsWith("day_"))) &&
+        s.clusterIds.includes(input.clusterId) &&
         s.dayParts.includes(input.dayPart),
     )
     .map(toHit);

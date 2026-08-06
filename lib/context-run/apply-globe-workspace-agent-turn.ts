@@ -8,23 +8,29 @@
  * When no Workspace: try continuum mint for clear work kinds, else short hint only.
  */
 
-import { runWorkspaceAgentLoop } from "@/lib/context-run/workspace-agent-loop";
-import { compileWorkspaceAgentPlan } from "@/lib/context-run/compile-workspace-agent-plan";
 import { runWorkspaceAgentPlan } from "@/lib/context-run/run-workspace-agent-plan";
-import { resolveActiveWorkspaceContextId } from "@/lib/context-run/resolve-active-workspace-context";
+import { tryApplyConversationalTurn } from "@/lib/context-run/try-apply-conversational-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import { resolveActiveWorkspaceContextId } from "@/lib/context-run/resolve-active-workspace-context";
 import { beginAgentProductTurn } from "@/lib/context-run/agent-product-pipeline";
 import { resolveAgentStatusWorkLog } from "@/lib/context-run/agent-status-work-log";
+import { compileWorkspaceAgentPlan } from "@/lib/context-run/compile-workspace-agent-plan";
 import {
   hasProvisionalContextWorkspace,
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import {
+  beginAgentActivityTrail,
+  finishAgentActivityTrail,
+} from "@/lib/context-run/sync-agent-activity-trail";
+import {
   runWorkspaceIntentContinuum,
-  seedTravelLodgingForContinuum,
-} from "@/lib/workspace-kind/run-workspace-intent-continuum";
+  seedTravelDiscoveryForContinuum,
+} from "@/lib/workspace-kind";
+import { prepareCatalogWorkspaceStub } from "@/lib/workspace-kind/prepare-catalog-workspace-stub";
 import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
+import { classifyWorkspaceRoute } from "@/lib/workspace-kind/classify-workspace-route";
 import { tryApplyRealityAbsorbFromUtterance } from "@/lib/reality-provider";
 import {
   buildAnchorLodgingContinuumUtterance,
@@ -32,6 +38,11 @@ import {
   resolveRealityAnchorFromUtterance,
   tryApplyPlaceLocateFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
+import { copy } from "@/lib/copy/human-ko";
+import {
+  publishGlobeProjectionLayerPolicy,
+  readGlobeProjectionLayerPolicy,
+} from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
 
 export type GlobeWorkspaceAgentTurnResult = {
   readonly handled: boolean;
@@ -92,7 +103,13 @@ function viaFromTool(
   return undefined;
 }
 
-function expandWorkspace(contextEventId: string): void {
+/** Soft prepare — Workspace exists; user opens via 「펼치기」(ADR-022 Preview). */
+function prepareWorkspaceSoft(contextEventId: string): void {
+  writeContextWorkspaceExpanded(contextEventId, false);
+}
+
+/** Explicit expand — only from 「펼치기」chip / Resume. */
+export function expandWorkspaceFromTrail(contextEventId: string): void {
   writeContextWorkspaceExpanded(contextEventId, true);
   dispatchContextWorkspaceExpand({
     contextEventId,
@@ -100,9 +117,52 @@ function expandWorkspace(contextEventId: string): void {
   });
 }
 
+function bindActiveContextPolicy(contextEventId: string): void {
+  const prev = readGlobeProjectionLayerPolicy();
+  publishGlobeProjectionLayerPolicy({
+    ...prev,
+    mode: "focus",
+    activeContextEventId: contextEventId,
+  });
+}
+
+async function finishContinuumMint(input: {
+  readonly continuum: NonNullable<
+    ReturnType<typeof runWorkspaceIntentContinuum>
+  >;
+  readonly utterance: string;
+  readonly lat?: number | null;
+  readonly lng?: number | null;
+  readonly statusKo?: string | null;
+}): Promise<{
+  readonly contextEventId: string;
+  readonly statusKo: string | null;
+}> {
+  const { continuum } = input;
+  // Soft — Activity Trail + 「펼치기」; never auto-fullscreen Workspace.
+  prepareWorkspaceSoft(continuum.contextEventId);
+  bindActiveContextPolicy(continuum.contextEventId);
+  if (continuum.kind === "travel") {
+    await seedTravelDiscoveryForContinuum({
+      contextEventId: continuum.contextEventId,
+      utterance: input.utterance,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+    });
+  }
+  return {
+    contextEventId: continuum.contextEventId,
+    statusKo:
+      input.statusKo ??
+      continuum.card.ctaKo ??
+      copy.globe.activityTrail.expandHint,
+  };
+}
+
 /**
  * Mint a provisional Workspace when Globe Prompt has work intent but no draft yet.
- * Does not Reality-Commit. Returns contextEventId or null.
+ * Globe AI opens Continuum — user never taps 「작업장 열기」.
+ * Does not Reality-Commit.
  */
 async function tryMintWorkspaceForAgent(input: {
   readonly utterance: string;
@@ -118,96 +178,80 @@ async function tryMintWorkspaceForAgent(input: {
     return null;
   }
 
-  const kind = classifyWorkspaceKind(utterance);
-  if (kind !== "travel" && kind !== "driver" && kind !== "used_goods") {
-    // Reality Anchor Projection — lodging near known POI (USJ …) cold-start
-    const anchor = resolveRealityAnchorFromUtterance(utterance);
-    if (anchor && isNearLodgingUtterance(utterance)) {
-      const seededUtterance = buildAnchorLodgingContinuumUtterance(
+  const kind =
+    classifyWorkspaceKind(utterance) ??
+    // Soft Travel when lodging/eatery work slipped classifier.
+    (/호텔|숙소|맛집|식당|카페|렌터/iu.test(utterance) ? "travel" : null);
+
+  if (kind === "travel" || kind === "driver" || kind === "used_goods") {
+    const continuum = runWorkspaceIntentContinuum({
+      utterance,
+      graphId: input.explicitContextEventId?.trim() || `agent_${Date.now()}`,
+      contextEventId: input.explicitContextEventId,
+      createIfMissing: true,
+      lat: input.lat,
+      lng: input.lng,
+      forceKind: kind,
+    });
+    if (!continuum) return null;
+    return finishContinuumMint({
+      continuum,
+      utterance,
+      lat: input.lat,
+      lng: input.lng,
+    });
+  }
+
+  // Reality Anchor Projection — lodging near known POI (USJ …) cold-start
+  const anchor = resolveRealityAnchorFromUtterance(utterance);
+  if (anchor && isNearLodgingUtterance(utterance)) {
+    const seededUtterance = buildAnchorLodgingContinuumUtterance(
+      utterance,
+      anchor,
+    );
+    const continuum = runWorkspaceIntentContinuum({
+      utterance: seededUtterance,
+      graphId: input.explicitContextEventId?.trim() || `agent_${Date.now()}`,
+      contextEventId: input.explicitContextEventId,
+      createIfMissing: true,
+      lat: anchor.lat,
+      lng: anchor.lng,
+      forceKind: "travel",
+    });
+    if (continuum?.contextEventId) {
+      return finishContinuumMint({
+        continuum,
         utterance,
-        anchor,
-      );
-      const continuum = runWorkspaceIntentContinuum({
-        utterance: seededUtterance,
-        graphId: input.explicitContextEventId?.trim() || `agent_${Date.now()}`,
-        contextEventId: input.explicitContextEventId,
-        createIfMissing: true,
         lat: anchor.lat,
         lng: anchor.lng,
+        statusKo: `${anchor.labelKo} 기준 작업장을 열었어요`,
       });
-      if (continuum?.contextEventId) {
-        expandWorkspace(continuum.contextEventId);
-        if (continuum.kind === "travel") {
-          await seedTravelLodgingForContinuum({
-            contextEventId: continuum.contextEventId,
-            utterance,
-            lat: anchor.lat,
-            lng: anchor.lng,
-          });
-        }
-        return {
-          contextEventId: continuum.contextEventId,
-          statusKo:
-            continuum.card.ctaKo ??
-            `${anchor.labelKo} 기준 작업장을 열었어요`,
-        };
-      }
     }
+  }
 
-    // Soft lodging find without trip frame — need an existing Context Event.
-    const existing = input.explicitContextEventId?.trim();
-    if (existing && !hasProvisionalContextWorkspace(existing)) {
-      // Continuum travel path can attach lodging workspace to existing event.
-      const continuum = runWorkspaceIntentContinuum({
+  // Soft lodging find on existing Context Event without provisional Workspace.
+  const existing = input.explicitContextEventId?.trim();
+  if (existing && !hasProvisionalContextWorkspace(existing)) {
+    const continuum = runWorkspaceIntentContinuum({
+      utterance,
+      graphId: existing,
+      contextEventId: existing,
+      createIfMissing: false,
+      lat: input.lat,
+      lng: input.lng,
+      forceKind: "travel",
+    });
+    if (continuum?.contextEventId) {
+      return finishContinuumMint({
+        continuum,
         utterance,
-        graphId: existing,
-        contextEventId: existing,
-        createIfMissing: false,
         lat: input.lat,
         lng: input.lng,
       });
-      if (continuum?.contextEventId) {
-        expandWorkspace(continuum.contextEventId);
-        if (continuum.kind === "travel") {
-          await seedTravelLodgingForContinuum({
-            contextEventId: continuum.contextEventId,
-            utterance,
-            lat: input.lat ?? null,
-            lng: input.lng ?? null,
-          });
-        }
-        return {
-          contextEventId: continuum.contextEventId,
-          statusKo: continuum.card.ctaKo ?? "작업장을 열었어요",
-        };
-      }
     }
-    return null;
   }
 
-  const continuum = runWorkspaceIntentContinuum({
-    utterance,
-    graphId: input.explicitContextEventId?.trim() || `agent_${Date.now()}`,
-    contextEventId: input.explicitContextEventId,
-    createIfMissing: true,
-    lat: input.lat,
-    lng: input.lng,
-  });
-  if (!continuum) return null;
-
-  expandWorkspace(continuum.contextEventId);
-  if (continuum.kind === "travel") {
-    await seedTravelLodgingForContinuum({
-      contextEventId: continuum.contextEventId,
-      utterance,
-      lat: input.lat ?? null,
-      lng: input.lng ?? null,
-    });
-  }
-  return {
-    contextEventId: continuum.contextEventId,
-    statusKo: continuum.card.ctaKo ?? "작업장을 열었어요",
-  };
+  return null;
 }
 
 /**
@@ -230,6 +274,55 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       openedWorkspace: false,
       committed: false,
     };
+  }
+
+  // Catalog Workspace routes (finance / document / coding) — stub prepare + open.
+  {
+    const route = classifyWorkspaceRoute(utterance);
+    if (route.ship === "catalog") {
+      const stub = prepareCatalogWorkspaceStub({
+        utterance,
+        route: route.route,
+        explicitContextEventId:
+          input.explicitContextEventId ?? input.contextEventId ?? null,
+      });
+      return {
+        handled: true,
+        statusKo: shortenWorkspaceAgentStatus(stub.statusKo),
+        contextEventId: stub.contextEventId,
+        workspaceMutated: true,
+        openedWorkspace: true,
+        committed: false,
+        via: "continuum_mint",
+        patchKind: `catalog:${stub.route}`,
+      };
+    }
+  }
+
+  // Free-talk / knowledge / casual chat BEFORE absorb · locate · Agent Loop.
+  // Travel / Continuum work never falls into essay chat.
+  if (!isWorkspaceAgentWorkUtterance(utterance)) {
+    const chat = await tryApplyConversationalTurn({
+      utterance,
+      scopeId:
+        input.explicitContextEventId ?? input.contextEventId ?? null,
+    });
+    if (chat) {
+      const ctx = resolveActiveWorkspaceContextId({
+        explicitContextEventId:
+          input.explicitContextEventId ?? input.contextEventId ?? null,
+      });
+      return {
+        handled: true,
+        statusKo: chat.replyKo,
+        contextEventId: ctx,
+        workspaceMutated: false,
+        openedWorkspace: false,
+        committed: false,
+        via: "free_talk",
+        patchKind: chat.mode === "knowledge" ? "knowledge" : "free_talk",
+      };
+    }
   }
 
   // ADR-051 Reality absorb — single network ingress (Projection via overlay stores)
@@ -303,7 +396,8 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     });
     if (minted) {
       contextEventId = minted.contextEventId;
-      openedWorkspace = true;
+      // Soft Continuum mint — Workspace prepared; Trail + 「펼치기」open later.
+      openedWorkspace = false;
       mintStatusKo = minted.statusKo;
     }
   }
@@ -317,9 +411,9 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       ),
       contextEventId: contextEventId,
       workspaceMutated: false,
-      openedWorkspace,
+      openedWorkspace: false,
       committed: false,
-      via: openedWorkspace ? "continuum_mint" : undefined,
+      via: undefined,
     };
   }
 
@@ -328,8 +422,12 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     contextEventId,
     utterance,
   });
+  beginAgentActivityTrail({
+    goalKo: utterance,
+    contextEventId,
+  });
 
-  // Multi-step Plan (Day B / Compound C) — sequential Loop turns.
+  // Always Plan runner — even single-step gets Observe→Act→Verify→Replan slot.
   const plan =
     multiStepPlan
       ? { ...earlyPlan, contextEventId }
@@ -337,7 +435,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
           utterance,
           contextEventId,
         });
-  if (plan.steps.length > 1) {
+  {
     const ran = await runWorkspaceAgentPlan({
       utterance,
       explicitContextEventId: contextEventId,
@@ -349,65 +447,30 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
       contextEventId,
       fallbackKo: ran.statusKo ?? mintStatusKo,
     });
-    return {
-      handled: ran.ok || ran.workspaceMutated || openedWorkspace,
-      statusKo: shortenWorkspaceAgentStatus(
-        statusFromPipeline ?? ran.statusKo ?? mintStatusKo,
-      ),
+    const statusKo = shortenWorkspaceAgentStatus(
+      statusFromPipeline ?? ran.statusKo ?? mintStatusKo,
+    );
+    finishAgentActivityTrail({
+      goalKo: utterance,
+      summaryKo: statusKo,
       contextEventId: ran.contextEventId ?? contextEventId,
-      workspaceMutated: ran.workspaceMutated || openedWorkspace,
-      openedWorkspace: openedWorkspace || Boolean(ran.contextEventId),
+      offerExpand: true,
+    });
+    return {
+      handled: ran.ok || ran.workspaceMutated || Boolean(contextEventId),
+      statusKo,
+      contextEventId: ran.contextEventId ?? contextEventId,
+      workspaceMutated: ran.workspaceMutated || Boolean(mintStatusKo),
+      // Soft — never force-open Workspace shell; chat 「펼치기」does.
+      openedWorkspace: false,
       committed: false,
-      via: viaFromTool(lastTool),
+      via: mintStatusKo
+        ? "continuum_mint"
+        : viaFromTool(lastTool),
       patchKind: ran.lastLoop?.patchKind ?? plan.planKind,
       commitPending,
       waitingCommit: commitPending,
       phases: ran.lastLoop?.phases,
     };
   }
-
-  const loop = await runWorkspaceAgentLoop({
-    utterance,
-    explicitContextEventId: contextEventId,
-  });
-
-  if (!loop.ok && !loop.workspaceMutated) {
-    return {
-      handled: openedWorkspace,
-      statusKo: shortenWorkspaceAgentStatus(
-        loop.statusKo ?? mintStatusKo,
-      ),
-      contextEventId: loop.contextEventId ?? contextEventId,
-      workspaceMutated: false,
-      openedWorkspace,
-      committed: false,
-      via: openedWorkspace ? "continuum_mint" : viaFromTool(loop.toolId),
-      phases: loop.phases,
-      commitPending: false,
-      waitingCommit: false,
-    };
-  }
-
-  const commitPending = loop.commitPending === true;
-  const statusFromPipeline = resolveAgentStatusWorkLog({
-    contextEventId,
-    fallbackKo: loop.statusKo ?? mintStatusKo,
-  });
-  return {
-    handled: true,
-    statusKo: shortenWorkspaceAgentStatus(
-      statusFromPipeline ?? loop.statusKo ?? mintStatusKo,
-    ),
-    contextEventId: loop.contextEventId ?? contextEventId,
-    workspaceMutated: loop.workspaceMutated || openedWorkspace,
-    openedWorkspace: openedWorkspace || Boolean(loop.contextEventId),
-    committed: false,
-    via: openedWorkspace && !loop.workspaceMutated
-      ? "continuum_mint"
-      : viaFromTool(loop.toolId),
-    patchKind: loop.patchKind,
-    commitPending,
-    waitingCommit: commitPending,
-    phases: loop.phases,
-  };
 }

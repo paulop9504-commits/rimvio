@@ -21,6 +21,8 @@ import { GLOBE_CONTEXT_MEDIA_ACCEPT } from "@/lib/feed/ingest-globe-context-capt
 import { validateIngestMediaFiles } from "@/lib/globe/validate-ingest-media-files";
 import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick-list-draft";
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
+import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
+import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 import { offerIngressConvergeChipsClient } from "@/lib/globe-ingress/offer-ingress-converge-chips-client";
 import { interpretMessyForGlobeComposer } from "@/lib/messy-prompt-interpreter/adapters/globe-composer-adapter";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
@@ -56,6 +58,8 @@ export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
   submitComposerText: (value: string) => Promise<void>;
   focusComposer: () => void;
+  /** 「기타」— empty composer with city-fill hint (Cursor blank). */
+  promptCityFill: (hintKo: string) => void;
 };
 
 export type GlobeContextIngestBarProps = {
@@ -602,6 +606,39 @@ export const GlobeContextIngestBar = forwardRef<
           });
         }
 
+        // Cursor Agent Loop — Activity Trail in chat; Workspace soft + 「펼치기」.
+        if (isWorkspaceAgentWorkUtterance(interpreted.dispatchText)) {
+          const agent = await applyGlobeWorkspaceAgentTurn({
+            utterance: interpreted.dispatchText,
+            explicitContextEventId: routingContextEventId ?? attachHintId,
+            lat: userLat ?? liveLocation?.lat ?? null,
+            lng: userLng ?? liveLocation?.lng ?? null,
+          });
+          if (agent.handled) {
+            const graphId = ensureGlobeChatGraphId();
+            const line =
+              agent.statusKo?.trim() ||
+              copy.globe.activityTrail.done;
+            syncPortalComposeTurnToChat({
+              graphId,
+              userText: value,
+              assistantText: line,
+            });
+            if (agent.contextEventId) {
+              onAttached?.(agent.contextEventId);
+            }
+            showComposerHint(line, {
+              tone: "success",
+              durationMs: 4500,
+            });
+            setClarifyPlaceholder(null);
+            setOperatorChoices(null);
+            setText("");
+            setMenuOpen(false);
+            return;
+          }
+        }
+
         const result = await dispatchContextRun(
           {
             kind: "text",
@@ -742,8 +779,15 @@ export const GlobeContextIngestBar = forwardRef<
       focusComposer: () => {
         window.setTimeout(() => inputRef.current?.focus(), 0);
       },
+      promptCityFill: (hintKo: string) => {
+        const hint = hintKo.trim() || copy.globe.tripSituationRouter.destinationOtherAsk;
+        setText("");
+        setClarifyPlaceholder(hint);
+        showComposerHint(hint, { durationMs: 0 });
+        window.setTimeout(() => inputRef.current?.focus(), 0);
+      },
     }),
-    [submitText],
+    [showComposerHint, submitText],
   );
 
   return (

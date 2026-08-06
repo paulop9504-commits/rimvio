@@ -17,6 +17,10 @@ const TRIP_ANNOUNCE =
 const TIMED =
   /(?:\d{1,3}\s*시간\s*(?:뒤|후|뒤에|후에)|\d{1,3}\s*분\s*(?:뒤|후|뒤에|후에)|내일|모레)/iu;
 
+/** 「하와이로 간다」「오사카 가요」「제주 갈게」— dest go without naming 여행. */
+const LIGHT_TRIP_GO =
+  /(?:로|으로)\s*(?:갈(?:게|래|까|자|거야|거예요)?|간(?:다|다요|다구요|다고)?|가(?:요|자|서|ㅂ니다)?|갑니다)|(?:^|[\s,·])(?:갈(?:게|래|까|자)|가요|간다|갑니다)(?:\s|$|[!?.,])/iu;
+
 /** Noise particles / verbs that should not become place labels. */
 const PLACE_NOISE =
   /^(?:여기|저기|그곳|어디|근처|주변|맥락|위치|앵커|여행|출장|숙소|호텔|맛집|일정|please|here|there|somewhere)$/iu;
@@ -27,11 +31,27 @@ function cleanPlaceLabel(raw: string): string | null {
     .replace(/^(?:저|그|이)\s+/u, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!cleaned || cleaned.length < 2 || cleaned.length > 48) return null;
+  if (!cleaned || cleaned.length > 48) return null;
   if (PLACE_NOISE.test(cleaned)) return null;
+  // 「괌」is 1 code unit — allow known hubs / overseas; reject random single letters.
+  if (cleaned.length < 2) {
+    if (
+      !TRAVEL_DEST_HUBS.test(cleaned) &&
+      classifyOverseasManualPlace(cleaned) == null
+    ) {
+      return null;
+    }
+  }
   // Normalize common Korean destination suffixes used in speech
   if (/^제주도$/u.test(cleaned)) cleaned = "제주";
   return cleaned;
+}
+
+/** Dest + go verb — light trip Intent (overseas registry or hubs). */
+export function isLightTripGoUtterance(message: string): boolean {
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+  return LIGHT_TRIP_GO.test(trimmed);
 }
 
 export function isTravelTripAnnouncement(message: string): boolean {
@@ -46,7 +66,14 @@ export function isTravelTripAnnouncement(message: string): boolean {
   if (!hasTrip) {
     return false;
   }
-  return TIMED.test(trimmed) || TRIP_ANNOUNCE.test(trimmed);
+  if (TIMED.test(trimmed) || TRIP_ANNOUNCE.test(trimmed)) {
+    return true;
+  }
+  // 「하와이로 간다」— registry/hub dest + go verb (no need to say 여행).
+  if (isLightTripGoUtterance(trimmed) && extractTravelDestination(trimmed)) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -58,6 +85,7 @@ export function extractTravelDestination(message: string): string | null {
   if (!text) return null;
 
   const hasMoveOrTripVerb =
+    isLightTripGoUtterance(text) ||
     /(?:로|으로)\s*(?:여행|출장|놀러|감|간|가|이동|옮겨|변경|바꿔|가자|갈래|출발)|(?:에도|에)\s*(?:만들|열어|복제|복사)|(?:여행|출장)(?:\s|$|[!?.,])|(?:to|for)\s+[A-Za-z]|go(?:ing)?\s+to|trip|vacation/iu.test(
       text,
     );
@@ -67,9 +95,11 @@ export function extractTravelDestination(message: string): string | null {
   if (hasMoveOrTripVerb) {
     const particlePatterns: RegExp[] = [
       // Destination immediately before particle — not the whole preceding phrase
-      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})(?:도)?(?:로|으로)\s*(?:여행|출장|놀러|감|간|가|이동|옮겨|변경|바꿔|가자|갈래|출발)/iu,
-      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})(?:도)?(?:에도|에)\s*(?:만들|열어|복제|복사)/iu,
-      /(?:^|[\s,·])([가-힣A-Za-z][가-힣A-Za-z'.-]{1,24})\s+(?:여행|출장)(?:\s|$|[!?.,])/iu,
+      /(?:^|[\s,·])([가-힣A-Za-z]{1,24})(?:도)?(?:로|으로)\s*(?:여행|출장|놀러|감|간|가|이동|옮겨|변경|바꿔|가자|갈래|출발)/iu,
+      /(?:^|[\s,·])([가-힣A-Za-z]{1,24})(?:도)?(?:에도|에)\s*(?:만들|열어|복제|복사)/iu,
+      /(?:^|[\s,·])([가-힣A-Za-z]{1,24})\s+(?:여행|출장)(?:\s|$|[!?.,])/iu,
+      // 「괌 가요」「하와이 간다」— go without 로/으로
+      /(?:^|[\s,·])([가-힣A-Za-z]{1,24})\s*(?:가요|간다|갑니다|갈게|갈래|가자)(?:\s|$|[!?.,])/iu,
       /(?:to|for|in|at)\s+([A-Za-z][A-Za-z\s'.-]{1,40}?)(?:\s+(?:trip|travel|vacation|holiday|please)|[.!?,]|$)/iu,
       /(?:go(?:ing)?\s+to|visit(?:ing)?|fly(?:ing)?\s+to)\s+([A-Za-z][A-Za-z\s'.-]{1,40})/iu,
     ];

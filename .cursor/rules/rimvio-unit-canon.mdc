@@ -1,0 +1,32 @@
+---
+description: Unit Canon — date · money · space · score locked units
+alwaysApply: true
+---
+
+# Unit Canon (locked)
+
+**Canonical:** `docs/RIMVIO_UNIT_CANON.md` · ADR-047 · `lib/unit-canon/`
+
+> Every measured value = **value + unit + context + surface**.  
+> Lodging **display** = nightly KRW · **Prepare/Commit** = stay total.
+
+| Axis | Canon |
+|------|-------|
+| Time | ISO-8601 + IANA · nights from checkIn/Out |
+| Money (card) | nightly + `/ 1박` |
+| Money (pay) | `totalPriceKrw` |
+| Space | meters store · walk minutes UI (`WALK_METERS_PER_MINUTE`) |
+| Rating | ★ 0–5 · do not mix with Match% |
+| Match | 0–100 · Decision weights sum to 1 |
+
+## Do
+
+- New money/date/distance formatters → `lib/unit-canon/` (or re-export)
+- Keep `basis` on lodging prices (`nightly` \| `total`)
+
+## PR reject
+
+- Stay total labeled as `/ 1박` on cards
+- Bare KRW without basis
+- ★5 and Match% in one chip
+- Helpers that bypass Unit Canon for lodging display money

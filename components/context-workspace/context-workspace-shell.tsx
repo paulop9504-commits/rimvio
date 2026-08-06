@@ -50,9 +50,22 @@ import { useActiveContextWeather } from "@/hooks/use-active-context-weather";
 import { readWorldState } from "@/lib/workstream/world-state";
 import { WorkspaceCommitPreviewSheet } from "@/components/context-workspace/workspace-commit-preview-sheet";
 import { WorkspaceCloseNameSheet } from "@/components/context-workspace/workspace-close-name-sheet";
-import { WorkspaceCompareSheet } from "@/components/context-workspace/workspace-compare-sheet";
 import { enterWorkspaceSlotFocus } from "@/lib/context-workspace/enter-workspace-slot-focus";
-import { filterNodesForWorkspaceMapFocus } from "@/lib/context-workspace/workspace-map-focus";
+import {
+  applyCompareDecisionSelection,
+  buildCompareRelationshipEdges,
+  buildDecisionProjectionsForCompare,
+  buildEntityTitleMap,
+  enterCompareDecisionProjection,
+  exitCompareDecisionProjection,
+  syncCompareDecisionProjectionFromWorkspace,
+  useWorkspaceProjection,
+} from "@/lib/context-workspace/projection";
+import {
+  filterNodesForWorkspaceMapFocus,
+  isLiveWorkspacePlaceNode,
+  isWorkspacePlaceCandidateNode,
+} from "@/lib/context-workspace/workspace-map-focus";
 import { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-workspace-focus-node";
 import { suggestWorkspaceCapsuleTitle } from "@/lib/context-workspace/suggest-workspace-capsule-title";
 import { renameContextEventTitle } from "@/lib/context-workspace/rename-context-event-title";
@@ -62,6 +75,7 @@ import {
 import { WorkspaceMapView } from "@/components/context-workspace/workspace-map-view";
 import { WorkspaceMapMediaEmbed } from "@/components/context-workspace/workspace-map-media-embed";
 import { WorkspaceObjectCarousel } from "@/components/context-workspace/workspace-object-carousel";
+import { WorkspaceGptPlaceListPanel } from "@/components/context-workspace/workspace-gpt-place-list-panel";
 import { WorkspaceCursorDock } from "@/components/context-workspace/workspace-cursor-dock";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
 import type { CalloutHandlers, Evidence } from "@/lib/callout/types";
@@ -201,7 +215,8 @@ export function ContextWorkspaceShell({
   const [mapFocusKind, setMapFocusKind] = useState<ContextWorkspaceDomain | null>(
     null,
   );
-  const [compareOpen, setCompareOpen] = useState(false);
+  const workspaceProjection = useWorkspaceProjection(contextEventId);
+  const compareDecisionActive = workspaceProjection.mode === "compare_decision";
   const [softRouteDismissed, setSoftRouteDismissed] = useState(false);
   const [softRainDismissed, setSoftRainDismissed] = useState(false);
   const [softQuietDismissed, setSoftQuietDismissed] = useState(false);
@@ -354,6 +369,125 @@ export function ContextWorkspaceShell({
   const venueSelectedId = isWorkspaceContextMediaPinId(selectedId)
     ? null
     : selectedId;
+  const carouselNodes = useMemo(() => {
+    // GPT place list — live places only (never 「리버뷰」「근처 카페」「포토스팟」 shells).
+    const live = visibleNodes.filter((n) => isLiveWorkspacePlaceNode(n));
+    if (mapFocusKind) {
+      const domainLive = live.filter((n) => n.kind === mapFocusKind);
+      if (domainLive.length > 0) return domainLive;
+    }
+    if (live.length > 0) {
+      if (
+        venueSelectedId &&
+        !live.some((n) => n.id === venueSelectedId)
+      ) {
+        const orphan = visibleNodes.find(
+          (n) =>
+            n.id === venueSelectedId && isLiveWorkspacePlaceNode(n),
+        );
+        return orphan ? [...live, orphan] : live;
+      }
+      return live;
+    }
+    const focused = mapFocusNodes.filter((n) =>
+      isWorkspacePlaceCandidateNode(n),
+    );
+    if (!venueSelectedId) return focused;
+    if (focused.some((n) => n.id === venueSelectedId)) return focused;
+    const orphan =
+      visibleNodes.find(
+        (n) => n.id === venueSelectedId && isWorkspacePlaceCandidateNode(n),
+      ) ?? null;
+    return orphan ? [...focused, orphan] : focused;
+  }, [mapFocusNodes, visibleNodes, venueSelectedId, mapFocusKind]);
+
+  const decisionProjections = useMemo(() => {
+    if (!state || !compareDecisionActive) return null;
+    const built = buildDecisionProjectionsForCompare(state);
+    return built.length >= 2 ? built : null;
+  }, [state, compareDecisionActive, state?.compareIds, state?.nodes]);
+
+  const compareRelationshipEdges = useMemo(() => {
+    if (!state || !compareDecisionActive) return null;
+    return buildCompareRelationshipEdges(state);
+  }, [state, compareDecisionActive, state?.relationshipEdges, state?.compareIds]);
+
+  const compareEntityTitles = useMemo(() => {
+    if (!state || !compareDecisionActive) return null;
+    return buildEntityTitleMap(state);
+  }, [state, compareDecisionActive, state?.nodes]);
+
+  const openCompareDecision = useCallback(
+    (ids?: readonly string[]) => {
+      const id = contextEventId?.trim();
+      if (!id || !state) return;
+      const compareIds =
+        ids && ids.length >= 2 ? [...ids].slice(0, 5) : [...state.compareIds];
+      if (compareIds.length < 2) {
+        toast.message("비교할 후보를 2개 이상 골라 주세요");
+        return;
+      }
+      if (ids && ids.length >= 2) {
+        applyWorkspaceTransition({
+          contextEventId: id,
+          op: "compare",
+          nodeIds: compareIds,
+        });
+      }
+      const workspace = readContextWorkspace(id) ?? state;
+      enterCompareDecisionProjection({
+        contextEventId: id,
+        workspace: {
+          compareIds:
+            workspace.compareIds.length >= 2
+              ? workspace.compareIds
+              : compareIds,
+          relationshipEdges: workspace.relationshipEdges,
+          selectedIds: workspace.selectedIds,
+        },
+      });
+      setListOpen(false);
+    },
+    [contextEventId, state],
+  );
+
+  const onDecisionSelect = useCallback(
+    (entityId: string) => {
+      const id = contextEventId?.trim();
+      if (!id) return;
+      const decision =
+        decisionProjections?.find((d) => d.entityId === entityId) ?? null;
+      const result = applyCompareDecisionSelection({
+        contextEventId: id,
+        entityId,
+        decision,
+        exitProjection: true,
+      });
+      if (!result.ok) {
+        toast.message(result.reasonKo);
+        return;
+      }
+      setFocusedId(entityId);
+      setPeekClosed(false);
+      toast.success(result.replyKo);
+    },
+    [contextEventId, decisionProjections],
+  );
+
+  useEffect(() => {
+    const id = contextEventId?.trim();
+    if (!id || !state || !compareDecisionActive) return;
+    syncCompareDecisionProjectionFromWorkspace({
+      contextEventId: id,
+      workspace: state,
+    });
+  }, [
+    contextEventId,
+    state?.compareIds,
+    state?.relationshipEdges,
+    state?.selectedIds,
+    compareDecisionActive,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -704,6 +838,16 @@ export function ContextWorkspaceShell({
     });
   }, [contextEventId, state, projectTitleKo]);
 
+  const onCarouselActiveNodeChange = useCallback((nodeId: string) => {
+    setFocusedId((prev) => (prev === nodeId ? prev : nodeId));
+  }, []);
+
+  // GPT place list — open when search candidates land (simple search UX).
+  useEffect(() => {
+    if (carouselNodes.length > 0) {
+      setListOpen(true);
+    }
+  }, [carouselNodes.length]);
 
   const onSelect = useCallback(
     (nodeId: string, titleHint?: string | null) => {
@@ -715,7 +859,6 @@ export function ContextWorkspaceShell({
       // Soft focus immediately so chip/peek feels responsive.
       const openGen = ++peekOpenGenerationRef.current;
       setFocusedId(nodeId);
-      setListOpen(false);
       setEvidenceHighlight(null);
 
       if (isWorkspaceContextMediaPinId(nodeId)) {
@@ -939,7 +1082,7 @@ export function ContextWorkspaceShell({
           nodeIds: [...nextIds],
         });
         openCalloutWindow({ entityId: id });
-        if (nextIds.length >= 2) setCompareOpen(true);
+        if (nextIds.length >= 2) openCompareDecision(nextIds);
       },
       onBookmark: (id) => {
         onPinToggle(id);
@@ -1375,17 +1518,6 @@ export function ContextWorkspaceShell({
           onCancel={() => setCommitPreviewOpen(false)}
         />
       ) : null}
-
-      <WorkspaceCompareSheet
-        open={compareOpen}
-        contextEventId={eventId}
-        workspace={state}
-        onClose={() => setCompareOpen(false)}
-        onSelect={(nodeId) => {
-          setFocusedId(nodeId);
-          setPeekClosed(false);
-        }}
-      />
     </>
   );
 
@@ -1425,13 +1557,24 @@ export function ContextWorkspaceShell({
             setFocusedId(nodeId);
             setPeekClosed(false);
           }}
-          onOpenCompare={() => setCompareOpen(true)}
+          onOpenCompare={() => openCompareDecision()}
           map={
-            <>
+            <div className="relative h-full w-full">
               <WorkspaceMapView
                 pins={capabilityMapPins}
                 selectedId={selectedId}
                 onSelectPin={onSelect}
+                decisionProjections={decisionProjections}
+                selectedDecisionEntityId={
+                  compareDecisionActive
+                    ? workspaceProjection.mode === "compare_decision"
+                      ? workspaceProjection.selectedEntityId
+                      : null
+                    : null
+                }
+                onDecisionSelect={onDecisionSelect}
+                compareRelationshipEdges={compareRelationshipEdges}
+                compareEntityTitles={compareEntityTitles}
                 onPinToggle={onPinToggle}
                 onRemovePin={onRemovePin}
                 onPrepareReserve={onPrepareReserve}
@@ -1454,6 +1597,49 @@ export function ContextWorkspaceShell({
                   setPeekClosed(false);
                 }}
               />
+              {listOpen && !compareDecisionActive ? (
+                <div className="pointer-events-none absolute inset-y-3 right-3 z-[5] flex justify-end">
+                  <WorkspaceGptPlaceListPanel
+                    open={listOpen}
+                    contextEventId={eventId}
+                    nodes={carouselNodes}
+                    workspace={state}
+                    selectedId={selectedId}
+                    searching={carouselNodes.length === 0}
+                    onSelect={(nodeId) => {
+                      // Soft focus only — list stays open until user hits × (GPT Maps style).
+                      setFocusedId(nodeId);
+                      setPeekClosed(true);
+                      setEvidenceHighlight(null);
+                    }}
+                    onClose={() => setListOpen(false)}
+                  />
+                </div>
+              ) : null}
+              {compareDecisionActive ? (
+                <div className="pointer-events-none absolute inset-x-0 top-3 z-[7] flex justify-center px-3">
+                  <div
+                    className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#191f28]/92 px-3 py-1.5 text-white shadow-lg backdrop-blur-md"
+                    data-workspace-compare-decision-pill
+                  >
+                    <span className="text-[11px] font-bold">
+                      {copy.globe.workspaceCompareDecisionPill(
+                        decisionProjections?.length ??
+                          (workspaceProjection.mode === "compare_decision"
+                            ? workspaceProjection.candidateEntityIds.length
+                            : 0),
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold"
+                      onClick={() => exitCompareDecisionProjection(eventId)}
+                    >
+                      {copy.globe.workspaceCompareDecisionExit}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {selectedMediaPin?.contextMedia ? (
                 <WorkspaceMapMediaEmbed
                   title={selectedMediaPin.title}
@@ -1461,13 +1647,12 @@ export function ContextWorkspaceShell({
                   onClose={() => setFocusedId(null)}
                 />
               ) : null}
-            </>
+            </div>
           }
           agentDock={
             !showPeek && !commitPreviewOpen ? (
               <WorkspaceCursorDock
                 contextEventId={eventId}
-                compact
                 onFocusNode={onSelect}
                 onBriefReplay={() => {
                   setListOpen(false);
@@ -1480,21 +1665,19 @@ export function ContextWorkspaceShell({
           }
         />
 
-        {selectedNode && !compareOpen && !commitPreviewOpen ? (
+        {selectedNode && !compareDecisionActive && !commitPreviewOpen ? (
           <WorkspaceObjectCarousel
             open={showPeek}
             contextEventId={eventId}
-            nodes={mapFocusNodes}
+            nodes={carouselNodes}
             activeNodeId={selectedNode.id}
             workspace={state}
-            onActiveNodeChange={(nodeId) => {
-              setFocusedId(nodeId);
-            }}
+            onActiveNodeChange={onCarouselActiveNodeChange}
             onClose={() => {
               peekOpenGenerationRef.current += 1;
               setPeekClosed(true);
             }}
-            onOpenCompare={() => setCompareOpen(true)}
+            onOpenCompare={() => openCompareDecision()}
             onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
             onOpenField={(nodeId) => onOpenField(nodeId)}
             onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
@@ -1599,11 +1782,44 @@ export function ContextWorkspaceShell({
           preferredCenter={preferredMapCenter}
           floatingCallouts={floatingCallouts}
           evidenceHighlight={evidenceHighlight}
+          decisionProjections={decisionProjections}
+          selectedDecisionEntityId={
+            workspaceProjection.mode === "compare_decision"
+              ? workspaceProjection.selectedEntityId
+              : null
+          }
+          onDecisionSelect={onDecisionSelect}
+          compareRelationshipEdges={compareRelationshipEdges}
+          compareEntityTitles={compareEntityTitles}
           onCalloutRequestWorkspace={(entityId) => {
             setFocusedId(entityId);
             setPeekClosed(false);
           }}
         />
+        {compareDecisionActive ? (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[7] flex justify-center px-3">
+            <div
+              className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#191f28]/92 px-3 py-1.5 text-white shadow-lg backdrop-blur-md"
+              data-workspace-compare-decision-pill
+            >
+              <span className="text-[11px] font-bold">
+                {copy.globe.workspaceCompareDecisionPill(
+                  decisionProjections?.length ??
+                    (workspaceProjection.mode === "compare_decision"
+                      ? workspaceProjection.candidateEntityIds.length
+                      : 0),
+                )}
+              </span>
+              <button
+                type="button"
+                className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-extrabold"
+                onClick={() => exitCompareDecisionProjection(eventId)}
+              >
+                {copy.globe.workspaceCompareDecisionExit}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {calloutWindows.length >= 2 ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-24 z-[6] flex justify-center px-3">
             <button
@@ -1611,12 +1827,7 @@ export function ContextWorkspaceShell({
               className="pointer-events-auto rounded-full bg-[#191f28] px-4 py-2 text-[11px] font-bold text-white shadow-lg"
               onClick={() => {
                 const ids = calloutWindows.map((w) => w.entityId).slice(0, 5);
-                applyWorkspaceTransition({
-                  contextEventId: eventId,
-                  op: "compare",
-                  nodeIds: ids,
-                });
-                setCompareOpen(true);
+                openCompareDecision(ids);
               }}
             >
               비교 · {calloutWindows.length}개 Callout
@@ -1694,63 +1905,27 @@ export function ContextWorkspaceShell({
           </div>
         ) : null}
 
-        {listOpen ? (
-          <div className="pointer-events-auto absolute inset-x-3 top-3 z-[2] max-h-[min(48%,360px)] overflow-hidden rounded-[18px] bg-white shadow-[0_12px_40px_rgba(25,31,40,0.16)] ring-1 ring-black/[0.04]">
-            <div className="flex items-center justify-between border-b border-black/[0.04] px-3 py-2">
-              <p className="text-[12px] font-bold text-[#191f28]">
-                {mapFocusNodes.length}개의{" "}
-                {mapFocusKind ? domainLabelKo(mapFocusKind) : kindLabel}
-              </p>
-              <button
-                type="button"
-                className="text-[11px] font-semibold text-[#8b95a1]"
-                onClick={() => setListOpen(false)}
-              >
-                닫기
-              </button>
-            </div>
-            <div className="max-h-[min(40vh,300px)] space-y-0.5 overflow-y-auto p-1.5">
-              {mapFocusNodes.map((node, index) => (
-                <button
-                  key={node.id}
-                  type="button"
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left",
-                    selectedId === node.id
-                      ? "bg-[#e8f3ff]"
-                      : "hover:bg-[#f9fafb]",
-                  )}
-                  onClick={() => {
-                    onSelect(node.id);
-                    setListOpen(false);
-                  }}
-                >
-                  <span
-                    className={cn(
-                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                      selectedId === node.id
-                        ? "bg-[#3182f6] text-white"
-                        : "bg-[#f2f4f6] text-[#191f28]",
-                    )}
-                  >
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] font-bold text-[#191f28]">
-                      {node.bookmarked ? "📌 " : ""}
-                      {node.title}
-                    </span>
-                    <span className="block truncate text-[10px] text-[#8b95a1]">
-                      ★ {formatRating(node.rating)} · {formatPrice(node)}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
+        {listOpen && !compareDecisionActive ? (
+          <div className="pointer-events-none absolute inset-y-3 right-3 z-[5] flex justify-end">
+            <WorkspaceGptPlaceListPanel
+              open={listOpen}
+              contextEventId={eventId}
+              nodes={carouselNodes}
+              workspace={state}
+              selectedId={selectedId}
+              searching={carouselNodes.length === 0}
+              onSelect={(nodeId) => {
+                // Soft focus only — list stays open until user hits × (GPT Maps style).
+                setFocusedId(nodeId);
+                setPeekClosed(true);
+                setEvidenceHighlight(null);
+              }}
+              onClose={() => setListOpen(false)}
+            />
           </div>
         ) : null}
 
-      {/* Agent — floating compact strip over map (never a grey footer). */}
+      {/* Agent — floating Cursor dock over map (overlay only; no grey footer band). */}
       {!preferMobileWorkspace && !showPeek && !commitPreviewOpen ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[4] flex justify-center px-3 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
           <div className="pointer-events-auto w-full max-w-[min(380px,92%)] drop-shadow-[0_10px_28px_rgba(25,31,40,0.18)]">
@@ -1773,22 +1948,20 @@ export function ContextWorkspaceShell({
       {/* Place sheet — desktop / tablet; mobile uses Expandable Sheet */}
       {!preferMobileWorkspace &&
       selectedNode &&
-      !compareOpen &&
+      !compareDecisionActive &&
       !commitPreviewOpen ? (
         <WorkspaceObjectCarousel
           open={showPeek}
           contextEventId={eventId}
-          nodes={mapFocusNodes}
+          nodes={carouselNodes}
           activeNodeId={selectedNode.id}
           workspace={state}
-          onActiveNodeChange={(nodeId) => {
-            setFocusedId(nodeId);
-          }}
+          onActiveNodeChange={onCarouselActiveNodeChange}
           onClose={() => {
             peekOpenGenerationRef.current += 1;
             setPeekClosed(true);
           }}
-          onOpenCompare={() => setCompareOpen(true)}
+          onOpenCompare={() => openCompareDecision()}
           onPrepareReserve={(nodeId) => onPrepareReserve(nodeId)}
           onOpenField={(nodeId) => onOpenField(nodeId)}
           onConfirmReady={(nodeId) => onConfirmReady(nodeId)}
@@ -1820,17 +1993,6 @@ export function ContextWorkspaceShell({
           onCancel={() => setCommitPreviewOpen(false)}
         />
       ) : null}
-
-      <WorkspaceCompareSheet
-        open={compareOpen}
-        contextEventId={eventId}
-        workspace={state}
-        onClose={() => setCompareOpen(false)}
-        onSelect={(nodeId) => {
-          setFocusedId(nodeId);
-          setPeekClosed(false);
-        }}
-      />
     </div>
   );
 }

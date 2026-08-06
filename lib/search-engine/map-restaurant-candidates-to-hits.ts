@@ -3,6 +3,7 @@
  */
 
 import { haversineKm } from "@/lib/feed/spacetime-fit";
+import { amountLabelFromPriceLevel } from "@/lib/search-engine/amount-label-from-price-level";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 import type { RestaurantSearchCandidate } from "@/lib/restaurant-search/types";
 
@@ -30,6 +31,10 @@ export function mapRestaurantCandidatesToPlaceHits(input: {
       Boolean(candidate.specialReasonKo?.includes("현지")) ||
       /로컬|현지|골목/iu.test(candidate.name) ||
       /로컬|현지/iu.test(input.query);
+    const priceBand =
+      candidate.priceLevel != null && candidate.priceLevel > 0
+        ? candidate.priceLevel
+        : null;
 
     return {
       id: `maps:${candidate.placeId}`,
@@ -41,17 +46,14 @@ export function mapRestaurantCandidatesToPlaceHits(input: {
       walkMinutes: walkMinutesFromKm(km),
       reservable: candidate.openNow !== false,
       localFavorite,
-      priceBand:
-        candidate.priceLevel != null && candidate.priceLevel > 0
-          ? candidate.priceLevel
-          : null,
+      priceBand,
       source: "maps" as const,
       reviewCount:
         typeof candidate.reviewCount === "number" &&
         Number.isFinite(candidate.reviewCount)
           ? Math.round(candidate.reviewCount)
           : null,
-      amountLabel: null,
+      amountLabel: amountLabelFromPriceLevel(candidate.priceLevel),
       priceKrw: null,
       reasonKo: candidate.specialReasonKo?.trim() || null,
       thumbnailUrl: candidate.images[0] ?? null,

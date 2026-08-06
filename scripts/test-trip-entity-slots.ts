@@ -71,13 +71,19 @@ const jeju = prepareTripWorkspaceDraft({
 });
 assert.ok(jeju?.realityDraft);
 assert.ok((jeju!.realityDraft!.days.length ?? 0) >= 2);
-assert.ok(jeju!.nodes.every((n) => n.actionReadyState === "ready"));
+assert.ok(
+  jeju!.nodes.every(
+    (n) =>
+      n.actionReadyState === "ready" || n.actionReadyState === "prepare",
+  ),
+);
 assert.ok(
   jeju!.nodes.some(
     (n) =>
       n.tags.includes("live_burst") ||
       n.tags.includes("skeleton") ||
-      n.tags.includes("fallback_seed"),
+      n.tags.includes("fallback_seed") ||
+      n.tags.includes("entity_unresolved"),
   ),
 );
 

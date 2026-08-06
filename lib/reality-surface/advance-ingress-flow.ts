@@ -55,6 +55,8 @@ export function destinationChoiceLabelsForBlueprint(
   const region = blueprint ? readRegionLabel(blueprint) : null;
   const hubs = listHubLabelsForCountry(region);
   if (hubs.length > 0) return hubs;
+  // Region known but no cities in registry — empty (UI adds 「기타」 blank).
+  if (region?.trim()) return [];
   return FALLBACK_DESTINATION_HUBS.map((h) => h.label);
 }
 

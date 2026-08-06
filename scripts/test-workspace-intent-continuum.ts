@@ -38,7 +38,7 @@ clearPreparedRealityOperations();
   assert.ok(continuum);
   assert.equal(continuum!.kind, "travel");
   assert.ok(continuum!.contextEventId);
-  assert.equal(continuum!.card.ctaKo, "작업장 열기");
+  assert.equal(continuum!.card.ctaKo, "작업장을 열었어요");
   assert.equal(continuum!.focus.focusSlotId, "flight");
   assert.equal(continuum!.bookingPathSeeded, true);
   assert.ok(continuum!.workspace);
@@ -98,11 +98,22 @@ clearPreparedRealityOperations();
 
 {
   const none = runWorkspaceIntentContinuum({
-    utterance: "주변 맛집 찾아줘",
+    utterance: "오늘 날씨 어때",
     graphId: "graph-none",
     createIfMissing: true,
   });
   assert.equal(none, null);
+}
+
+{
+  const eatery = runWorkspaceIntentContinuum({
+    utterance: "주변 맛집 찾아줘",
+    graphId: "graph-eatery-soft",
+    createIfMissing: true,
+  });
+  assert.ok(eatery);
+  assert.equal(eatery!.kind, "travel");
+  assert.equal(eatery!.card.ctaKo, "작업장을 열었어요");
 }
 
 resetGraphCommandStoreForTests();

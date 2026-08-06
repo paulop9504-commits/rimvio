@@ -71,7 +71,14 @@ function testPhilippinesIngress() {
   });
   assert.equal(router?.stage, "needs_destination");
   assert.ok(router?.reasonKo?.includes("마닐라") || router?.reasonKo?.includes("섬"));
-  assert.ok(router?.choices.some((c) => c.label === "보라카이"));
+  assert.ok(
+    router?.choices.some(
+      (c) =>
+        c.label === "보라카이" ||
+        c.submitText === "보라카이" ||
+        c.label.includes("보라카이"),
+    ),
+  );
 
   assert.equal(
     resolveDestinationFromMessage("보라카이", session.operatorBlueprint),

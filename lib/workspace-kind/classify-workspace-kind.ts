@@ -1,8 +1,10 @@
 /**
  * NL → WorkspaceKind (deterministic). Globe AI gate: which workspace to prepare.
  * Fail closed → null (do not invent a kind).
+ * Travel includes dest+work (호텔/맛집) so Globe never waits for 「작업장 열기」.
  */
 
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
 import {
   isBareMarketComposeInput,
   isMarketComposeInput,
@@ -83,9 +85,31 @@ export function isTravelWorkspaceUtterance(text: string): boolean {
   ) {
     return true;
   }
-  // City + go (light trip frame) — Osaka / Jeju style.
+  // Dest + go (any overseas/domestic place) — 「하와이로 간다」「오사카 가요」.
+  const dest = extractTravelDestination(t);
   if (
-    /(?:오사카|도쿄|후쿠오카|교토|나고야|삿포로|제주|부산|서울|파리|뉴욕|방콕|다낭|타이베이).{0,12}(?:갈|가|여행|트립)/iu.test(
+    dest &&
+    /(?:갈(?:게|래|까|자)?|간(?:다|다요|다구요|다고)?|가(?:자|서|요)?|여행|트립|출장)/iu.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // Dest + domain work — 「오사카 호텔 찾아줘」「제주 렌터카」auto-open Travel.
+  if (
+    dest &&
+    /(?:호텔|숙소|맛집|식당|카페|렌터\s*카?|렌트|관광|놀거리|티켓|온천|일정|추천|찾아|보여|검색)/iu.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // Lodging / eatery find alone — soft Travel (Destination filled from context later).
+  if (
+    /(?:호텔|숙소).*(?:찾아|보여|검색|추천)|(?:찾아|보여|검색|추천).*(?:호텔|숙소)/iu.test(
+      t,
+    ) ||
+    /(?:맛집|식당|카페).*(?:찾아|보여|검색|추천)|(?:찾아|보여|검색|추천).*(?:맛집|식당|카페)/iu.test(
       t,
     )
   ) {

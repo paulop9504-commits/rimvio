@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { WorkspaceMapCapabilityBloom } from "@/components/context-workspace/workspace-map-capability-bloom";
 import { WorkspaceMapCalloutLayer } from "@/components/context-workspace/workspace-map-callout-layer";
+import { WorkspaceMapCompareOverlay } from "@/components/context-workspace/workspace-map-compare-overlay";
 import type { CalloutSessionValue } from "@/lib/callout/callout-session";
 import type { CalloutWindow } from "@/lib/callout/windows";
 import type {
@@ -47,6 +48,8 @@ import type {
   WorkspaceCapabilityBloomHandlers,
   WorkspaceCapabilityCallout,
 } from "@/lib/context-workspace/capability-callout";
+import type { DecisionProjection } from "@/lib/context-workspace/projection/types";
+import type { CompareRelationshipEdge } from "@/lib/context-workspace/projection/build-compare-relationship-edges";
 import type { WorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import { syncWorkspaceEvidenceHighlight } from "@/lib/context-workspace/map/sync-workspace-evidence-highlight";
 import { syncOsakaMetroLines } from "@/lib/context-workspace/map/sync-osaka-metro-lines";
@@ -122,6 +125,12 @@ export type WorkspaceMapViewProps = {
   evidenceHighlight?: WorkspaceEvidenceHighlight | null;
   /** Expand Callout to Workspace focus affordance */
   onCalloutRequestWorkspace?: (entityId: string) => void;
+  /** Compare Decision — floating judgment callouts (no sheet). */
+  decisionProjections?: readonly DecisionProjection[] | null;
+  selectedDecisionEntityId?: string | null;
+  onDecisionSelect?: (entityId: string) => void;
+  compareRelationshipEdges?: readonly CompareRelationshipEdge[] | null;
+  compareEntityTitles?: Readonly<Record<string, string>> | null;
 };
 
 function itineraryGeoJson(coords: readonly [number, number][]): {
@@ -515,6 +524,11 @@ function MapLibreWorkspaceMap({
   floatingCallouts = null,
   evidenceHighlight = null,
   onCalloutRequestWorkspace,
+  decisionProjections = null,
+  selectedDecisionEntityId = null,
+  onDecisionSelect,
+  compareRelationshipEdges = null,
+  compareEntityTitles = null,
 }: WorkspaceMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("maplibre-gl").Map | null>(null);
@@ -1070,7 +1084,7 @@ function MapLibreWorkspaceMap({
     };
   }, [ready, selectedId, capabilityBloom, objectCallout, pins]);
 
-  // Multi-window: project all floating callout entity pins → screen.
+  // Multi-window + Compare Decision: project entity pins → screen anchors.
   const floatingEntityIds = useMemo(
     () =>
       (floatingCallouts ?? [])
@@ -1079,25 +1093,38 @@ function MapLibreWorkspaceMap({
         .join("|"),
     [floatingCallouts],
   );
+  const decisionEntityIds = useMemo(
+    () =>
+      (decisionProjections ?? [])
+        .map((d) => d.entityId)
+        .filter(Boolean)
+        .join("|"),
+    [decisionProjections],
+  );
 
   useEffect(() => {
     const map = mapRef.current;
-    const list = floatingCallouts ?? [];
-    if (!ready || !map || list.length === 0) {
+    const floatList = floatingCallouts ?? [];
+    const decisionList = decisionProjections ?? [];
+    if (!ready || !map || (floatList.length === 0 && decisionList.length === 0)) {
       setAnchorsByEntityId({});
       return;
     }
 
     const update = () => {
       const next: Record<string, { x: number; y: number }> = {};
-      for (const item of list) {
-        if (!item.window.anchored) continue;
-        const pin = pinsRef.current.find((p) => p.id === item.window.entityId);
+      const ids = new Set<string>();
+      for (const item of floatList) {
+        if (item.window.anchored) ids.add(item.window.entityId);
+      }
+      for (const d of decisionList) ids.add(d.entityId);
+      for (const id of ids) {
+        const pin = pinsRef.current.find((p) => p.id === id);
         if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
           continue;
         }
         const pt = map.project([pin.lng, pin.lat]);
-        next[item.window.entityId] = { x: pt.x, y: pt.y };
+        next[id] = { x: pt.x, y: pt.y };
       }
       setAnchorsByEntityId(next);
     };
@@ -1112,7 +1139,14 @@ function MapLibreWorkspaceMap({
       map.off("rotate", update);
       map.off("pitch", update);
     };
-  }, [ready, floatingCallouts, floatingEntityIds, pins]);
+  }, [
+    ready,
+    floatingCallouts,
+    floatingEntityIds,
+    decisionProjections,
+    decisionEntityIds,
+    pins,
+  ]);
 
   // One-shot ease to media pins — no multi-step select tour (avoids UI thrash).
   const mediaTourSignature = useMemo(
@@ -1230,6 +1264,16 @@ function MapLibreWorkspaceMap({
           liveSignals={capabilityBloom.liveSignals}
           hubLabelKo={capabilityBloom.hubLabelKo}
           handlers={capabilityBloom.handlers}
+        />
+      ) : null}
+      {decisionProjections && decisionProjections.length > 0 ? (
+        <WorkspaceMapCompareOverlay
+          decisions={decisionProjections}
+          anchors={anchorsByEntityId}
+          selectedEntityId={selectedDecisionEntityId}
+          onSelect={onDecisionSelect}
+          relationshipEdges={compareRelationshipEdges}
+          entityTitles={compareEntityTitles}
         />
       ) : null}
     </div>

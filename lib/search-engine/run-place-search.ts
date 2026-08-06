@@ -148,6 +148,11 @@ export function runPlaceSearch(input: PlaceSearchInput): readonly PlaceSearchHit
     }
   }
 
+  // Trip Reality Draft / live-miss path: do not invent Riverview / 근처 카페 orbits.
+  if (input.allowSeedFallback === false) {
+    return [];
+  }
+
   const baseLat = input.anchorLat ?? 36.3621;
   const baseLng = input.anchorLng ?? 127.3446;
   const labels = seedLabels(input.domain, query, input.labels).slice(

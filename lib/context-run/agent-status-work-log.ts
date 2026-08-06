@@ -9,15 +9,21 @@ import {
   type AgentProductTurn,
 } from "@/lib/context-run/agent-product-pipeline";
 import { readAgentRuntimeProjection } from "@/lib/context-run/agent-runtime-projection";
+import { formatAgentPlanProgressKo } from "@/lib/context-run/format-agent-plan-progress";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 
 /**
- * Prefer product pipeline last line · else projection status · else fallback.
+ * Prefer Plan step progress · product pipeline · projection · fallback.
  */
 export function resolveAgentStatusWorkLog(input: {
   readonly contextEventId: string;
   readonly fallbackKo?: string | null;
   readonly turn?: AgentProductTurn | null;
 }): string | null {
+  const plan = readContextWorkspace(input.contextEventId)?.agentPlan ?? null;
+  const fromPlan = formatAgentPlanProgressKo(plan);
+  if (fromPlan) return fromPlan;
+
   const turn =
     input.turn ??
     (readLastAgentProductTurn()?.contextEventId === input.contextEventId
@@ -36,12 +42,32 @@ export function resolveAgentStatusWorkLog(input: {
 export function listAgentStatusWorkLogLines(
   contextEventId: string,
 ): readonly string[] {
+  const plan = readContextWorkspace(contextEventId)?.agentPlan ?? null;
+  const planLine = formatAgentPlanProgressKo(plan);
+  const lines: string[] = [];
+  if (planLine) lines.push(planLine);
+  if (plan?.steps.length) {
+    for (const s of plan.steps) {
+      const mark =
+        s.status === "done"
+          ? "✓"
+          : s.status === "running"
+            ? "◉"
+            : s.status === "failed"
+              ? "!"
+              : "○";
+      lines.push(`${mark} ${s.labelKo}`);
+    }
+  }
   const turn = readLastAgentProductTurn();
   if (turn?.contextEventId === contextEventId) {
-    return turn.statusLog;
+    return [...lines, ...turn.statusLog];
   }
   const proj = readAgentRuntimeProjection(contextEventId);
-  return proj?.workLog ?? [];
+  if (proj?.workLog?.length) {
+    return [...lines, ...proj.workLog];
+  }
+  return lines;
 }
 
 export function agentStatusLabelForStage(

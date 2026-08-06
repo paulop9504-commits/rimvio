@@ -78,11 +78,18 @@ export function resolveConstraintCarryOver(input: {
   const ratingOp = byField.get("minRating")?.op ?? "keep";
   const keepTopNOp = byField.get("keepTopN")?.op ?? "keep";
   const sortByOp = byField.get("sortBy")?.op ?? "keep";
+  const destinationOp = byField.get("destination")?.op ?? "keep";
 
   const nearLabelKo = applyFieldOp({
     op: nearOp,
     previous: prev.nearLabelKo,
     fromUtterance: fromUtt.nearLabelKo ?? merged.nearLabelKo,
+  }) as string | null;
+
+  const destinationKo = applyFieldOp({
+    op: destinationOp,
+    previous: prev.destinationKo,
+    fromUtterance: fromUtt.destinationKo ?? merged.destinationKo,
   }) as string | null;
 
   const stayType = applyFieldOp({
@@ -129,6 +136,7 @@ export function resolveConstraintCarryOver(input: {
   const bagForScout: ConstraintMemoryBag = {
     maxNightlyPriceKrw,
     maxPriceBand,
+    destinationKo,
     nearLabelKo,
     stayType,
     minRating,

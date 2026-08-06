@@ -13,11 +13,15 @@ export type TripSituationRouterStage =
 export type TripSituationRouterAction =
   | "spawn"
   | "destination"
+  | "destination_other"
   | "departure_confirm"
   | "departure_other"
   | "departure_hub"
   | "lodging"
-  | "eatery";
+  | "eatery"
+  | "route"
+  | "itinerary"
+  | "prep_all";
 
 export type TripSituationRouterChip = {
   readonly id: string;

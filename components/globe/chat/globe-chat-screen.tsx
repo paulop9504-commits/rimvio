@@ -11,6 +11,7 @@ import { GlobeChatEmptyState } from "@/components/globe/chat/globe-chat-empty-st
 import { GlobeChatSlotChips } from "@/components/globe/chat/globe-chat-slot-chips";
 import { GlobeComposeDraftCard } from "@/components/globe/execution-feed/globe-compose-draft-card";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
+import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
 import {
   GlobeContextIngestBar,
   type GlobeContextIngestBarHandle,
@@ -18,6 +19,21 @@ import {
 } from "@/components/globe/globe-context-ingest-bar";
 import { useGlobeChatSession } from "@/hooks/use-globe-chat-session";
 import { useGlobeExecutionFeed } from "@/hooks/use-globe-execution-feed";
+import {
+  expandWorkspaceFromTrail,
+} from "@/lib/context-run/apply-globe-workspace-agent-turn";
+import {
+  WORKSPACE_EXPAND_CHOICE_ID,
+  WORKSPACE_EXPAND_SLOT_ID,
+} from "@/lib/context-run/sync-agent-activity-trail";
+import {
+  readAgentActivityTranscript,
+  subscribeAgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+import {
+  buildCursorAgentTrailView,
+  type CursorAgentTrailView,
+} from "@/lib/ui/build-cursor-agent-trail-view";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
@@ -163,6 +179,16 @@ export function GlobeChatScreen({
   const scrollRef = useRef<HTMLDivElement>(null);
   const ingestRef = useRef<GlobeContextIngestBarHandle>(null);
   const [highlightBar, setHighlightBar] = useState(false);
+  const [agentTrailView, setAgentTrailView] =
+    useState<CursorAgentTrailView | null>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      setAgentTrailView(buildCursorAgentTrailView(readAgentActivityTranscript()));
+    };
+    sync();
+    return subscribeAgentActivityTranscript(sync);
+  }, []);
 
   const artifact = feedState.run?.artifact ?? null;
   const flowDraft = composeState?.composeDraft ?? {};
@@ -198,7 +224,7 @@ export function GlobeChatScreen({
       return;
     }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length, open, showDraftCard]);
+  }, [messages.length, open, showDraftCard, agentTrailView?.nested?.id, agentTrailView?.waitLineKo]);
 
   useEffect(() => {
     if (!open) {
@@ -456,11 +482,33 @@ export function GlobeChatScreen({
                         }
                         onSelect={(choice) => {
                           if (
+                            message.slotId === "country_city_pick" &&
+                            choice.id === "trip-dest-other"
+                          ) {
+                            ingestRef.current?.promptCityFill(
+                              copy.globe.tripSituationRouter.destinationOtherAsk,
+                            );
+                            return;
+                          }
+                          if (message.slotId === WORKSPACE_EXPAND_SLOT_ID) {
+                            const raw = choice.id.trim();
+                            const prefix = `${WORKSPACE_EXPAND_CHOICE_ID}:`;
+                            const contextEventId = raw.startsWith(prefix)
+                              ? raw.slice(prefix.length)
+                              : raw;
+                            if (contextEventId) {
+                              expandWorkspaceFromTrail(contextEventId);
+                            }
+                            return;
+                          }
+                          if (
                             message.clarifyKind === "context_create" ||
                             message.clarifyKind === "context_anchor_move" ||
                             message.slotId === "context_create" ||
                             message.slotId === "context_anchor_move" ||
-                            message.slotId === "ingress_converge"
+                            message.slotId === "ingress_converge" ||
+                            message.slotId === "trip_prepare" ||
+                            message.slotId === "country_city_pick"
                           ) {
                             submitChipAnswer(choice.id);
                             return;
@@ -493,6 +541,14 @@ export function GlobeChatScreen({
                 </div>
               );
             })}
+
+            {agentTrailView ? (
+              <div className="flex justify-start">
+                <div className={cn("max-w-[92%]", globeChatLight.cardSurface)}>
+                  <CursorAgentActivityTrail view={agentTrailView} />
+                </div>
+              </div>
+            ) : null}
 
             {chatMatchTasks ? (
               <div className="flex justify-start">

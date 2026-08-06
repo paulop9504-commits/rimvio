@@ -17,6 +17,7 @@ export {
   OSAKA_METRO_LINE_PATHS,
   stationsForVisibleLines,
   linePathMidpoint,
+  resolveOsakaMetroStationFromText,
   type OsakaMetroStation,
 } from "@/lib/geo/osaka-metro/station-catalog";
 

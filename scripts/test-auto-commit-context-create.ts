@@ -55,5 +55,10 @@ assert.equal(
   false,
   "vague trip still needs chip",
 );
+assert.equal(
+  shouldAutoCommitContextCreate(draftFor("오사카 간다")),
+  true,
+  "hub destination alone auto-commits",
+);
 
 console.log("test-auto-commit-context-create: ok");

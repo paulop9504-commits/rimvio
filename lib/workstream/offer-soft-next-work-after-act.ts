@@ -8,6 +8,7 @@ import { requestOperatorAutoRun } from "@/lib/globe/operator-turn/operator-auto-
 import { resolveNextWorkAction } from "@/lib/workstream/resolve-next-work-action";
 import { syncContextWorkState } from "@/lib/workstream/sync-context-work-state";
 import type { ContextWorkNextAction } from "@/lib/workstream/context-work-state";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 
 /**
  * Soft domain scouts only — never dates/flight chips or Field Commit.
@@ -110,6 +111,18 @@ export function offerSoftNextWorkAfterAct(input: {
   const lastU = input.lastUtterance ?? "";
   if (/호텔|숙소|hotel|lodging/iu.test(lastU)) {
     candidates = candidates.filter((a) => a.id !== "search_hotel");
+    // After lodging scout, don't auto-fire food if trip_prep already seeded
+    // USJ/dinner drafts — that steals One Focus peek away from hotels.
+    const ws = readContextWorkspace(contextEventId);
+    const hasDraftFoodOrPoi = (ws?.nodes ?? []).some(
+      (n) =>
+        n.visible &&
+        (n.source === "trip_prep_draft" || n.source.startsWith("trip_prep_")) &&
+        (n.kind === "eatery" || n.kind === "poi"),
+    );
+    if (hasDraftFoodOrPoi) {
+      candidates = candidates.filter((a) => a.id !== "search_eatery");
+    }
   }
   if (/맛집|식당|카페|eatery|food|restaurant/iu.test(lastU)) {
     candidates = candidates.filter((a) => a.id !== "search_eatery");
@@ -161,11 +174,16 @@ export function offerSoftNextWorkAfterAct(input: {
 
   if (allowAuto && typeof window !== "undefined") {
     softAutoRunCount.set(contextEventId, priorAutos + 1);
+    const scheduledGen = softAutoGeneration.get(contextEventId) ?? 0;
     const delayMs =
       typeof input.delayMs === "number" && Number.isFinite(input.delayMs)
         ? Math.max(0, Math.round(input.delayMs))
         : 320;
     window.setTimeout(() => {
+      // Job B may have bumped generation — drop stale A's soft continue.
+      if ((softAutoGeneration.get(contextEventId) ?? 0) !== scheduledGen) {
+        return;
+      }
       requestOperatorAutoRun({
         contextEventId,
         text: enqueue,
@@ -184,6 +202,26 @@ export function offerSoftNextWorkAfterAct(input: {
   };
 }
 
+const softAutoGeneration = new Map<string, number>();
+
+/**
+ * Call when Job B starts — cancels pending soft-next timers for this context.
+ */
+export function bumpSoftNextWorkGeneration(contextEventId?: string): void {
+  const id = contextEventId?.trim();
+  if (!id) {
+    for (const key of softAutoGeneration.keys()) {
+      softAutoGeneration.set(key, (softAutoGeneration.get(key) ?? 0) + 1);
+    }
+    lastEnqueueByContext.clear();
+    softAutoRunCount.clear();
+    return;
+  }
+  softAutoGeneration.set(id, (softAutoGeneration.get(id) ?? 0) + 1);
+  lastEnqueueByContext.delete(id);
+  softAutoRunCount.delete(id);
+}
+
 /** Test / reset helper. */
 export function clearSoftNextWorkContinueMemory(
   contextEventId?: string,
@@ -192,8 +230,10 @@ export function clearSoftNextWorkContinueMemory(
   if (!id) {
     lastEnqueueByContext.clear();
     softAutoRunCount.clear();
+    softAutoGeneration.clear();
     return;
   }
   lastEnqueueByContext.delete(id);
   softAutoRunCount.delete(id);
+  softAutoGeneration.delete(id);
 }

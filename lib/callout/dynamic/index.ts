@@ -40,3 +40,15 @@ export {
   dynamicObjectFromRimvio,
   schemasForSameObjectAcrossStates,
 } from "@/lib/callout/dynamic/runtime";
+
+export {
+  buildDynamicCalloutInputFromWorkspace,
+  dynamicObjectFromWorkspaceNode,
+} from "@/lib/callout/dynamic/from-workspace";
+
+export { resolveVenueVisualsFromNode } from "@/lib/callout/dynamic/venue-visuals";
+
+export {
+  syncCalloutsFromWorkspace,
+  type SyncCalloutsFromWorkspaceResult,
+} from "@/lib/callout/dynamic/sync-from-workspace";

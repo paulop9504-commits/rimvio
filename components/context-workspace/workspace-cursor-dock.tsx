@@ -47,6 +47,10 @@ import {
   dispatchExecutionFeedStep,
 } from "@/lib/context-run/execution-feed-bridge";
 import { scheduleExecutionFeedDismiss } from "@/lib/context-run/execution-feed-lifecycle";
+import {
+  agentPlanPercent,
+  formatAgentPlanProgressKo,
+} from "@/lib/context-run/format-agent-plan-progress";
 import { RealityDraftItineraryCard } from "@/components/context-workspace/reality-draft-itinerary-card";
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
@@ -172,12 +176,6 @@ export function WorkspaceCursorDock({
   const [softChips, setSoftChips] = useState<readonly NetworkAbsorbSoftChip[]>(
     [],
   );
-  const autoContinueRef = useRef<string | null>(null);
-  const autoContinueCountRef = useRef(0);
-  const autoContinueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const turnGenRef = useRef(0);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
@@ -261,22 +259,9 @@ export function WorkspaceCursorDock({
         ),
         previousJob: wsForJob?.agentJob ?? null,
       });
-      // Job B / interrupt — kill pending dock「계속해」and soft-next from Job A.
-      if (!jobBoundary.isContinueCue) {
-        if (autoContinueTimerRef.current) {
-          clearTimeout(autoContinueTimerRef.current);
-          autoContinueTimerRef.current = null;
-        }
-        turnGenRef.current += 1;
-        if (jobBoundary.abortSoftContinue) {
-          autoContinueCountRef.current = 99;
-          autoContinueRef.current = null;
-          bumpSoftNextWorkGeneration(eventId);
-        } else {
-          // Soft refine — allow at most one auto-continue after this turn.
-          autoContinueCountRef.current = 0;
-          autoContinueRef.current = null;
-        }
+      // Job B / interrupt — kill soft-next from Job A (Continue is human-only).
+      if (!jobBoundary.isContinueCue && jobBoundary.abortSoftContinue) {
+        bumpSoftNextWorkGeneration(eventId);
       }
 
       setBusy(true);
@@ -375,13 +360,13 @@ export function WorkspaceCursorDock({
         const isMapOverlay =
           result.patchKind === "map_overlay" ||
           (result.softChips != null && result.softChips.length > 0);
-        if (isMapOverlay) {
-          // Don't let prior trip next-step auto-run steal this turn.
-          autoContinueCountRef.current = 99;
+        const isFreeTalk =
+          result.via === "free_talk" || result.patchKind === "free_talk";
+        if (isMapOverlay || isFreeTalk) {
           appendWorkspaceChatTurn({
             contextEventId: eventId,
             role: "assistant",
-            text: statusKo ?? "지도에 반영했어요",
+            text: statusKo ?? (isFreeTalk ? "네, 편하게 말해줘요 🙂" : "지도에 반영했어요"),
           });
         } else if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
           appendWorkspaceSyncedAssistantTurn({
@@ -410,50 +395,23 @@ export function WorkspaceCursorDock({
     [busy, eventId, scheduleTranscriptCollapse],
   );
 
-  const percent = agent?.percent ?? 0;
+  const plan = eventId
+    ? readContextWorkspace(eventId)?.agentPlan ?? null
+    : null;
+  const planLine = formatAgentPlanProgressKo(plan);
+  const planPct = agentPlanPercent(plan);
+  const percent = planPct ?? agent?.percent ?? 0;
   const statusLabel = agent
     ? AGENT_EXECUTION_STATUS_LABEL_KO[agent.status]
     : "대기";
   const taskLine =
+    planLine ||
     agent?.liveHeadlineKo ||
     agent?.currentTaskKo ||
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
 
-  // Cursor-like: soft auto-continue once — never after clear/new Job B.
-  useEffect(() => {
-    if (!eventId || busy || !nextLabel) return;
-    if (autoContinueCountRef.current >= 1) return;
-    const key = `${eventId}:${nextLabel}`;
-    if (autoContinueRef.current === key) return;
-    autoContinueRef.current = key;
-    autoContinueCountRef.current += 1;
-    const scheduledGen = turnGenRef.current;
-    if (autoContinueTimerRef.current) {
-      clearTimeout(autoContinueTimerRef.current);
-    }
-    autoContinueTimerRef.current = setTimeout(() => {
-      autoContinueTimerRef.current = null;
-      if (turnGenRef.current !== scheduledGen) return;
-      void runTurn("계속해");
-    }, 700);
-    return () => {
-      if (autoContinueTimerRef.current) {
-        clearTimeout(autoContinueTimerRef.current);
-        autoContinueTimerRef.current = null;
-      }
-    };
-  }, [busy, eventId, nextLabel, runTurn]);
-
-  useEffect(() => {
-    autoContinueCountRef.current = 0;
-    autoContinueRef.current = null;
-    turnGenRef.current += 1;
-    if (autoContinueTimerRef.current) {
-      clearTimeout(autoContinueTimerRef.current);
-      autoContinueTimerRef.current = null;
-    }
-  }, [eventId]);
+  // Continue is human-only (Status Panel / dock button). Never auto-send 「계속해」.
 
   return (
     <div

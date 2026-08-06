@@ -1,0 +1,46 @@
+---
+description: Agent Runtime — NL → Workspace Patch → Projection → Commit
+alwaysApply: true
+---
+
+# Agent Runtime (locked)
+
+**Canonical:** `docs/RIMVIO_AGENT_RUNTIME.md` · ADR-050  
+**Absorb:** ADR-051 · `docs/RIMVIO_REALITY_PROVIDER_RUNTIME.md`  
+**Alignment:** `docs/RIMVIO_AGENT_RUNTIME_ALIGNMENT.md`  
+**Laws:** ADR-049 Operating Constitution  
+**Wire:** `beginAgentProductTurn` · `planObjectDiscovery` · `runObjectDiscovery` · `lib/reality-provider/`
+
+```text
+NL → Intent → Context → Planner → Discovery → Enrich → Rank
+  → Workspace Patch → Projection → Interact → Prepare → Commit
+```
+
+External absorb (JR · bus · events):
+
+```text
+Need → Reality Provider → Acquire → Normalize → Patch → Projection
+```
+
+> Chat is the door. **Workspace is SSOT.** Screens are Projection only.
+
+## Do
+
+- Every Workspace NL turn: `beginAgentProductTurn` (enters ADR-045 spine)  
+- Plan Task Graph / Discovery plan **before** provider search (Law 13)  
+- Patch Workspace before UI / chat essay  
+- Surfaces read `readAgentRuntimeProjection` / Workspace — no parallel result store  
+- Chat status via `resolveAgentStatusWorkLog` (work log, not answer)  
+- Clear intent → replace · soft → refine (ADR-048)  
+- Prepare only until human Commit  
+
+## PR reject
+
+- Search dump as assistant SSOT  
+- Tool invoke before `planObjectDiscovery` on Workspace search  
+- Skip Workspace Patch  
+- Auto Reality Commit  
+- Parallel result stores beside Workspace  
+- New `*-runtime` package (ADR-045 — extend stages / capabilities)
+- Domain-private JR/bus/event Acquire→Projection (use ADR-051 Reality Provider)
+- UI that recomputes ranking instead of reading Projection / Workspace

@@ -55,6 +55,7 @@ export { lodgingInventoryRowsToPlaceHits } from "@/lib/context-workspace/lodging
 
 export {
   prepareTripWorkspaceDraft,
+  prepareTripWorkspaceDraftAsync,
   shouldPrepareTripWorkspaceDraft,
   OSAKA_TRIP_DRAFT_STOPS,
 } from "@/lib/context-workspace/prepare-trip-workspace-draft";
@@ -64,6 +65,8 @@ export { resolveWorkspaceFocusNode } from "@/lib/context-workspace/resolve-works
 
 export {
   filterNodesForWorkspaceMapFocus,
+  isGenericOrbitPlaceTitle,
+  isLiveWorkspacePlaceNode,
   isWorkspacePlaceCandidateNode,
   isWorkspaceReadySlotNode,
   resolveExpandableSlotKind,
@@ -105,6 +108,20 @@ export {
   tryApplyWorkspacePromptTurn,
   tryApplyWorkspacePromptTurnSync,
 } from "@/lib/context-workspace/try-apply-workspace-lodging-turn";
+
+export {
+  applyWorkspacePatch,
+  parseWorkspacePatch,
+  type ApplyWorkspacePatchResult,
+  type WorkspacePatch,
+  type WorkspacePatchKind,
+  type WorkspacePatchRecord,
+} from "@/lib/context-workspace/workspace-patch";
+
+export {
+  runAutoProjectionAfterPatch,
+  type AutoProjectionResult,
+} from "@/lib/context-workspace/auto-projection";
 
 export {
   applyWorkspaceRealityPatch,
@@ -166,6 +183,7 @@ export {
   resolveTripDayCount,
   burstFillTripInventory,
   burstFillTripInventoryAsync,
+  burstFillTripInventoryViaTools,
   planTripDayClusters,
   refineTripDraftStops,
   refineTripDraftWeatherSwap,
@@ -216,7 +234,9 @@ export {
   buildCapsuleProjection,
   listCapsuleProjections,
   readCapsuleCompilerIr,
+  readPendingCapsuleAgentPlan,
   resumeCapsuleWorkspace,
+  continueResumedWorkspaceAgentPlan,
   type CapsuleProjection,
 } from "@/lib/context-workspace/resume-capsule-workspace";
 

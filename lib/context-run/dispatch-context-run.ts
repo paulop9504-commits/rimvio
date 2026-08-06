@@ -30,6 +30,7 @@ import {
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
 import { applyGraphCommandsAsync } from "@/lib/graph-command";
 import { tryRunContextNlActionAsync } from "@/lib/action-planner";
+import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
 import {
   buildComposerGraphId,
@@ -66,6 +67,11 @@ import {
 } from "@/lib/context-run/sync-experience-run-to-feed";
 import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
 import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
+import { offerTripPrepareChips } from "@/lib/globe/trip-situation-router/build-trip-prepare-offer";
+import {
+  offerCountryCityPickChips,
+  shouldOfferCountryCityPick,
+} from "@/lib/globe/trip-situation-router/build-country-city-pick-offer";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { resolveActiveWorkspaceKind } from "@/lib/workspace-kind/resolve-active-workspace-kind";
 import { resolveIngressContextConverge } from "@/lib/globe-ingress";
@@ -128,8 +134,8 @@ import { classifyGlobeWorkSurface } from "@/lib/work-queue/classify-globe-work-s
 import { syncWorkQueueFromActiveRuns } from "@/lib/work-queue/sync-work-queue-from-runs";
 import {
   runWorkspaceIntentContinuum,
-  seedTravelLodgingForContinuum,
 } from "@/lib/workspace-kind/run-workspace-intent-continuum";
+import { seedTravelDiscoveryForContinuum } from "@/lib/workspace-kind/seed-travel-discovery-for-continuum";
 
 function refreshWorkQueue(handlers: ContextRunEffectHandlers): void {
   syncWorkQueueFromActiveRuns();
@@ -339,14 +345,10 @@ async function executeContextRunPlan(
 
   switch (plan.kind) {
     case "small_talk": {
-      // Chat lane: reply conversationally, run no search/ingest. Compose a
-      // context-aware reply (time/status/history/tone/persona → situational line
-      // + open question), LLM when available, deterministic otherwise. The user
-      // turn was already appended above.
+      // Chat lane: free-talk + knowledge LLM. No search/ingest/Patch.
       const priorTurns = readGlobeChatMessages(graphId)
         .filter((m): m is Extract<typeof m, { kind: "text" }> => m.kind === "text")
         .map((m) => ({ role: m.role, text: m.text }));
-      // Drop the just-appended current user turn so history reflects the past.
       const currentText = ingress.kind === "text" ? ingress.text.trim() : "";
       const history =
         priorTurns.length > 0 &&
@@ -354,15 +356,29 @@ async function executeContextRunPlan(
         priorTurns[priorTurns.length - 1]?.text === currentText
           ? priorTurns.slice(0, -1)
           : priorTurns;
-      const small = await generateSmallTalkReply({
-        text: currentText || bound.goalKo,
+      const { tryApplyConversationalTurn } = await import(
+        "@/lib/context-run/try-apply-conversational-turn"
+      );
+      const chat = await tryApplyConversationalTurn({
+        utterance: currentText || bound.goalKo,
         history,
         scopeId: graphId,
       });
+      const small = chat
+        ? null
+        : await generateSmallTalkReply({
+            text: currentText || bound.goalKo,
+            history,
+            scopeId: graphId,
+          });
       appendGlobeChatTextMessage({
         graphId,
         role: "assistant",
-        text: small.replyKo || plan.smallTalkReplyKo || "네, 편하게 말해줘요 🙂",
+        text:
+          chat?.replyKo ||
+          small?.replyKo ||
+          plan.smallTalkReplyKo ||
+          "네, 편하게 말해줘요 🙂",
       });
       return { graphId, status: "done", planKind: plan.kind };
     }
@@ -391,7 +407,7 @@ async function executeContextRunPlan(
       }
       handlers.onAttached?.(continuum.contextEventId);
       if (continuum.kind === "travel") {
-        void seedTravelLodgingForContinuum({
+        void seedTravelDiscoveryForContinuum({
           contextEventId: continuum.contextEventId,
           utterance: bound.goalKo,
           lat: ingressText.kind === "text" ? ingressText.lat : null,
@@ -403,6 +419,35 @@ async function executeContextRunPlan(
       return {
         graphId,
         status: "done",
+        planKind: plan.kind,
+      };
+    }
+    case "workspace_agent": {
+      const utterance =
+        ingress.kind === "text" ? ingress.text.trim() : bound.goalKo;
+      const agent = await applyGlobeWorkspaceAgentTurn({
+        utterance,
+        explicitContextEventId:
+          plan.workspaceAgentContextEventId ??
+          (ingress.kind === "text" ? ingress.contextEventId : null),
+        lat: ingress.kind === "text" ? ingress.lat : null,
+        lng: ingress.kind === "text" ? ingress.lng : null,
+      });
+      const statusKo = agent.statusKo?.trim();
+      if (statusKo) {
+        appendGlobeChatTextMessage({
+          graphId,
+          role: "assistant",
+          text: statusKo,
+        });
+        handlers.toastMessage?.(statusKo);
+      }
+      if (agent.contextEventId) {
+        handlers.onAttached?.(agent.contextEventId);
+      }
+      return {
+        graphId,
+        status: agent.handled ? "done" : "noop",
         planKind: plan.kind,
       };
     }
@@ -1194,6 +1239,19 @@ async function executeContextRunPlan(
           userText: bound.goalKo,
           assistantText,
         });
+        if (shouldOfferCountryCityPick(destinationLabelKo)) {
+          offerCountryCityPickChips({
+            graphId,
+            countryLabel: destinationLabelKo!,
+            skipUserEcho: true,
+          });
+        } else {
+          offerTripPrepareChips({
+            graphId,
+            destinationLabel: destinationLabelKo,
+            skipUserEcho: true,
+          });
+        }
 
         handlers.onGlobeIngressCompiled?.({ compiled, eventId: event.id });
         handlers.onAttached?.(event.id);
@@ -1203,7 +1261,7 @@ async function executeContextRunPlan(
           contextEventId: event.id,
           createIfMissing: false,
         });
-        void seedTravelLodgingForContinuum({
+        void seedTravelDiscoveryForContinuum({
           contextEventId: event.id,
           utterance: bound.goalKo,
           lat: ingressText.kind === "text" ? ingressText.lat : null,

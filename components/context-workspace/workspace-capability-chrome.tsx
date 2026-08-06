@@ -3,10 +3,17 @@
 /**
  * Web Capability Workspace chrome — Intent opens Objects, not fixed tabs.
  * Map fills the surface; Day/Timeline/Agent float over it (no layout band).
+ * CapCard: internal scroll + corner resize (no content clip).
  */
 
-import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import { CloudSun, X } from "lucide-react";
 import {
   applyWorkspaceCapabilityOp,
   isCapabilityOpen,
@@ -33,25 +40,68 @@ export type WorkspaceCapabilityChromeProps = {
   readonly weatherKo?: string | null;
 };
 
+const CAP_CARD_MIN_H = 120;
+const CAP_CARD_DEFAULT_MAX_H = 280;
+
 function CapCard({
   title,
   onClose,
   children,
   className,
+  defaultMaxH = CAP_CARD_DEFAULT_MAX_H,
+  resizable = true,
 }: {
   title: string;
   onClose?: () => void;
   children: ReactNode;
   className?: string;
+  defaultMaxH?: number;
+  resizable?: boolean;
 }) {
+  const [maxH, setMaxH] = useState(defaultMaxH);
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+
+  const onResizeDown = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragRef.current = { startY: e.clientY, startH: maxH };
+    },
+    [maxH],
+  );
+
+  const onResizeMove = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const next = Math.min(
+      Math.max(CAP_CARD_MIN_H, d.startH + (e.clientY - d.startY)),
+      Math.round(window.innerHeight * 0.62),
+    );
+    setMaxH(next);
+  }, []);
+
+  const onResizeUp = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    dragRef.current = null;
+  }, []);
+
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl bg-white/95 shadow-[0_8px_28px_rgba(25,31,40,0.08)] ring-1 ring-black/[0.04]",
+        "relative flex shrink-0 flex-col overflow-hidden rounded-2xl bg-white/96 shadow-[0_8px_28px_rgba(25,31,40,0.1)] ring-1 ring-black/[0.05]",
         className,
       )}
+      style={{ maxHeight: maxH }}
+      data-capability-card={title}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-black/[0.04] px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/[0.04] px-3 py-2">
         <p className="text-[11px] font-bold tracking-tight text-[#191f28]">
           {title}
         </p>
@@ -66,9 +116,107 @@ function CapCard({
           </button>
         ) : null}
       </div>
-      <div className="p-2.5">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2.5">
+        {children}
+      </div>
+      {resizable ? (
+        <button
+          type="button"
+          className="absolute bottom-0.5 right-0.5 z-[1] flex h-4 w-4 cursor-se-resize items-end justify-end rounded-sm"
+          aria-label={`${title} 크기 조절`}
+          data-capability-resize-handle
+          onPointerDown={onResizeDown}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeUp}
+          onPointerCancel={onResizeUp}
+        >
+          <span
+            className="pointer-events-none mb-0.5 mr-0.5 h-2 w-2 border-b-2 border-r-2 border-[#c4c4c4]"
+            aria-hidden
+          />
+        </button>
+      ) : null}
     </section>
   );
+}
+
+function WeatherChip({
+  weatherKo,
+  large,
+  onClose,
+  className,
+}: {
+  weatherKo: string;
+  large?: boolean;
+  onClose: () => void;
+  className?: string;
+}) {
+  const tempMatch = weatherKo.match(/(-?\d+)\s*°\s*C/i);
+  const dateMatch = weatherKo.match(
+    /(\d{1,2})\s*[/.月]\s*(\d{1,2})|(오늘|내일|모레)/u,
+  );
+  const tempC = tempMatch?.[1] ?? null;
+  const dateBit =
+    dateMatch?.[0]?.replace(/\s+/g, "") ??
+    (weatherKo.includes("/") ? weatherKo.split(/\s+/).find((s) => /\d/.test(s)) : null);
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/96 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]",
+        large ? "px-3.5 py-2.5" : "px-3 py-2",
+        className,
+      )}
+      data-capability-weather-chip
+    >
+      <CloudSun
+        className={cn(
+          "shrink-0 text-[#f5a524]",
+          large ? "h-5 w-5" : "h-4 w-4",
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        {tempC ? (
+          <p
+            className={cn(
+              "font-extrabold tabular-nums tracking-tight text-[#191f28]",
+              large ? "text-[15px]" : "text-[13px]",
+            )}
+          >
+            {tempC}°C
+            {dateBit ? (
+              <span className="ml-1.5 text-[11px] font-semibold text-[#8b95a1]">
+                {dateBit}
+              </span>
+            ) : null}
+          </p>
+        ) : (
+          <p className="text-[11px] font-semibold leading-snug text-[#191f28]">
+            {weatherKo}
+          </p>
+        )}
+        {tempC && weatherKo.replace(tempMatch![0], "").trim() ? (
+          <p className="mt-0.5 truncate text-[10px] text-[#8b95a1]">
+            {weatherKo.replace(/\s*-?\d+\s*°\s*C/i, "").trim()}
+          </p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className="shrink-0 text-[#8b95a1]"
+        aria-label="날씨 닫기"
+        onClick={onClose}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+function looksLikePrice(label: string | null | undefined): boolean {
+  return Boolean(label && /[₩￥$€]|원|\d{3,}/u.test(label));
 }
 
 export function WorkspaceCapabilityChrome({
@@ -215,6 +363,7 @@ export function WorkspaceCapabilityChrome({
                 <CapCard
                   title={copy.globe.workspaceCapabilityDayRail}
                   onClose={() => closeCap("day_rail")}
+                  defaultMaxH={360}
                 >
                   <div className="space-y-1.5">
                     {view.days.map((d) => {
@@ -262,34 +411,77 @@ export function WorkspaceCapabilityChrome({
                 <CapCard
                   title={copy.globe.workspaceCapabilityCandidates}
                   onClose={() => closeCap("candidate_list")}
+                  defaultMaxH={340}
                 >
-                  <div className="space-y-1">
-                    {view.timeline.length === 0 ? (
-                      <p className="px-1 text-[11px] text-[#8b95a1]">
-                        후보가 아직 없어요
-                      </p>
-                    ) : (
-                      view.timeline.map((row, index) => (
-                        <button
-                          key={row.nodeId}
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-[#f9fafb]"
-                          onClick={() => onSelectNode(row.nodeId)}
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[10px] font-bold text-[#191f28]">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12px] font-bold text-[#191f28]">
-                              {row.title}
+                  <div className="space-y-1.5">
+                    {view.discoverPlaces.length > 0
+                      ? view.discoverPlaces.map((row) => (
+                          <button
+                            key={row.nodeId}
+                            type="button"
+                            className="flex w-full items-start gap-2.5 rounded-[14px] bg-[#f7f8fa] px-2.5 py-2 text-left ring-1 ring-black/[0.04] hover:bg-[#f2f4f6]"
+                            onClick={() => onSelectNode(row.nodeId)}
+                          >
+                            <span className="relative mt-0.5 h-11 w-11 shrink-0 overflow-hidden rounded-[10px] bg-[#e8ebef]">
+                              {row.thumbnailUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={row.thumbnailUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-[#8b95a1]">
+                                  {row.kindLabelKo.slice(0, 2)}
+                                </span>
+                              )}
                             </span>
-                            <span className="block truncate text-[10px] text-[#8b95a1]">
-                              {row.amountLabel ?? row.summaryKo}
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-1.5">
+                                <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#4e5968] ring-1 ring-black/[0.04]">
+                                  {row.kindLabelKo}
+                                </span>
+                                {row.rating != null ? (
+                                  <span className="text-[10px] font-semibold tabular-nums text-[#8b95a1]">
+                                    ★ {row.rating.toFixed(1)}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="mt-0.5 block truncate text-[12px] font-bold text-[#191f28]">
+                                {row.title}
+                              </span>
+                              <span className="block truncate text-[10px] text-[#8b95a1]">
+                                {row.amountLabel ?? row.summaryKo}
+                              </span>
                             </span>
-                          </span>
-                        </button>
-                      ))
-                    )}
+                          </button>
+                        ))
+                      : view.timeline.length === 0 ? (
+                          <p className="px-1 text-[11px] text-[#8b95a1]">
+                            맛집·장소 후보가 아직 없어요
+                          </p>
+                        ) : (
+                          view.timeline.map((row, index) => (
+                            <button
+                              key={row.nodeId}
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-[#f9fafb]"
+                              onClick={() => onSelectNode(row.nodeId)}
+                            >
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[10px] font-bold text-[#191f28]">
+                                {index + 1}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[12px] font-bold text-[#191f28]">
+                                  {row.title}
+                                </span>
+                                <span className="block truncate text-[10px] text-[#8b95a1]">
+                                  {row.amountLabel ?? row.summaryKo}
+                                </span>
+                              </span>
+                            </button>
+                          ))
+                        )}
                   </div>
                 </CapCard>
               ) : null}
@@ -298,31 +490,17 @@ export function WorkspaceCapabilityChrome({
         ) : null}
 
         {showWeather && weatherKo ? (
-          <div
+          <WeatherChip
+            weatherKo={weatherKo}
+            large={weatherSize === "lg" || weatherSize === "xl"}
+            onClose={() => closeCap("weather")}
             className={cn(
-              "pointer-events-auto absolute top-3 z-[4] rounded-2xl bg-white/96 px-3 py-2 shadow-[0_8px_24px_rgba(25,31,40,0.12)] ring-1 ring-black/[0.04]",
-              weatherSize === "lg" || weatherSize === "xl"
-                ? "max-w-[240px] text-[13px]"
-                : "max-w-[180px] text-[11px]",
+              "absolute top-3 z-[4]",
               leftOpen
                 ? "left-[calc(min(220px,28%)+0.75rem)]"
                 : "left-1/2 -translate-x-1/2",
             )}
-          >
-            <div className="flex items-start gap-2">
-              <p className="min-w-0 flex-1 font-semibold text-[#191f28]">
-                {weatherKo}
-              </p>
-              <button
-                type="button"
-                className="text-[#8b95a1]"
-                aria-label="날씨 닫기"
-                onClick={() => closeCap("weather")}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
+          />
         ) : null}
 
         {rightOpen ? (
@@ -343,13 +521,14 @@ export function WorkspaceCapabilityChrome({
                 <CapCard
                   title={copy.globe.workspaceCapabilityTimeline}
                   onClose={() => closeCap("timeline")}
+                  defaultMaxH={320}
                 >
                   <ol className="space-y-1.5">
                     {view.timeline.map((row, index) => (
                       <li key={row.nodeId}>
                         <button
                           type="button"
-                          className="flex w-full gap-2 rounded-xl px-1.5 py-1 text-left hover:bg-[#f9fafb]"
+                          className="flex w-full gap-2 rounded-xl px-1.5 py-1.5 text-left hover:bg-[#f9fafb]"
                           onClick={() => onSelectNode(row.nodeId)}
                         >
                           <span className="mt-0.5 text-[10px] font-bold tabular-nums text-[#8b95a1]">
@@ -398,30 +577,53 @@ export function WorkspaceCapabilityChrome({
                 <CapCard
                   title={copy.globe.workspaceCapabilityBooking}
                   onClose={() => closeCap("booking")}
+                  defaultMaxH={300}
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {view.bookings.length === 0 ? (
                       <p className="text-[11px] text-[#8b95a1]">
                         예약 가능 후보가 아직 없어요
                       </p>
                     ) : (
-                      view.bookings.map((b) => (
-                        <button
-                          key={b.nodeId}
-                          type="button"
-                          className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-[#f9fafb]"
-                          onClick={() => onSelectNode(b.nodeId)}
-                        >
-                          <span className="truncate text-[12px] font-semibold text-[#191f28]">
-                            {b.title}
-                          </span>
-                          <span className="shrink-0 text-[10px] text-[#8b95a1]">
-                            {b.amountLabel ?? "준비"}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                      view.bookings.map((b) => {
+                        const priced = looksLikePrice(b.amountLabel);
+                        const showCta = b.ctaKo === "예약하기" || priced;
+                        return (
+                          <button
+                            key={b.nodeId}
+                            type="button"
+                            className="flex w-full flex-col gap-1.5 rounded-[14px] bg-[#f7f8fa] px-2.5 py-2 text-left ring-1 ring-black/[0.04] hover:bg-[#f2f4f6]"
+                            onClick={() => onSelectNode(b.nodeId)}
+                            data-capability-booking-offer
+                          >
+                            <span className="flex w-full items-start justify-between gap-2">
+                              <span className="min-w-0 flex-1">
+                                <span className="mb-0.5 inline-block rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#3182f6] ring-1 ring-black/[0.04]">
+                                  {b.bookableRoleKo}
+                                </span>
+                                <span className="block truncate text-[12px] font-bold text-[#191f28]">
+                                  {b.title}
+                                </span>
+                              </span>
+                              {priced ? (
+                                <span className="shrink-0 text-[13px] font-extrabold tabular-nums text-[#191f28]">
+                                  {b.amountLabel}
+                                </span>
+                              ) : (
+                                <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#8b95a1] ring-1 ring-black/[0.04]">
+                                  {b.amountLabel ?? b.ctaKo}
+                                </span>
+                              )}
+                            </span>
+                            {showCta ? (
+                              <span className="inline-flex h-8 w-full items-center justify-center rounded-full bg-[#3182f6] text-[11px] font-bold text-white">
+                                {b.ctaKo}
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })
+                    )}                  </div>
                 </CapCard>
               ) : null}
 

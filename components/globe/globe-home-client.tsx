@@ -2203,7 +2203,22 @@ function GlobeHomeBody() {
   const onTripSituationSelect = useCallback(
     (chip: TripSituationRouterChip) => {
       if (chip.action === "destination") {
-        onOperatorDestinationChoice({ id: chip.id, label: chip.label });
+        onOperatorDestinationChoice({
+          id: chip.id,
+          label: chip.submitText?.trim() || chip.label.replace(/^[A-Z0-9]+\s*·\s*/u, "").trim(),
+        });
+        return;
+      }
+      if (chip.action === "destination_other") {
+        const region =
+          activeContextEvent?.place?.trim() ||
+          activeContextEvent?.title?.replace(/\s*여행$/u, "").trim() ||
+          "";
+        ingestBarRef.current?.promptCityFill(
+          region
+            ? copy.globe.tripSituationRouter.destinationOtherHint(region)
+            : copy.globe.tripSituationRouter.destinationOtherAsk,
+        );
         return;
       }
       if (chip.action === "departure_other") {
@@ -2218,7 +2233,12 @@ function GlobeHomeBody() {
         chip.submitText?.trim() || chip.label,
       );
     },
-    [applyDepartureHubSelection, onOperatorDestinationChoice],
+    [
+      activeContextEvent?.place,
+      activeContextEvent?.title,
+      applyDepartureHubSelection,
+      onOperatorDestinationChoice,
+    ],
   );
 
   const onGlobeIngressCompiled = useCallback(

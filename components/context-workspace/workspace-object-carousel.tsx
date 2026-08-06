@@ -12,7 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Globe,
   MapPin,
@@ -104,21 +104,31 @@ export function WorkspaceObjectCarousel({
     [nodes],
   );
 
+  /** Never invent a cross-layer fallback — that caused hotel↔play tab/content thrash. */
   const activeNode =
-    nodes.find((n) => n.id === activeNodeId) ??
-    (presentLayers[0]
-      ? filterNodesByObjectLayer(nodes, presentLayers[0])[0]
-      : null) ??
-    null;
+    (activeNodeId
+      ? nodes.find((n) => n.id === activeNodeId) ?? null
+      : null) ?? null;
 
   const [layer, setLayer] = useState<WorkspaceObjectLayerId>(() =>
     activeNode
       ? resolveWorkspaceObjectLayer(activeNode)
       : (presentLayers[0] ?? "hotel"),
   );
-  const sheetDragControls = useDragControls();
   const galleryRef = useRef<HTMLDivElement | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
+  /** Near-full by default (top header + map peek retained). Mid snap on drag down. */
+  const SHEET_RATIO_FULL = 0.94;
+  const SHEET_RATIO_MID = 0.58;
+  const SHEET_RATIO_MIN = 0.42;
+
+  const [heightRatio, setHeightRatio] = useState(SHEET_RATIO_FULL);
+  const heightRatioRef = useRef(SHEET_RATIO_FULL);
+  const resizeDragRef = useRef<{
+    startY: number;
+    startRatio: number;
+  } | null>(null);
+  const briefFetchedForIdRef = useRef<string | null>(null);
 
   const layerNodes = useMemo(
     () => filterNodesByObjectLayer(nodes, layer),
@@ -126,18 +136,46 @@ export function WorkspaceObjectCarousel({
   );
 
   useEffect(() => {
-    if (!activeNode) return;
-    const next = resolveWorkspaceObjectLayer(activeNode);
-    setLayer((prev) => (prev === next ? prev : next));
-  }, [activeNode]);
+    if (!open) {
+      setHeightRatio(SHEET_RATIO_FULL);
+      heightRatioRef.current = SHEET_RATIO_FULL;
+    }
+  }, [open]);
 
+  const setRatio = (next: number) => {
+    const clamped = Math.min(1, Math.max(SHEET_RATIO_MIN, next));
+    heightRatioRef.current = clamped;
+    setHeightRatio(clamped);
+  };
+
+  const sheetTall = heightRatio >= 0.78;
+
+  // External focus (map / timeline) → follow that node's layer (tab only).
   useEffect(() => {
-    if (!open) return;
-    if (layerNodes.length === 0) return;
-    if (activeNode && resolveWorkspaceObjectLayer(activeNode) === layer) return;
-    const first = layerNodes[0];
-    if (first) onActiveNodeChange(first.id);
-  }, [open, layer, layerNodes, activeNode, onActiveNodeChange]);
+    if (!activeNodeId) return;
+    const node = nodes.find((n) => n.id === activeNodeId);
+    if (!node) return;
+    const next = resolveWorkspaceObjectLayer(node);
+    setLayer((prev) => (prev === next ? prev : next));
+  }, [activeNodeId, nodes]);
+
+  // Only auto-pick a node when focus is missing from the sheet list.
+  // Never steal focus across layers (that caused hotel↔play thrash + 429).
+  const layerLeadId = layerNodes[0]?.id ?? null;
+  useEffect(() => {
+    if (!open || !layerLeadId) return;
+    if (activeNodeId && nodes.some((n) => n.id === activeNodeId)) return;
+    if (layerLeadId === activeNodeId) return;
+    onActiveNodeChange(layerLeadId);
+  }, [open, activeNodeId, layerLeadId, nodes, onActiveNodeChange]);
+
+  const selectLayer = (id: WorkspaceObjectLayerId) => {
+    setLayer(id);
+    const first = filterNodesByObjectLayer(nodes, id)[0];
+    if (first && first.id !== activeNodeId) {
+      onActiveNodeChange(first.id);
+    }
+  };
 
   const preview = useMemo(
     () => (activeNode ? buildNodePreview(activeNode, workspace) : null),
@@ -160,8 +198,10 @@ export function WorkspaceObjectCarousel({
   const [briefLoading, setBriefLoading] = useState(false);
 
   useEffect(() => {
-    if (!activeNode || !open) {
+    const nodeId = activeNode?.id ?? null;
+    if (!activeNode || !open || !nodeId) {
       setPlaceBrief(null);
+      briefFetchedForIdRef.current = null;
       return;
     }
     const facts = buildImmediatePlaceBrief({
@@ -170,6 +210,12 @@ export function WorkspaceObjectCarousel({
       destinationKo,
     });
     setPlaceBrief(facts);
+    // Avoid hammering /api/workspace/place-brief when focus flickers.
+    if (briefFetchedForIdRef.current === nodeId) {
+      setBriefLoading(false);
+      return;
+    }
+    briefFetchedForIdRef.current = nodeId;
     setBriefLoading(true);
     const inventory = resolveLodgingInventoryForNode({
       contextEventId,
@@ -205,7 +251,7 @@ export function WorkspaceObjectCarousel({
     return () => {
       cancelled = true;
     };
-  }, [activeNode, contextEventId, destinationKo, open]);
+  }, [activeNode?.id, contextEventId, destinationKo, open]);
 
   const nodeBrief = useMemo(() => {
     if (!activeNode) return null;
@@ -226,7 +272,12 @@ export function WorkspaceObjectCarousel({
     galleryRef.current?.scrollTo({ left: 0 });
   }, [activeNode?.id]);
 
-  if (!open || !activeNode || !preview || presentLayers.length === 0) {
+  if (!open || presentLayers.length === 0) {
+    return null;
+  }
+
+  // Waiting for layer→focus sync — don't render wrong-category flash.
+  if (!activeNode || !preview) {
     return null;
   }
 
@@ -307,7 +358,11 @@ export function WorkspaceObjectCarousel({
       {open ? (
           <motion.div
             key="object-browser"
-            className="pointer-events-none fixed inset-x-0 bottom-0 z-[10160] flex max-h-[min(58vh,560px)] flex-col pt-0"
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-[10160] flex flex-col pt-0"
+            style={{
+              height: `min(${Math.round(heightRatio * 1000) / 10}dvh, calc(100dvh - env(safe-area-inset-top, 0px)))`,
+              maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px))",
+            }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -318,26 +373,63 @@ export function WorkspaceObjectCarousel({
               mass: 0.9,
             }}
             data-workspace-object-carousel
+            data-sheet-tall={sheetTall ? "1" : "0"}
           >
           <motion.div
             className="pointer-events-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[20px] bg-white shadow-[0_-12px_40px_rgba(25,31,40,0.22)]"
-            drag="y"
-            dragControls={sheetDragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0.04, bottom: 0.55 }}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 140 || info.velocity.y > 800) {
-                onClose();
-              }
-            }}
             role="dialog"
             aria-label={preview.title}
             data-workspace-place-sheet
           >
             <div
-              className="relative shrink-0 cursor-grab touch-none pt-2 active:cursor-grabbing"
-              onPointerDown={(e) => sheetDragControls.start(e)}
+              className="relative shrink-0 cursor-grab touch-none select-none pt-2 active:cursor-grabbing"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                resizeDragRef.current = {
+                  startY: e.clientY,
+                  startRatio: heightRatioRef.current,
+                };
+              }}
+              onPointerMove={(e) => {
+                const drag = resizeDragRef.current;
+                if (!drag || typeof window === "undefined") return;
+                const vh = Math.max(1, window.innerHeight);
+                // Finger moves up → smaller clientY → taller sheet.
+                const delta = (drag.startY - e.clientY) / vh;
+                setRatio(drag.startRatio + delta);
+              }}
+              onPointerUp={(e) => {
+                const drag = resizeDragRef.current;
+                resizeDragRef.current = null;
+                try {
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                } catch {
+                  /* already released */
+                }
+                if (!drag) return;
+                const ratio = heightRatioRef.current;
+                const dy = e.clientY - drag.startY;
+                if (ratio < 0.5 && dy > 120) {
+                  onClose();
+                  return;
+                }
+                // Snap: near-full · mid — never leave the sheet stuck mid-drag.
+                if (ratio >= 0.72) setRatio(SHEET_RATIO_FULL);
+                else setRatio(SHEET_RATIO_MID);
+              }}
+              onPointerCancel={() => {
+                resizeDragRef.current = null;
+              }}
+              onDoubleClick={() =>
+                setRatio(
+                  heightRatioRef.current >= 0.78
+                    ? SHEET_RATIO_MID
+                    : SHEET_RATIO_FULL,
+                )
+              }
+              aria-label={
+                sheetTall ? "시트 줄이기" : "위로 드래그하면 시트가 커져요"
+              }
             >
               <div className="mx-auto h-1 w-9 rounded-full bg-[#d1d6db]" />
             </div>
@@ -356,7 +448,7 @@ export function WorkspaceObjectCarousel({
                           ? "bg-[#191f28] text-white"
                           : "bg-[#f2f4f6] text-[#4e5968]",
                       )}
-                      onClick={() => setLayer(id)}
+                      onClick={() => selectLayer(id)}
                       aria-pressed={selected}
                     >
                       {layerLabelKo(id)}
@@ -389,7 +481,12 @@ export function WorkspaceObjectCarousel({
                       {images.map((url, i) => (
                         <div
                           key={`${url}-${i}`}
-                          className="relative h-[min(28vh,240px)] w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6]"
+                          className={cn(
+                            "relative w-full min-w-full shrink-0 snap-center overflow-hidden bg-[#f2f4f6]",
+                            sheetTall
+                              ? "h-[min(42vh,360px)]"
+                              : "h-[min(28vh,240px)]",
+                          )}
                           aria-label={`사진 ${i + 1} / ${images.length}`}
                         >
                           <WorkspaceRemoteImage

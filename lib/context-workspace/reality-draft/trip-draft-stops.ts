@@ -16,6 +16,21 @@ export type TripDraftStop = {
   readonly tags: readonly string[];
   readonly rating: number;
   readonly indoor: boolean;
+  /** Live Place Entity fields — filled when Tool / Maps / LiteAPI resolve. */
+  readonly thumbnailUrl?: string | null;
+  readonly galleryUrls?: readonly string[] | null;
+  readonly reviewCount?: number | null;
+  readonly priceBand?: number | null;
+  readonly liteapiOfferId?: string | null;
+  readonly placeSource?:
+    | "seed"
+    | "maps"
+    | "review"
+    | "booking"
+    | "liteapi"
+    | null;
+  /** False = orbit/synthetic placeholder, not a resolved Place Entity. */
+  readonly entityResolved?: boolean;
 };
 
 /** Osaka spatial Reality Draft — real-world anchors (Prepared / READY). */

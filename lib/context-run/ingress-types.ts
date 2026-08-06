@@ -74,6 +74,7 @@ export type ContextRunPlanKind =
   | "mention_contract"
   | "portal_compose_run"
   | "graph_command"
+  | "workspace_agent"
   | "workspace_intent_continuum";
 
 export type ContextRunPlan = {
@@ -117,6 +118,8 @@ export type ContextRunPlan = {
   /** Graph Command OS — NL → graph edit IR (prepare-only). */
   graphCommands?: readonly import("@/lib/graph-command").GraphCommand[];
   graphCommandContextEventId?: string;
+  /** Cursor Agent Loop — active Workspace Context Event Id. */
+  workspaceAgentContextEventId?: string;
 };
 
 export type ContextRunEffectHandlers = {

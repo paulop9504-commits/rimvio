@@ -1,6 +1,7 @@
 /**
  * Open lodging / trip Workspace when trip_prep plan starts (Agent ↔ Workspace bind).
  * Osaka (+ duration) → full map itinerary draft expanded for focus.
+ * Browser: sync skeleton first, then Tool Registry Place Entity enrich.
  */
 
 import type { ActionPlanV1 } from "@/lib/action-planner/types";
@@ -8,6 +9,7 @@ import { isTripPrepUtterance } from "@/lib/action-planner/build-trip-prep-plan";
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import {
   prepareTripWorkspaceDraft,
+  prepareTripWorkspaceDraftAsync,
   shouldPrepareTripWorkspaceDraft,
 } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
@@ -40,6 +42,19 @@ export function openWorkspaceForTripPrep(input: {
       skipUserChat: input.skipUserChat,
     });
     if (draft && draft.nodes.length > 0) {
+      // Placeholder → Place Entity: hotel.lookup / restaurant.lookup / maps.search
+      if (typeof window !== "undefined") {
+        void prepareTripWorkspaceDraftAsync({
+          utterance,
+          contextEventId,
+          tripPrep: plan?.tripPrep ?? null,
+          expand: false,
+          skipUserChat: true,
+          enrichOnly: true,
+        }).catch(() => {
+          /* keep sync draft if Tools / Maps miss */
+        });
+      }
       return draft;
     }
   }

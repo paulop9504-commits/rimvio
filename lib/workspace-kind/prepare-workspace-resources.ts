@@ -3,19 +3,22 @@
  * Does not Commit. Driver / used_goods stay shell until live tools fill slots.
  */
 
-import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
-import {
-  prepareTripWorkspaceDraft,
-  shouldPrepareTripWorkspaceDraft,
-} from "@/lib/context-workspace/prepare-trip-workspace-draft";
-import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
+import { concurrentDiscoveryResourceTypes } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
+import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { buildWorkspacePrepCard } from "@/lib/workspace-kind/build-workspace-prep-card";
 import {
   classifyMarketWorkspaceRole,
   classifyWorkspaceKind,
 } from "@/lib/workspace-kind/classify-workspace-kind";
 import type { WorkspacePrepCardModel } from "@/lib/workspace-kind/types";
+import {
+  prepareTripWorkspaceDraft,
+  prepareTripWorkspaceDraftAsync,
+  shouldPrepareTripWorkspaceDraft,
+} from "@/lib/context-workspace/prepare-trip-workspace-draft";
+import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 
 export type PrepareWorkspaceResourcesResult = {
   readonly card: WorkspacePrepCardModel;
@@ -44,14 +47,27 @@ export function prepareWorkspaceResources(input: {
       extractTravelDestination(utterance)?.trim() ||
       input.titleOverrideKo?.trim() ||
       "여행지";
-    // Clear trip (오사카 4박5일) → Reality Draft pins first, not empty lodging shell.
-    if (shouldPrepareTripWorkspaceDraft(utterance)) {
+    const domains = concurrentDiscoveryResourceTypes(utterance);
+    const wantsMulti =
+      domains.length >= 2 ||
+      hasEateryDomainCue(utterance) ||
+      /놀거리|관광|유니버설|USJ/iu.test(utterance);
+    // Clear trip OR multi-domain ask → Reality Draft + live enrich path.
+    if (shouldPrepareTripWorkspaceDraft(utterance) || wantsMulti) {
       workspace = prepareTripWorkspaceDraft({
         utterance,
         contextEventId,
         expand: true,
         skipUserChat: true,
       });
+      if (wantsMulti) {
+        void prepareTripWorkspaceDraftAsync({
+          utterance,
+          contextEventId,
+          expand: true,
+          skipUserChat: true,
+        });
+      }
     }
     if (!workspace || workspace.nodes.length === 0) {
       workspace = openLodgingContextWorkspace({
@@ -66,7 +82,12 @@ export function prepareWorkspaceResources(input: {
 
   let preparedSlotIds: readonly string[];
   if (kind === "travel") {
-    preparedSlotIds = ["hotel", "map", "itinerary"];
+    const slots = ["hotel", "map", "itinerary"] as string[];
+    if (hasEateryDomainCue(utterance)) slots.push("eatery");
+    if (/\d+\s*만|예산|budget/iu.test(utterance)) {
+      slots.push("budget");
+    }
+    preparedSlotIds = slots;
   } else if (kind === "used_goods") {
     preparedSlotIds =
       classifyMarketWorkspaceRole(utterance) === "buy"

@@ -18,6 +18,10 @@ export type LocatePlaceResult = {
   reviewCount?: number | null;
   /** Google price_level 0–4. */
   priceLevel?: number | null;
+  /** First Google photo reference when requested. */
+  photoReference?: string | null;
+  /** Absolute Place Photo URL when key was available at fetch time. */
+  thumbnailUrl?: string | null;
 };
 
 export type LocateActionResult = {

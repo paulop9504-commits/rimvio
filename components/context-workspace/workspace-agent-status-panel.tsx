@@ -7,7 +7,6 @@
 
 import { useEffect, useState } from "react";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
-import { subscribeContextWorkspaceUpdated } from "@/lib/context-workspace/workspace-store";
 import { readWorkstream } from "@/lib/workstream/workstream-store";
 import {
   AGENT_EXECUTION_STATUS_LABEL_KO,
@@ -27,6 +26,16 @@ import {
   readLastRimvioAgentRuntimeTurn,
   type RimvioAgentRuntimeTurn,
 } from "@/lib/workstream/rimvio-agent-runtime";
+import {
+  agentPlanPercent,
+  formatAgentPlanProgressKo,
+  listAgentPlanStepMarks,
+} from "@/lib/context-run/format-agent-plan-progress";
+import {
+  readContextWorkspace,
+  subscribeContextWorkspaceUpdated,
+} from "@/lib/context-workspace/workspace-store";
+import type { WorkspaceAgentPlan } from "@/lib/context-run/workspace-agent-plan";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -53,11 +62,13 @@ export function WorkspaceAgentStatusPanel({
     null,
   );
   const [runtime, setRuntime] = useState<RimvioAgentRuntimeTurn | null>(null);
+  const [agentPlan, setAgentPlan] = useState<WorkspaceAgentPlan | null>(null);
 
   useEffect(() => {
     const id = contextEventId.trim();
     if (!id) {
       setState(null);
+      setAgentPlan(null);
       return;
     }
     const refresh = () => {
@@ -75,6 +86,7 @@ export function WorkspaceAgentStatusPanel({
       setJudgment(readLastAgentJudgment());
       const turn = readLastRimvioAgentRuntimeTurn();
       setRuntime(turn?.ingress.contextEventId === id ? turn : null);
+      setAgentPlan(readContextWorkspace(id)?.agentPlan ?? null);
     };
     refresh();
     const unsubWs = subscribeContextWorkspaceUpdated((updatedId) => {
@@ -100,14 +112,22 @@ export function WorkspaceAgentStatusPanel({
     };
   }, [contextEventId]);
 
+  const planLine = formatAgentPlanProgressKo(agentPlan);
+  const planMarks = listAgentPlanStepMarks(agentPlan);
+  const planPct = agentPlanPercent(agentPlan);
+
   if (
     !state ||
-    (state.percent <= 0 && !state.liveHeadlineKo && state.timeline.length === 0)
+    (state.percent <= 0 &&
+      !state.liveHeadlineKo &&
+      state.timeline.length === 0 &&
+      !planLine)
   ) {
     return null;
   }
 
   const showContinue = state.nextSteps.length > 0;
+  const displayPercent = planPct ?? state.percent;
 
   return (
     <div className={cn("mb-2 space-y-2", className)} data-workspace-agent-status>
@@ -125,7 +145,7 @@ export function WorkspaceAgentStatusPanel({
               {state.goalKo}
             </p>
             <p className="mt-0.5 font-semibold tabular-nums text-[#3182f6]">
-              {state.percent}%
+              {displayPercent}%
             </p>
             {runtime?.supervisor ? (
               <p className="mt-0.5 text-[11px] text-[#8b95a1]">
@@ -150,9 +170,24 @@ export function WorkspaceAgentStatusPanel({
               {copy.globe.agentCurrentTask}
             </p>
             <p className="truncate text-[12px] font-medium text-[#191f28]">
-              {state.liveHeadlineKo || state.currentTaskKo}
+              {planLine || state.liveHeadlineKo || state.currentTaskKo}
             </p>
           </div>
+
+          {planMarks.length > 0 ? (
+            <div>
+              <p className="font-medium text-[#8b95a1]">
+                {copy.globe.agentPlanSteps}
+              </p>
+              <ul className="mt-0.5 space-y-0.5">
+                {planMarks.map((s) => (
+                  <li key={s.id}>
+                    {s.mark} {s.labelKo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {judgment ? (
             <div>
@@ -181,12 +216,12 @@ export function WorkspaceAgentStatusPanel({
               </span>
             </p>
             <p className="font-semibold tabular-nums text-[#3182f6]">
-              {copy.globe.agentProgressLabel} {state.percent}%
+              {copy.globe.agentProgressLabel} {displayPercent}%
             </p>
           </div>
 
           <p className="font-mono text-[11px] tracking-tight text-[#3182f6]">
-            {progressBar(state.percent)}
+            {progressBar(displayPercent)}
           </p>
 
           {state.completedSteps.length > 0 ? (

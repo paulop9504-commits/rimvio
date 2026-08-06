@@ -89,6 +89,7 @@ export {
 export type { NextWorkActionResult } from "@/lib/workstream/resolve-next-work-action";
 export {
   clearSoftNextWorkContinueMemory,
+  bumpSoftNextWorkGeneration,
   offerSoftNextWorkAfterAct,
 } from "@/lib/workstream/offer-soft-next-work-after-act";
 export type { SoftNextWorkOffer } from "@/lib/workstream/offer-soft-next-work-after-act";

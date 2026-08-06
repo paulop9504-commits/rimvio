@@ -41,6 +41,9 @@ export type OsakaCatalogPlace = {
   readonly localFavorite: boolean;
   readonly priceBand: number;
   readonly aliases: readonly string[];
+  /** Display price when known (KRW or ₩ band). */
+  readonly amountLabel?: string | null;
+  readonly thumbnailUrl?: string | null;
 };
 
 export const OSAKA_APA_BRANCHES: readonly OsakaCatalogPlace[] = [
@@ -55,6 +58,7 @@ export const OSAKA_APA_BRANCHES: readonly OsakaCatalogPlace[] = [
     reservable: true,
     localFavorite: false,
     priceBand: 2,
+    amountLabel: "₩12만/박",
     aliases: ["APA호텔", "APA", "아파호텔", "난바 APA", "APA 난바", "アパホテル難波"],
   },
   {
@@ -68,6 +72,7 @@ export const OSAKA_APA_BRANCHES: readonly OsakaCatalogPlace[] = [
     reservable: true,
     localFavorite: false,
     priceBand: 2,
+    amountLabel: "₩13만/박",
     aliases: ["APA 우메다", "우메다 APA", "アパホテル梅田"],
   },
 ];
@@ -260,6 +265,18 @@ function toHit(
   place: OsakaCatalogPlace,
   walkMinutes: number,
 ): PlaceSearchHit {
+  const thumb = place.thumbnailUrl?.trim() || null;
+  const amount =
+    place.amountLabel?.trim() ||
+    (place.domain === "lodging" && place.priceBand === 2
+      ? "₩12만/박"
+      : place.priceBand === 1
+        ? "₩"
+        : place.priceBand === 2
+          ? "₩₩"
+          : place.priceBand >= 3
+            ? "₩₩₩"
+            : null);
   return {
     id: place.id,
     labelKo: place.labelKo,
@@ -272,6 +289,9 @@ function toHit(
     localFavorite: place.localFavorite,
     priceBand: place.priceBand,
     source: "seed",
+    amountLabel: amount,
+    thumbnailUrl: thumb,
+    images: thumb ? [thumb] : null,
   };
 }
 

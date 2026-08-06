@@ -13,6 +13,17 @@ import { fetchPlacesLodgingNearby } from "@/lib/globe/context-hub/fetch-places-l
 import { isGooglePlacesConfigured } from "@/lib/locate/google-places-config";
 import { findPlacesByName } from "@/lib/locate/google-places-find";
 import type { LocatePlaceResult } from "@/lib/locate/types";
+import { amountLabelFromPriceLevel } from "@/lib/search-engine/amount-label-from-price-level";
+import {
+  filterLodgingRowsForIntent,
+  lodgingRowLooksLuxury,
+  parseMaxNightlyPriceKrw,
+} from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
+import {
+  parseLodgingStayTypeFromText,
+  resolveLodgingStaySearchKeyword,
+  type LodgingStayType,
+} from "@/lib/globe/lodging/lodging-stay-types";
 import {
   applyFieldControlToPlaceHits,
   composeSearchQueryWithFieldControl,
@@ -94,24 +105,30 @@ function locateResultsToHits(
   domain: PlaceSearchHit["domain"],
   query: string,
 ): PlaceSearchHit[] {
-  return rows.map((row, index) => ({
-    id: row.google_place_id
-      ? `maps:${row.google_place_id}`
-      : `maps:${domain}:${index}`,
-    labelKo: row.place_name,
-    domain,
-    lat: row.lat,
-    lng: row.lng,
-    rating: row.rating ?? null,
-    walkMinutes: null,
-    reservable: domain === "lodging",
-    localFavorite: /현지|로컬|local/iu.test(query) || index === 0,
-    priceBand: priceBandFromLevel(row.priceLevel),
-    source: "maps" as const,
-    reviewCount: row.reviewCount ?? null,
-    priceKrw: null,
-    amountLabel: null,
-  }));
+  return rows.map((row, index) => {
+    const amountLabel = amountLabelFromPriceLevel(row.priceLevel);
+    const thumb = row.thumbnailUrl?.trim() || null;
+    return {
+      id: row.google_place_id
+        ? `maps:${row.google_place_id}`
+        : `maps:${domain}:${index}`,
+      labelKo: row.place_name,
+      domain,
+      lat: row.lat,
+      lng: row.lng,
+      rating: row.rating ?? null,
+      walkMinutes: null,
+      reservable: domain === "lodging",
+      localFavorite: /현지|로컬|local/iu.test(query) || index === 0,
+      priceBand: priceBandFromLevel(row.priceLevel),
+      source: "maps" as const,
+      reviewCount: row.reviewCount ?? null,
+      priceKrw: null,
+      amountLabel,
+      thumbnailUrl: thumb,
+      images: thumb ? [thumb] : null,
+    };
+  });
 }
 
 async function liveEateryHits(
@@ -150,6 +167,71 @@ async function liveEateryHits(
   }).slice(0, limit);
 }
 
+function lodgingStayNeedsPlacesFirst(stay: LodgingStayType | null): boolean {
+  if (!stay) return false;
+  return (
+    stay === "capsule" ||
+    stay === "hostel" ||
+    stay === "guesthouse" ||
+    stay === "dormitory" ||
+    stay === "motel" ||
+    stay === "ryokan" ||
+    stay === "hanok" ||
+    stay === "machiya" ||
+    stay === "temple_stay" ||
+    stay === "pension" ||
+    stay === "glamping" ||
+    stay === "campsite" ||
+    stay === "homestay" ||
+    stay === "bnb" ||
+    stay === "airbnb"
+  );
+}
+
+function diversifyLodgingRows(
+  rows: readonly ContextLodgingInventoryRow[],
+  limit: number,
+): ContextLodgingInventoryRow[] {
+  const out: ContextLodgingInventoryRow[] = [];
+  const brandSeen = new Set<string>();
+  const brandKey = (name: string) => {
+    const n = name.toLowerCase();
+    if (/hilton|hilton|힐튼/iu.test(n)) return "hilton";
+    if (/conrad|콘래드/iu.test(n)) return "conrad";
+    if (/marriott|메리어트|sheraton|쉐라톤/iu.test(n)) return "marriott";
+    if (/hyatt|하얏트/iu.test(n)) return "hyatt";
+    if (/intercontinental|ihg/iu.test(n)) return "ihg";
+    if (/apa|아파/iu.test(n)) return "apa";
+    return n.slice(0, 12);
+  };
+  // Prefer non-luxury first when mixed inventory.
+  const ordered = [...rows].sort((a, b) => {
+    const aLux = lodgingRowLooksLuxury(a) ? 1 : 0;
+    const bLux = lodgingRowLooksLuxury(b) ? 1 : 0;
+    if (aLux !== bLux) return aLux - bLux;
+    const ap = a.priceKrw ?? Number.POSITIVE_INFINITY;
+    const bp = b.priceKrw ?? Number.POSITIVE_INFINITY;
+    return ap - bp;
+  });
+  for (const row of ordered) {
+    const key = brandKey(row.name);
+    if (brandSeen.has(key) && out.length >= Math.min(3, limit)) {
+      continue;
+    }
+    brandSeen.add(key);
+    out.push(row);
+    if (out.length >= limit) break;
+  }
+  if (out.length < limit) {
+    for (const row of ordered) {
+      if (out.some((r) => r.placeId === row.placeId)) continue;
+      out.push(row);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 async function liveLodgingHits(
   input: PlaceSearchInput,
 ): Promise<readonly PlaceSearchHit[] | null> {
@@ -158,11 +240,27 @@ async function liveLodgingHits(
   if (lat == null || lng == null) {
     return null;
   }
-  const limit = input.limit ?? 4;
-  const maxResults = Math.max(limit, 5);
+  const limit = Math.max(input.limit ?? 4, 8);
+  const maxResults = Math.max(limit, 12);
+  const stayType = parseLodgingStayTypeFromText(
+    `${input.query} ${input.contextLabelKo ?? ""}`,
+  );
+  const stayFirst = lodgingStayNeedsPlacesFirst(stayType);
+  const areaHint =
+    input.contextLabelKo?.trim().replace(/\s*여행.*/u, "").trim() || null;
+  const keyword =
+    resolveLodgingStaySearchKeyword({
+      stayType,
+      message: input.query,
+      areaHint,
+    }) ??
+    input.query?.trim() ??
+    null;
+  const priceCap = parseMaxNightlyPriceKrw(input.query ?? "");
 
   let liteRows: ContextLodgingInventoryRow[] = [];
-  if (isLiteApiConfigured()) {
+  // Capsule/hostel/etc: Places keyword first — LiteAPI radius rates skew luxury.
+  if (isLiteApiConfigured() && !stayFirst) {
     try {
       const guestCount =
         typeof input.guestCount === "number" &&
@@ -187,7 +285,10 @@ async function liveLodgingHits(
 
   let placesRows: ContextLodgingInventoryRow[] = [];
   const needsPlaces =
-    liteRows.length === 0 || !lodgingInventoryHasLivePhotos(liteRows);
+    stayFirst ||
+    liteRows.length === 0 ||
+    !lodgingInventoryHasLivePhotos(liteRows) ||
+    Boolean(keyword && stayType);
   if (isGooglePlacesConfigured() && needsPlaces) {
     try {
       placesRows = [
@@ -195,7 +296,7 @@ async function liveLodgingHits(
           lat,
           lng,
           maxResults,
-          keyword: input.query?.trim() || null,
+          keyword: keyword || input.query?.trim() || null,
         })),
       ];
     } catch {
@@ -203,16 +304,41 @@ async function liveLodgingHits(
     }
   }
 
-  const rows =
-    liteRows.length > 0 && placesRows.length > 0
-      ? mergeLodgingInventoryRows({
-          primary: liteRows,
-          secondary: placesRows,
-          maxResults,
-        })
-      : liteRows.length > 0
-        ? liteRows
-        : placesRows;
+  let rows: ContextLodgingInventoryRow[] =
+    stayFirst && placesRows.length > 0
+      ? placesRows
+      : liteRows.length > 0 && placesRows.length > 0
+        ? mergeLodgingInventoryRows({
+            primary: stayFirst ? placesRows : liteRows,
+            secondary: stayFirst ? liteRows : placesRows,
+            maxResults,
+          })
+        : liteRows.length > 0
+          ? liteRows
+          : placesRows;
+
+  if (stayType || priceCap != null) {
+    rows = filterLodgingRowsForIntent({
+      rows,
+      lodgingKind:
+        stayType === "capsule" ||
+        stayType === "hostel" ||
+        stayType === "guesthouse" ||
+        stayType === "dormitory"
+          ? "hostel"
+          : "hotel",
+      budget:
+        priceCap != null && priceCap <= 80_000
+          ? "low"
+          : priceCap != null && priceCap <= 150_000
+            ? "medium"
+            : "high",
+      maxNightlyPriceKrw: priceCap,
+      lodgingStayType: stayType,
+    });
+  }
+
+  rows = diversifyLodgingRows(rows, maxResults);
 
   if (rows.length > 0) {
     const hits = mapLodgingInventoryToPlaceHits({
@@ -230,13 +356,20 @@ async function liveLodgingHits(
   if (isGooglePlacesConfigured()) {
     try {
       const found = await findPlacesByName({
-        placeName: mapsTextQuery(input),
+        placeName: mapsTextQuery({
+          ...input,
+          query: keyword || input.query,
+        }),
         userLat: lat,
         userLng: lng,
         maxResults: limit,
       });
       if (found.length > 0) {
-        return locateResultsToHits(found.slice(0, limit), "lodging", input.query);
+        return locateResultsToHits(
+          found.slice(0, limit),
+          "lodging",
+          input.query,
+        );
       }
     } catch {
       // fall through

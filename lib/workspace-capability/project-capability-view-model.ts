@@ -1,10 +1,15 @@
 /**
  * Project Workspace state → capability panel view models (no LLM).
+ * P6: Budget/Timeline derived from nodes + ConstraintMemory + Reality Draft.
  */
 
 import type { ContextWorkspaceNode, ContextWorkspaceState } from "@/lib/context-workspace/types";
 import type { WorkspaceCapabilityLayout } from "@/lib/workspace-capability/types";
 import { isCapabilityOpen } from "@/lib/workspace-capability/apply-capability-op";
+import {
+  deriveBudgetRollup,
+  nodesForCapabilityDay,
+} from "@/lib/workspace-capability/derive-budget-timeline";
 
 export type CapabilityDayCard = {
   readonly day: number;
@@ -28,6 +33,11 @@ export type CapabilityBudgetRollup = {
   readonly placeCount: number;
   readonly withPrice: number;
   readonly sampleLabels: readonly string[];
+  readonly nightlySumKrw?: number | null;
+  readonly stayEstimateKrw?: number | null;
+  readonly nights?: number;
+  readonly maxNightlyCapKrw?: number | null;
+  readonly overBudget?: boolean;
 };
 
 export type CapabilityBookingChip = {
@@ -35,6 +45,21 @@ export type CapabilityBookingChip = {
   readonly title: string;
   readonly amountLabel: string | null;
   readonly kind: ContextWorkspaceNode["kind"];
+  /** lodging · flight · ticket — never cafe/eatery. */
+  readonly bookableRoleKo: "숙소" | "항공" | "티켓";
+  readonly ctaKo: "예약하기" | "준비";
+};
+
+/** Search/info places — cafes, eateries, POIs (not booking panel). */
+export type CapabilityDiscoverPlace = {
+  readonly nodeId: string;
+  readonly title: string;
+  readonly summaryKo: string;
+  readonly kind: ContextWorkspaceNode["kind"];
+  readonly kindLabelKo: string;
+  readonly amountLabel: string | null;
+  readonly rating: number | null;
+  readonly thumbnailUrl: string | null;
 };
 
 export type WorkspaceCapabilityViewModel = {
@@ -44,6 +69,7 @@ export type WorkspaceCapabilityViewModel = {
   readonly timeline: readonly CapabilityTimelineRow[];
   readonly budget: CapabilityBudgetRollup;
   readonly bookings: readonly CapabilityBookingChip[];
+  readonly discoverPlaces: readonly CapabilityDiscoverPlace[];
   readonly overviewLineKo: string;
   readonly decisionLineKo: string;
 };
@@ -57,21 +83,52 @@ const DAY_ACCENTS = [
   "#06b6d4",
 ] as const;
 
-function nodesForDay(
-  state: ContextWorkspaceState,
-  day: number,
-): readonly ContextWorkspaceNode[] {
-  const draftDay = state.realityDraft?.days.find((d) => d.day === day);
-  if (draftDay) {
-    const ids = new Set(draftDay.nodes.map((n) => n.nodeId));
-    return state.nodes.filter((n) => n.visible && ids.has(n.id));
+function nodeBlob(n: ContextWorkspaceNode): string {
+  return `${n.title} ${n.placeId} ${n.tags.join(" ")}`;
+}
+
+/**
+ * Booking panel only: lodging · flight/항공 · ticket/티켓.
+ * Cafes / eateries stay in discover even if tagged reservable.
+ */
+export function isCapabilityBookableNode(n: ContextWorkspaceNode): boolean {
+  if (n.kind === "eatery") return false;
+  if (n.kind === "lodging") return true;
+  const blob = nodeBlob(n);
+  if (
+    n.kind === "amenity" &&
+    /flight|airport|항공|arrival|kix|airport/iu.test(blob)
+  ) {
+    return true;
   }
-  // Chunk visible nodes when draft is absent.
-  const visible = state.nodes.filter((n) => n.visible);
-  const dayCount = Math.max(1, state.realityDraft?.days.length ?? 5);
-  const size = Math.ceil(visible.length / dayCount) || 1;
-  const start = (day - 1) * size;
-  return visible.slice(start, start + size);
+  if (/ticket|티켓|theme_park|usj|유니버설/iu.test(blob)) {
+    return true;
+  }
+  return false;
+}
+
+export function bookableRoleKoForNode(
+  n: ContextWorkspaceNode,
+): CapabilityBookingChip["bookableRoleKo"] {
+  if (n.kind === "lodging") return "숙소";
+  const blob = nodeBlob(n);
+  if (/ticket|티켓|theme_park|usj|유니버설/iu.test(blob)) return "티켓";
+  return "항공";
+}
+
+export function isCapabilityDiscoverPlaceNode(n: ContextWorkspaceNode): boolean {
+  if (!n.visible) return false;
+  if (isCapabilityBookableNode(n)) return false;
+  return n.kind === "eatery" || n.kind === "poi" || n.kind === "amenity";
+}
+
+function discoverKindLabelKo(n: ContextWorkspaceNode): string {
+  if (n.kind === "eatery") {
+    if (/카페|cafe|coffee/iu.test(nodeBlob(n))) return "카페";
+    return "맛집";
+  }
+  if (n.kind === "poi") return "장소";
+  return "편의";
 }
 
 export function buildWorkspaceCapabilityViewModel(input: {
@@ -83,17 +140,23 @@ export function buildWorkspaceCapabilityViewModel(input: {
 
   const days: CapabilityDayCard[] =
     draftDays.length > 0
-      ? draftDays.map((d) => ({
-          day: d.day,
-          labelKo: d.labelKo || `Day ${d.day}`,
-          lineKo: d.lineKo,
-          placeCount: d.nodes.length,
-          themeKo: d.emoji ? `${d.emoji} ${d.labelKo}` : d.labelKo,
-          accent: DAY_ACCENTS[(d.day - 1) % DAY_ACCENTS.length]!,
-        }))
+      ? draftDays.map((d) => {
+          const dayNodes = nodesForCapabilityDay(state, d.day);
+          return {
+            day: d.day,
+            labelKo: d.labelKo || `Day ${d.day}`,
+            lineKo:
+              dayNodes.map((n) => n.title).join(" → ") ||
+              d.lineKo ||
+              "빈 일정",
+            placeCount: dayNodes.length || d.nodes.length,
+            themeKo: d.emoji ? `${d.emoji} ${d.labelKo}` : d.labelKo,
+            accent: DAY_ACCENTS[(d.day - 1) % DAY_ACCENTS.length]!,
+          };
+        })
       : Array.from({ length: 5 }, (_, i) => {
           const day = i + 1;
-          const nodes = nodesForDay(state, day);
+          const nodes = nodesForCapabilityDay(state, day);
           return {
             day,
             labelKo: `Day ${day}`,
@@ -105,7 +168,7 @@ export function buildWorkspaceCapabilityViewModel(input: {
         });
 
   const focusDay = layout.focusedDay ?? days[0]?.day ?? 1;
-  const dayNodes = nodesForDay(state, focusDay);
+  const dayNodes = nodesForCapabilityDay(state, focusDay);
   const timeline: CapabilityTimelineRow[] = dayNodes.map((n) => ({
     nodeId: n.id,
     title: n.title,
@@ -114,33 +177,49 @@ export function buildWorkspaceCapabilityViewModel(input: {
     amountLabel: n.amountLabel,
   }));
 
-  const visible = state.nodes.filter((n) => n.visible);
-  const priced = visible.filter((n) => Boolean(n.amountLabel?.trim()));
+  const derived = deriveBudgetRollup(state);
   const budget: CapabilityBudgetRollup = {
-    labelKo: priced.length
-      ? `가격 표기 ${priced.length}곳`
-      : "예산 집계 준비 중",
-    placeCount: visible.length,
-    withPrice: priced.length,
-    sampleLabels: priced
-      .slice(0, 4)
-      .map((n) => n.amountLabel!.trim())
-      .filter(Boolean),
+    labelKo: derived.labelKo,
+    placeCount: derived.placeCount,
+    withPrice: derived.withPrice,
+    sampleLabels: derived.sampleLabels,
+    nightlySumKrw: derived.nightlySumKrw,
+    stayEstimateKrw: derived.stayEstimateKrw,
+    nights: derived.nights,
+    maxNightlyCapKrw: derived.maxNightlyCapKrw,
+    overBudget: derived.overBudget,
   };
 
+  const visible = state.nodes.filter((n) => n.visible);
+
   const bookings: CapabilityBookingChip[] = visible
-    .filter(
-      (n) =>
-        n.kind === "lodging" ||
-        n.tags.includes("reservable") ||
-        /예약|ticket|티켓/iu.test(`${n.title} ${n.tags.join(" ")}`),
-    )
-    .slice(0, 6)
+    .filter(isCapabilityBookableNode)
+    .slice(0, 8)
+    .map((n) => {
+      const amount = n.amountLabel?.trim() || null;
+      const pricedAmt = Boolean(amount) && /[₩￥$€\d]/u.test(amount!);
+      return {
+        nodeId: n.id,
+        title: n.title,
+        amountLabel: amount,
+        kind: n.kind,
+        bookableRoleKo: bookableRoleKoForNode(n),
+        ctaKo: pricedAmt || n.liteapiOfferId ? "예약하기" : "준비",
+      };
+    });
+
+  const discoverPlaces: CapabilityDiscoverPlace[] = visible
+    .filter(isCapabilityDiscoverPlaceNode)
+    .slice(0, 12)
     .map((n) => ({
       nodeId: n.id,
       title: n.title,
-      amountLabel: n.amountLabel,
+      summaryKo: n.summaryKo,
       kind: n.kind,
+      kindLabelKo: discoverKindLabelKo(n),
+      amountLabel: n.amountLabel,
+      rating: n.rating,
+      thumbnailUrl: n.thumbnailUrl,
     }));
 
   const overviewLineKo =
@@ -160,6 +239,7 @@ export function buildWorkspaceCapabilityViewModel(input: {
     timeline,
     budget,
     bookings,
+    discoverPlaces,
     overviewLineKo,
     decisionLineKo,
   };
@@ -172,6 +252,7 @@ export function capabilityChromeNeeded(
   return (
     isCapabilityOpen(layout, "day_rail") ||
     isCapabilityOpen(layout, "timeline") ||
+    isCapabilityOpen(layout, "budget") ||
     isCapabilityOpen(layout, "trip_overview") ||
     isCapabilityOpen(layout, "candidate_list") ||
     isCapabilityOpen(layout, "booking") ||

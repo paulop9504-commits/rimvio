@@ -6,6 +6,11 @@ import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
 import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
 import { syncGlobeIngressCompileToFeed } from "@/lib/context-run/sync-globe-ingress-to-feed";
 import { buildTripIngressCreatedChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
+import { offerTripPrepareChips } from "@/lib/globe/trip-situation-router/build-trip-prepare-offer";
+import {
+  offerCountryCityPickChips,
+  shouldOfferCountryCityPick,
+} from "@/lib/globe/trip-situation-router/build-country-city-pick-offer";
 import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
 import {
   clearPendingContextCreate,
@@ -20,8 +25,8 @@ import type { EventCandidate } from "@/lib/events/event-candidate";
 import type { GlobeIngressCompileResult } from "@/lib/globe-ingress/types";
 import {
   runWorkspaceIntentContinuum,
-  seedTravelLodgingForContinuum,
-} from "@/lib/workspace-kind/run-workspace-intent-continuum";
+  seedTravelDiscoveryForContinuum,
+} from "@/lib/workspace-kind";
 import { offerContextReferenceChips } from "@/lib/context-reference/offer-context-reference-chips";
 
 export type CommitPendingContextCreateResult = {
@@ -81,6 +86,19 @@ export function commitPendingContextCreate(input: {
     role: "assistant",
     text: `${copy.globe.contextAnchor.committedHeadline}\n${assistantText}`,
   });
+  if (shouldOfferCountryCityPick(destination)) {
+    offerCountryCityPickChips({
+      graphId: draft.graphId,
+      countryLabel: destination,
+      skipUserEcho: true,
+    });
+  } else {
+    offerTripPrepareChips({
+      graphId: draft.graphId,
+      destinationLabel: destination,
+      skipUserEcho: true,
+    });
+  }
 
   // One tool: Context created → Workspace prep → Focus → booking path seed.
   runWorkspaceIntentContinuum({
@@ -91,7 +109,7 @@ export function commitPendingContextCreate(input: {
     skipChatEcho: false,
   });
 
-  void seedTravelLodgingForContinuum({
+  void seedTravelDiscoveryForContinuum({
     contextEventId: event.id,
     utterance: draft.utterance,
   });

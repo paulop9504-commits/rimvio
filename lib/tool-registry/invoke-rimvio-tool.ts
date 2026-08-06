@@ -245,6 +245,8 @@ function placeSearchCandidates(
     checkInIso: stay?.checkInIso,
     checkOutIso: stay?.checkOutIso,
     guestCount: stay?.guestCount,
+    // P7 — never invent Riverview / 근처 카페 orbits on sync Tool path.
+    allowSeedFallback: false,
   });
   return hitsToCandidates(rankByValueConsensus(hits));
 }

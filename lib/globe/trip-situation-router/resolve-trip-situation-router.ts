@@ -1,13 +1,14 @@
 import type { ContextBlueprint } from "@/lib/context-blueprint/types";
-import { readPlanStepByNodeId } from "@/lib/context-execution/read-active-plan-step";
-import type { ContextExecutionPlanV1 } from "@/lib/context-execution/types";
 import { copy } from "@/lib/copy/human-ko";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import {
   inferDepartureHubHypothesis,
   listDepartureHubChoices,
 } from "@/lib/globe/infer-departure-hub-hypothesis";
-import { pickPromptForCountry } from "@/lib/globe/country-travel-hubs";
+import {
+  DESTINATION_OTHER_CHIP_ID,
+  pickPromptForCountry,
+} from "@/lib/globe/country-travel-hubs";
 import {
   blueprintNeedsDepartureConfirm,
   blueprintNeedsDestination,
@@ -18,23 +19,15 @@ import type {
   TripSituationRouterChip,
   TripSituationRouterState,
 } from "@/lib/globe/trip-situation-router/types";
+import { buildTripPrepareChips } from "@/lib/globe/trip-situation-router/build-trip-prepare-offer";
 
-function isStayReadyForDomain(
+function destinationReadyForPrepare(
   blueprint: ContextBlueprint,
-  executionPlan?: ContextExecutionPlanV1 | null,
 ): boolean {
-  if (blueprintNeedsDestination(blueprint) || blueprintNeedsDepartureConfirm(blueprint)) {
-    return false;
-  }
-  const stayStep = readPlanStepByNodeId(executionPlan ?? null, "stay");
-  if (stayStep) {
-    return (
-      stayStep.status === "running" ||
-      stayStep.status === "ready" ||
-      stayStep.status === "prepared"
-    );
-  }
-  return blueprint.executionGraph?.nodes.some((node) => node.id === "stay") ?? false;
+  return (
+    !blueprintNeedsDestination(blueprint) &&
+    !blueprintNeedsDepartureConfirm(blueprint)
+  );
 }
 
 function readDestinationLabel(blueprint: ContextBlueprint): string | null {
@@ -60,32 +53,22 @@ function readRegionLabel(blueprint: ContextBlueprint): string | null {
 function buildDestinationChoices(
   blueprint: ContextBlueprint,
 ): TripSituationRouterChip[] {
-  return destinationChoiceLabelsForBlueprint(blueprint).map((label, index) => ({
-    id: `trip-dest-${index}`,
-    label,
-    action: "destination" as const,
-  }));
-}
-
-function buildDomainChoices(destinationLabel: string | null): TripSituationRouterChip[] {
   const router = copy.globe.tripSituationRouter;
-  const choices: TripSituationRouterChip[] = [
-    {
-      id: "trip-lodging",
-      label: router.lodgingSearch,
-      action: "lodging",
-      submitText: router.lodgingSubmit,
-    },
-  ];
-  if (destinationLabel) {
-    choices.push({
-      id: "trip-eatery",
-      label: router.eaterySearch,
-      action: "eatery",
-      submitText: router.eaterySubmit(destinationLabel),
-    });
-  }
-  return choices;
+  const labels = destinationChoiceLabelsForBlueprint(blueprint);
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const chips: TripSituationRouterChip[] = labels.slice(0, 8).map((label, index) => ({
+    id: `trip-dest-${index}`,
+    label: `${letters[index] ?? String(index + 1)} · ${label}`,
+    action: "destination" as const,
+    submitText: label,
+  }));
+  const otherLetter = letters[chips.length] ?? String(chips.length + 1);
+  chips.push({
+    id: DESTINATION_OTHER_CHIP_ID,
+    label: `${otherLetter} · ${router.destinationOther}`,
+    action: "destination_other",
+  });
+  return chips;
 }
 
 function buildDepartureConfirmChoices(input: {
@@ -226,13 +209,13 @@ export function resolveTripSituationRouter(input: {
     });
   }
 
-  if (isStayReadyForDomain(blueprint, input.session?.executionPlan ?? null)) {
+  if (destinationReadyForPrepare(blueprint)) {
     return {
       stage: "ready_for_domain",
       reasonKo: destinationLabel
-        ? router.domainPrompt(destinationLabel)
+        ? router.prepareOffer(destinationLabel)
         : router.domainPromptFallback,
-      choices: buildDomainChoices(destinationLabel),
+      choices: buildTripPrepareChips(destinationLabel),
     };
   }
 

@@ -26,6 +26,15 @@ function emptyConstraints(
 function looksLikeSpatialDiscovery(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  // Stay-type lodging alone (캡슐호텔 찾아줘) — Workspace Patch, not spatial.
+  if (
+    /캡슐\s*호텔|캡슐호텔|호스텔|게스트\s*하우스|료칸|capsule|hostel|ryokan/iu.test(
+      t,
+    ) &&
+    !/근처|주변|near|around|기준|맛집|식당|카페|cafe/iu.test(t)
+  ) {
+    return false;
+  }
   const hasDiscover =
     /찾아|보여|근처|주변|near|around|기준|기반으로/iu.test(t);
   const hasTarget =

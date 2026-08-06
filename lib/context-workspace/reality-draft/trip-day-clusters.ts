@@ -80,6 +80,59 @@ function looksOsaka(dest: string): boolean {
   return /오사카|大阪|osaka/iu.test(dest);
 }
 
+function looksTokyo(dest: string): boolean {
+  return /도쿄|東京|tokyo/iu.test(dest);
+}
+
+/** Tokyo day themes — Asakusa · Shibuya · Shinjuku · etc. */
+const TOKYO_CLUSTERS: readonly TripDayCluster[] = [
+  {
+    id: "asakusa",
+    labelKo: "아사쿠사",
+    lat: 35.7148,
+    lng: 139.7967,
+    lodgingQuery: "도쿄 아사쿠사 숙소",
+    eateryQuery: "도쿄 아사쿠사 맛집",
+    poiQuery: "도쿄 아사쿠사 관광 명소",
+  },
+  {
+    id: "shibuya",
+    labelKo: "시부야",
+    lat: 35.6595,
+    lng: 139.7004,
+    lodgingQuery: "도쿄 시부야 숙소",
+    eateryQuery: "도쿄 시부야 맛집",
+    poiQuery: "도쿄 시부야 관광",
+  },
+  {
+    id: "shinjuku",
+    labelKo: "신주쿠",
+    lat: 35.6938,
+    lng: 139.7034,
+    lodgingQuery: "도쿄 신주쿠 숙소",
+    eateryQuery: "도쿄 신주쿠 맛집",
+    poiQuery: "도쿄 신주쿠 관광",
+  },
+  {
+    id: "ueno",
+    labelKo: "우에노",
+    lat: 35.7141,
+    lng: 139.7774,
+    lodgingQuery: "도쿄 우에노 숙소",
+    eateryQuery: "도쿄 우에노 맛집",
+    poiQuery: "도쿄 우에노 공원 관광",
+  },
+  {
+    id: "ginza",
+    labelKo: "긴자",
+    lat: 35.6717,
+    lng: 139.765,
+    lodgingQuery: "도쿄 긴자 숙소",
+    eateryQuery: "도쿄 긴자 맛집",
+    poiQuery: "도쿄 긴자 관광",
+  },
+];
+
 function hubForDestination(destinationKo: string): {
   readonly lat: number;
   readonly lng: number;
@@ -114,6 +167,17 @@ function genericClusters(
   return out;
 }
 
+function rotateClusters(
+  clusters: readonly TripDayCluster[],
+  dayCount: number,
+): TripDayCluster[] {
+  const out: TripDayCluster[] = [];
+  for (let d = 0; d < dayCount; d += 1) {
+    out.push(clusters[d % clusters.length]!);
+  }
+  return out;
+}
+
 /**
  * One cluster per trip day. Day1 lodging base = first cluster (Osaka → 난바).
  */
@@ -124,11 +188,10 @@ export function planTripDayClusters(
   const dest = destinationKo.trim() || "여행지";
   const n = Math.min(14, Math.max(1, Math.floor(dayCount)));
   if (looksOsaka(dest)) {
-    const out: TripDayCluster[] = [];
-    for (let d = 0; d < n; d += 1) {
-      out.push(OSAKA_CLUSTERS[d % OSAKA_CLUSTERS.length]!);
-    }
-    return out;
+    return rotateClusters(OSAKA_CLUSTERS, n);
+  }
+  if (looksTokyo(dest)) {
+    return rotateClusters(TOKYO_CLUSTERS, n);
   }
   return genericClusters(dest, n);
 }

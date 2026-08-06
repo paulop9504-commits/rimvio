@@ -64,13 +64,13 @@ const compareAsk = planFor("여유 있게 가는 거랑 빡빡하게 가는 거 
 assert.equal(compareAsk.kind, "personal_context_ask");
 
 const lodging = planFor("호텔 추천해줘");
-assert.equal(lodging.kind, "graph_command");
+assert.equal(lodging.kind, "workspace_intent_continuum");
 
 const trip = planFor("부산 출장");
 assert.equal(trip.kind, "globe_ingress");
 
 const eatery = planFor("강남 맛집 추천");
-assert.equal(eatery.kind, "graph_command");
+assert.equal(eatery.kind, "workspace_intent_continuum");
 
 const mealMention = planFor("@식사 강남역");
 assert.equal(mealMention.kind, "mention_contract");

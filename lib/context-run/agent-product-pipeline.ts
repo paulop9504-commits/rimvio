@@ -9,7 +9,9 @@ import { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
 import {
   appendAgentActivityForStage,
   beginAgentActivityTranscript,
+  readAgentActivityTranscript,
 } from "@/lib/context-run/agent-activity-transcript";
+import { syncAgentActivityEventToFeed } from "@/lib/context-run/sync-agent-activity-trail";
 
 export const AGENT_PRODUCT_PIPELINE_STAGES = [
   "intent",
@@ -145,6 +147,11 @@ export function advanceAgentProductStage(
   appendAgentActivityForStage(stage, {
     detailKo: statusKo?.trim() || null,
   });
+  const tape = readAgentActivityTranscript();
+  const last = tape?.events[tape.events.length - 1];
+  if (last && turn.utterance) {
+    syncAgentActivityEventToFeed(last, turn.utterance);
+  }
   emitProductTurnChange();
   return next;
 }

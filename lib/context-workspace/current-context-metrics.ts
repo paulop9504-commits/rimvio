@@ -3,34 +3,36 @@
  */
 
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
+import { isWorkspaceReadySlotNode } from "@/lib/context-workspace/workspace-map-focus";
 
-/** Thin progress from workspace shape — not a real planner metric. */
+/** Thin progress from workspace shape — Capsule auto-save polish (P7). */
 export function estimateWorkspaceProgressPercent(
   state: ContextWorkspaceState,
 ): number {
-  const visible = state.nodes.filter((n) => n.visible);
-  let score = 28;
-  if (visible.length > 0) {
-    score += 22;
-  }
-  if (visible.length >= 3) {
-    score += 10;
-  }
-  if (state.selectedIds.length > 0) {
-    score += 18;
-  }
+  const visible = state.nodes.filter(
+    (n) => n.visible && !isWorkspaceReadySlotNode(n),
+  );
+  let score = 18;
+  if (visible.length > 0) score += 14;
+  if (visible.length >= 3) score += 8;
+  if (visible.some((n) => n.kind === "lodging")) score += 10;
+  if (visible.some((n) => n.kind === "eatery")) score += 6;
+  if (state.selectedIds.length > 0) score += 14;
+  if (state.nodes.some((n) => n.bookmarked)) score += 8;
+  if (state.realityDraft?.days?.length) score += 10;
+  if (state.constraintMemory?.destinationKo) score += 6;
   if (
+    state.constraintMemory?.maxNightlyPriceKrw != null ||
+    state.constraintMemory?.keepTopN != null ||
     state.filter.minRating != null ||
     state.filter.maxPriceBand != null ||
     (state.filter.tagIncludes?.length ?? 0) > 0 ||
     state.filter.queryIncludes
   ) {
-    score += 12;
-  }
-  if (state.lastChangeKo) {
     score += 8;
   }
-  return Math.min(92, score);
+  if (state.lastChangeKo) score += 4;
+  return Math.min(96, score);
 }
 
 export function relativeWorkspaceUpdateKo(

@@ -166,10 +166,15 @@ export type ContextWorkspaceState = {
   readonly constraintMemory?: import("@/lib/agent-policy/constraint-memory").ConstraintMemoryBag | null;
   /** Agent breadcrumb tape (Law 25). */
   readonly agentTrace?: readonly import("@/lib/agent-policy/agent-trace").AgentTraceEntry[];
+  /** Mid-flight Workspace Agent Plan — Capsule resume continues pending steps. */
+  readonly agentPlan?: import("@/lib/context-run/workspace-agent-plan").WorkspaceAgentPlan | null;
   /** Active Agent Job — Job Boundary / Scope Lock SSOT (P0). */
   readonly agentJob?: import("@/lib/agent-policy/agent-job").AgentJob | null;
   /** Last scout fingerprint — stale when next turn differs (P0). */
   readonly lastScoutFingerprint?: string | null;
+  /** Idempotency tape (P1) — identical turn within window is no-op. */
+  readonly lastIdempotencyKey?: string | null;
+  readonly lastIdempotencyAtIso?: string | null;
   readonly selectedIds: readonly string[];
   readonly compareIds: readonly string[];
   readonly surfacePrimary: ContextSurfaceKind;

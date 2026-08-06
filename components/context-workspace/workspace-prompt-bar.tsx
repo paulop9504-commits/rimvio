@@ -151,7 +151,15 @@ export function WorkspacePromptBar({
           result.statusKo?.trim() ||
           ws?.lastChangeKo?.trim() ||
           null;
-        if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
+        const isFreeTalk =
+          result.via === "free_talk" || result.patchKind === "free_talk";
+        if (isFreeTalk) {
+          appendWorkspaceChatTurn({
+            contextEventId: eventId,
+            role: "assistant",
+            text: statusKo ?? "네, 편하게 말해줘요 🙂",
+          });
+        } else if (result.handled && ws && ws.nodes.some((n) => n.visible)) {
           appendWorkspaceSyncedAssistantTurn({
             contextEventId: eventId,
             state: ws,

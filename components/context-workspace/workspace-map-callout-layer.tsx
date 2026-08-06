@@ -24,12 +24,18 @@ export type WorkspaceMapCalloutLayerItem = {
 export type WorkspaceMapCalloutLayerProps = {
   readonly items: readonly WorkspaceMapCalloutLayerItem[];
   readonly onRequestWorkspace?: (entityId: string) => void;
+  /** After window removed — parent clears pin selection. */
+  readonly onDismiss?: (input: {
+    readonly windowId: string;
+    readonly entityId: string;
+  }) => void;
   readonly className?: string;
 };
 
 export function WorkspaceMapCalloutLayer({
   items,
   onRequestWorkspace,
+  onDismiss,
   className,
 }: WorkspaceMapCalloutLayerProps) {
   if (items.length === 0) return null;
@@ -50,7 +56,13 @@ export function WorkspaceMapCalloutLayer({
           title={item.title}
           subtitleKo={item.subtitleKo}
           anchor={item.anchor}
-          onClose={closeCalloutWindow}
+          onClose={(windowId) => {
+            closeCalloutWindow(windowId);
+            onDismiss?.({
+              windowId,
+              entityId: item.window.entityId,
+            });
+          }}
           onRequestWorkspace={onRequestWorkspace}
         />
       ))}

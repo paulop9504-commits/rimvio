@@ -248,7 +248,7 @@ export function compileTripEntitySlots(input: {
           `part_${part}`,
           `cluster_${cluster.id}`,
           entityKind === "eatery" ? "food" : "experience",
-          entityKind === "eatery" ? "reservable" : "poi",
+          entityKind === "eatery" ? "discover" : "poi",
         ],
         fillStatus: "empty",
       });
@@ -268,8 +268,14 @@ function withDayTag(
     ...stop.tags.filter((t) => !/^day[_-]?\d+$/iu.test(t)),
     dayTag,
     ...extra,
+    stop.entityResolved === false ? "entity_unresolved" : "entity_resolved",
   ];
-  return { ...stop, tags };
+  return {
+    ...stop,
+    tags,
+    entityResolved: stop.entityResolved !== false,
+    placeSource: stop.placeSource ?? "seed",
+  };
 }
 
 /** Map Osaka catalog onto day slots (fallback seed provider only). */
@@ -307,6 +313,12 @@ export function seedOsakaStopsForDays(dayCount: number): TripDraftStop[] {
   return out;
 }
 
+function isGenericOrbitLabel(labelKo: string): boolean {
+  return /근처 카페|골목 맛집|로컬 식당|리버뷰 호텔|스테이 인|시티 로지|포토스팟|산책로|전망대|가까운 약국|24시 약국|역앞 약국/iu.test(
+    labelKo.trim(),
+  );
+}
+
 function skeletonStopFromSlot(
   slot: TripEntitySlot,
   dest: string,
@@ -331,9 +343,11 @@ function skeletonStopFromSlot(
     lng: cluster.lng + (index % 3 === 0 ? jitter * 0.8 : -jitter * 0.4),
     amountLabel: kind === "lodging" ? "가격 미정" : null,
     walkMinutes: index === 0 ? 0 : 10 + index * 2,
-    tags: [...slot.roleTags, "skeleton", "ready_slot"],
+    tags: [...slot.roleTags, "skeleton", "ready_slot", "entity_unresolved"],
     rating: 4.2,
     indoor: kind === "lodging" || kind === "eatery",
+    entityResolved: false,
+    placeSource: "seed",
   };
 }
 
@@ -347,6 +361,17 @@ function hitToStop(
       : hit.domain === "eatery"
         ? ("eatery" as const)
         : ("poi" as const);
+  const synthetic =
+    hit.id.startsWith("burst:") || isGenericOrbitLabel(hit.labelKo);
+  const live =
+    hit.source === "maps" ||
+    hit.source === "liteapi" ||
+    hit.source === "booking" ||
+    hit.source === "review";
+  const resolved = live || (!synthetic && hit.source === "seed");
+  const gallery =
+    hit.images?.filter((u) => typeof u === "string" && u.trim().length > 0) ??
+    null;
   return {
     id: hit.id,
     kind,
@@ -361,9 +386,20 @@ function hitToStop(
       `source_${hit.source}`,
       hit.localFavorite ? "local_favorite" : "",
       hit.reservable ? "reservable" : "",
+      resolved ? "entity_resolved" : "entity_unresolved",
+      synthetic ? "placeholder_label" : "",
+      synthetic ? "ready_slot" : "",
+      synthetic ? "skeleton" : "",
     ].filter(Boolean),
     rating: hit.rating ?? 4.2,
     indoor: kind === "lodging" || kind === "eatery",
+    thumbnailUrl: hit.thumbnailUrl ?? gallery?.[0] ?? null,
+    galleryUrls: gallery && gallery.length > 0 ? gallery : null,
+    reviewCount: hit.reviewCount ?? null,
+    priceBand: hit.priceBand ?? null,
+    liteapiOfferId: hit.liteapiOfferId ?? null,
+    placeSource: hit.source,
+    entityResolved: resolved,
   };
 }
 

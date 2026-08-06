@@ -16,6 +16,7 @@ import {
 import { domainLabelKo } from "@/lib/context-workspace/types";
 import type { ContextWorkspaceDomain } from "@/lib/context-workspace/types";
 import { openMapContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
+import { isWorkspaceReadySlotNode } from "@/lib/context-workspace/workspace-map-focus";
 import { tryOpenWorkspaceFromUtterance } from "@/lib/context-workspace/try-open-workspace-from-utterance";
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
@@ -683,6 +684,23 @@ async function rescoutWorkspace(input: {
       inventoryMode: "replace",
     });
     const focus =
+      opened.nodes.find(
+        (n) =>
+          n.visible &&
+          n.kind === activeDomain &&
+          !isWorkspaceReadySlotNode(n) &&
+          n.source !== "trip_prep_draft" &&
+          !n.source.startsWith("trip_prep_") &&
+          !n.bookmarked,
+      ) ??
+      opened.nodes.find(
+        (n) =>
+          n.visible &&
+          n.kind === activeDomain &&
+          !isWorkspaceReadySlotNode(n) &&
+          n.source !== "trip_prep_draft" &&
+          !n.source.startsWith("trip_prep_"),
+      ) ??
       opened.nodes.find((n) => !n.bookmarked && n.visible && n.kind === activeDomain) ??
       opened.nodes.find((n) => !n.bookmarked && n.visible) ??
       null;

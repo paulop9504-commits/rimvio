@@ -27,6 +27,7 @@ export type {
 export {
   burstFillTripInventory,
   burstFillTripInventoryAsync,
+  burstFillTripInventoryViaTools,
 } from "@/lib/context-workspace/reality-draft/burst-fill-trip-inventory";
 export {
   planTripDayClusters,

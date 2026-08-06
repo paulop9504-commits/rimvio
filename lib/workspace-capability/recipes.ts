@@ -37,6 +37,7 @@ const TRIP_PLAN: WorkspaceCapabilityRecipe = {
   open: [
     { id: "trip_overview", slot: "header", order: 0 },
     { id: "day_rail", slot: "left", order: 0 },
+    { id: "candidate_list", slot: "left", order: 1 },
     { id: "map", slot: "center", order: 0 },
     { id: "timeline", slot: "right", order: 0 },
     { id: "budget", slot: "right", order: 1 },

@@ -176,6 +176,70 @@ export async function nominatimGeocode(
   return toHit(json[0]!);
 }
 
+export type NominatimGeometryHit = NominatimHit & {
+  readonly geometry: GeoJSON.Geometry | null;
+  readonly boundingbox: readonly [number, number, number, number] | null;
+};
+
+/** Forward geocode with optional GeoJSON footprint (polygon / bbox). */
+export async function nominatimGeocodeWithGeometry(
+  query: string,
+): Promise<NominatimGeometryHit | null> {
+  const q = query.trim();
+  if (!q || q.length < 2) {
+    return null;
+  }
+  const url = `${NOMINATIM_BASE}/search?${new URLSearchParams({
+    q,
+    format: "json",
+    addressdetails: "1",
+    namedetails: "1",
+    limit: "1",
+    polygon_geojson: "1",
+  }).toString()}`;
+  const response = await nominatimFetch(url);
+  if (!response) {
+    return null;
+  }
+  const json = (await response.json()) as Array<
+    NominatimJson & {
+      geojson?: GeoJSON.Geometry;
+      boundingbox?: string[];
+    }
+  >;
+  if (!Array.isArray(json) || json.length === 0) {
+    return null;
+  }
+  const raw = json[0]!;
+  const hit = toHit(raw);
+  if (!hit) return null;
+  let boundingbox: readonly [number, number, number, number] | null = null;
+  const bb = raw.boundingbox;
+  if (Array.isArray(bb) && bb.length >= 4) {
+    const south = Number(bb[0]);
+    const north = Number(bb[1]);
+    const west = Number(bb[2]);
+    const east = Number(bb[3]);
+    if ([south, north, west, east].every(Number.isFinite)) {
+      boundingbox = [south, north, west, east];
+    }
+  }
+  const out: NominatimGeometryHit = {
+    lat: hit.lat,
+    lng: hit.lng,
+    displayName: hit.displayName,
+    placeId: hit.placeId,
+    osmType: hit.osmType,
+    osmId: hit.osmId,
+    admin: hit.admin,
+    labelKo: hit.labelKo,
+    labelEn: hit.labelEn,
+    geometry: raw.geojson ?? null,
+    boundingbox,
+  };
+  return out;
+}
+
 /** GPS → address + admin parts. */
 export async function nominatimReverseGeocode(
   lat: number,

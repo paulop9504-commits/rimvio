@@ -14,6 +14,11 @@ import {
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
+import type { WorkspaceAgentPlan } from "@/lib/context-run/workspace-agent-plan";
+import {
+  runWorkspaceAgentPlan,
+  type WorkspaceAgentPlanRunResult,
+} from "@/lib/context-run/run-workspace-agent-plan";
 
 export type CapsuleProjection = {
   readonly contextEventId: string;
@@ -27,6 +32,8 @@ export type CapsuleProjection = {
   readonly reality: ContextCompilerIrV1["reality"] | null;
   readonly nodeCount: number;
   readonly updatedAtIso: string;
+  /** Capsule has unfinished Workspace Agent Plan steps. */
+  readonly hasPendingAgentPlan: boolean;
 };
 
 export function readCapsuleCompilerIr(
@@ -35,10 +42,24 @@ export function readCapsuleCompilerIr(
   return readContextWorkspace(contextEventId)?.compilerIr ?? null;
 }
 
+export function readPendingCapsuleAgentPlan(
+  contextEventId: string,
+): WorkspaceAgentPlan | null {
+  const plan = readContextWorkspace(contextEventId)?.agentPlan ?? null;
+  if (!plan) return null;
+  const pending = plan.steps.some(
+    (s) => s.status === "pending" || s.status === "running",
+  );
+  return pending ? plan : null;
+}
+
 export function buildCapsuleProjection(
   state: ContextWorkspaceState,
 ): CapsuleProjection {
   const ir = state.compilerIr;
+  const pending = (state.agentPlan?.steps ?? []).some(
+    (s) => s.status === "pending" || s.status === "running",
+  );
   return {
     contextEventId: state.contextEventId,
     workspaceId: state.workspaceId,
@@ -55,6 +76,7 @@ export function buildCapsuleProjection(
     reality: ir?.reality ?? null,
     nodeCount: state.nodes.filter((n) => n.visible).length,
     updatedAtIso: state.updatedAtIso,
+    hasPendingAgentPlan: pending,
   };
 }
 
@@ -76,6 +98,8 @@ export function resumeCapsuleWorkspace(input: {
 }): {
   readonly state: ContextWorkspaceState;
   readonly compilerIr: ContextCompilerIrV1 | null;
+  readonly pendingAgentPlan: WorkspaceAgentPlan | null;
+  readonly statusKo: string;
 } | null {
   const key = input.contextEventId.trim();
   const prev = readContextWorkspace(key);
@@ -95,5 +119,45 @@ export function resumeCapsuleWorkspace(input: {
       source: "capsule_resume",
     });
   }
-  return { state: next, compilerIr: next.compilerIr ?? null };
+  const pendingAgentPlan = readPendingCapsuleAgentPlan(key);
+  const pendingCount =
+    pendingAgentPlan?.steps.filter(
+      (s) => s.status === "pending" || s.status === "running",
+    ).length ?? 0;
+  const statusKo =
+    pendingCount > 0
+      ? `지난 작업 이어갈까요? · ${pendingCount}스텝 남음`
+      : "지난 작업 이어갈까요?";
+  return {
+    state: next,
+    compilerIr: next.compilerIr ?? null,
+    pendingAgentPlan,
+    statusKo,
+  };
+}
+
+/**
+ * Continue mid-flight Agent Plan after Capsule resume (human-gated).
+ */
+export async function continueResumedWorkspaceAgentPlan(input: {
+  readonly contextEventId: string;
+}): Promise<WorkspaceAgentPlanRunResult | null> {
+  const key = input.contextEventId.trim();
+  const pending = readPendingCapsuleAgentPlan(key);
+  if (!pending) return null;
+  const remaining = pending.steps
+    .filter((s) => s.status === "pending" || s.status === "running")
+    .map((s) => ({ ...s, status: "pending" as const, observation: null }));
+  if (remaining.length === 0) return null;
+  return runWorkspaceAgentPlan({
+    utterance: pending.sourceUtterance,
+    explicitContextEventId: key,
+    plan: {
+      ...pending,
+      contextEventId: key,
+      steps: remaining,
+      cursor: 0,
+      createdAtIso: new Date().toISOString(),
+    },
+  });
 }

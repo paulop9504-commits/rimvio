@@ -26,6 +26,12 @@ export {
   isTravelWorkspaceUtterance,
   isUsedGoodsWorkspaceUtterance,
 } from "@/lib/workspace-kind/classify-workspace-kind";
+export {
+  classifyWorkspaceRoute,
+  CATALOG_WORKSPACE_ROUTES,
+  type CatalogWorkspaceRoute,
+  type WorkspaceRouteDecision,
+} from "@/lib/workspace-kind/classify-workspace-route";
 export { buildWorkspacePrepCard } from "@/lib/workspace-kind/build-workspace-prep-card";
 export {
   advanceWorkspaceFocus,
@@ -45,6 +51,8 @@ export {
   seedTravelLodgingForContinuum,
   type WorkspaceIntentContinuumResult,
 } from "@/lib/workspace-kind/run-workspace-intent-continuum";
+export { seedTravelDiscoveryForContinuum } from "@/lib/workspace-kind/seed-travel-discovery-for-continuum";
+export { prepareCatalogWorkspaceStub } from "@/lib/workspace-kind/prepare-catalog-workspace-stub";
 export { ensureMarketContextEvent } from "@/lib/workspace-kind/ensure-market-context-event";
 export {
   activeContextAllowsDomainScout,

@@ -34,6 +34,11 @@ import {
 import { buildWorkspaceNodeProjectionModel } from "@/lib/reality-os/node-projection-model";
 import { WorkspaceSdkNodeBody } from "@/components/workspace-sdk/workspace-sdk-node-body";
 import { WorkspaceShareSettingsSheet } from "@/components/context-workspace/workspace-share-settings-sheet";
+import { WorkspacePromptBar } from "@/components/context-workspace/workspace-prompt-bar";
+import {
+  agentPlanPercent,
+  formatAgentPlanProgressKo,
+} from "@/lib/context-run/format-agent-plan-progress";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 import {
@@ -279,7 +284,17 @@ export function WorkspaceSdkHost({
             {frame.ai.roleLabelKo}
           </p>
           <p className="mt-0.5 text-[13px] text-[#4e5968]">
-            {frame.ai.stripHintKo || frame.primaryFocus.askKo}
+            {(() => {
+              const plan = ctx
+                ? readContextWorkspace(ctx)?.agentPlan ?? null
+                : null;
+              const planLine = formatAgentPlanProgressKo(plan);
+              const pct = agentPlanPercent(plan);
+              if (planLine) {
+                return pct != null ? `${planLine} · ${pct}%` : planLine;
+              }
+              return frame.ai.stripHintKo || frame.primaryFocus.askKo;
+            })()}
           </p>
           {primitiveStrip.length > 0 ? (
             <div className="mt-2" data-workspace-reality-primitives>
@@ -354,6 +369,13 @@ export function WorkspaceSdkHost({
         </div>
 
         <div className="space-y-2 border-t border-black/[0.04] px-4 py-3">
+          {ctx ? (
+            <WorkspacePromptBar
+              contextEventId={ctx}
+              compact
+              className="mb-1"
+            />
+          ) : null}
           {(() => {
             const commitReady =
               frame.lifecycle === "action_ready" ||

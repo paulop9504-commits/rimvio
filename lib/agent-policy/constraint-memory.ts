@@ -7,12 +7,16 @@
 
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
+import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
+import { isDestinationPivotUtterance } from "@/lib/agent-policy/constraint-inheritance-policy";
 
 export type ConstraintSortBy = "price" | "rating" | "value";
 
 export type ConstraintMemoryBag = {
   readonly maxNightlyPriceKrw: number | null;
   readonly maxPriceBand: number | null;
+  /** Trip / city destination — survives soft follow-ups (「맛집」 alone). */
+  readonly destinationKo: string | null;
   readonly nearLabelKo: string | null;
   readonly stayType: string | null;
   readonly minRating: number | null;
@@ -26,6 +30,7 @@ export function emptyConstraintMemory(): ConstraintMemoryBag {
   return {
     maxNightlyPriceKrw: null,
     maxPriceBand: null,
+    destinationKo: null,
     nearLabelKo: null,
     stayType: null,
     minRating: null,
@@ -120,6 +125,15 @@ export function mergeConstraintMemoryFromUtterance(input: {
   const keepTopN = parseKeepTopN(text);
   const sortBy = parseSortByFromUtterance(text);
   const softBudget = /더\s*싸|저렴|가성비|budget|cheap/iu.test(text);
+  const destFromUtterance = extractTravelDestination(text);
+  const destPivot =
+    isDestinationPivotUtterance(text) &&
+    /(?:로|으로)\s*(?:바꿔|변경|가)|바꿔|변경|옮|가자|갈래/iu.test(text);
+  const nextDestination =
+    destFromUtterance != null &&
+    (destPivot || !base.destinationKo || destFromUtterance !== base.destinationKo)
+      ? destFromUtterance
+      : base.destinationKo;
 
   return {
     maxNightlyPriceKrw:
@@ -132,7 +146,8 @@ export function mergeConstraintMemoryFromUtterance(input: {
             ? 2
             : base.maxPriceBand
         : base.maxPriceBand,
-    nearLabelKo: near ?? base.nearLabelKo,
+    destinationKo: nextDestination ?? destFromUtterance ?? base.destinationKo,
+    nearLabelKo: near ?? (destPivot ? null : base.nearLabelKo),
     stayType: stayType ?? base.stayType,
     minRating: minRating ?? base.minRating,
     keepTopN: keepTopN ?? base.keepTopN,
@@ -149,6 +164,12 @@ export function applyConstraintMemoryToScoutQuery(
   const base = utterance.trim();
   if (!bag) return base;
   const bits: string[] = [];
+  if (
+    bag.destinationKo &&
+    !base.toLowerCase().includes(bag.destinationKo.toLowerCase())
+  ) {
+    bits.push(bag.destinationKo);
+  }
   if (bag.nearLabelKo) bits.push(`${bag.nearLabelKo} 근처`);
   if (bag.stayType) {
     const stayKo =
@@ -190,6 +211,7 @@ export function constraintMemoryLinesKo(
 ): string[] {
   if (!bag) return [];
   const lines: string[] = [];
+  if (bag.destinationKo) lines.push(`목적지 · ${bag.destinationKo}`);
   if (bag.nearLabelKo) lines.push(`위치 · ${bag.nearLabelKo}`);
   if (bag.maxNightlyPriceKrw != null) {
     lines.push(

@@ -1,5 +1,6 @@
 /**
  * Reality Anchor from utterance — world-geo SSOT (not chat invent).
+ * Catalog miss → Osaka Metro stations → Nominatim / Location Engine.
  * @see docs/RIMVIO_REALITY_ANCHOR_PROJECTION.md
  */
 
@@ -8,6 +9,8 @@ import {
   resolveWorldGeoEntity,
   type WorldGeoEntityId,
 } from "@/lib/reality-graph";
+import { resolveOsakaMetroStationFromText } from "@/lib/geo/osaka-metro/station-catalog";
+import { resolveLocationFromText } from "@/lib/location-engine";
 
 export const USJ_GEO_ID = "geo:jp:osaka:usj" as const satisfies WorldGeoEntityId;
 
@@ -21,6 +24,8 @@ export type RealityAnchorHit = {
   readonly lat: number;
   readonly lng: number;
   readonly kind: "poi" | "station" | "area" | "city";
+  /** Where coords came from — catalog · metro · world geocode */
+  readonly provider?: "world_geo" | "osaka_metro" | "nominatim" | "registry";
 };
 
 export function isNearLodgingUtterance(text: string): boolean {
@@ -32,8 +37,39 @@ export function isNearLodgingUtterance(text: string): boolean {
   );
 }
 
+/** Pull place label: 「모리노미아역 근처 호텔」→ 모리노미아역 */
+export function extractNearPlaceLabelFromUtterance(text: string): string {
+  const t = text.trim();
+  if (!t) return "";
+  const station = t.match(/([가-힣A-Za-z0-9·]+역)/u)?.[1];
+  if (station) return station;
+  const near = t.match(
+    /([가-힣A-Za-z0-9·\s]{2,24}?)\s*(?:근처|주변|앞|near|around)/iu,
+  )?.[1];
+  if (near) {
+    return near
+      .replace(/^(?:의|이|그|저)\s*/u, "")
+      .replace(/\s*(?:호텔|숙소|맛집|카페).*$/u, "")
+      .trim();
+  }
+  return t;
+}
+
+function osakaMetroAnchorHit(text: string): RealityAnchorHit | null {
+  const station = resolveOsakaMetroStationFromText(text);
+  if (!station) return null;
+  return {
+    geoId: `geo:jp:osaka:metro:${station.id}`,
+    labelKo: `${station.nameKo}역`,
+    lat: station.lat,
+    lng: station.lng,
+    kind: "station",
+    provider: "osaka_metro",
+  };
+}
+
 /**
- * Resolve named Reality Anchor from NL via world-geo catalog.
+ * Resolve named Reality Anchor from NL via world-geo catalog (+ Osaka Metro).
  */
 export function resolveRealityAnchorFromUtterance(
   text: string,
@@ -58,6 +94,7 @@ export function resolveRealityAnchorFromUtterance(
           : hit.node.kind === "city"
             ? "city"
             : "area",
+      provider: "world_geo",
     };
   }
 
@@ -71,7 +108,83 @@ export function resolveRealityAnchorFromUtterance(
         lat: node.centroid.lat,
         lng: node.centroid.lng,
         kind: "poi",
+        provider: "world_geo",
       };
+    }
+  }
+
+  // Local Osaka Metro station dict — covers 「모리노미아역」etc. without network.
+  const metro = osakaMetroAnchorHit(t);
+  if (metro) return metro;
+
+  return null;
+}
+
+function buildGeocodeQueryCandidates(label: string, utterance: string): string[] {
+  const base = label.trim();
+  if (!base) return [];
+  const out: string[] = [base];
+  const stationCore = base.replace(/(?:역|駅|station)$/iu, "").trim();
+  const looksJpTourist =
+    /오사카|大阪|osaka|도쿄|東京|교토|京都|japan|일본/iu.test(utterance) ||
+    /역$/u.test(base) ||
+    Boolean(resolveOsakaMetroStationFromText(base));
+
+  if (looksJpTourist || /[가-힣]/u.test(stationCore)) {
+    out.push(`${stationCore} Station Osaka Japan`);
+    out.push(`${stationCore}駅 大阪`);
+    out.push(`${base} 大阪`);
+  }
+  return [...new Set(out.map((q) => q.trim()).filter(Boolean))];
+}
+
+/**
+ * Catalog miss → Osaka Metro → Nominatim / Location Engine (world search).
+ * Use on Agent Loop spatial_constraint so unknown places still pin Reality.
+ */
+export async function resolveRealityAnchorFromUtteranceAsync(
+  text: string,
+): Promise<RealityAnchorHit | null> {
+  const sync = resolveRealityAnchorFromUtterance(text);
+  if (sync) return sync;
+
+  const label = extractNearPlaceLabelFromUtterance(text) || text.trim();
+  if (!label) return null;
+
+  const metro = osakaMetroAnchorHit(label);
+  if (metro) return metro;
+
+  const queries = buildGeocodeQueryCandidates(label, text);
+  for (const query of queries) {
+    try {
+      const resolved = await resolveLocationFromText(query);
+      const entity = resolved?.entity;
+      if (
+        !entity ||
+        !Number.isFinite(entity.lat) ||
+        !Number.isFinite(entity.lng)
+      ) {
+        continue;
+      }
+      const kind: RealityAnchorHit["kind"] =
+        /역|駅|station/iu.test(label) || /station/iu.test(entity.labelEn)
+          ? "station"
+          : entity.admin.city
+            ? "area"
+            : "poi";
+      return {
+        geoId:
+          entity.id ||
+          `geo:geocode:${entity.lat.toFixed(5)},${entity.lng.toFixed(5)}`,
+        labelKo: entity.labelKo || label,
+        lat: entity.lat,
+        lng: entity.lng,
+        kind,
+        provider:
+          entity.provider === "registry" ? "registry" : "nominatim",
+      };
+    } catch {
+      /* try next query */
     }
   }
 

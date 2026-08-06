@@ -22,7 +22,7 @@ export type WorkspaceMutationDecision = {
 
 /** Soft in-set refine — do not wipe inventory. */
 const SOFT_REFINE_RE =
-  /더\s*싸|저렴한\s*순|가성비|싼\s*순|평점\s*높|별점\s*높|상위\s*\d|이\s*중|그중|그\s*중|필터|정렬|가까운\s*순/iu;
+  /더\s*싸|저렴한\s*순|가성비|싼\s*순|평점\s*높|별점\s*높|상위\s*\d|이\s*중|그중|그\s*중|필터|정렬|가까운\s*순|남겨|남기|\d+\s*개\s*만|\d+\s*곳\s*만|(?:번|번째)\s*빼|빼\s*(?:줘|봐|달)/iu;
 
 /** Clear location / area pivot — re-scout even if pins already exist. */
 const CLEAR_LOCATION_RE =
@@ -72,6 +72,21 @@ export function resolveWorkspaceMutationMode(input: {
     };
   }
 
+  // Soft refine — before hard price replace so 「그중 10만원 이하만 남겨」 stays in-set.
+  if (SOFT_REFINE_RE.test(text)) {
+    return {
+      mode: "refine",
+      reason: /상위|이\s*중|그중|그\s*중|필터|남겨|남기|\d+\s*개\s*만|(?:번|번째)\s*빼/iu.test(
+        text,
+      )
+        ? "soft_filter"
+        : "soft_rank",
+      replyHintKo: input.hasVisibleCandidates
+        ? "지금 후보 안에서 다시 골랐어요"
+        : null,
+    };
+  }
+
   const hardPrice = parseMaxNightlyPriceKrw(text);
   if (
     hardPrice != null &&
@@ -89,19 +104,6 @@ export function resolveWorkspaceMutationMode(input: {
       mode: "replace",
       reason: "clear_research",
       replyHintKo: "조건을 반영해 후보를 다시 찾았어요",
-    };
-  }
-
-  // Soft refine — even when no candidates yet, mode is refine (handler may no-op).
-  if (SOFT_REFINE_RE.test(text)) {
-    return {
-      mode: "refine",
-      reason: /상위|이\s*중|그중|필터/iu.test(text)
-        ? "soft_filter"
-        : "soft_rank",
-      replyHintKo: input.hasVisibleCandidates
-        ? "지금 후보 안에서 다시 골랐어요"
-        : null,
     };
   }
 

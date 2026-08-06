@@ -59,8 +59,10 @@ export function BottomSheetWorkspace({
         className={cn(
           "flex w-full max-w-[480px] flex-col rounded-t-[28px] bg-[#111114]/94 shadow-[0_-12px_48px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur-2xl",
           isFull
-            ? "h-[min(92dvh,920px)]"
-            : "h-[min(52dvh,480px)]",
+            ? // Level 3 — rise under status bar to the top of the screen
+              "h-[calc(100dvh-env(safe-area-inset-top,0px))] max-h-[100dvh] rounded-t-[20px]"
+            : // Level 2 — half sheet; swipe up → full
+              "h-[min(52dvh,480px)]",
         )}
         onTouchStart={(e) => {
           startY.current = e.touches[0]?.clientY ?? null;

@@ -10,18 +10,20 @@ import { copy } from "@/lib/copy/human-ko";
 import { appendWorkspacePreviewComposeTurn } from "@/lib/context-workspace/append-workspace-preview-turn";
 import { openLodgingContextWorkspace } from "@/lib/context-workspace/open-map-workspace";
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
-import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import {
   readContextWorkspace,
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
+import { stampTripDraftOntoContext } from "@/lib/context-workspace/stamp-trip-draft-onto-context";
 import { ensureTripContextEvent } from "@/lib/experience-run/ensure-trip-context-event";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
+import { parseTripPrepSlots } from "@/lib/action-planner/build-trip-prep-plan";
 import { appendGlobeChatTextMessage } from "@/lib/globe/chat/globe-chat-session-store";
 import { parseMarketProductFromText } from "@/lib/globe/market/parse-market-product-from-text";
 import { isValidMarketProductName } from "@/lib/globe/market/sanitize-market-product-name";
 import { runRealityIngressPipeline } from "@/lib/reality-pipeline";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry";
+import { rememberConstraintsOnWorkspace } from "@/lib/agent-policy/stamp-constitution-on-workspace";
 import { buildWorkspaceFocusSurface } from "@/lib/workspace-kind/build-workspace-focus-surface";
 import {
   classifyMarketWorkspaceRole,
@@ -112,9 +114,11 @@ export function runWorkspaceIntentContinuum(input: {
   readonly skipChatEcho?: boolean;
   readonly lat?: number | null;
   readonly lng?: number | null;
+  /** Soft Travel mint when classifier needs a nudge (hotel find without trip poem). */
+  readonly forceKind?: WorkspaceKind | null;
 }): WorkspaceIntentContinuumResult | null {
   const utterance = input.utterance.trim();
-  const kind = classifyWorkspaceKind(utterance);
+  const kind = input.forceKind ?? classifyWorkspaceKind(utterance);
   if (!kind) {
     return null;
   }
@@ -193,12 +197,8 @@ export function runWorkspaceIntentContinuum(input: {
 
   if (prepared.workspace) {
     appendWorkspacePreviewComposeTurn(contextEventId);
-    // Cursor IDE: open Workspace immediately — no 「작업장 열기」tap / Host modal.
-    writeContextWorkspaceExpanded(contextEventId, true);
-    dispatchContextWorkspaceExpand({
-      contextEventId,
-      source: "trip_prep",
-    });
+    // Soft — Activity Trail + 「펼치기」; do not auto-expand Workspace shell.
+    writeContextWorkspaceExpanded(contextEventId, false);
   }
 
   seedContextRealityBundle({
@@ -232,10 +232,44 @@ export function runWorkspaceIntentContinuum(input: {
             : null,
   });
 
+  // Destination + stay carry — ConstraintMemory + Context trip draft (follow-ups inherit).
+  if (kind === "travel") {
+    const slots = parseTripPrepSlots(utterance);
+    const dest =
+      slots.destinationKo?.trim() ||
+      extractTravelDestination(utterance)?.trim() ||
+      prepared.card.titleKo.trim() ||
+      null;
+    const stayLabel =
+      slots.nights != null && slots.days != null
+        ? `${slots.nights}박${slots.days}일`
+        : slots.nights != null
+          ? `${slots.nights}박`
+          : null;
+    rememberConstraintsOnWorkspace({
+      contextEventId,
+      utterance: dest ? `${dest} ${utterance}` : utterance,
+    });
+    if (dest && dest !== "여행지") {
+      stampTripDraftOntoContext({
+        contextEventId,
+        destinationKo: dest,
+        stayLabelKo: stayLabel,
+        nights: slots.nights,
+        days: slots.days,
+        tripPrep: slots,
+      });
+    }
+  }
+
   return {
     kind,
     contextEventId,
-    card: prepared.card,
+    card: {
+      ...prepared.card,
+      // Continuum already expanded — CTA language = opened, not 「작업장 열기」.
+      ctaKo: copy.globe.workspaceOneTouchOpenedToast,
+    },
     focus,
     workspace: prepared.workspace,
     bookingPathSeeded,
@@ -258,7 +292,10 @@ export async function seedTravelLodgingForContinuum(input: {
   if (!contextEventId || !utterance) {
     return null;
   }
-  const dest = extractTravelDestination(utterance)?.trim() || "여행지";
+  const dest =
+    extractTravelDestination(utterance)?.trim() ||
+    readContextWorkspace(contextEventId)?.constraintMemory?.destinationKo?.trim() ||
+    "여행지";
   const prev = readContextWorkspace(contextEventId);
   const tool = await invokeRimvioToolAsync("hotel.lookup", {
     query: `${dest} 숙소`,

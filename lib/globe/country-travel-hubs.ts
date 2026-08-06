@@ -1,7 +1,10 @@
 /**
  * Multi-hub country destinations — country ≠ city.
  * User says "필리핀" → country frame + hub chips; city confirms Execution Space.
+ * Unframed countries derive hubs from overseas city registry + 「기타」 blank.
  */
+
+import { listOverseasCitiesForCountry } from "@/lib/globe/overseas-place-registry";
 
 export type CountryTravelHub = {
   readonly id: string;
@@ -218,27 +221,46 @@ export function listHubLabelsForCountry(
   countryLabel: string | null | undefined,
 ): readonly string[] {
   const frame = matchCountryTravelFrame(countryLabel);
-  if (!frame) return [];
-  return frame.hubs.map((h) => h.labelKo);
+  if (frame) {
+    return frame.hubs.map((h) => h.labelKo);
+  }
+  return listOverseasCitiesForCountry(countryLabel).map((c) => c.label);
 }
 
 export function hubChoiceRowsForCountry(
   countryLabel: string | null | undefined,
 ): readonly { id: string; label: string }[] {
   const frame = matchCountryTravelFrame(countryLabel);
-  if (!frame) return [];
-  return frame.hubs.map((h) => ({ id: h.id, label: h.labelKo }));
+  if (frame) {
+    return frame.hubs.map((h) => ({ id: h.id, label: h.labelKo }));
+  }
+  return listOverseasCitiesForCountry(countryLabel).map((c) => ({
+    id: `city-${c.label}`,
+    label: c.label,
+  }));
 }
 
 export function pickPromptForCountry(
   countryLabel: string | null | undefined,
 ): string | null {
-  return matchCountryTravelFrame(countryLabel)?.pickPromptKo ?? null;
+  const frame = matchCountryTravelFrame(countryLabel);
+  if (frame) return frame.pickPromptKo;
+  const hubs = listHubLabelsForCountry(countryLabel);
+  const country = countryLabel?.trim();
+  if (!country) return null;
+  if (hubs.length === 0) {
+    return `${country} · 어느 도시로 가시나요? 직접 입력하거나 「기타」를 눌러 주세요`;
+  }
+  const preview = hubs.slice(0, 5).join(" · ");
+  return `${country} · 어디부터 할까요? ${preview}${hubs.length > 5 ? " · …" : ""} · 기타`;
 }
 
-/** Default Japan-style hubs when no country frame known. */
+/** Default Japan-style hubs when region unknown (no country yet). */
 export const FALLBACK_DESTINATION_HUBS = [
   { id: "osaka", label: "오사카" },
   { id: "tokyo", label: "도쿄" },
   { id: "fukuoka", label: "후쿠오카" },
 ] as const;
+
+export const DESTINATION_OTHER_CHIP_ID = "trip-dest-other";
+export const DESTINATION_OTHER_LABEL_KO = "기타";
