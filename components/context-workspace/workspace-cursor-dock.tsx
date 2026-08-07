@@ -438,7 +438,7 @@ export function WorkspaceCursorDock({
     agent?.currentTaskKo ||
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
-  const trailView = buildAgentExecutionFeedView(activity, percent);
+  const trailView = buildAgentExecutionFeedView(activity);
   const streamOpen =
     transcriptOpen || busy || Boolean(activity?.running);
   const liveWorking = busy || Boolean(activity?.running);
@@ -559,17 +559,12 @@ export function WorkspaceCursorDock({
               )}
               aria-hidden
             />
-            <span className="text-[11px] font-semibold tracking-tight text-[#1d1d1f]">
+            <span className="text-[11px] font-medium tracking-tight text-[#1d1d1f]">
               Agent
             </span>
-            {liveWorking || percent > 0 ? (
-              <span className="tabular-nums text-[11px] font-semibold text-[#86868b]">
-                {Math.round(percent)}%
-              </span>
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-[11px] text-[#86868b]">
+            <span className="min-w-0 flex-1 truncate text-[11px] font-normal text-[#86868b]">
               {liveWorking
-                ? trailView?.rows.find((r) => r.status === "running")?.labelKo ||
+                ? trailView?.rows.find((r) => r.status === "running")?.label ||
                   taskLine
                 : copy.globe.workspaceChatTitle}
             </span>
@@ -586,13 +581,15 @@ export function WorkspaceCursorDock({
           </button>
 
           {liveWorking ? (
-            <div className="mx-3.5 mb-1 h-[2px] overflow-hidden rounded-full bg-[#e8e8ed]">
-              <div
-                className="h-full rounded-full bg-[#3182f6] transition-[width] duration-500 ease-out"
-                style={{
-                  width: `${Math.max(8, Math.min(100, percent || 12))}%`,
-                }}
+            <div className="mx-3.5 mb-1 flex items-center gap-1.5 px-0.5">
+              <span
+                className="h-1 w-1 animate-pulse rounded-full bg-[#1d1d1f]"
+                aria-hidden
               />
+              <span className="truncate text-[11px] font-normal text-[#86868b]">
+                {trailView?.rows.find((r) => r.status === "running")?.label ??
+                  taskLine}
+              </span>
             </div>
           ) : null}
 

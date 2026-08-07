@@ -11,7 +11,7 @@ import { GlobeChatEmptyState } from "@/components/globe/chat/globe-chat-empty-st
 import { GlobeChatSlotChips } from "@/components/globe/chat/globe-chat-slot-chips";
 import { GlobeComposeDraftCard } from "@/components/globe/execution-feed/globe-compose-draft-card";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
-import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
+import { AgentExecutionFeed } from "@/components/globe/chat/agent-execution-feed";
 import {
   GlobeContextIngestBar,
   type GlobeContextIngestBarHandle,
@@ -31,9 +31,9 @@ import {
   subscribeAgentActivityTranscript,
 } from "@/lib/context-run/agent-activity-transcript";
 import {
-  buildCursorAgentTrailView,
-  type CursorAgentTrailView,
-} from "@/lib/ui/build-cursor-agent-trail-view";
+  buildAgentExecutionFeedView,
+  type AgentExecutionFeedView,
+} from "@/lib/ui/build-agent-execution-feed";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { copy } from "@/lib/copy/human-ko";
 import { findMarketIntentByEventId } from "@/lib/globe/market/market-alignment-store";
@@ -179,12 +179,12 @@ export function GlobeChatScreen({
   const scrollRef = useRef<HTMLDivElement>(null);
   const ingestRef = useRef<GlobeContextIngestBarHandle>(null);
   const [highlightBar, setHighlightBar] = useState(false);
-  const [agentTrailView, setAgentTrailView] =
-    useState<CursorAgentTrailView | null>(null);
+  const [agentFeedView, setAgentFeedView] =
+    useState<AgentExecutionFeedView | null>(null);
 
   useEffect(() => {
     const sync = () => {
-      setAgentTrailView(buildCursorAgentTrailView(readAgentActivityTranscript()));
+      setAgentFeedView(buildAgentExecutionFeedView(readAgentActivityTranscript()));
     };
     sync();
     return subscribeAgentActivityTranscript(sync);
@@ -224,7 +224,7 @@ export function GlobeChatScreen({
       return;
     }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length, open, showDraftCard, agentTrailView?.nested?.id, agentTrailView?.waitLineKo]);
+  }, [messages.length, open, showDraftCard, agentFeedView?.rows.length, agentFeedView?.running]);
 
   useEffect(() => {
     if (!open) {
@@ -270,6 +270,23 @@ export function GlobeChatScreen({
     }
     return null;
   }, [messages]);
+
+  const lastUserText = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (m && "role" in m && m.role === "user" && "text" in m) {
+        return String(m.text ?? "").trim();
+      }
+    }
+    return "";
+  }, [messages]);
+
+  const showExecutionFeed = Boolean(
+    agentFeedView &&
+      (agentFeedView.running ||
+        (lastUserText &&
+          agentFeedView.utterance.trim() === lastUserText)),
+  );
 
   const actionHint = useMemo(
     () =>
@@ -542,10 +559,10 @@ export function GlobeChatScreen({
               );
             })}
 
-            {agentTrailView ? (
-              <div className="flex justify-start">
-                <div className={cn("max-w-[92%]", globeChatLight.cardSurface)}>
-                  <CursorAgentActivityTrail view={agentTrailView} />
+            {showExecutionFeed && agentFeedView ? (
+              <div className="flex justify-start pb-3 pt-1">
+                <div className="max-w-[96%] min-w-[min(100%,18rem)]">
+                  <AgentExecutionFeed view={agentFeedView} />
                 </div>
               </div>
             ) : null}
