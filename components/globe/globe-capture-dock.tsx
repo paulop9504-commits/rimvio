@@ -169,8 +169,9 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
 
         {!photoActive && !composeHidden ? (
           <div
-            className="pointer-events-none mx-auto flex w-full max-w-[min(100%,20rem)] flex-col gap-1"
+            className="pointer-events-none mx-auto flex w-full max-w-[min(100%,32rem)] flex-col gap-1.5"
             data-globe-ingest-compact="pill"
+            data-globe-prompt-shell="gpt"
           >
             {!suppressMapIntentPills ? (
               <GlobeActionPillGuide

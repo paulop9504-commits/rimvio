@@ -10,6 +10,7 @@ import {
   type FormEvent,
 } from "react";
 import {
+  ArrowUp,
   ImagePlus,
   Loader2,
   Mic,
@@ -893,13 +894,18 @@ export const GlobeContextIngestBar = forwardRef<
       ) : null}
       <div
         className={cn(
-          isPill ? "relative rounded-full backdrop-blur-xl" : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
           isLightPill
-            ? "rimvio-globe-prompt-pill--light ring-1 ring-[color-mix(in_oklch,#ffc9c4_50%,#e8ebee_50%)]"
+            ? "relative overflow-hidden rounded-[26px] backdrop-blur-xl"
+            : isPill
+              ? "relative rounded-full backdrop-blur-xl"
+              : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
+          isLightPill
+            ? "rimvio-globe-prompt-pill--light rimvio-globe-prompt--gpt ring-1 ring-black/[0.08]"
             : mapPromptMode && !isDiscovery
               ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
               : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
         )}
+        data-globe-prompt-style={isLightPill ? "gpt" : undefined}
       >
         {menuOpen && !isDiscovery ? (
           isPill ? (
@@ -973,8 +979,12 @@ export const GlobeContextIngestBar = forwardRef<
         <form
           onSubmit={(event) => void submitText(event)}
           className={cn(
-            "group flex items-center",
-            isPill ? "gap-1.5 px-2 py-1.5" : "gap-2 px-2 py-2",
+            "group flex items-end",
+            isLightPill
+              ? "gap-2 px-3 py-2.5"
+              : isPill
+                ? "gap-1.5 px-2 py-1.5"
+                : "gap-2 px-2 py-2",
           )}
         >
           {!isDiscovery ? (
@@ -984,16 +994,23 @@ export const GlobeContextIngestBar = forwardRef<
             onClick={() => setMenuOpen((open) => !open)}
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
-              isPill ? "size-8 shrink-0 rounded-full" : "size-10 shrink-0 rounded-xl",
-              isLightPill && !menuOpen && "text-[#4e5968] hover:text-[#191f28]",
+              isLightPill
+                ? "mb-0.5 size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                : isPill
+                  ? "size-8 shrink-0 rounded-full"
+                  : "size-10 shrink-0 rounded-xl",
+              isLightPill && menuOpen && "bg-black/[0.06] text-[#0d0d0d]",
             )}
             aria-label={menuOpen ? copy.globe.ingestMenuCloseAria : copy.globe.ingestMenuOpenAria}
             aria-expanded={menuOpen}
           >
             {menuOpen ? (
-              <X className={isPill ? "size-4" : "size-5"} aria-hidden />
+              <X className={isLightPill || isPill ? "size-4" : "size-5"} aria-hidden />
             ) : (
-              <Plus className={isPill ? "size-4" : "size-5"} aria-hidden />
+              <Plus
+                className={isLightPill || isPill ? "size-[18px]" : "size-5"}
+                aria-hidden
+              />
             )}
           </button>
           ) : null}
@@ -1008,12 +1025,12 @@ export const GlobeContextIngestBar = forwardRef<
               placeholder={inputPlaceholder}
               disabled={marketComposeBusy}
               className={cn(
-                "min-w-0 flex-1 bg-transparent text-[14px] outline-none",
+                "min-w-0 flex-1 bg-transparent outline-none",
                 isLightPill
-                  ? "px-0.5 text-[#191f28] placeholder:text-[#8b95a1]"
+                  ? "px-0.5 py-2 text-[16px] leading-snug tracking-[-0.01em] text-[#0d0d0d] placeholder:text-[#8e8e8e]"
                   : mapPromptMode && !isDiscovery
-                    ? "px-1 text-white placeholder:text-white/42"
-                    : "px-1 text-[#191f28] placeholder:text-[#8b95a1]",
+                    ? "px-1 text-[14px] text-white placeholder:text-white/42"
+                    : "px-1 text-[14px] text-[#191f28] placeholder:text-[#8b95a1]",
               )}
               data-globe-map-intent-prompt-input
             />
@@ -1060,9 +1077,14 @@ export const GlobeContextIngestBar = forwardRef<
               }}
               className={cn(
                 rimvioIconBtnClass(voiceListening ? "primary" : "ghost"),
-                isPill ? "size-8 shrink-0 rounded-full" : "size-10 shrink-0 rounded-xl",
-                isLightPill && !voiceListening && "text-[#4e5968] hover:text-[#191f28]",
-                !voiceListening &&
+                isLightPill
+                  ? "mb-0.5 size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                  : isPill
+                    ? "size-8 shrink-0 rounded-full"
+                    : "size-10 shrink-0 rounded-xl",
+                isLightPill && voiceListening && "bg-black/[0.08] text-[#0d0d0d]",
+                !isLightPill &&
+                  !voiceListening &&
                   "transition lg:pointer-events-none lg:opacity-0 group-hover:lg:pointer-events-auto group-hover:lg:opacity-100 group-focus-within:lg:pointer-events-auto group-focus-within:lg:opacity-100",
                 !voiceSupported && "opacity-40",
               )}
@@ -1076,7 +1098,7 @@ export const GlobeContextIngestBar = forwardRef<
               aria-pressed={voiceListening}
               data-globe-ingest-voice-trigger
             >
-              <Mic className={isPill ? "size-4" : "size-5"} aria-hidden />
+              <Mic className={isLightPill || isPill ? "size-4" : "size-5"} aria-hidden />
             </button>
           ) : null}
 
@@ -1085,7 +1107,7 @@ export const GlobeContextIngestBar = forwardRef<
             disabled={busy || (!text.trim() && !offerTravelGps)}
             className={cn(
               isLightPill
-                ? "rimvio-globe-prompt-pill-send size-8 shrink-0 rounded-full transition-colors"
+                ? "rimvio-globe-prompt-pill-send mb-0.5 size-9 shrink-0 rounded-full transition-colors"
                 : rimvioIconBtnClass("primary"),
               !isLightPill && isPill && "size-8 shrink-0 rounded-full",
               !isLightPill && !isPill && "size-10 shrink-0 rounded-xl",
@@ -1095,7 +1117,12 @@ export const GlobeContextIngestBar = forwardRef<
             aria-label={copy.globe.ingestSendAria}
           >
             {busy ? (
-              <Loader2 className={isPill ? "size-4 animate-spin" : "size-5 animate-spin"} aria-hidden />
+              <Loader2
+                className={isLightPill || isPill ? "size-4 animate-spin" : "size-5 animate-spin"}
+                aria-hidden
+              />
+            ) : isLightPill ? (
+              <ArrowUp className="size-4" strokeWidth={2.5} aria-hidden />
             ) : (
               <SendHorizontal className={isPill ? "size-4" : "size-5"} aria-hidden />
             )}

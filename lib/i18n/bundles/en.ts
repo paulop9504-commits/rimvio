@@ -871,12 +871,12 @@ export const copyEn: Copy = {
     contextTriggerCtaExploreMemory: "Explore memories",
     contextTriggerCtaRestoreTalk: "Restore conversation",
     contextTriggerCtaCheckPlace: "Check location",
-    contextAiComposerPlaceholder: "Context · people · schedule · @ run",
+    contextAiComposerPlaceholder: "What do you want to create? · search · links · memos",
     askSheet: {
       ariaLabel: "Ask the globe",
       heroPersonal: "What moment comes back today?",
       heroDiscovery: "What are you looking for?",
-      placeholderPersonal: "What do you want to create?",
+      placeholderPersonal: "What do you want to create? · search · links · memos",
       placeholderDiscovery: "Align · meetups · places",
       capturePillsPersonal: [
         {
@@ -1487,8 +1487,8 @@ export const copyEn: Copy = {
     instantCarryNearSeedCta: "Ask again",
     instantCarryNearSeedHint: (label: string) => `Continue near ${label}`,
     instantCarryNearEmpty: "No nearby place locked yet",
-    ingestDefaultPlaceholder: "What do you want to create?",
-    mapIntentPromptPlaceholder: "Sell · food · memory…",
+    ingestDefaultPlaceholder: "What do you want to create? · search · links · memos",
+    mapIntentPromptPlaceholder: "What should we make?",
     chatScreenTitle: "Compose chat",
     chatScreenSubtitleChat: "Say it",
     chatScreenSubtitleSoft: "Reading intent",
