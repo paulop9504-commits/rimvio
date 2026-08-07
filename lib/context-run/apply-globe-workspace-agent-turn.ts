@@ -17,6 +17,7 @@ import { resolveAgentStatusWorkLog } from "@/lib/context-run/agent-status-work-l
 import { compileWorkspaceAgentPlan } from "@/lib/context-run/compile-workspace-agent-plan";
 import {
   hasProvisionalContextWorkspace,
+  readContextWorkspace,
   writeContextWorkspaceExpanded,
 } from "@/lib/context-workspace/workspace-store";
 import { dispatchContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
@@ -321,25 +322,34 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
   // Free-talk / knowledge / casual chat BEFORE absorb · locate · Agent Loop.
   // Travel / Continuum work never falls into essay chat.
   if (!isWorkspaceAgentWorkUtterance(utterance)) {
-    const chat = await tryApplyConversationalTurn({
-      utterance,
-      scopeId:
+    const ctxForChat = resolveActiveWorkspaceContextId({
+      explicitContextEventId:
         input.explicitContextEventId ?? input.contextEventId ?? null,
     });
+    const destKo =
+      (ctxForChat
+        ? readContextWorkspace(ctxForChat)?.realityDraft?.destinationKo
+        : null) ?? null;
+    const chat = await tryApplyConversationalTurn({
+      utterance,
+      scopeId: ctxForChat,
+      regionKo: destKo,
+    });
     if (chat) {
-      const ctx = resolveActiveWorkspaceContextId({
-        explicitContextEventId:
-          input.explicitContextEventId ?? input.contextEventId ?? null,
-      });
       return {
         handled: true,
         statusKo: chat.replyKo,
-        contextEventId: ctx,
+        contextEventId: ctxForChat,
         workspaceMutated: false,
         openedWorkspace: false,
         committed: false,
         via: "free_talk",
-        patchKind: chat.mode === "knowledge" ? "knowledge" : "free_talk",
+        patchKind:
+          chat.mode === "direct"
+            ? "fact_direct"
+            : chat.mode === "knowledge"
+              ? "knowledge"
+              : "free_talk",
       };
     }
   }

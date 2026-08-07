@@ -54,7 +54,7 @@ import {
 import { RealityDraftItineraryCard } from "@/components/context-workspace/reality-draft-itinerary-card";
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
-import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
+import { AgentExecutionFeed } from "@/components/globe/chat/agent-execution-feed";
 import {
   dispatchRealityJump,
   type RealityJumpTarget,
@@ -64,7 +64,7 @@ import {
   subscribeAgentActivityTranscript,
   type AgentActivityTranscript,
 } from "@/lib/context-run/agent-activity-transcript";
-import { buildCursorAgentTrailView } from "@/lib/ui/build-cursor-agent-trail-view";
+import { buildAgentExecutionFeedView } from "@/lib/ui/build-agent-execution-feed";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { copy } from "@/lib/copy/human-ko";
@@ -438,10 +438,20 @@ export function WorkspaceCursorDock({
     agent?.currentTaskKo ||
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
-  const trailView = buildCursorAgentTrailView(activity);
+  const trailView = buildAgentExecutionFeedView(activity, percent);
   const streamOpen =
     transcriptOpen || busy || Boolean(activity?.running);
   const liveWorking = busy || Boolean(activity?.running);
+  const lastUserText = [...turns]
+    .reverse()
+    .find((t) => t.role === "user")
+    ?.text?.trim();
+  const showExecutionFeed = Boolean(
+    trailView &&
+      (trailView.running ||
+        liveWorking ||
+        (lastUserText && trailView.utterance.trim() === lastUserText)),
+  );
 
   // Continue is human-only (Status Panel / dock button). Never auto-send 「계속해」.
 
@@ -559,9 +569,8 @@ export function WorkspaceCursorDock({
             ) : null}
             <span className="min-w-0 flex-1 truncate text-[11px] text-[#86868b]">
               {liveWorking
-                ? trailView?.phaseLineKo ||
-                  trailView?.nested?.titleKo ||
-                  `${statusLabel} · ${taskLine}`
+                ? trailView?.rows.find((r) => r.status === "running")?.labelKo ||
+                  taskLine
                 : copy.globe.workspaceChatTitle}
             </span>
             <span className="shrink-0 text-[10px] font-medium text-[#aeaeb2]">
@@ -592,29 +601,41 @@ export function WorkspaceCursorDock({
               ref={scrollerRef}
               className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3.5 pb-1 pt-0.5"
             >
-              {trailView ? (
-                <div
-                  className="rounded-2xl bg-[#f5f5f7]/95 px-3 py-2.5 ring-1 ring-black/[0.03]"
-                  data-workspace-cursor-trail
-                >
-                  <CursorAgentActivityTrail view={trailView} />
-                </div>
-              ) : liveWorking && agent ? (
-                <div className="rounded-2xl bg-[#f5f5f7]/95 px-3 py-2.5 ring-1 ring-black/[0.03]">
-                  <p className="text-[11px] text-[#86868b]">
-                    {copy.globe.activityTrail.ranCommands(
-                      Math.max(1, agent.completedSteps.length),
+              {turns.length === 0 && !liveWorking ? (
+                <p className="py-2 text-center text-[11px] text-[#aeaeb2]">
+                  {copy.globe.workspaceChatEmptyBody}
+                </p>
+              ) : (
+                turns.slice(-5).map((turn) => (
+                  <div
+                    key={turn.id}
+                    className={cn(
+                      "flex",
+                      turn.role === "user" ? "justify-end" : "justify-start",
                     )}
-                  </p>
-                  <p className="mt-1 text-[13px] font-medium leading-snug text-[#1d1d1f]">
-                    {agent.goalKo || taskLine}
-                  </p>
-                  <p className="mt-1.5 animate-pulse text-[11px] text-[#86868b]">
-                    {nextLabel ||
-                      agent.liveHeadlineKo ||
-                      copy.globe.activityTrail.waitingAgent}
-                  </p>
-                </div>
+                  >
+                    {turn.role === "user" ? (
+                      <div className="max-w-[88%] rounded-[18px] rounded-br-[6px] bg-[#3182f6] px-3 py-1.5 text-[13px] font-medium leading-snug text-white">
+                        {turn.text}
+                      </div>
+                    ) : (
+                      <AssistantBubble
+                        turn={turn}
+                        dense
+                        contextEventId={eventId}
+                        onFocusNode={onFocusNode}
+                        onBriefReplay={onBriefReplay}
+                        briefReplayGroundIndex={briefReplayGroundIndex}
+                        activeDraftNodeId={activeDraftNodeId}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+
+              {/* Cursor order: user command → LIVE Execution Feed append below */}
+              {showExecutionFeed && trailView ? (
+                <AgentExecutionFeed view={trailView} />
               ) : null}
 
               {!liveWorking && agent && agent.completedSteps.length > 0 ? (
@@ -652,38 +673,6 @@ export function WorkspaceCursorDock({
                   ))}
                 </div>
               ) : null}
-
-              {turns.length === 0 && !liveWorking ? (
-                <p className="py-2 text-center text-[11px] text-[#aeaeb2]">
-                  {copy.globe.workspaceChatEmptyBody}
-                </p>
-              ) : (
-                turns.slice(-5).map((turn) => (
-                  <div
-                    key={turn.id}
-                    className={cn(
-                      "flex",
-                      turn.role === "user" ? "justify-end" : "justify-start",
-                    )}
-                  >
-                    {turn.role === "user" ? (
-                      <div className="max-w-[88%] rounded-[18px] rounded-br-[6px] bg-[#3182f6] px-3 py-1.5 text-[13px] font-medium leading-snug text-white">
-                        {turn.text}
-                      </div>
-                    ) : (
-                      <AssistantBubble
-                        turn={turn}
-                        dense
-                        contextEventId={eventId}
-                        onFocusNode={onFocusNode}
-                        onBriefReplay={onBriefReplay}
-                        briefReplayGroundIndex={briefReplayGroundIndex}
-                        activeDraftNodeId={activeDraftNodeId}
-                      />
-                    )}
-                  </div>
-                ))
-              )}
             </div>
           ) : null}
 
