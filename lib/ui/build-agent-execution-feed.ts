@@ -1,77 +1,118 @@
 /**
- * Agent Execution Feed — append-only step log (Cursor / Claude Code style).
- * Done rows collapse to ✓; current row is emphasized with ▶ + spinner.
+ * Agent Execution Feed — append-only timeline (Cursor-style).
+ * Short English verbs only. No progress %, no metrics, no mutability of past rows.
  */
 
-import type { AgentActivityTranscript } from "@/lib/context-run/agent-activity-transcript";
-import { copy } from "@/lib/copy/human-ko";
+import type {
+  AgentActivityEvent,
+  AgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+import type { AgentProductPipelineStage } from "@/lib/context-run/agent-product-pipeline";
 
-export type AgentExecutionFeedRowStatus = "done" | "running";
+export type AgentExecutionFeedRowStatus = "done" | "running" | "error";
 
 export type AgentExecutionFeedRow = {
   readonly id: string;
   readonly status: AgentExecutionFeedRowStatus;
-  readonly labelKo: string;
-  readonly detailKo: string | null;
-  readonly metricKo: string | null;
+  /** Short English action line, e.g. "Searching places..." */
+  readonly label: string;
 };
 
 export type AgentExecutionFeedView = {
-  readonly titleKo: string;
   readonly running: boolean;
   readonly utterance: string;
   readonly rows: readonly AgentExecutionFeedRow[];
-  /** 0–100 when known; otherwise null (hide bar). */
-  readonly progressPercent: number | null;
 };
+
+const STAGE_LINE: Record<AgentProductPipelineStage, string> = {
+  intent: "Understanding intent...",
+  context_resolution: "Reading context...",
+  planner: "Planning search...",
+  object_discovery: "Searching places...",
+  object_enrichment: "Enriching places...",
+  candidate_evaluation: "Ranking candidates...",
+  workspace_patch: "Updating workspace...",
+  projection: "Creating map objects...",
+  agent_status: "Finalizing...",
+  prepare: "Preparing...",
+  commit: "Waiting approval...",
+};
+
+const KIND_LINE: Record<AgentActivityEvent["kind"], string> = {
+  thought: "Planning...",
+  explore: "Searching places...",
+  tool: "Running tool...",
+  patch: "Applying changes...",
+  verify: "Verifying...",
+  status: "Updating...",
+};
+
+/** Collapse long KO status essays into 2–4 word EN action lines. */
+function shortEnglishLine(ev: AgentActivityEvent): string {
+  if (ev.stage && STAGE_LINE[ev.stage]) {
+    return STAGE_LINE[ev.stage];
+  }
+  const raw = ev.labelKo.trim();
+  if (/intent|의도|이해/iu.test(raw)) return "Understanding intent...";
+  if (/계획|planner|planning/iu.test(raw)) return "Planning search...";
+  if (/검색|후보|discover|search|explore|탐색/iu.test(raw)) {
+    return "Searching places...";
+  }
+  if (/평가|rank|compare|비교/iu.test(raw)) return "Ranking candidates...";
+  if (/enrich|연결|정보/iu.test(raw)) return "Reading context...";
+  if (/patch|반영|workspace/iu.test(raw)) return "Updating workspace...";
+  if (/map|핀|projection|화면/iu.test(raw)) return "Creating map objects...";
+  if (/준비|prepare/iu.test(raw)) return "Preparing workspace...";
+  if (/완료|done|ready|반영했/iu.test(raw)) return "Done.";
+  if (/hotel|숙소|lodging/iu.test(raw)) return "Searching hotels...";
+  if (/review|리뷰/iu.test(raw)) return "Reading reviews...";
+  if (/route|동선|일정/iu.test(raw)) return "Creating itinerary...";
+  // Never dump long essay — fall back to kind.
+  if (raw.length <= 28 && /^[A-Za-z]/.test(raw)) {
+    return raw.endsWith("...") || raw.endsWith(".") ? raw : `${raw}...`;
+  }
+  return KIND_LINE[ev.kind] ?? "Working...";
+}
 
 export function buildAgentExecutionFeedView(
   tape: AgentActivityTranscript | null,
-  progressPercent: number | null = null,
+  _progressPercent?: number | null,
 ): AgentExecutionFeedView | null {
   if (!tape || tape.events.length === 0) return null;
 
-  const rows: AgentExecutionFeedRow[] = tape.events.map((ev, index) => {
-    const isLast = index === tape.events.length - 1;
-    const running = tape.running && isLast;
-    return {
+  // Dedupe consecutive identical short lines (append-only feel, less noise).
+  const rows: AgentExecutionFeedRow[] = [];
+  for (let index = 0; index < tape.events.length; index += 1) {
+    const ev = tape.events[index]!;
+    const label = shortEnglishLine(ev);
+    const prev = rows[rows.length - 1];
+    if (prev && prev.label === label) continue;
+    rows.push({
       id: ev.id,
-      status: running ? "running" : "done",
-      labelKo: ev.labelKo.trim() || copy.globe.executionFeed.stepFallback || "작업 중",
-      detailKo: running
-        ? ev.detailKo?.trim() || null
-        : null,
-      metricKo: ev.metricKo?.trim() || null,
-    };
-  });
+      status: "done",
+      label,
+    });
+  }
 
-  if (!tape.running) {
-    const last = rows[rows.length - 1];
-    const readyLabel = copy.globe.executionFeed.ready || "Ready";
-    if (last && last.labelKo !== readyLabel) {
+  if (rows.length === 0) return null;
+
+  if (tape.running) {
+    const last = rows[rows.length - 1]!;
+    rows[rows.length - 1] = { ...last, status: "running" };
+  } else {
+    const last = rows[rows.length - 1]!;
+    if (last.label !== "Done.") {
       rows.push({
-        id: `${last.id}_ready`,
+        id: `${last.id}_done`,
         status: "done",
-        labelKo: readyLabel,
-        detailKo: null,
-        metricKo: null,
+        label: "Done.",
       });
     }
   }
 
   return {
-    titleKo: copy.globe.executionFeed.title || "Execution Feed",
     running: tape.running,
     utterance: tape.utterance,
     rows,
-    progressPercent:
-      tape.running && progressPercent != null && Number.isFinite(progressPercent)
-        ? Math.max(0, Math.min(100, Math.round(progressPercent)))
-        : tape.running
-          ? Math.min(
-              92,
-              Math.max(12, Math.round((tape.events.length / 8) * 100)),
-            )
-          : null,
   };
 }
