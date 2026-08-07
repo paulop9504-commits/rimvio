@@ -1636,6 +1636,9 @@ export const copyEn: Copy = {
       matchStepSchedule: "Scheduling prep",
     },
     executionFeed: {
+      title: "Execution Feed",
+      stepFallback: "Working",
+      ready: "Ready",
       goalEyebrow: "Intent",
       summaryEyebrow: "Summary",
       checklistActive: "In progress",

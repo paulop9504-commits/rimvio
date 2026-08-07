@@ -196,14 +196,9 @@ export function resolveSmallTalk(input: {
     };
   }
 
-  // 1) Weather — the classic ice-breaker.
+  // 1) Weather ice-breaker — temperature/fact asks leave this path (live fetch).
   if (WEATHER_TEMP.test(text)) {
-    return {
-      topic: "weather",
-      replyKo: region
-        ? `${region} 날씨 확인해볼게요.`
-        : "지금 날씨 확인해볼게요.",
-    };
+    return null;
   }
   if (WEATHER_HOT.test(text)) {
     return {

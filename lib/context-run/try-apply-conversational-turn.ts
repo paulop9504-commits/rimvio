@@ -8,6 +8,10 @@
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 import { looksLikeAgentFreeTalk } from "@/lib/context-run/looks-like-agent-free-talk";
 import { resolveCurrentMessageIntent } from "@/lib/context-run/resolve-current-message-intent";
+import {
+  looksLikeWeatherFactAsk,
+  tryFetchWeatherFactReply,
+} from "@/lib/context-run/try-fetch-weather-fact-reply";
 import { resolveSmallTalk } from "@/lib/globe/context-condition-ai/resolve-small-talk";
 import { generateSmallTalkReply } from "@/lib/globe/context-condition-ai/small-talk/generate-small-talk-reply";
 import type { SmallTalkTurn } from "@/lib/globe/context-condition-ai/small-talk/small-talk-context";
@@ -41,6 +45,7 @@ export function looksLikeStrictConversationalAsk(utterance: string): boolean {
   if (!text) return false;
   if (isWorkspaceAgentWorkUtterance(text)) return false;
   if (resolveCurrentMessageIntent(text).kind !== "continue") return true;
+  if (looksLikeWeatherFactAsk(text)) return true;
   if (looksLikeAgentFreeTalk(text) || resolveSmallTalk({ text })) return true;
 
   // Knowledge / casual Q — allow LLM essay (user OK with longer).
@@ -125,6 +130,23 @@ export async function tryApplyConversationalTurn(input: {
       source: "deterministic",
       pausedTravelContext: true,
     };
+  }
+
+  // Fact: temperature / weather must answer with live data — never travel follow-up.
+  if (looksLikeWeatherFactAsk(utterance)) {
+    const weatherReply = await tryFetchWeatherFactReply({
+      utterance,
+      fallbackLocationKo: input.regionKo,
+    });
+    if (weatherReply) {
+      return {
+        handled: true,
+        replyKo: weatherReply,
+        mode: "direct",
+        source: "deterministic",
+        pausedTravelContext: true,
+      };
+    }
   }
 
   if (!looksLikeConversationalAsk(utterance)) {

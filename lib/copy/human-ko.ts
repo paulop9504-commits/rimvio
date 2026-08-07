@@ -1636,6 +1636,10 @@ export const copy = {
       matchStepSchedule: "시간대 조율 준비",
     },
     executionFeed: {
+      /** Scrolling Agent Activity feed (Globe chat). */
+      title: "Execution Feed",
+      stepFallback: "작업 중",
+      ready: "Ready",
       goalEyebrow: "의도",
       summaryEyebrow: "한 줄 요약",
       checklistActive: "진행 중",
