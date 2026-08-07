@@ -18,6 +18,7 @@ import {
   type DecisionProjection,
   type DecisionProjectionScores,
 } from "@/lib/context-workspace/projection/types";
+import { isMeaningfulWorkspaceMapEdge } from "@/lib/context-workspace/projection/is-meaningful-map-relationship";
 
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -226,9 +227,9 @@ function buildRelationshipsForEntity(
   const out: CompareDecisionRelationship[] = [];
   for (const e of state.relationshipEdges) {
     if (e.fromId !== entityId && e.toId !== entityId) continue;
+    if (!isMeaningfulWorkspaceMapEdge(e, state.nodes, candidateIds)) continue;
     const other = e.fromId === entityId ? e.toId : e.fromId;
     const relevant =
-      e.kind === "compare" ||
       candidateSet.has(other) ||
       e.kind === "route" ||
       e.kind === "nearby";

@@ -27,7 +27,40 @@ const workspaceStub = {
   status: "editing",
   query: "osaka hotels",
   summaryKo: "Osaka Trip",
-  nodes: [],
+  nodes: [
+    {
+      id: "hotel_a",
+      kind: "lodging" as const,
+      title: "A",
+      lat: 34.66,
+      lng: 135.5,
+      status: "draft" as const,
+    },
+    {
+      id: "hotel_b",
+      kind: "lodging" as const,
+      title: "B",
+      lat: 34.67,
+      lng: 135.5,
+      status: "draft" as const,
+    },
+    {
+      id: "hotel_c",
+      kind: "lodging" as const,
+      title: "C",
+      lat: 34.68,
+      lng: 135.5,
+      status: "draft" as const,
+    },
+    {
+      id: "poi_usj",
+      kind: "poi" as const,
+      title: "USJ",
+      lat: 34.66,
+      lng: 135.43,
+      status: "draft" as const,
+    },
+  ],
   relationshipEdges: [
     {
       id: "rel:compare:a:b",
@@ -50,7 +83,7 @@ const workspaceStub = {
   selectedIds: ["hotel_a"],
 } as Pick<
   ContextWorkspaceState,
-  "compareIds" | "relationshipEdges" | "selectedIds"
+  "compareIds" | "relationshipEdges" | "selectedIds" | "nodes"
 >;
 
 assert.equal(getWorkspaceProjectionMode(CTX), "default");
@@ -68,7 +101,11 @@ assert.deepEqual([...entered!.candidateEntityIds], [
   "hotel_c",
 ]);
 assert.equal(entered!.criteriaWeights.location, 0.4);
-assert.ok(entered!.relationships.some((r) => r.kind === "compare"));
+assert.equal(
+  entered!.relationships.some((r) => r.kind === "compare"),
+  false,
+  "hotel↔hotel compare edges stay off map relationships",
+);
 assert.ok(entered!.relationships.some((r) => r.kind === "route"));
 assert.equal(isCompareDecisionProjectionActive(CTX), true);
 
@@ -104,6 +141,7 @@ const food = enterCompareDecisionProjection({
     compareIds: ["eatery_1", "eatery_2"],
     selectedIds: [],
     relationshipEdges: [],
+    nodes: [],
   },
 });
 assert.equal(food?.mode, "compare_decision");

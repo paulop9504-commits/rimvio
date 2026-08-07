@@ -444,6 +444,7 @@ export function ContextWorkspaceShell({
               : compareIds,
           relationshipEdges: workspace.relationshipEdges,
           selectedIds: workspace.selectedIds,
+          nodes: workspace.nodes,
         },
       });
       setListOpen(false);
@@ -486,6 +487,7 @@ export function ContextWorkspaceShell({
     state?.compareIds,
     state?.relationshipEdges,
     state?.selectedIds,
+    state?.nodes,
     compareDecisionActive,
   ]);
 

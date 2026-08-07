@@ -12,6 +12,7 @@ import {
   type WorkspaceProjectionMode,
   type WorkspaceProjectionState,
 } from "@/lib/context-workspace/projection/types";
+import { isMeaningfulWorkspaceMapEdge } from "@/lib/context-workspace/projection/is-meaningful-map-relationship";
 
 const byContextId = new Map<string, WorkspaceProjectionState>();
 const listeners = new Set<() => void>();
@@ -62,28 +63,30 @@ export function isCompareDecisionProjectionActive(
 }
 
 function relationshipsFromWorkspace(
-  workspace: Pick<ContextWorkspaceState, "relationshipEdges" | "compareIds">,
+  workspace: Pick<
+    ContextWorkspaceState,
+    "relationshipEdges" | "compareIds" | "nodes"
+  >,
 ): CompareDecisionRelationship[] {
   const candidateSet = new Set(workspace.compareIds);
   const out: CompareDecisionRelationship[] = [];
   for (const e of workspace.relationshipEdges) {
     const touchesCompare =
       candidateSet.has(e.fromId) || candidateSet.has(e.toId);
-    if (!touchesCompare && e.kind !== "compare") continue;
+    if (!touchesCompare) continue;
     if (
-      e.kind === "compare" ||
-      (candidateSet.has(e.fromId) && candidateSet.has(e.toId)) ||
-      (touchesCompare && (e.kind === "nearby" || e.kind === "route"))
+      !isMeaningfulWorkspaceMapEdge(e, workspace.nodes, workspace.compareIds)
     ) {
-      out.push({
-        id: e.id,
-        fromEntityId: e.fromId,
-        toEntityId: e.toId,
-        kind: e.kind,
-        labelKo: e.labelKo,
-        meters: e.meters,
-      });
+      continue;
     }
+    out.push({
+      id: e.id,
+      fromEntityId: e.fromId,
+      toEntityId: e.toId,
+      kind: e.kind,
+      labelKo: e.labelKo,
+      meters: e.meters,
+    });
     if (out.length >= 24) break;
   }
   return out;
@@ -97,7 +100,7 @@ export function enterCompareDecisionProjection(input: {
   readonly contextEventId: string;
   readonly workspace: Pick<
     ContextWorkspaceState,
-    "compareIds" | "relationshipEdges" | "selectedIds"
+    "compareIds" | "relationshipEdges" | "selectedIds" | "nodes"
   >;
   readonly criteriaWeights?: CompareDecisionCriteriaWeights;
   readonly selectedEntityId?: string | null;
@@ -139,7 +142,7 @@ export function syncCompareDecisionProjectionFromWorkspace(input: {
   readonly contextEventId: string;
   readonly workspace: Pick<
     ContextWorkspaceState,
-    "compareIds" | "relationshipEdges" | "selectedIds"
+    "compareIds" | "relationshipEdges" | "selectedIds" | "nodes"
   >;
 }): WorkspaceProjectionState {
   const id = input.contextEventId.trim();

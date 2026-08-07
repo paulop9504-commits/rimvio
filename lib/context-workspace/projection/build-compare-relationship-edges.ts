@@ -1,10 +1,12 @@
 /**
  * Compare Relationship Edge — Object → Relationship → Decision.
- * Reuses Workspace relationshipEdges (route / nearby / compare). Default map: hidden.
+ * Reuses Workspace relationshipEdges (route / nearby). Default map: hidden.
+ * Never draws competing same-role soup (hotel↔hotel "비교").
  */
 
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import type { CompareDecisionRelationship } from "@/lib/context-workspace/projection/types";
+import { isMeaningfulWorkspaceMapEdge } from "@/lib/context-workspace/projection/is-meaningful-map-relationship";
 
 /** Wire schema for Compare Relationship Edge Layer. */
 export type CompareRelationshipEdge = {
@@ -40,7 +42,7 @@ export function fromCompareDecisionRelationship(
 
 /**
  * Build Compare Relationship edges from Workspace SSOT edges.
- * Only edges that touch compare candidates (or kind=compare).
+ * Only edges that touch compare candidates and are cross-role (e.g. lodging↔poi).
  */
 export function buildCompareRelationshipEdges(
   workspace: Pick<
@@ -57,27 +59,27 @@ export function buildCompareRelationshipEdges(
   for (const e of workspace.relationshipEdges) {
     const touches =
       candidateSet.has(e.fromId) || candidateSet.has(e.toId);
-    if (!touches && e.kind !== "compare") continue;
-    const include =
-      e.kind === "compare" ||
-      (candidateSet.has(e.fromId) && candidateSet.has(e.toId)) ||
-      (touches && (e.kind === "nearby" || e.kind === "route"));
-    if (!include) continue;
+    if (!touches) continue;
+    if (
+      !isMeaningfulWorkspaceMapEdge(e, workspace.nodes, workspace.compareIds)
+    ) {
+      continue;
+    }
     if (seen.has(e.id)) continue;
     seen.add(e.id);
     out.push({
       id: e.id,
       from: e.fromId,
       to: e.toId,
-      type: e.kind,
+      type: e.kind === "compare" ? "nearby" : e.kind,
       label: shortenRelationshipLabel(e.labelKo) || e.labelKo || e.kind,
     });
   }
 
-  // Prefer route/nearby to context (USJ) over pure compare-to-compare soup.
+  // Prefer route/nearby to context (USJ / eatery) over noise.
   const ranked = [...out].sort((a, b) => {
-    const score = (e: CompareRelationshipEdge) =>
-      e.type === "route" ? 0 : e.type === "nearby" ? 1 : 2;
+    const score = (edge: CompareRelationshipEdge) =>
+      edge.type === "route" ? 0 : edge.type === "nearby" ? 1 : 2;
     return score(a) - score(b);
   });
 
