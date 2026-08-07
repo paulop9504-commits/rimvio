@@ -13,6 +13,7 @@ import {
   resolveActiveWorkspaceKind,
 } from "@/lib/workspace-kind/resolve-active-workspace-kind";
 import type { WorkspaceKind } from "@/lib/workspace-kind/types";
+import { utteranceConflictsActiveDestination } from "@/lib/context-run/destination-context-conflict";
 
 /** User explicitly wants to keep working on the active Context. */
 export function isExplicitContextContinue(utterance: string): boolean {
@@ -41,6 +42,8 @@ export function shouldSpawnNewContext(input: {
   readonly activeContextEventId?: string | null;
   /** When set, skips event-store lookup. */
   readonly activeWorkspaceKind?: WorkspaceKind | null;
+  /** Optional dest override when Workspace memory is missing (tests / projection). */
+  readonly activeDestinationKo?: string | null;
 }): boolean {
   const text = input.utterance.trim();
   if (!text) {
@@ -61,6 +64,19 @@ export function shouldSpawnNewContext(input: {
     input.activeWorkspaceKind !== undefined
       ? input.activeWorkspaceKind
       : resolveActiveWorkspaceKind(active);
+
+  // Different destination on an open hub → new Context (ADR-029).
+  // Never refine Osaka Workspace when the user said 오키나와.
+  if (
+    active &&
+    utteranceConflictsActiveDestination({
+      utterance: text,
+      activeContextEventId: active,
+      activeDestinationKo: input.activeDestinationKo,
+    })
+  ) {
+    return true;
+  }
 
   // Open travel (or unknown hub): 숙소·맛집 scout stays — not a new Intent.
   if (active && activeContextAllowsDomainScout(kind) && isDomainScoutUtterance(text)) {

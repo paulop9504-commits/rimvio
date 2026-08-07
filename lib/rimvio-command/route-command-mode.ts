@@ -12,6 +12,7 @@ import {
   isExplicitContextContinue,
   shouldSpawnNewContext,
 } from "@/lib/context-run/should-spawn-new-context";
+import { utteranceConflictsActiveDestination } from "@/lib/context-run/destination-context-conflict";
 import { classifyExperienceRunIntent } from "@/lib/experience-run/classify-experience-run-intent";
 import { isGlobeIngressEligible } from "@/lib/globe-ingress/compile-globe-ingress";
 import { isActionFirstUtterance } from "@/lib/rule-engine/is-action-first-utterance";
@@ -86,11 +87,15 @@ export function routeRimvioCommandMode(input: {
   }
 
   // Open travel hub: domain scout (숙소·맛집) continues here — not a new Context.
-  // Market / driver hub + hotel search → create (intent switch).
+  // Different destination (오키나와 on 오사카 hub) → fall through to create.
   if (
     active &&
     !isGlobeIngressEligible(text) &&
-    activeContextAllowsDomainScout(activeKind)
+    activeContextAllowsDomainScout(activeKind) &&
+    !utteranceConflictsActiveDestination({
+      utterance: text,
+      activeContextEventId: active,
+    })
   ) {
     const experience = classifyExperienceRunIntent(text);
     if (

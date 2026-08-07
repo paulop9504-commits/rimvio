@@ -46,6 +46,7 @@ import {
 } from "@/lib/globe/spatial-semantic/globe-projection-layer-policy";
 import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
 import { resolveRecentTravelDestinationHint } from "@/lib/context-run/resolve-recent-travel-destination-hint";
+import { utteranceConflictsActiveDestination } from "@/lib/context-run/destination-context-conflict";
 
 export type GlobeWorkspaceAgentTurnResult = {
   readonly handled: boolean;
@@ -296,6 +297,23 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     };
   }
 
+  // Drop active hub when NL destination ≠ Workspace destination (오키나와 ≠ 오사카).
+  const requestedCtx =
+    input.explicitContextEventId?.trim() ||
+    input.contextEventId?.trim() ||
+    null;
+  const resolvedActive = resolveActiveWorkspaceContextId({
+    explicitContextEventId: requestedCtx,
+  });
+  const safeContextEventId =
+    resolvedActive &&
+    utteranceConflictsActiveDestination({
+      utterance,
+      activeContextEventId: resolvedActive,
+    })
+      ? null
+      : resolvedActive;
+
   // Catalog Workspace routes (finance / document / coding) — stub prepare + open.
   {
     const route = classifyWorkspaceRoute(utterance);
@@ -322,10 +340,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
   // Free-talk / knowledge / casual chat BEFORE absorb · locate · Agent Loop.
   // Travel / Continuum work never falls into essay chat.
   if (!isWorkspaceAgentWorkUtterance(utterance)) {
-    const ctxForChat = resolveActiveWorkspaceContextId({
-      explicitContextEventId:
-        input.explicitContextEventId ?? input.contextEventId ?? null,
-    });
+    const ctxForChat = safeContextEventId;
     const destKo =
       (ctxForChat
         ? readContextWorkspace(ctxForChat)?.realityDraft?.destinationKo
@@ -357,26 +372,20 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
   // ADR-051 Reality absorb — single network ingress (Projection via overlay stores)
   const earlyPlan = compileWorkspaceAgentPlan({
     utterance,
-    contextEventId:
-      input.explicitContextEventId ?? input.contextEventId ?? null,
+    contextEventId: safeContextEventId,
   });
   const multiStepPlan = earlyPlan.steps.length > 1;
 
   if (!multiStepPlan) {
     const absorb = tryApplyRealityAbsorbFromUtterance({
       utterance,
-      contextEventId:
-        input.explicitContextEventId ?? input.contextEventId ?? null,
+      contextEventId: safeContextEventId,
     });
     if (absorb?.handled) {
-      const ctx = resolveActiveWorkspaceContextId({
-        explicitContextEventId:
-          input.explicitContextEventId ?? input.contextEventId ?? null,
-      });
       return {
         handled: true,
         statusKo: absorb.statusKo,
-        contextEventId: ctx,
+        contextEventId: safeContextEventId,
         workspaceMutated: absorb.workspacePatched,
         openedWorkspace: false,
         committed: false,
@@ -388,8 +397,7 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     // Place / landmark locate — Anchor on map, 1-line hierarchy status.
     const placeLocate = await tryApplyPlaceLocateFromUtterance({
       utterance,
-      contextEventId:
-        input.explicitContextEventId ?? input.contextEventId ?? null,
+      contextEventId: safeContextEventId,
       lat: input.lat,
       lng: input.lng,
     });
@@ -408,18 +416,14 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     }
   }
 
-  let contextEventId = resolveActiveWorkspaceContextId({
-    explicitContextEventId:
-      input.explicitContextEventId ?? input.contextEventId ?? null,
-  });
+  let contextEventId = safeContextEventId;
   let openedWorkspace = false;
   let mintStatusKo: string | null = null;
 
   if (!contextEventId) {
     const minted = await tryMintWorkspaceForAgent({
       utterance,
-      explicitContextEventId:
-        input.explicitContextEventId ?? input.contextEventId ?? null,
+      explicitContextEventId: null,
       lat: input.lat,
       lng: input.lng,
     });

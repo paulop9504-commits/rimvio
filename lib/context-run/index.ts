@@ -72,6 +72,12 @@ export {
   shouldSpawnNewContext,
 } from "@/lib/context-run/should-spawn-new-context";
 export {
+  destinationsMatch,
+  normalizeDestinationKey,
+  readActiveWorkspaceDestinationKo,
+  utteranceConflictsActiveDestination,
+} from "@/lib/context-run/destination-context-conflict";
+export {
   clearRunState,
   completeRunState,
   CONTEXT_RUN_STORAGE_KEY,
