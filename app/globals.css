@@ -3319,6 +3319,17 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   height: 100% !important;
 }
 
+/* Workspace MapLibre — same canvas fill fix (mobile blank map) */
+[data-workspace-maplibre] .maplibregl-map,
+[data-workspace-maplibre] .maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+[data-workspace-maplibre] .maplibregl-canvas {
+  outline: none;
+}
+
 [data-rimvio-globe-vector-map] .maplibregl-marker {
   z-index: 3;
 }

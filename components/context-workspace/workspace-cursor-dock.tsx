@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUp, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   appendWorkspaceChatTurn,
@@ -15,6 +15,7 @@ import {
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
+import { buildWorkspaceImageAgentUtterance } from "@/lib/context-run/build-workspace-image-agent-utterance";
 import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
 import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
 import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
@@ -173,8 +174,9 @@ export function WorkspaceCursorDock({
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentExpanded, setAgentExpanded] = useState(false);
-  /** Map-first: transcript stays closed until user opens or sends. */
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  /** Near-full height Agent sheet (top of screen). */
+  const [dockTall, setDockTall] = useState(false);
   const [turns, setTurns] = useState<readonly WorkspaceChatTurn[]>([]);
   const [agent, setAgent] = useState<AgentExecutionState | null>(null);
   const [activity, setActivity] = useState<AgentActivityTranscript | null>(
@@ -185,6 +187,7 @@ export function WorkspaceCursorDock({
   );
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const placeholder = resolveRimvioCommandPlaceholder("workspace");
   const eventId = contextEventId.trim();
 
@@ -192,6 +195,7 @@ export function WorkspaceCursorDock({
     if (compact) {
       setTranscriptOpen(false);
       setAgentExpanded(false);
+      setDockTall(false);
     }
   }, [compact]);
 
@@ -202,13 +206,15 @@ export function WorkspaceCursorDock({
   }, []);
 
   const scheduleTranscriptCollapse = useCallback(() => {
+    if (dockTall) return;
     if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
     collapseTimerRef.current = setTimeout(() => {
       setTranscriptOpen(false);
       setAgentExpanded(false);
+      setDockTall(false);
       collapseTimerRef.current = null;
     }, 8_000);
-  }, []);
+  }, [dockTall]);
   useEffect(() => {
     if (!eventId) return;
     const syncChat = () => setTurns(readWorkspaceChat(eventId));
@@ -294,6 +300,7 @@ export function WorkspaceCursorDock({
 
       setBusy(true);
       setTranscriptOpen(true);
+      setDockTall(true);
       setAgentExpanded(false);
       if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
       spineIngressFromLegacy({
@@ -453,6 +460,24 @@ export function WorkspaceCursorDock({
         (lastUserText && trailView.utterance.trim() === lastUserText)),
   );
 
+  const pickImage = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file || !eventId || busy) return;
+      if (!file.type.startsWith("image/")) {
+        toast.message(copy.feed.screenshotInvalid);
+        return;
+      }
+      toast.message(copy.feed.captureIntentFound);
+      try {
+        const utterance = await buildWorkspaceImageAgentUtterance({ file });
+        await runTurn(utterance);
+      } catch {
+        toast.message(copy.feed.screenshotFailed);
+      }
+    },
+    [busy, eventId, runTurn],
+  );
+
   // Continue is human-only (Status Panel / dock button). Never auto-send 「계속해」.
 
   const composer = (
@@ -463,6 +488,15 @@ export function WorkspaceCursorDock({
         void runTurn(value);
       }}
     >
+      <button
+        type="button"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#4e5968] transition hover:bg-black/[0.04] disabled:opacity-40"
+        disabled={busy}
+        onClick={() => imageInputRef.current?.click()}
+        aria-label="사진 추가"
+      >
+        <Plus className="h-4 w-4" strokeWidth={2.25} />
+      </button>
       <input
         type="text"
         value={value}
@@ -504,6 +538,15 @@ export function WorkspaceCursorDock({
             void runTurn(value);
           }}
         >
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#4e5968] disabled:opacity-40"
+            disabled={busy}
+            onClick={() => imageInputRef.current?.click()}
+            aria-label="사진 추가"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.25} />
+          </button>
           <input
             type="text"
             value={value}
@@ -529,14 +572,27 @@ export function WorkspaceCursorDock({
           className={cn(
             "flex flex-col overflow-hidden bg-white/96 backdrop-blur-xl",
             "rounded-[22px] shadow-[0_12px_40px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.06]",
-            streamOpen
-              ? "max-h-[min(48dvh,380px)]"
-              : compact
-                ? ""
-                : "max-h-[min(42dvh,320px)]",
+            streamOpen && dockTall
+              ? "max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-4.5rem))]"
+              : streamOpen
+                ? "max-h-[min(48dvh,380px)]"
+                : compact
+                  ? ""
+                  : "max-h-[min(42dvh,320px)]",
           )}
           data-workspace-work-stream
+          data-dock-tall={dockTall ? "1" : "0"}
         >
+          {streamOpen ? (
+            <button
+              type="button"
+              className="flex w-full shrink-0 items-center justify-center pt-2 pb-0.5"
+              onClick={() => setDockTall((v) => !v)}
+              aria-label={dockTall ? "작업창 줄이기" : "작업창 크게"}
+            >
+              <span className="h-1 w-9 rounded-full bg-[#d1d6db]" aria-hidden />
+            </button>
+          ) : null}
           <button
             type="button"
             className="flex w-full shrink-0 items-center gap-2 px-3.5 py-2.5 text-left"
@@ -545,8 +601,18 @@ export function WorkspaceCursorDock({
                 clearTimeout(collapseTimerRef.current);
                 collapseTimerRef.current = null;
               }
-              setTranscriptOpen((v) => !v);
-              if (transcriptOpen) setAgentExpanded(false);
+              if (streamOpen && dockTall) {
+                setDockTall(false);
+                return;
+              }
+              if (streamOpen) {
+                setTranscriptOpen(false);
+                setDockTall(false);
+                setAgentExpanded(false);
+                return;
+              }
+              setTranscriptOpen(true);
+              setDockTall(true);
             }}
             aria-expanded={streamOpen}
           >
@@ -704,6 +770,18 @@ export function WorkspaceCursorDock({
           </div>
         </div>
       )}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        aria-hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          void pickImage(file);
+        }}
+      />
     </div>
   );
 }

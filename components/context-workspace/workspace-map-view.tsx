@@ -30,6 +30,10 @@ import {
   subscribeWorkspaceBriefReplay,
 } from "@/lib/context-workspace/context-brief";
 import { TOSS_WORKSPACE_MAP_CANVAS } from "@/lib/context-workspace/map/toss-workspace-map-canvas-theme";
+import {
+  buildWorkspaceRasterStyle,
+  shouldPreferWorkspaceRasterBasemap,
+} from "@/lib/context-workspace/map/workspace-map-style";
 import { GLOBE_VECTOR_MAP_STYLE_URL } from "@/lib/globe/globe-vector-map-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import {
@@ -632,9 +636,13 @@ function MapLibreWorkspaceMap({
       const center = usePinCamera && liveBounds
         ? ([liveBounds.centerLng, liveBounds.centerLat] as [number, number])
         : fallbackCenter;
+      const preferRaster = mobile || shouldPreferWorkspaceRasterBasemap();
+      const style = preferRaster
+        ? buildWorkspaceRasterStyle()
+        : GLOBE_VECTOR_MAP_STYLE_URL;
       const created = new maplibregl.Map({
         container: containerRef.current,
-        style: GLOBE_VECTOR_MAP_STYLE_URL,
+        style: style as import("maplibre-gl").StyleSpecification | string,
         center,
         zoom: compact ? 12.2 : 13.6,
         attributionControl: false,
@@ -645,7 +653,7 @@ function MapLibreWorkspaceMap({
         bearing: 0,
         antialias: false,
         renderWorldCopies: false,
-        trackResize: false,
+        trackResize: mobile,
         refreshExpiredTiles: false,
         maxTileCacheSize: mobile ? 48 : 80,
         pixelRatio: mobile
@@ -655,13 +663,34 @@ function MapLibreWorkspaceMap({
       map = created;
       mapRef.current = created;
       unbindResize = bindGlobeVectorMapResize(created, containerRef.current);
+      let usedRasterFallback = preferRaster;
+      const ensureRasterFallback = () => {
+        if (cancelled || usedRasterFallback || !mapRef.current) return;
+        usedRasterFallback = true;
+        try {
+          mapRef.current.setStyle(
+            buildWorkspaceRasterStyle() as import("maplibre-gl").StyleSpecification,
+          );
+        } catch {
+          /* ignore */
+        }
+      };
+      created.on("error", () => {
+        ensureRasterFallback();
+      });
       created.on("load", () => {
         if (cancelled || !mapRef.current) {
           return;
         }
         const live = mapRef.current;
-        applyTossWorkspaceMapCanvas(live);
+        if (!usedRasterFallback) {
+          applyTossWorkspaceMapCanvas(live);
+        }
         syncGlobeVectorMapSize(live, containerRef.current!);
+        requestAnimationFrame(() => {
+          if (cancelled || !mapRef.current || !containerRef.current) return;
+          syncGlobeVectorMapSize(mapRef.current, containerRef.current);
+        });
         const loadBounds = pinBounds(venueCameraPins(pinsRef.current));
         const preferredOnLoad =
           preferredCenter &&
@@ -1203,7 +1232,7 @@ function MapLibreWorkspaceMap({
       className={cn("relative h-full w-full overflow-hidden", className)}
       style={{ background: TOSS_WORKSPACE_MAP_CANVAS.background }}
       data-workspace-maplibre
-      data-workspace-map-style="toss"
+      data-workspace-map-style={mobile ? "raster-voyager" : "auto"}
       data-workspace-map-perf={mobile ? "mobile" : "desktop"}
     >
       <div ref={containerRef} className="h-full w-full" />

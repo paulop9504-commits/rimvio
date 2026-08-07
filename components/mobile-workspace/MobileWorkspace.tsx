@@ -7,7 +7,7 @@
  * Desktop multi Floating Windows are forbidden here.
  */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   readContextWorkspace,
@@ -15,8 +15,10 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
+import { buildWorkspaceImageAgentUtterance } from "@/lib/context-run/build-workspace-image-agent-utterance";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
+import { copy } from "@/lib/copy/human-ko";
 import {
   buildNearbyRelationsFromAnchor,
   dispatchMobileWorkspace,
@@ -86,6 +88,9 @@ export function MobileWorkspace({
 }: MobileWorkspaceProps) {
   const mobile = useMobileWorkspace();
   const eventId = contextEventId.trim();
+  const [busy, setBusy] = useState(false);
+  const [agentExpanded, setAgentExpanded] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const ws = readContextWorkspace(eventId);
@@ -157,18 +162,24 @@ export function MobileWorkspace({
         text,
       });
 
-      const result = await applyGlobeWorkspaceAgentTurn({
-        contextEventId: eventId,
-        explicitContextEventId: eventId,
-        utterance: text,
-      });
-      if (result.handled && result.statusKo) {
-        appendWorkspaceChatTurn({
+      setBusy(true);
+      setAgentExpanded(true);
+      try {
+        const result = await applyGlobeWorkspaceAgentTurn({
           contextEventId: eventId,
-          role: "assistant",
-          text: result.statusKo,
+          explicitContextEventId: eventId,
+          utterance: text,
         });
-        toast.message(result.statusKo);
+        if (result.handled && result.statusKo) {
+          appendWorkspaceChatTurn({
+            contextEventId: eventId,
+            role: "assistant",
+            text: result.statusKo,
+          });
+          toast.message(result.statusKo);
+        }
+      } finally {
+        setBusy(false);
       }
 
       // Refresh projection after NL mutates Workspace
@@ -192,6 +203,27 @@ export function MobileWorkspace({
       }
     },
     [eventId, mobile?.activeEntityId, mobile?.anchorEntityId],
+  );
+
+  const onPickImage = useCallback(
+    async (file: File | null | undefined) => {
+      if (!file || !eventId) return;
+      if (!file.type.startsWith("image/")) {
+        toast.message(copy.feed.screenshotInvalid);
+        return;
+      }
+      setBusy(true);
+      setAgentExpanded(true);
+      toast.message(copy.feed.captureIntentFound);
+      try {
+        const utterance = await buildWorkspaceImageAgentUtterance({ file });
+        await onCommand(utterance);
+      } catch {
+        toast.message(copy.feed.screenshotFailed);
+        setBusy(false);
+      }
+    },
+    [eventId, onCommand],
   );
 
   const handleSelect = useCallback(
@@ -318,12 +350,16 @@ export function MobileWorkspace({
             className="pointer-events-auto w-full max-w-lg"
             contextEventId={eventId}
             placeholder={resolveRimvioCommandPlaceholder("workspace")}
+            busy={busy}
+            expanded={agentExpanded}
+            onExpandedChange={setAgentExpanded}
             objects={(mobile?.entities ?? []).slice(0, 4).map((e) => ({
               id: e.id,
               title: e.title,
               subtitleKo: e.priceLabelKo,
             }))}
             onSubmit={(t) => void onCommand(t)}
+            onPlus={() => imageInputRef.current?.click()}
             onFocusObject={(id) => {
               dispatchMobileWorkspace({ type: "set_active", entityId: id });
               dispatchMobileWorkspace({
@@ -331,6 +367,18 @@ export function MobileWorkspace({
                 mode: "expanded",
               });
               onSelectPin?.(id);
+            }}
+          />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              void onPickImage(file);
             }}
           />
         </div>

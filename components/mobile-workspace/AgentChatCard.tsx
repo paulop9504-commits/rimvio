@@ -35,6 +35,9 @@ export type AgentChatCardProps = {
   readonly onCloseMessage?: () => void;
   readonly onFocusObject?: (id: string) => void;
   readonly onPlus?: () => void;
+  /** Near-full height sheet (top of screen). */
+  readonly expanded?: boolean;
+  readonly onExpandedChange?: (expanded: boolean) => void;
   readonly className?: string;
 };
 
@@ -187,6 +190,8 @@ export function AgentChatCard({
   onCloseMessage,
   onFocusObject,
   onPlus,
+  expanded: expandedProp,
+  onExpandedChange,
   className,
 }: AgentChatCardProps) {
   const [text, setText] = useState("");
@@ -194,6 +199,12 @@ export function AgentChatCard({
     null,
   );
   const [streamCollapsed, setStreamCollapsed] = useState(true);
+  const [expandedLocal, setExpandedLocal] = useState(false);
+  const expanded = expandedProp ?? expandedLocal;
+  const setExpanded = (next: boolean) => {
+    if (expandedProp === undefined) setExpandedLocal(next);
+    onExpandedChange?.(next);
+  };
 
   useEffect(() => {
     const id = contextEventId?.trim() ?? "";
@@ -203,6 +214,8 @@ export function AgentChatCard({
       setActivity(match);
       if (match?.running) {
         setStreamCollapsed(false);
+        if (expandedProp === undefined) setExpandedLocal(true);
+        else onExpandedChange?.(true);
       } else if (match && !match.running) {
         setStreamCollapsed(true);
       }
@@ -213,7 +226,7 @@ export function AgentChatCard({
 
   const hasMessage = Boolean(messageKo?.trim());
   const hasActivity = Boolean(activity && activity.events.length > 0);
-  const showBody = hasMessage || hasActivity || busy;
+  const showBody = hasMessage || hasActivity || busy || expanded;
   const lines = hasMessage ? formatAgentBody(messageKo!) : [];
   const lead = lines[0] && !isSectionLead(lines[0]) ? lines[0] : null;
   const rest = lead ? lines.slice(1) : lines;
@@ -229,22 +242,39 @@ export function AgentChatCard({
     <div
       className={cn(
         "pointer-events-auto w-full max-w-[min(100%,420px)]",
+        expanded &&
+          "fixed inset-x-2 z-[60] mx-auto max-w-lg top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))]",
         className,
       )}
       data-agent-chat-card
+      data-expanded={expanded ? "1" : "0"}
     >
       <div
         className={cn(
-          "overflow-hidden rounded-[22px] bg-white/95 shadow-[0_10px_32px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.05] backdrop-blur-2xl transition-all duration-300 ease-in-out",
-          showBody && "flex max-h-[min(52dvh,460px)] flex-col",
+          "overflow-hidden rounded-[22px] bg-white/95 shadow-[0_10px_32px_rgba(25,31,40,0.14)] ring-1 ring-black/[0.05] backdrop-blur-2xl transition-[max-height,height] duration-300 ease-out",
+          showBody && "flex flex-col",
+          showBody &&
+            !expanded &&
+            "max-h-[min(52dvh,460px)]",
+          expanded && "h-full max-h-none",
         )}
       >
         {showBody ? (
-          <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch px-3.5 pb-1.5 pt-3">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <button
+              type="button"
+              className="flex w-full shrink-0 items-center justify-center gap-1.5 px-3 pt-2 pb-1"
+              onClick={() => setExpanded(!expanded)}
+              aria-expanded={expanded}
+              aria-label={expanded ? "작업창 줄이기" : "작업창 크게"}
+            >
+              <span className="h-1 w-9 rounded-full bg-[#d1d6db]" aria-hidden />
+            </button>
+            <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch px-3.5 pb-1.5">
             {onCloseMessage ? (
               <button
                 type="button"
-                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-[#8b95a1] transition hover:bg-black/[0.04]"
+                className="absolute right-2 top-0 flex h-7 w-7 items-center justify-center rounded-full text-[#8b95a1] transition hover:bg-black/[0.04]"
                 onClick={onCloseMessage}
                 aria-label="닫기"
               >
@@ -289,7 +319,6 @@ export function AgentChatCard({
                       )}
                     >
                       {rest.map((line) => {
-                        // Lead already states "what" — skip duplicate section.
                         if (
                           lead &&
                           /^·\s*무엇을 했는가:/u.test(line)
@@ -345,6 +374,7 @@ export function AgentChatCard({
                   ))}
                 </div>
               ) : null}
+            </div>
             </div>
           </div>
         ) : null}
