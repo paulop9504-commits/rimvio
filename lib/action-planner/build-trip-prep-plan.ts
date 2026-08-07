@@ -70,11 +70,18 @@ export function isTripPrepUtterance(utterance: string): boolean {
     parseDurationDaysFromText(text) != null ||
     NIGHTS_DAYS.test(text) ||
     NIGHTS_ONLY.test(text);
+  const hasCreateVerb =
+    /만들(?:어|어\s*줘)?|구성(?:해|해\s*줘)?|설계(?:해|해\s*줘)?|계획(?:해|해\s*줘)?|세팅(?:해|해\s*줘)?|짜\s*줘|생성(?:해|해\s*줘)?/iu.test(
+      text,
+    );
 
   if (hasPrep && (hasDest || hasDuration || hasTrip)) {
     return true;
   }
-  if (hasTrip && hasDest && hasDuration && /준비|계획|짜/iu.test(text)) {
+  if (hasTrip && hasDest && (hasCreateVerb || /준비|계획|짜/iu.test(text))) {
+    return true;
+  }
+  if (hasCreateVerb && hasTrip && (hasDest || hasDuration)) {
     return true;
   }
   // Clear dest + stay — auto-commit Continuum stamps Reality Draft without 「준비해」.

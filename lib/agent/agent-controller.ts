@@ -19,6 +19,10 @@ import { buildAgentObservation } from "@/lib/agent/observation";
 import { createActionPlanWithMeta } from "@/lib/agent/create-action-plan";
 import { openWorkspaceForTripPrep } from "@/lib/agent/open-workspace-for-trip-prep";
 import { resolveIntentRoute } from "@/lib/intent-router/resolve-intent-route";
+import {
+  commandIrRequestsTaskGraph,
+  resolveCommandIr,
+} from "@/lib/rimvio-command/resolve-command-ir";
 import type {
   AgentControllerInput,
   AgentControllerMiss,
@@ -103,15 +107,25 @@ export async function runAgentController(
   });
 
   // Rule planner only fires on compound / trip_prep; allow LLM-only plans too.
+  // ADR-053 leafHints that request Task Graph also keep the controller alive.
+  const commandIr = resolveCommandIr({
+    utterance,
+    activeContextId: contextEventId,
+  });
+  const taskGraphLeaf = commandIrRequestsTaskGraph(commandIr);
+
   if (!planned) {
     if (
       !isCompoundActionUtterance(utterance) &&
-      !isTripPrepUtterance(utterance)
+      !isTripPrepUtterance(utterance) &&
+      !taskGraphLeaf
     ) {
       return { ok: false, reason: "not_applicable" };
     }
     return { ok: false, reason: "no_plan" };
   }
+
+  // field_commit EXECUTE stays on plan wait_commit / Field — never silent Reality.
 
   let plan = planned.plan;
   let plannerSource: AgentControllerResult["plannerSource"] = planned.source;

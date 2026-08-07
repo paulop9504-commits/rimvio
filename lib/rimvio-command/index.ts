@@ -11,6 +11,26 @@ export { ACTION_VERBS, classifyActionVerb } from "@/lib/rimvio-command/action-ve
 export type { CommandTarget, CommandTargetResult } from "@/lib/rimvio-command/resolve-command-target";
 export { COMMAND_TARGETS, resolveCommandTarget } from "@/lib/rimvio-command/resolve-command-target";
 export { resolveIntentFromActionVerb } from "@/lib/rimvio-command/action-verb-to-intent";
+export type { ProductVerbFamily } from "@/lib/rimvio-command/product-verb-family";
+export {
+  PRODUCT_VERB_FAMILIES,
+  resolveProductVerbFamily,
+} from "@/lib/rimvio-command/product-verb-family";
+export type {
+  CommandCommitPolicy,
+  CommandLeafHint,
+} from "@/lib/rimvio-command/resolve-leaf-hint";
+export {
+  COMMAND_LEAF_HINTS,
+  resolveCommitPolicy,
+  resolveCommandObjectHints,
+  resolveLeafHint,
+} from "@/lib/rimvio-command/resolve-leaf-hint";
+export type { CommandIr, CommandIrObjects } from "@/lib/rimvio-command/resolve-command-ir";
+export {
+  commandIrRequestsTaskGraph,
+  resolveCommandIr,
+} from "@/lib/rimvio-command/resolve-command-ir";
 export {
   COMMAND_ASK_CONFIDENCE,
   COMMAND_EXECUTE_CONFIDENCE,

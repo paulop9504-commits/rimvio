@@ -15,7 +15,7 @@ import {
   type WorkspaceChatTurn,
 } from "@/lib/context-workspace/workspace-chat-store";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
-import { buildWorkspaceImageAgentUtterance } from "@/lib/context-run/build-workspace-image-agent-utterance";
+import { prepareWorkspaceImageAgentTurn } from "@/lib/context-run/build-workspace-image-agent-utterance";
 import { resolveWorkspaceJobBoundary } from "@/lib/agent-policy/resolve-workspace-job-boundary";
 import { bumpSoftNextWorkGeneration } from "@/lib/workstream/offer-soft-next-work-after-act";
 import type { NetworkAbsorbSoftChip } from "@/lib/reality-provider";
@@ -281,9 +281,16 @@ export function WorkspaceCursorDock({
   ]);
 
   const runTurn = useCallback(
-    async (raw: string) => {
+    async (
+      raw: string,
+      opts?: {
+        readonly chatUserText?: string | null;
+        readonly statusOverrideKo?: string | null;
+      },
+    ) => {
       const text = raw.trim();
       if (!text || !eventId || busy) return;
+      const chatUserText = opts?.chatUserText?.trim() || text;
 
       const wsForJob = readContextWorkspace(eventId);
       const jobBoundary = resolveWorkspaceJobBoundary({
@@ -320,7 +327,7 @@ export function WorkspaceCursorDock({
         contextEventId: eventId,
       });
       const graphId = `ws-turn-${Date.now()}`;
-      dispatchExecutionFeedGoal({ graphId, goalKo: text });
+      dispatchExecutionFeedGoal({ graphId, goalKo: chatUserText });
       dispatchExecutionFeedStep({
         graphId,
         stepId: "analyze",
@@ -330,7 +337,7 @@ export function WorkspaceCursorDock({
       appendWorkspaceChatTurn({
         contextEventId: eventId,
         role: "user",
-        text,
+        text: chatUserText,
       });
       try {
         completeAgentExecutionStep("turn-analyze");
@@ -387,6 +394,7 @@ export function WorkspaceCursorDock({
         });
         const ws = readContextWorkspace(eventId);
         const statusKo =
+          opts?.statusOverrideKo?.trim() ||
           result.statusKo?.trim() ||
           ws?.lastChangeKo?.trim() ||
           null;
@@ -469,8 +477,13 @@ export function WorkspaceCursorDock({
       }
       toast.message(copy.feed.captureIntentFound);
       try {
-        const utterance = await buildWorkspaceImageAgentUtterance({ file });
-        await runTurn(utterance);
+        const prepared = await prepareWorkspaceImageAgentTurn({ file });
+        // Prefer chat label for user bubble; Agent runs operable utterance.
+        setValue("");
+        await runTurn(prepared.utterance, {
+          chatUserText: prepared.chatLabelKo,
+          statusOverrideKo: prepared.plan?.statusKo ?? null,
+        });
       } catch {
         toast.message(copy.feed.screenshotFailed);
       }

@@ -15,7 +15,7 @@ import {
   type ContextWorkspaceState,
 } from "@/lib/context-workspace";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
-import { buildWorkspaceImageAgentUtterance } from "@/lib/context-run/build-workspace-image-agent-utterance";
+import { prepareWorkspaceImageAgentTurn } from "@/lib/context-run/build-workspace-image-agent-utterance";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { copy } from "@/lib/copy/human-ko";
@@ -216,14 +216,53 @@ export function MobileWorkspace({
       setAgentExpanded(true);
       toast.message(copy.feed.captureIntentFound);
       try {
-        const utterance = await buildWorkspaceImageAgentUtterance({ file });
-        await onCommand(utterance);
+        const prepared = await prepareWorkspaceImageAgentTurn({ file });
+        // Chat shows photo intent; Agent executes operable scoutQuery (Cursor-like).
+        appendWorkspaceChatTurn({
+          contextEventId: eventId,
+          role: "user",
+          text: prepared.chatLabelKo,
+        });
+        const result = await applyGlobeWorkspaceAgentTurn({
+          contextEventId: eventId,
+          explicitContextEventId: eventId,
+          utterance: prepared.utterance,
+        });
+        if (result.handled && result.statusKo) {
+          appendWorkspaceChatTurn({
+            contextEventId: eventId,
+            role: "assistant",
+            text: prepared.plan?.statusKo || result.statusKo,
+          });
+          toast.message(prepared.plan?.statusKo || result.statusKo);
+        }
+        const ws = readContextWorkspace(eventId);
+        if (ws) {
+          const entities = mobileEntitiesFromWorkspaceNodes(ws.nodes);
+          const anchorId = mobile?.anchorEntityId ?? null;
+          dispatchMobileWorkspace({
+            type: "apply_intent",
+            intent: {
+              rawText: prepared.utterance,
+              action: "discover",
+              target: prepared.plan?.domain ?? "poi",
+              constraint: prepared.plan
+                ? { work: prepared.plan.work, via: "vision" }
+                : { via: "vision" },
+            },
+            entities,
+            relations: anchorId
+              ? buildNearbyRelationsFromAnchor({ anchorId, entities })
+              : [],
+          });
+        }
       } catch {
         toast.message(copy.feed.screenshotFailed);
+      } finally {
         setBusy(false);
       }
     },
-    [eventId, onCommand],
+    [eventId, mobile?.anchorEntityId],
   );
 
   const handleSelect = useCallback(
