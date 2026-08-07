@@ -438,7 +438,7 @@ function TimeGridView({
 
       <div
         ref={scrollContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [scrollbar-width:thin]"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain rimvio-scroll-touch"
       >
         <div className="flex min-w-0">
           <TimeGutter

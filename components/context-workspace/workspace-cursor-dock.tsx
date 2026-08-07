@@ -596,7 +596,7 @@ export function WorkspaceCursorDock({
           {streamOpen ? (
             <div
               ref={scrollerRef}
-              className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3.5 pb-1 pt-0.5"
+              className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain rimvio-scroll-touch px-3.5 pb-1 pt-0.5"
             >
               {turns.length === 0 && !liveWorking ? (
                 <p className="py-2 text-center text-[11px] text-[#aeaeb2]">

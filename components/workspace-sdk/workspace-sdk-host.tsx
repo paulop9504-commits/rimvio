@@ -350,7 +350,7 @@ export function WorkspaceSdkHost({
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto rimvio-scroll-touch px-4 py-3">
           <p className="mb-2 text-[11px] text-[#8b95a1]">{frame.node.labelKo}</p>
           <WorkspaceSdkNodeBody
             model={nodeModel}

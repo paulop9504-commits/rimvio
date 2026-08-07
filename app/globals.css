@@ -3,6 +3,45 @@
 @import "shadcn/tailwind.css";
 @import "./rimvio-ontology.css";
 
+/**
+ * Product-wide: hide scrollbars (Chrome/Safari/Firefox/legacy Edge).
+ * Keeps overflow scroll + touch / trackpad / wheel momentum — GPT/Gemini style.
+ */
+html {
+  -webkit-overflow-scrolling: touch;
+}
+
+*,
+*::before,
+*::after {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent;
+}
+
+/* Opt-in touch scroll surface (Agent dock, sheets, chat lists). */
+@utility rimvio-scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-y;
+}
+
+@utility rimvio-scroll-touch-x {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-x;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

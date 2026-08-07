@@ -351,7 +351,7 @@ export function CalloutFloatingWindow({
         </header>
 
         {!isCompact ? (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2.5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch p-2.5">
             <CalloutSessionProvider value={session}>
               <Callout
                 objectId={win.entityId}

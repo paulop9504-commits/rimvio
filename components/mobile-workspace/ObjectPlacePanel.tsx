@@ -72,7 +72,7 @@ export function ObjectPlacePanel({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch px-4 py-3">
         <h2 className="text-[17px] font-bold tracking-tight text-[#191f28]">
           {entity.title}
         </h2>

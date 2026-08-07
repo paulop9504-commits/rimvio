@@ -205,7 +205,7 @@ export function WorkspaceGptPlaceListPanel({
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 pt-0.5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch px-2 pb-2 pt-0.5">
         {showSkeleton
           ? Array.from({ length: 4 }).map((_, i) => (
               <div

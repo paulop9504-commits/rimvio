@@ -81,7 +81,7 @@ export function BottomSheetWorkspace({
           <span className="h-1 w-10 rounded-full bg-white/25" />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rimvio-scroll-touch px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <header className="mb-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-white/40">
               {entity.kind}

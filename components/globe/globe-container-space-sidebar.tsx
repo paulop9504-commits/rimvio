@@ -872,7 +872,7 @@ export function GlobeContainerSpaceSidebar({
               </div>
             ) : null}
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 [scrollbar-width:thin]">
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 rimvio-scroll-touch">
               {detailEntry ? (
                 detailEvent ? (
                   <GlobeContextRuntimePanel
