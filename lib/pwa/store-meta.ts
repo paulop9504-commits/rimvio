@@ -2,26 +2,23 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
-  /** Google / HTML meta · Twitter — keep SEO keywords early. */
+  /** Google / HTML meta · Twitter — consumer line (no internal OS jargon). */
   shortDescription:
-    "Rimvio는 현실 세계의 장소와 경험을 AI가 이해하는 Context 기반 Experience OS입니다. Reality Graph와 AI Agent를 통해 탐색, 비교, 예약, 다음 행동까지 연결합니다.",
+    "맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다.",
   /** Open Graph · store full listing. */
   longDescription:
-    "Rimvio(림비오)는 현실 세계를 이해하는 AI Experience OS입니다. 사용자의 Context를 중심으로 장소·경험·일정·관계·데이터를 Reality Graph로 연결하고, Context AI Agent가 Workspace에서 후보 탐색·비교·일정 구성·예약 준비·다음 행동까지 이어 줍니다. 3D Globe에서 장소(Object)·진행 중 작업(Capsule)·AI 분석이 같은 공간에 연결되며, \"지난번 오사카 여행 이어서\"처럼 Context Resume로 이전 작업을 그대로 이어갑니다. Reality Commit은 당신이 승인할 때만 실행됩니다.",
+    "Rimvio(림비오)는 맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다. 장소·경험·일정을 이어 두고 후보를 찾고 비교·일정·예약 준비까지 이어 주며, 실제 실행은 당신이 확인할 때만 진행됩니다.",
   keywords: [
     "Rimvio",
     "림비오",
-    "AI Experience OS",
-    "Experience OS",
-    "Context",
-    "Reality Graph",
-    "AI Agent",
-    "Workspace",
-    "Context Resume",
-    "Globe",
     "맥락",
+    "AI",
     "여행",
+    "계획",
+    "비교",
     "예약",
+    "Experience OS",
+    "Globe",
     "PWA",
   ],
   category: "productivity",

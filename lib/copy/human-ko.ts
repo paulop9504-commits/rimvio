@@ -39,9 +39,9 @@ export const copy = {
     definition: NORTH_STAR.experienceOsDefinitionKo,
     definitionHuman: NORTH_STAR.experienceOsHumanKo,
     oneLiner:
-      "현실 세계의 Context를 이해하고, AI Agent가 다음 행동까지 준비하는 Experience OS",
+      "맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다.",
     oneLinerSub:
-      "Reality Graph로 장소·경험·일정을 잇고 · Workspace에서 탐색·비교·예약 · Context Resume로 이어가기",
+      "말만 하면 비교·예약까지 준비 · 실행은 당신이 확인할 때만",
     feedContext: "공유한 링크도 살아본 맥락에 담기",
     peersContext:
       "기억은 사람과 함께 묶여요 · 대화에서 한 번에 이어가기",
@@ -4058,8 +4058,9 @@ export const copy = {
       "로그인 후 이름·Rimvio ID만 정하면 친구·실행 탭을 바로 쓸 수 있어요",
     googleCardFoot: "Human decides · 실행은 항상 내가 탭할 때만",
     loading: "프로필 불러오는 중…",
-    introTitle: "Rimvio는 AI Experience OS예요",
-    introBody: NORTH_STAR.experienceOsHumanKo,
+    introTitle: "맥락을 잇고, AI와 함께 다음을 준비해요",
+    introBody:
+      "맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다. 실행은 탭할 때만.",
     introTapHint: "자동 실행 없음 · 탭할 때만 실행",
     introCta: "프로필 만들기",
     welcomeTitle: "Google 연결 완료",
@@ -4295,7 +4296,7 @@ export const copy = {
     iosStep3Body: "에 붙여넣기 → Action Dock으로 이어집니다",
     desktopSection: "데스크톱",
     desktopMid: "에 링크를 붙여넣거나",
-    desktopEnd: "로 AI Experience OS · Context Workspace를 체험해 보세요",
+    desktopEnd: "로 맥락을 잇고, AI와 함께 계획·비교·실행을 체험해 보세요",
     tryDemo: "체험하기",
   },
   manual: {
@@ -4323,7 +4324,7 @@ export const copy = {
     tryCta: "실행 화면에서 바로 써보기",
     introTitle: "처음이시면 설명서부터 읽어보세요",
     introBody:
-      "림비오는 Context · Reality Graph · AI Agent Workspace예요. 1분이면 지구·친구·회상 흐름을 잡을 수 있어요.",
+      "맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다. 1분이면 지구·친구·회상 흐름을 잡을 수 있어요.",
     readManualCta: "설명서 읽기",
     skipIntroCta: "바로 써볼게요",
     feedBannerText: "아직 설명서를 안 읽으셨어요.",

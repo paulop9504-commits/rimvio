@@ -14,9 +14,9 @@ export const copyEn: Copy = {
     definition: NORTH_STAR.experienceOsDefinitionEn,
     definitionHuman: NORTH_STAR.experienceOsHumanEn,
     oneLiner:
-      "An AI Experience OS that understands real-world Context and prepares the next action",
+      "Connect your context into one place — plan, compare, and act with AI.",
     oneLinerSub:
-      "Reality Graph links places · experiences · schedules · Workspace explores, compares, books · Context Resume continues",
+      "Say what you need — we prepare compare & book · you decide when to run",
     feedContext: "Shared links join lived context, not a graveyard",
     peersContext:
       "Memories tie to people · follow through from chat",
@@ -4002,8 +4002,9 @@ export const copyEn: Copy = {
       "After sign-in, set your name and Rimvio ID — Friends and Operate tabs work right away",
     googleCardFoot: "Human decides · actions run only when you tap",
     loading: "Loading profile…",
-    introTitle: "Rimvio is an AI Experience OS",
-    introBody: NORTH_STAR.experienceOsHumanEn,
+    introTitle: "Connect context — plan the next move with AI",
+    introBody:
+      "Connect your context into one place — plan, compare, and act with AI. Actions run only when you tap.",
     introTapHint: "No auto-run · you tap to execute",
     introCta: "Set up profile",
     welcomeTitle: "Google connected",
@@ -4239,7 +4240,7 @@ export const copyEn: Copy = {
     iosStep3Body: " → paste, and we'll route it to your Action Dock",
     desktopSection: "Desktop",
     desktopMid: " — paste a link, or try ",
-    desktopEnd: " to experience the AI Experience OS · Context Workspace",
+    desktopEnd: " to connect context and plan, compare, and act with AI",
     tryDemo: "Try the demo",
   },
   manual: {
@@ -4267,7 +4268,7 @@ export const copyEn: Copy = {
     tryCta: "Try it on the feed",
     introTitle: "New here? Read the guide first",
     introBody:
-      "Rimvio is Context · Reality Graph · AI Agent Workspace. One minute covers Globe, peers, and recall → prepare → Commit.",
+      "Connect your context into one place — plan, compare, and act with AI. One minute covers Globe, peers, and recall.",
     readManualCta: "Read the guide",
     skipIntroCta: "Skip for now",
     feedBannerText: "You haven't opened the user guide yet.",
