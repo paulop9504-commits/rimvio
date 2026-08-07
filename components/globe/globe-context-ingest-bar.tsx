@@ -11,7 +11,6 @@ import {
 } from "react";
 import {
   ArrowUp,
-  AudioLines,
   ImagePlus,
   Loader2,
   Mic,
@@ -248,7 +247,6 @@ export const GlobeContextIngestBar = forwardRef<
           : resolveRimvioCommandPlaceholder("globe"));
   const marketComposeBusy = busy || marketRoleBusy;
   const canSend = Boolean(text.trim() || offerTravelGps);
-  const voicePrimary = isLightPill && !canSend;
 
   const tryQuickListMarket = useCallback(
     async (composeText: string): Promise<boolean> => {
@@ -898,15 +896,15 @@ export const GlobeContextIngestBar = forwardRef<
       <div
         className={cn(
           isLightPill || isPill
-            ? "relative rounded-full backdrop-blur-xl"
+            ? "relative rounded-full"
             : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
           isLightPill
-            ? "rimvio-globe-prompt-pill--light rimvio-globe-prompt--gpt ring-1 ring-black/[0.06]"
+            ? "rimvio-globe-prompt-pill--light rimvio-globe-prompt--gpt"
             : mapPromptMode && !isDiscovery
-              ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
-              : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
+              ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14 backdrop-blur-xl"
+              : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06] backdrop-blur-xl",
         )}
-        data-globe-prompt-style={isLightPill ? "chatgpt-pill" : undefined}
+        data-globe-prompt-style={isLightPill ? "white-pill" : undefined}
       >
         {menuOpen && !isDiscovery ? (
           isPill ? (
@@ -982,7 +980,7 @@ export const GlobeContextIngestBar = forwardRef<
           className={cn(
             "group flex items-center",
             isLightPill
-              ? "gap-1.5 px-2.5 py-1.5"
+              ? "min-h-[52px] gap-1 px-2 py-1.5"
               : isPill
                 ? "gap-1.5 px-2 py-1.5"
                 : "gap-2 px-2 py-2",
@@ -996,7 +994,7 @@ export const GlobeContextIngestBar = forwardRef<
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
               isLightPill
-                ? "size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                ? "size-10 shrink-0 rounded-full text-[#3d3d3d] hover:bg-black/[0.04] hover:text-[#0d0d0d]"
                 : isPill
                   ? "size-8 shrink-0 rounded-full"
                   : "size-10 shrink-0 rounded-xl",
@@ -1006,10 +1004,11 @@ export const GlobeContextIngestBar = forwardRef<
             aria-expanded={menuOpen}
           >
             {menuOpen ? (
-              <X className={isLightPill || isPill ? "size-4" : "size-5"} aria-hidden />
+              <X className={isLightPill || isPill ? "size-[18px]" : "size-5"} strokeWidth={isLightPill ? 1.75 : 2} aria-hidden />
             ) : (
               <Plus
-                className={isLightPill || isPill ? "size-[18px]" : "size-5"}
+                className={isLightPill ? "size-5" : isPill ? "size-[18px]" : "size-5"}
+                strokeWidth={isLightPill ? 1.75 : 2}
                 aria-hidden
               />
             )}
@@ -1028,7 +1027,7 @@ export const GlobeContextIngestBar = forwardRef<
               className={cn(
                 "min-w-0 flex-1 bg-transparent outline-none",
                 isLightPill
-                  ? "px-0.5 py-1.5 text-[16px] leading-snug tracking-[-0.01em] text-[#0d0d0d] placeholder:text-[#8e8e8e]"
+                  ? "px-1 py-2 text-[16px] leading-snug tracking-[-0.01em] text-[#0d0d0d] placeholder:text-[#8e8e8e]"
                   : mapPromptMode && !isDiscovery
                     ? "px-1 text-[14px] text-white placeholder:text-white/42"
                     : "px-1 text-[14px] text-[#191f28] placeholder:text-[#8b95a1]",
@@ -1079,11 +1078,11 @@ export const GlobeContextIngestBar = forwardRef<
               className={cn(
                 rimvioIconBtnClass(voiceListening ? "primary" : "ghost"),
                 isLightPill
-                  ? "size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                  ? "size-10 shrink-0 rounded-full text-[#3d3d3d] hover:bg-black/[0.04] hover:text-[#0d0d0d]"
                   : isPill
                     ? "size-8 shrink-0 rounded-full"
                     : "size-10 shrink-0 rounded-xl",
-                isLightPill && voiceListening && "bg-black/[0.08] text-[#0d0d0d]",
+                isLightPill && voiceListening && "bg-black/[0.06] text-[#0d0d0d]",
                 !isLightPill &&
                   !voiceListening &&
                   "transition lg:pointer-events-none lg:opacity-0 group-hover:lg:pointer-events-auto group-hover:lg:opacity-100 group-focus-within:lg:pointer-events-auto group-focus-within:lg:opacity-100",
@@ -1099,59 +1098,44 @@ export const GlobeContextIngestBar = forwardRef<
               aria-pressed={voiceListening}
               data-globe-ingest-voice-trigger
             >
-              <Mic className={isLightPill || isPill ? "size-4" : "size-5"} aria-hidden />
+              <Mic
+                className={isLightPill ? "size-[18px]" : isPill ? "size-4" : "size-5"}
+                strokeWidth={isLightPill ? 1.75 : 2}
+                aria-hidden
+              />
             </button>
           ) : null}
 
           <button
-            type={voicePrimary ? "button" : "submit"}
-            disabled={
-              busy ||
-              (voicePrimary ? !voiceSupported : !canSend)
-            }
-            onClick={
-              voicePrimary
-                ? () => {
-                    if (!voiceSupported) {
-                      showComposerHint(copy.globe.composerHint.voiceUnsupported, {
-                        tone: "error",
-                        durationMs: 4000,
-                      });
-                      return;
-                    }
-                    toggleVoice();
-                  }
-                : undefined
-            }
+            type="submit"
+            disabled={busy || !canSend}
             className={cn(
               isLightPill
-                ? "rimvio-globe-prompt-pill-send size-9 shrink-0 rounded-full transition-colors"
+                ? "rimvio-globe-prompt-pill-send inline-flex size-10 shrink-0 items-center justify-center rounded-full p-0 transition-colors"
                 : rimvioIconBtnClass("primary"),
+              isLightPill &&
+                (canSend && !busy
+                  ? "bg-[#8ec5f8] text-white hover:bg-[#7bb8ef]"
+                  : "bg-[#ebebeb] text-[#9a9a9a]"),
               !isLightPill && isPill && "size-8 shrink-0 rounded-full",
               !isLightPill && !isPill && "size-10 shrink-0 rounded-xl",
-              isLightPill ? "" : "disabled:opacity-35",
+              !isLightPill && "disabled:opacity-35",
               !isLightPill && isPill && "disabled:opacity-35",
-              voicePrimary && voiceListening && "rimvio-globe-prompt-pill-send--listening",
             )}
-            data-send-mode={voicePrimary ? "voice" : "send"}
-            aria-label={
-              voicePrimary
-                ? voiceListening
-                  ? copy.globe.askSheet.voiceListening
-                  : copy.globe.askSheet.voiceAria
-                : copy.globe.ingestSendAria
-            }
-            aria-pressed={voicePrimary ? voiceListening : undefined}
+            data-send-ready={isLightPill ? (canSend ? "true" : "false") : undefined}
+            aria-label={copy.globe.ingestSendAria}
           >
             {busy ? (
               <Loader2
                 className={isLightPill || isPill ? "size-4 animate-spin" : "size-5 animate-spin"}
                 aria-hidden
               />
-            ) : voicePrimary ? (
-              <AudioLines className="size-4" strokeWidth={2.25} aria-hidden />
             ) : isLightPill ? (
-              <ArrowUp className="size-4" strokeWidth={2.5} aria-hidden />
+              <ArrowUp
+                className="pointer-events-none block size-[18px] translate-y-px"
+                strokeWidth={2.5}
+                aria-hidden
+              />
             ) : (
               <SendHorizontal className={isPill ? "size-4" : "size-5"} aria-hidden />
             )}

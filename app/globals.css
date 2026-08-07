@@ -1512,51 +1512,36 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   box-shadow: none;
 }
 
-/* Globe — ChatGPT-like light pill composer (map + chat) */
+/* Globe — white-tone ChatGPT pill (+ · input · mic · blue ↑) */
 [data-globe-prompt-tone="light"] {
-  --rimvio-globe-prompt-pill-bg: #f4f4f4;
-  --rimvio-globe-prompt-pill-ring: rgba(0, 0, 0, 0.06);
+  --rimvio-globe-prompt-pill-bg: #ffffff;
+  --rimvio-globe-prompt-pill-ring: rgba(0, 0, 0, 0.08);
 }
 
 .rimvio-globe-prompt-pill--light {
-  background: var(--rimvio-globe-prompt-pill-bg, #f4f4f4);
+  background: var(--rimvio-globe-prompt-pill-bg, #ffffff);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.05),
-    0 4px 16px rgba(0, 0, 0, 0.06);
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 8px 28px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .rimvio-globe-prompt--gpt {
   max-width: 100%;
 }
 
-/* Empty → soft blue voice; text ready → black send */
-[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send[data-send-mode="voice"] {
-  background: #8ec5f8;
-  color: #ffffff;
+[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
   box-shadow: none;
 }
 
-[data-globe-prompt-tone="light"]
-  .rimvio-globe-prompt-pill-send[data-send-mode="voice"].rimvio-globe-prompt-pill-send--listening {
-  background: #5aa8f0;
-}
-
-[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send[data-send-mode="voice"]:disabled {
-  opacity: 0.45;
-  background: #c5dcf2;
-  color: #ffffff;
-}
-
-[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send[data-send-mode="send"] {
-  background: #0d0d0d;
-  color: #ffffff;
-  box-shadow: none;
-}
-
-[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send[data-send-mode="send"]:disabled {
-  opacity: 1;
-  background: #e5e5e5;
-  color: #b0b0b0;
+[data-globe-prompt-tone="light"] .rimvio-globe-prompt-pill-send svg {
+  display: block;
+  margin: 0 auto;
 }
 
 /* Globe map prompt — dark frosted shell (non-pill only) */
