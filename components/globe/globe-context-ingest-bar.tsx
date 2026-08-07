@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   ArrowUp,
+  AudioLines,
   ImagePlus,
   Loader2,
   Mic,
@@ -246,6 +247,8 @@ export const GlobeContextIngestBar = forwardRef<
           ? copy.globe.ingestAttachPlaceholder(attachHintTitle)
           : resolveRimvioCommandPlaceholder("globe"));
   const marketComposeBusy = busy || marketRoleBusy;
+  const canSend = Boolean(text.trim() || offerTravelGps);
+  const voicePrimary = isLightPill && !canSend;
 
   const tryQuickListMarket = useCallback(
     async (composeText: string): Promise<boolean> => {
@@ -894,18 +897,16 @@ export const GlobeContextIngestBar = forwardRef<
       ) : null}
       <div
         className={cn(
+          isLightPill || isPill
+            ? "relative rounded-full backdrop-blur-xl"
+            : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
           isLightPill
-            ? "relative overflow-hidden rounded-[26px] backdrop-blur-xl"
-            : isPill
-              ? "relative rounded-full backdrop-blur-xl"
-              : "overflow-hidden rounded-[1.35rem] backdrop-blur-xl",
-          isLightPill
-            ? "rimvio-globe-prompt-pill--light rimvio-globe-prompt--gpt ring-1 ring-black/[0.08]"
+            ? "rimvio-globe-prompt-pill--light rimvio-globe-prompt--gpt ring-1 ring-black/[0.06]"
             : mapPromptMode && !isDiscovery
               ? "bg-[#121316]/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] ring-1 ring-white/14"
               : "bg-white/92 shadow-[0_8px_32px_rgba(2,32,71,0.12)] ring-1 ring-black/[0.06]",
         )}
-        data-globe-prompt-style={isLightPill ? "gpt" : undefined}
+        data-globe-prompt-style={isLightPill ? "chatgpt-pill" : undefined}
       >
         {menuOpen && !isDiscovery ? (
           isPill ? (
@@ -979,9 +980,9 @@ export const GlobeContextIngestBar = forwardRef<
         <form
           onSubmit={(event) => void submitText(event)}
           className={cn(
-            "group flex items-end",
+            "group flex items-center",
             isLightPill
-              ? "gap-2 px-3 py-2.5"
+              ? "gap-1.5 px-2.5 py-1.5"
               : isPill
                 ? "gap-1.5 px-2 py-1.5"
                 : "gap-2 px-2 py-2",
@@ -995,7 +996,7 @@ export const GlobeContextIngestBar = forwardRef<
             className={cn(
               rimvioIconBtnClass(menuOpen ? "primary" : "ghost"),
               isLightPill
-                ? "mb-0.5 size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                ? "size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
                 : isPill
                   ? "size-8 shrink-0 rounded-full"
                   : "size-10 shrink-0 rounded-xl",
@@ -1027,7 +1028,7 @@ export const GlobeContextIngestBar = forwardRef<
               className={cn(
                 "min-w-0 flex-1 bg-transparent outline-none",
                 isLightPill
-                  ? "px-0.5 py-2 text-[16px] leading-snug tracking-[-0.01em] text-[#0d0d0d] placeholder:text-[#8e8e8e]"
+                  ? "px-0.5 py-1.5 text-[16px] leading-snug tracking-[-0.01em] text-[#0d0d0d] placeholder:text-[#8e8e8e]"
                   : mapPromptMode && !isDiscovery
                     ? "px-1 text-[14px] text-white placeholder:text-white/42"
                     : "px-1 text-[14px] text-[#191f28] placeholder:text-[#8b95a1]",
@@ -1078,7 +1079,7 @@ export const GlobeContextIngestBar = forwardRef<
               className={cn(
                 rimvioIconBtnClass(voiceListening ? "primary" : "ghost"),
                 isLightPill
-                  ? "mb-0.5 size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
+                  ? "size-9 shrink-0 rounded-full text-[#5d5d5d] hover:bg-black/[0.05] hover:text-[#0d0d0d]"
                   : isPill
                     ? "size-8 shrink-0 rounded-full"
                     : "size-10 shrink-0 rounded-xl",
@@ -1103,24 +1104,52 @@ export const GlobeContextIngestBar = forwardRef<
           ) : null}
 
           <button
-            type="submit"
-            disabled={busy || (!text.trim() && !offerTravelGps)}
+            type={voicePrimary ? "button" : "submit"}
+            disabled={
+              busy ||
+              (voicePrimary ? !voiceSupported : !canSend)
+            }
+            onClick={
+              voicePrimary
+                ? () => {
+                    if (!voiceSupported) {
+                      showComposerHint(copy.globe.composerHint.voiceUnsupported, {
+                        tone: "error",
+                        durationMs: 4000,
+                      });
+                      return;
+                    }
+                    toggleVoice();
+                  }
+                : undefined
+            }
             className={cn(
               isLightPill
-                ? "rimvio-globe-prompt-pill-send mb-0.5 size-9 shrink-0 rounded-full transition-colors"
+                ? "rimvio-globe-prompt-pill-send size-9 shrink-0 rounded-full transition-colors"
                 : rimvioIconBtnClass("primary"),
               !isLightPill && isPill && "size-8 shrink-0 rounded-full",
               !isLightPill && !isPill && "size-10 shrink-0 rounded-xl",
               isLightPill ? "" : "disabled:opacity-35",
               !isLightPill && isPill && "disabled:opacity-35",
+              voicePrimary && voiceListening && "rimvio-globe-prompt-pill-send--listening",
             )}
-            aria-label={copy.globe.ingestSendAria}
+            data-send-mode={voicePrimary ? "voice" : "send"}
+            aria-label={
+              voicePrimary
+                ? voiceListening
+                  ? copy.globe.askSheet.voiceListening
+                  : copy.globe.askSheet.voiceAria
+                : copy.globe.ingestSendAria
+            }
+            aria-pressed={voicePrimary ? voiceListening : undefined}
           >
             {busy ? (
               <Loader2
                 className={isLightPill || isPill ? "size-4 animate-spin" : "size-5 animate-spin"}
                 aria-hidden
               />
+            ) : voicePrimary ? (
+              <AudioLines className="size-4" strokeWidth={2.25} aria-hidden />
             ) : isLightPill ? (
               <ArrowUp className="size-4" strokeWidth={2.5} aria-hidden />
             ) : (
