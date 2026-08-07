@@ -2,7 +2,8 @@
 
 **Status:** accepted 2026-07  
 **Wire:** `lib/rimvio-command/` · Globe ingest · Context PinBar · Workspace prompt  
-**Related:** ADR-028 · ADR-029 · ADR-031 · ADR-034 · Article 0 · UX Constitution
+**Related:** ADR-028 · ADR-029 · ADR-031 · ADR-034 · Article 0 · UX Constitution  
+**Extension:** [ADR-053](./053-command-verb-intent-router.md) — Product verb taxonomy (CREATE · DISCOVER · …) as alias layer over ActionVerb; Intent Router leafHints; synonym gap list
 
 ## One sentence
 
@@ -88,6 +89,8 @@ Agent System → 상태 변경 → (승인 후) Commit
 | `action` | 실행해줘 · 진행해줘 · 적용해줘 | (Execute mode) |
 | `cancel` | 취소해줘 · 되돌려줘 · 빼줘 | Delete, Undo |
 | `auto` | 알아서 해줘 · 맡길게 | (Delegation) |
+
+Product families (CREATE · DISCOVER · ANALYZE · MODIFY · OPTIMIZE · EXECUTE · MEMORY · SIMULATE · MANAGE · DELEGATE) are **aliases** for docs/UX — they do not replace these 14 verbs. Full map + synonym gaps: **ADR-053**.
 
 ### 5 Command Targets (state-aware)
 
