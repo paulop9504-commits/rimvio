@@ -11,6 +11,12 @@ import {
 } from "@/lib/context-field";
 import { searchOsakaDemoCatalog } from "@/lib/search-engine/osaka-demo-catalog";
 import { rankByValueConsensus } from "@/lib/search-engine/score-value-consensus";
+import { resolveLodgingMockForPlace } from "@/lib/globe/context-hub/lodging-mock-inventory";
+import {
+  lodgingRowMatchesStayType,
+  parseLodgingStayTypeFromText,
+} from "@/lib/globe/lodging/lodging-stay-types";
+import { mapLodgingInventoryToPlaceHits } from "@/lib/search-engine/map-lodging-inventory-to-hits";
 
 export type PlaceSearchHit = {
   readonly id: string;
@@ -149,7 +155,37 @@ export function runPlaceSearch(input: PlaceSearchInput): readonly PlaceSearchHit
   }
 
   // Trip Reality Draft / live-miss path: do not invent Riverview / 근처 카페 orbits.
+  // Exception: stay-type soft inventory (capsule · hostel) when live providers empty.
   if (input.allowSeedFallback === false) {
+    if (input.domain === "lodging") {
+      const stay = parseLodgingStayTypeFromText(query);
+      const softStay =
+        stay === "capsule" ||
+        stay === "hostel" ||
+        stay === "guesthouse" ||
+        stay === "ryokan" ||
+        /캡슐|capsule|호스텔|게스트|료칸/iu.test(query);
+      if (softStay) {
+        const lat = input.anchorLat ?? 34.6654;
+        const lng = input.anchorLng ?? 135.5019;
+        const mock = resolveLodgingMockForPlace(query, { lat, lng });
+        const filtered = stay
+          ? mock.filter((row) => lodgingRowMatchesStayType(row, stay))
+          : mock.filter((row) =>
+              /캡슐|capsule|호스텔|게스트|료칸|hostel|guest/iu.test(row.name),
+            );
+        const rows = filtered.length > 0 ? filtered : mock;
+        if (rows.length > 0) {
+          return mapLodgingInventoryToPlaceHits({
+            rows,
+            query,
+            anchorLat: lat,
+            anchorLng: lng,
+            limit,
+          }).map((h) => ({ ...h, source: "seed" as const, domain: "lodging" }));
+        }
+      }
+    }
     return [];
   }
 

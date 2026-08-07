@@ -22,8 +22,10 @@ import {
 import {
   parseLodgingStayTypeFromText,
   resolveLodgingStaySearchKeyword,
+  lodgingRowMatchesStayType,
   type LodgingStayType,
 } from "@/lib/globe/lodging/lodging-stay-types";
+import { resolveLodgingMockForPlace } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import {
   applyFieldControlToPlaceHits,
   composeSearchQueryWithFieldControl,
@@ -456,12 +458,49 @@ export async function runPlaceSearchAsync(
   if (
     (!hits || hits.length === 0) &&
     composed.domain !== "poi" &&
+    composed.domain !== "lodging" &&
     isGooglePlacesConfigured() &&
     composed.query.trim().length >= 2
   ) {
     const named = await livePoiHits({ ...composed, domain: composed.domain });
     if (named?.length) {
       hits = named.map((hit) => ({ ...hit, domain: composed.domain }));
+    }
+  }
+
+  // Lodging stay soft inventory — live miss must not leave Workspace empty
+  // (capsule seed was previously blocked by Osaka demo APA guard).
+  if ((!hits || hits.length === 0) && composed.domain === "lodging") {
+    const stay = parseLodgingStayTypeFromText(composed.query);
+    const softStay =
+      stay === "capsule" ||
+      stay === "hostel" ||
+      stay === "guesthouse" ||
+      stay === "ryokan" ||
+      /캡슐|capsule|호스텔|게스트|료칸/iu.test(composed.query);
+    if (softStay) {
+      const lat = composed.anchorLat ?? 34.6654;
+      const lng = composed.anchorLng ?? 135.5019;
+      const placeLabel =
+        input.contextLabelKo?.trim() ||
+        composed.query.replace(/찾아.?줘|검색|보여.?줘/giu, "").trim() ||
+        "오사카";
+      const mock = resolveLodgingMockForPlace(placeLabel, { lat, lng });
+      const filtered = stay
+        ? mock.filter((row) => lodgingRowMatchesStayType(row, stay))
+        : mock.filter((row) =>
+            /캡슐|capsule|호스텔|게스트|료칸|hostel|guest/iu.test(row.name),
+          );
+      const rows = filtered.length > 0 ? filtered : mock;
+      if (rows.length > 0) {
+        hits = mapLodgingInventoryToPlaceHits({
+          rows,
+          query: composed.query,
+          anchorLat: lat,
+          anchorLng: lng,
+          limit: composed.limit ?? 6,
+        }).map((h) => ({ ...h, source: "seed" as const, domain: "lodging" }));
+      }
     }
   }
 

@@ -70,6 +70,7 @@ function osakaMetroAnchorHit(text: string): RealityAnchorHit | null {
 
 /**
  * Resolve named Reality Anchor from NL via world-geo catalog (+ Osaka Metro).
+ * Prefer named station over city/prefecture (「오사카 난바역 근처 캡슐」→ 난바역, not 오사카부).
  */
 export function resolveRealityAnchorFromUtterance(
   text: string,
@@ -77,28 +78,62 @@ export function resolveRealityAnchorFromUtterance(
   const t = text.trim();
   if (!t) return null;
 
-  const hit = resolveWorldGeoEntity(t);
-  if (
-    hit?.node &&
-    Number.isFinite(hit.node.centroid.lat) &&
-    Number.isFinite(hit.node.centroid.lng)
-  ) {
-    return {
-      geoId: hit.node.id,
-      labelKo: hit.node.labels.ko,
-      lat: hit.node.centroid.lat,
-      lng: hit.node.centroid.lng,
-      kind:
-        hit.node.kind === "poi"
-          ? "poi"
-          : hit.node.kind === "city"
-            ? "city"
-            : "area",
-      provider: "world_geo",
-    };
+  const stationLabel = t.match(/([가-힣A-Za-z0-9·]+역)/u)?.[1]?.trim();
+  if (stationLabel) {
+    const metro =
+      osakaMetroAnchorHit(stationLabel) ?? osakaMetroAnchorHit(t);
+    if (metro) return metro;
+    const stationGeo = resolveWorldGeoEntity(stationLabel);
+    if (
+      stationGeo?.node &&
+      Number.isFinite(stationGeo.node.centroid.lat) &&
+      Number.isFinite(stationGeo.node.centroid.lng)
+    ) {
+      return {
+        geoId: stationGeo.node.id,
+        labelKo: stationGeo.node.labels.ko,
+        lat: stationGeo.node.centroid.lat,
+        lng: stationGeo.node.centroid.lng,
+        kind:
+          stationGeo.node.kind === "poi" || /역|駅|station/iu.test(stationLabel)
+            ? "station"
+            : stationGeo.node.kind === "city"
+              ? "city"
+              : "area",
+        provider: "world_geo",
+      };
+    }
   }
 
-  // Explicit USJ fallback if resolver spelling missed
+  const nearLabel = extractNearPlaceLabelFromUtterance(t);
+  if (nearLabel && nearLabel.length >= 2 && nearLabel !== t) {
+    const nearMetro = osakaMetroAnchorHit(nearLabel);
+    if (nearMetro) return nearMetro;
+    const nearGeo = resolveWorldGeoEntity(nearLabel);
+    if (
+      nearGeo?.node &&
+      Number.isFinite(nearGeo.node.centroid.lat) &&
+      Number.isFinite(nearGeo.node.centroid.lng) &&
+      (nearGeo.node.kind === "poi" ||
+        /역|駅|station|USJ|유니버설/iu.test(nearLabel))
+    ) {
+      return {
+        geoId: nearGeo.node.id,
+        labelKo: nearGeo.node.labels.ko,
+        lat: nearGeo.node.centroid.lat,
+        lng: nearGeo.node.centroid.lng,
+        kind:
+          nearGeo.node.kind === "poi"
+            ? "poi"
+            : nearGeo.node.kind === "city"
+              ? "city"
+              : "area",
+        provider: "world_geo",
+      };
+    }
+  }
+
+  // Explicit USJ before broad city match
   if (USJ_ANCHOR_RE.test(t)) {
     const node = getWorldGeoNode(USJ_GEO_ID);
     if (node) {
@@ -113,9 +148,39 @@ export function resolveRealityAnchorFromUtterance(
     }
   }
 
-  // Local Osaka Metro station dict — covers 「모리노미아역」etc. without network.
   const metro = osakaMetroAnchorHit(t);
   if (metro) return metro;
+
+  const hit = resolveWorldGeoEntity(t);
+  if (
+    hit?.node &&
+    Number.isFinite(hit.node.centroid.lat) &&
+    Number.isFinite(hit.node.centroid.lng)
+  ) {
+    // City/pref alone must not win compound 「도시 · 역 · 숙소」scans — station already tried.
+    if (
+      (hit.node.kind === "city" ||
+        hit.node.kind === "prefecture" ||
+        hit.node.kind === "metropolis") &&
+      /근처|주변|near|호텔|숙소|캡슐|호텔로/iu.test(t) &&
+      /역/u.test(t)
+    ) {
+      return null;
+    }
+    return {
+      geoId: hit.node.id,
+      labelKo: hit.node.labels.ko,
+      lat: hit.node.centroid.lat,
+      lng: hit.node.centroid.lng,
+      kind:
+        hit.node.kind === "poi"
+          ? "poi"
+          : hit.node.kind === "city"
+            ? "city"
+            : "area",
+      provider: "world_geo",
+    };
+  }
 
   return null;
 }

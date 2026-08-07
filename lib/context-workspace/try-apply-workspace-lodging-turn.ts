@@ -1171,19 +1171,96 @@ export async function tryApplyWorkspaceLodgingTurn(input: {
             utterance: applied.scoutQuery,
             mode: "replace",
           });
-          const after = readContextWorkspace(contextEventId);
-          if (after && applied.plan) {
+          let after = readContextWorkspace(contextEventId);
+          let lodgingVisible =
+            after?.nodes.filter((n) => n.visible && n.kind === "lodging")
+              .length ?? 0;
+
+          // Soft stay fill — capsule seed was historically stripped by Discovery.
+          const staySoft =
+            patch.stayType === "capsule" ||
+            patch.stayType === "hostel" ||
+            patch.stayType === "guesthouse" ||
+            patch.stayType === "ryokan" ||
+            /캡슐|capsule|호스텔|게스트|료칸/iu.test(utterance);
+          if (lodgingVisible === 0 && staySoft) {
+            const { runPlaceSearch } = await import(
+              "@/lib/search-engine/run-place-search"
+            );
+            const anchorNode =
+              after?.nodes.find(
+                (n) =>
+                  n.source === "reality_anchor" ||
+                  n.tags.includes("reality_anchor") ||
+                  (typeof n.placeId === "string" &&
+                    n.placeId.includes("metro")),
+              ) ??
+              after?.nodes.find((n) => n.kind === "poi" || n.kind === "amenity");
+            const hits = runPlaceSearch({
+              query: applied.scoutQuery || utterance,
+              domain: "lodging",
+              allowSeedFallback: false,
+              anchorLat: anchorNode?.lat ?? 34.6654,
+              anchorLng: anchorNode?.lng ?? 135.5019,
+              limit: 6,
+            });
+            if (hits.length > 0) {
+              openMapContextWorkspace({
+                contextEventId,
+                domain: "lodging",
+                query: applied.scoutQuery || utterance,
+                summaryKo: `숙소 후보 ${hits.length}곳 · 작업장에서 확인`,
+                hits,
+                source: "scout_patch",
+                inventoryMode: "replace",
+              });
+              after = readContextWorkspace(contextEventId);
+              lodgingVisible =
+                after?.nodes.filter((n) => n.visible && n.kind === "lodging")
+                  .length ?? 0;
+            }
+          }
+
+          // Pref / city pins must not compete with lodging candidates.
+          if (after && lodgingVisible > 0) {
+            const cleaned = after.nodes.map((n) => {
+              if (n.kind !== "poi" && n.kind !== "amenity") return n;
+              if (n.source === "reality_anchor" || n.tags.includes("reality_anchor")) {
+                return { ...n, visible: false, selected: false };
+              }
+              if (/부$|현$|도$|시$|pref|大阪|오사카부/u.test(n.title)) {
+                return { ...n, visible: false, selected: false };
+              }
+              return n;
+            });
+            writeContextWorkspace({
+              ...after,
+              nodes: cleaned,
+              realityPlan: applied.plan ?? after.realityPlan,
+              lastChangeKo:
+                lodgingVisible > 0
+                  ? `숙소 후보 ${lodgingVisible}곳 · 작업장에서 확인`
+                  : applied.replyKo,
+              updatedAtIso: new Date().toISOString(),
+            });
+            after = readContextWorkspace(contextEventId);
+          } else if (after && applied.plan) {
             writeContextWorkspace({
               ...after,
               realityPlan: applied.plan,
               lastChangeKo: applied.replyKo,
             });
           }
+
+          const replyKo =
+            lodgingVisible > 0
+              ? `숙소 후보 ${lodgingVisible}곳 · 작업장에서 확인`
+              : applied.replyKo;
           return {
             handled: true,
-            replyKo: applied.replyKo,
+            replyKo,
             committed: scouted.committed,
-            openedForReview: true,
+            openedForReview: lodgingVisible > 0,
           };
         }
         const after = readContextWorkspace(contextEventId);

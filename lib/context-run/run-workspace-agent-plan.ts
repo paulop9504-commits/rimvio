@@ -108,7 +108,7 @@ async function runOneStep(input: {
     explicitContextEventId: input.contextEventId,
   });
 
-  let ok = loop.ok || loop.workspaceMutated;
+  let ok = loop.ok;
   let statusKo = loop.statusKo;
 
   if (ok && input.step.expect) {

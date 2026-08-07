@@ -393,24 +393,62 @@ export async function runWorkspaceAgentLoop(input: {
     entityIds: focusIds,
   });
 
-  // 7. Verify
+  // 7. Verify — lodging find must leave lodging candidates (not city/pref POI alone).
   phases.push("verify");
   const after = readContextWorkspace(contextEventId);
+  const lodgingVisible =
+    after?.nodes.filter((n) => n.visible && n.kind === "lodging").length ?? 0;
+  const lodgingFind =
+    Boolean(understood.patch && "stayType" in understood.patch && understood.patch.stayType) ||
+    Boolean(parseLodgingStayTypeFromText(utterance)) ||
+    /(?:호텔|숙소|캡슐).*(?:찾아|검색|보여)|(?:찾아|검색|보여).*(?:호텔|숙소|캡슐)/iu.test(
+      utterance,
+    );
+  const lodgingMissing = lodgingFind && lodgingVisible === 0;
   const verified =
     Boolean(after) &&
     projection.ok &&
     projection.manualRefreshRequired === false &&
+    !lodgingMissing &&
     (workspaceMutated ||
       after?.updatedAtIso !== before?.updatedAtIso ||
       (after?.patches?.length ?? 0) > (before?.patches?.length ?? 0));
 
+  if (lodgingMissing) {
+    statusKo =
+      "숙소 후보를 아직 못 채웠어요 · 「난바역 근처 캡슐호텔」처럼 다시 말해 주세요";
+    const product = readLastAgentProductTurn();
+    if (product?.contextEventId === contextEventId) {
+      failAgentProductStage(product, "object_discovery", statusKo);
+      writeAgentRuntimeProjectionFromWorkspace({ contextEventId });
+    }
+    phases.push("wait");
+    return fail({
+      statusKo: shorten(statusKo, 96),
+      contextEventId,
+      toolId,
+      patchKind,
+      workspaceMutated,
+      verified: false,
+      projection,
+    });
+  }
+
   // Dual surfaces + honest product stage tape (not bare scout string / "Patch 없음")
   const visible = (after?.nodes ?? []).filter((n) => n.visible);
-  const titles = visible.slice(0, 3).map((n) => n.title);
+  const titles = visible
+    .filter((n) => n.kind === "lodging" || n.kind === "eatery")
+    .slice(0, 3)
+    .map((n) => n.title);
+  const lodgingTitles = after?.nodes
+    .filter((n) => n.visible && n.kind === "lodging")
+    .slice(0, 3)
+    .map((n) => n.title) ?? [];
+  const surfaceTitles = lodgingTitles.length > 0 ? lodgingTitles : titles;
   const hadVisibleBefore = Boolean(before?.nodes.some((n) => n.visible));
   const mutation = resolveWorkspaceMutationMode({
     utterance,
-    hasVisibleCandidates: hadVisibleBefore || visible.length > 0,
+    hasVisibleCandidates: hadVisibleBefore || lodgingVisible > 0,
   });
   const mutationMode =
     mutation.mode === "none"
@@ -424,8 +462,8 @@ export async function runWorkspaceAgentLoop(input: {
     factsKo: [after?.lastChangeKo ?? null, statusKo].filter(
       (x): x is string => Boolean(x?.trim()),
     ),
-    candidateCount: visible.length,
-    entityTitlesKo: titles,
+    candidateCount: lodgingFind ? lodgingVisible : visible.length,
+    entityTitlesKo: surfaceTitles,
   });
   statusKo = surfaces.llmReplyKo || statusKo;
 

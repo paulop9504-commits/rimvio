@@ -51,6 +51,7 @@ export type ObjectDiscoveryResult = {
 
 function filterDiscoveryCandidates(
   candidates: readonly SearchToolCandidate[],
+  opts?: { readonly allowLodgingStaySeed?: boolean },
 ): SearchToolCandidate[] {
   return [...(candidates ?? [])].filter((c) => {
     const id = c.id ?? "";
@@ -58,7 +59,16 @@ function filterDiscoveryCandidates(
     // World-geo / catalog landmarks stay (poi:osaka:usj, geo:…).
     if (/^(?:eatery|lodging|poi|amenity):/i.test(id)) return true;
     if (id.startsWith("geo:")) return true;
-    if (c.source === "seed") return false;
+    if (c.source === "seed") {
+      // Capsule · hostel soft inventory (maps:jp:…) — not Riverview orbit seeds.
+      if (
+        opts?.allowLodgingStaySeed &&
+        (id.startsWith("maps:") || id.startsWith("jp:") || /캡슐|capsule|호스텔|hostel|게스트/iu.test(c.labelKo ?? ""))
+      ) {
+        return true;
+      }
+      return false;
+    }
     return true;
   });
 }
@@ -68,7 +78,13 @@ function realityAnchorCandidate(
   utterance: string,
 ): SearchToolCandidate | null {
   const anchor = resolveRealityAnchorFromUtterance(utterance);
-  if (!anchor || anchor.kind === "city") return null;
+  // Lodging/discovery inventory must never stamp city · prefecture · station as a "후보".
+  if (!anchor || anchor.kind !== "poi") return null;
+  if (!/usj|유니버설|유니버셜|universal|도톤|osaka\s*castle|오사카성/iu.test(
+    `${anchor.geoId} ${anchor.labelKo} ${utterance}`,
+  )) {
+    return null;
+  }
   const slug = anchor.geoId
     .replace(/^geo:(?:jp:)?/u, "")
     .replace(/:/g, "-");
@@ -197,7 +213,12 @@ export async function runObjectDiscovery(
       placeName: plan.placeName ?? undefined,
     });
 
-    let candidates = filterDiscoveryCandidates(tool.candidates ?? []);
+    let candidates = filterDiscoveryCandidates(tool.candidates ?? [], {
+      allowLodgingStaySeed:
+        plan.toolDomain === "lodging" &&
+        (/캡슐|capsule|호스텔|hostel|게스트|료칸|ryokan/iu.test(plan.utterance) ||
+          /캡슐|capsule|호스텔|hostel|게스트|료칸|ryokan/iu.test(plan.query)),
+    });
 
     // Landmark SSOT — 「유니버셜 스튜디오 찾아」 must surface USJ even when
     // Maps/live/catalog miss or only return unrelated Namba POIs.
