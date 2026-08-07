@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** 레거시 /chat → 검색(AI 허브) */
+/** Legacy /chat → Globe home composer */
 export default function ChatPage() {
-  redirect("/search");
+  redirect("/");
 }

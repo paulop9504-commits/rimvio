@@ -1,0 +1,34 @@
+---
+description: Rimvio 제품 Agent 역할 — 복잡도 → Globe / Workspace / Field (Cursor Task 비유)
+alwaysApply: true
+---
+
+# Rimvio product agent roles
+
+**SSOT:** `lib/workstream/resolve-rimvio-agent-capability-role.ts` · Judgment Chain ADR-044  
+**IDE Cursor Tasks:** `.cursor/rules/rimvio-cursor-task-agents.mdc` (개발용 — 제품 copy 금지)
+
+> 복잡한 실행 = **Workspace Operator**. 탐색 = World Explore. 비교 = Simulate. 검수 = Verify. 좁은 사실 = Domain Quick.
+
+| Capability role | Surface | Cursor analog (internal) |
+|---|---|---|
+| **workspace_operator** | Workspace | generalPurpose |
+| **world_explore** | Globe (+ Workspace) | explore |
+| **compare_simulate** | Workspace | best-of-n-runner |
+| **verify_reflect** | Workspace | bugbot / security-review |
+| **domain_quick** | Globe | ci / shell / guide |
+| **architect_launch** | Globe | product_only |
+| **field_executor** | Field | product_only |
+
+## Do
+
+- Judgment Chain → `capability.role` + `preferredSurface` 사용 (병렬 Runtime 금지)
+- hard / planning / openWorkspace → Context Workspace Operator
+- `planContextRun` consumes Capability (`peekCapabilityRouteForUtterance`) so Operator/Compare/Verify beat free-talk essay
+- 사용자 카피: Trip Assistant · 작업장 — Cursor Task 이름 금지
+
+## Don't
+
+- `QuickAgent` / `ExploreAgent` 패키지 신설
+- Globe chat essay로 hard trip을 끝내기
+- Field에서 새 자원 생성

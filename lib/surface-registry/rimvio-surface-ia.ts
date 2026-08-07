@@ -11,14 +11,12 @@
 export type RimvioNavLabelKey =
   | "nav.globe"
   | "nav.field"
-  | "nav.people"
-  | "nav.capture";
+  | "nav.people";
 
-export type RimvioSecondaryNavLabelKey = "nav.search" | "nav.inbox";
+export type RimvioSecondaryNavLabelKey = "nav.search" | "nav.inbox" | "nav.capture";
 
 export type RimvioPrimarySurface = {
-  id: "globe" | "field" | "peers" | "capture";
-  /** `null` = sheet/action ingress (no route navigation). */
+  id: "globe" | "field" | "peers";
   route: string | null;
   navLabelKey: RimvioNavLabelKey;
   role: string;
@@ -29,8 +27,8 @@ export type RimvioPrimarySurface = {
 };
 
 export type RimvioSecondarySurface = {
-  id: "search" | "now" | "inbox";
-  route: string;
+  id: "search" | "now" | "inbox" | "capture";
+  route: string | null;
   navLabelKey: RimvioSecondaryNavLabelKey | null;
   role: string;
   experienceLayer: "SENSE" | "ACTION" | "DECIDE";
@@ -46,16 +44,22 @@ export type RimvioDeprecatedSurface = {
   note: string;
 };
 
-/** Bottom-nav primary shell (4 tabs). */
+/** Bottom-nav primary shell (3 tabs) — Globe · Field · People. */
 export const RIMVIO_PRIMARY_SURFACES: readonly RimvioPrimarySurface[] = [
   {
     id: "globe",
     route: "/",
     navLabelKey: "nav.globe",
-    role: "Globe home — pins, recall, compose dock (Three Floors floor 1)",
+    role: "Globe home — pins, recall, compose dock (search · capture · chat in prompt)",
     experienceLayer: "RECALL",
-    ingress: ["bottom nav", "/feed redirect", "/globe redirect", "Share Done default"],
-    egress: ["/search", "/peers", "Field sheet", "capture sheet"],
+    ingress: [
+      "bottom nav",
+      "/feed redirect",
+      "/globe redirect",
+      "/search redirect",
+      "Share Done default",
+    ],
+    egress: ["/peers", "Field sheet", "Workspace"],
     bottomNav: true,
   },
   {
@@ -75,31 +79,31 @@ export const RIMVIO_PRIMARY_SURFACES: readonly RimvioPrimarySurface[] = [
     role: "People — DM, ROOM, AI lens",
     experienceLayer: "H2H",
     ingress: ["bottom nav", "Globe people chips", "peer deep links"],
-    egress: ["Globe recall", "/search composer"],
-    bottomNav: true,
-  },
-  {
-    id: "capture",
-    route: null,
-    navLabelKey: "nav.capture",
-    role: "Capture sheet — photo, link, memo (+ bottom nav)",
-    experienceLayer: "SENSE",
-    ingress: ["bottom nav + action", "rimvio:open-capture-sheet bridge"],
-    egress: ["/now", "Globe home", "/search hub"],
+    egress: ["Globe recall", "Globe composer"],
     bottomNav: true,
   },
 ] as const;
 
-/** Not in bottom nav — still first-class routes. */
+/** Not in bottom nav — still first-class routes / soft ingress. */
 export const RIMVIO_SECONDARY_SURFACES: readonly RimvioSecondarySurface[] = [
   {
     id: "search",
     route: "/search",
     navLabelKey: "nav.search",
-    role: "Capture hub + composer (rimvio:search scope)",
+    role: "Legacy hub — redirects to Globe composer (/)",
     experienceLayer: "SENSE",
-    ingress: ["/chat redirect", "Globe compose dock", "deep links"],
-    egress: ["Globe home", "/peers", "Field sheet"],
+    ingress: ["/chat redirect", "deep links"],
+    egress: ["Globe home composer"],
+    bottomNav: false,
+  },
+  {
+    id: "capture",
+    route: null,
+    navLabelKey: "nav.capture",
+    role: "Capture absorbed into Globe prompt (no dedicated sheet in chrome)",
+    experienceLayer: "SENSE",
+    ingress: ["Globe composer + / photo", "rimvio:focus-globe-composer"],
+    egress: ["Globe home", "/now"],
     bottomNav: false,
   },
   {
@@ -124,17 +128,16 @@ export const RIMVIO_SECONDARY_SURFACES: readonly RimvioSecondarySurface[] = [
   },
 ] as const;
 
-/** Legacy path to canonical (see app redirect handlers). */
 export const RIMVIO_REDIRECTS = {
   "/feed": "/",
-  "/chat": "/search",
+  "/chat": "/",
+  "/search": "/",
   "/archive": "/?filter=archive",
   "/globe": "/",
 } as const;
 
 export type RimvioLegacyRedirectFrom = keyof typeof RIMVIO_REDIRECTS;
 
-/** Dev-only — never linked from production chrome. */
 export const RIMVIO_DEV_ONLY_ROUTES = [
   "/metrics",
   "/dev",
@@ -143,7 +146,6 @@ export const RIMVIO_DEV_ONLY_ROUTES = [
   "/actions",
 ] as const;
 
-/** Dev / secondary — not primary nav. */
 export const RIMVIO_DEPRECATED_SURFACES: readonly RimvioDeprecatedSurface[] = [
   {
     id: "stack",
@@ -153,7 +155,6 @@ export const RIMVIO_DEPRECATED_SURFACES: readonly RimvioDeprecatedSurface[] = [
   },
 ] as const;
 
-/** Flat route map for layers + orchestrator references. */
 export const SURFACE_ROUTES = {
   globe: "/",
   field: "/field",
@@ -166,26 +167,24 @@ export const SURFACE_ROUTES = {
 
 export type RimvioSurfaceId = keyof typeof SURFACE_ROUTES;
 
-/** @deprecated Use RIMVIO_REDIRECTS — kept for lib/layers compat. */
 export const LEGACY_SURFACE_REDIRECTS = {
   feed: "/",
-  chat: "/search",
+  chat: "/",
   archive: "/?filter=archive",
   globeAlias: "/",
 } as const;
 
-/** Bottom-nav hrefs only (excludes capture sheet action). */
 export function rimvioBottomNavRoutes(): string[] {
-  return RIMVIO_PRIMARY_SURFACES.filter((s) => s.route != null).map((s) => s.route!);
+  return RIMVIO_PRIMARY_SURFACES.filter((s) => s.route != null).map(
+    (s) => s.route!,
+  );
 }
 
-/** Globe home renderer paths (incl. legacy /globe alias). */
 export function isGlobeHomePath(pathname: string): boolean {
   const path = pathname.trim() || "/";
   return path === "/" || path === "/globe" || path.startsWith("/globe/");
 }
 
-/** Bottom-nav globe tab active — includes /feed before legacy redirect. */
 export function isPrimaryNavGlobePath(pathname: string): boolean {
   const path = pathname.trim() || "/";
   return isGlobeHomePath(path) || path === "/feed" || path.startsWith("/feed/");

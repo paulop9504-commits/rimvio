@@ -19,20 +19,18 @@ alwaysApply: true
 
 | Route | Nav | Surface | 역할 |
 |-------|-----|---------|------|
-| `/` | 지구 | **Globe (home)** | 지구본 · 핀 · recall (Three Floors 1층) |
+| `/` | 지구 | **Globe (home)** | 지구본 · 핀 · recall · **프롬프트 = 검색·수집·채팅** |
 | `/field` | 맞춤 | **Field** | 맞춤 sheet ingress (bottom nav — no page) |
 | `/peers` | 친구 | **People** | 친구 · ROOM 대화 |
-| (sheet) | 기록 | **Capture** | ＋ sheet — 사진 · 링크 · 메모 |
-| `/search` | — | **Capture hub** | 수집 · composer (`rimvio:search`) |
 | `/now` | — | **Now** | Share 직후 Action sheet |
 | `/stack` | — | **Stack** (dev) | 다음 행동 1장 + ghost stack |
 | `/inbox` | — | **Inbox** | 전체 목록 (secondary) |
 
 **Dev-only (404 in production):** `/stack` · `/demo` · `/metrics` — `requireDevPage()`
 
-**Legacy redirects:** `RIMVIO_REDIRECTS` — `/feed` → `/` · `/chat` → `/search` · `/archive` → `/?filter=archive` · `/globe` → `/`
+**Legacy redirects:** `RIMVIO_REDIRECTS` — `/feed` → `/` · `/chat` → `/` · `/search` → `/` · `/archive` → `/?filter=archive` · `/globe` → `/`
 
-**금지:** `/stack`에 카드 피드 3개 이상 나열. 홈(`/`)은 Globe-first — Feed 슬롯 UX는 `/feed` 리다이렉트 뒤 recall deep link만.
+**금지:** `/stack`에 카드 피드 3개 이상 나열. 홈(`/`)은 Globe-first — 별도 `/search` 허브·하단 기록 탭 없음.
 
 ## L2 Interaction (행동 계층)
 
@@ -80,7 +78,7 @@ components/action-stack-list.tsx
 components/now-action-focus.tsx
 app/now/page.tsx
 app/page.tsx              — Globe home (GlobeHomeClient)
-app/search/page.tsx       — Capture / search hub
+app/search/page.tsx       — redirect → / (composer absorbs hub)
 app/peers/page.tsx        — People tab
 app/stack/page.tsx
 ```

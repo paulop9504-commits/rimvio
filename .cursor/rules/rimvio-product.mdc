@@ -42,8 +42,8 @@ Link parsing: **`.cursor/rules/rimvio-enrichment.mdc`**
 
 Product UX detail: **`.cursor/rules/rimvio-jobs-layers.mdc`**
 
-- Bottom nav: 지구 `/` · 맞춤 sheet · 친구 `/peers` · 기록 ＋ sheet
-- Secondary: `/search` hub · `/now` Share · `/inbox` deep list · `/stack` dev
+- Bottom nav: 지구 `/` · 맞춤 sheet · 친구 `/peers`
+- Secondary: `/now` Share · `/inbox` deep list · `/stack` dev · legacy `/search`→`/`
 - Share → `/now` → Done (do not dump into scroll feed)
 - Legacy: `RIMVIO_REDIRECTS` in surface registry
 

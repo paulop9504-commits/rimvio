@@ -153,38 +153,47 @@ async function runScenario(startPath: string) {
     const before = await probeHits(page);
 
     const tabs: TabResult[] = [];
-    for (const href of ["/", "/peers", "capture"]) {
+    for (const href of ["/", "/peers", "/field"]) {
       await page.goto(`${base}${startPath}`, {
         waitUntil: "domcontentloaded",
         timeout: 30_000,
       });
       await waitForNav(page);
-      if (href === "capture") {
+      if (href === "/field") {
         const link = page.locator(
-          '[data-testid="rimvio-bottom-nav"] button[data-nav-action="capture"]',
+          '[data-testid="rimvio-bottom-nav"] button[data-nav-href="/field"]',
         );
         const found = (await link.count()) > 0;
+        let hit = false;
+        if (found) {
+          const box = await link.boundingBox();
+          if (box) {
+            await page.touchscreen.tap(
+              box.x + box.width / 2,
+              box.y + box.height / 2,
+            );
+          } else {
+            await link.click({ timeout: 8_000 });
+          }
+          hit = true;
+          await page.waitForTimeout(800);
+        }
         tabs.push({
           href,
           found,
-          hit: found,
+          hit,
           topTag: null,
           navigated: true,
           finalUrl: page.url(),
         });
-        if (found) {
-          await link.click({ timeout: 8_000 });
-          await page.waitForSelector("[data-capture-sheet]", { timeout: 5_000 });
-        }
         continue;
       }
       tabs.push(await tapTab(page, href));
     }
 
-    const allHits = before && !("error" in before) && before.samples.every((s) => s.hit);
-    const allNavigated = tabs
-      .filter((t) => t.found)
-      .every((t) => t.href === "capture" || t.navigated);
+    const allHits =
+      before && !("error" in before) && before.samples.every((s) => s.hit);
+    const allNavigated = tabs.filter((t) => t.found).every((t) => t.navigated);
 
     return {
       startPath,

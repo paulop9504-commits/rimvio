@@ -10,17 +10,14 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { CaptureSheet } from "@/components/globe/capture-sheet";
 import {
   RimvioNavChatIcon,
   RimvioNavFieldIcon,
   RimvioNavGlobeIcon,
-  RimvioNavRecordIcon,
 } from "@/components/nav/rimvio-ai-nav-icons";
 import { useCopy } from "@/hooks/use-copy";
 import { useFieldNavBadge } from "@/hooks/use-field-nav-badge";
 import { useFieldSheet } from "@/components/field/field-sheet-provider";
-import { subscribeOpenCaptureSheet, publishCaptureSheetOpen } from "@/lib/nav/open-capture-sheet-bridge";
 import { openFieldDashboardFromBottomNav } from "@/lib/nav/field-dashboard-ingress";
 import { isPrimaryNavGlobePath } from "@/lib/layers";
 import { GRID } from "@/lib/ui/responsive-grid";
@@ -28,16 +25,14 @@ import { cn } from "@/lib/utils";
 
 type AppNavProps = {
   immersive?: boolean;
-  /** side = desktop rail; fixed = mobile bottom bar (portaled to body) */
   placement?: "side" | "inline" | "fixed";
 };
 
 type NavTab = {
-  href?: string;
-  action?: "capture";
+  href: string;
   label: string;
   isActive: (pathname: string) => boolean;
-  icon: "globe" | "field" | "people" | "capture";
+  icon: "globe" | "field" | "people";
   badge?: number;
 };
 
@@ -78,12 +73,6 @@ function NavTabIcon({
           <RimvioNavChatIcon active={active} />
         </NavIconSlot>
       );
-    case "capture":
-      return (
-        <NavIconSlot>
-          <RimvioNavRecordIcon active={active} />
-        </NavIconSlot>
-      );
   }
 }
 
@@ -91,36 +80,24 @@ function NavTabButton({
   tab,
   active,
   onNavigate,
-  onCapture,
   className,
 }: {
   tab: NavTab;
   active: boolean;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
   className?: string;
 }) {
   const activatedRef = useRef(false);
-
   const activate = () => {
-    if (tab.action === "capture") {
-      onCapture();
-      return;
-    }
-    if (tab.href) {
-      onNavigate(tab.href);
-    }
+    onNavigate(tab.href);
   };
-
-  const isCapture = tab.action === "capture";
 
   return (
     <button
       type="button"
       aria-label={tab.label}
       aria-current={active ? "page" : undefined}
-      data-nav-href={tab.href ?? "capture"}
-      data-nav-action={tab.action}
+      data-nav-href={tab.href}
       onPointerUp={(event) => {
         if (event.pointerType === "mouse" && event.button !== 0) {
           return;
@@ -156,7 +133,7 @@ function NavTabButton({
       <span
         className={cn(
           "rimvio-bottom-nav-icon-pill pointer-events-none relative flex items-center justify-center",
-          active && !isCapture && "rimvio-bottom-nav-icon-pill--active",
+          active && "rimvio-bottom-nav-icon-pill--active",
         )}
       >
         <NavTabIcon icon={tab.icon} active={active} />
@@ -177,22 +154,19 @@ function MobileNavLinks({
   tabs,
   pathname,
   onNavigate,
-  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
 }) {
   return (
     <>
       {tabs.map((tab) => (
         <NavTabButton
-          key={tab.href ?? tab.action ?? tab.label}
+          key={tab.href}
           tab={tab}
           active={tab.isActive(pathname)}
           onNavigate={onNavigate}
-          onCapture={onCapture}
         />
       ))}
     </>
@@ -203,24 +177,21 @@ function SideNavLinks({
   tabs,
   pathname,
   onNavigate,
-  onCapture,
   linkClassName,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
   linkClassName?: string;
 }) {
   return (
     <>
       {tabs.map((tab) => (
         <NavTabButton
-          key={tab.href ?? tab.action ?? tab.label}
+          key={tab.href}
           tab={tab}
           active={tab.isActive(pathname)}
           onNavigate={onNavigate}
-          onCapture={onCapture}
           className={linkClassName}
         />
       ))}
@@ -232,12 +203,10 @@ function SideNavRail({
   tabs,
   pathname,
   onNavigate,
-  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
 }) {
   return (
     <nav
@@ -250,7 +219,6 @@ function SideNavRail({
           tabs={tabs}
           pathname={pathname}
           onNavigate={onNavigate}
-          onCapture={onCapture}
           linkClassName="size-11 rounded-2xl hover:bg-foreground/[0.04]"
         />
       </div>
@@ -262,12 +230,10 @@ function BottomNavGrid({
   tabs,
   pathname,
   onNavigate,
-  onCapture,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
 }) {
   return (
     <div
@@ -275,13 +241,9 @@ function BottomNavGrid({
       role="tablist"
       aria-label="Primary tabs"
       data-rimvio-bottom-nav-pill
+      data-nav-count={tabs.length}
     >
-      <MobileNavLinks
-        tabs={tabs}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        onCapture={onCapture}
-      />
+      <MobileNavLinks tabs={tabs} pathname={pathname} onNavigate={onNavigate} />
     </div>
   );
 }
@@ -290,13 +252,11 @@ function PortaledBottomNavBar({
   tabs,
   pathname,
   onNavigate,
-  onCapture,
   fieldSheetOpen,
 }: {
   tabs: NavTab[];
   pathname: string;
   onNavigate: (href: string) => void;
-  onCapture: () => void;
   fieldSheetOpen: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -304,7 +264,6 @@ function PortaledBottomNavBar({
     setMounted(true);
   }, []);
 
-  // SSR must match first client paint (null) — portal only after mount (#418).
   if (!mounted) {
     return null;
   }
@@ -317,14 +276,13 @@ function PortaledBottomNavBar({
       data-surface="primary-nav"
       data-rimvio-bottom-nav-portal
       data-field-sheet-blocked={fieldSheetOpen ? "true" : undefined}
-      style={fieldSheetOpen ? { pointerEvents: "none", visibility: "hidden" } : undefined}
+      style={
+        fieldSheetOpen
+          ? { pointerEvents: "none", visibility: "hidden" }
+          : undefined
+      }
     >
-      <BottomNavGrid
-        tabs={tabs}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        onCapture={onCapture}
-      />
+      <BottomNavGrid tabs={tabs} pathname={pathname} onNavigate={onNavigate} />
     </nav>
   );
 
@@ -336,17 +294,9 @@ export function AppNav({ placement }: AppNavProps) {
   const router = useRouter();
   const copy = useCopy();
   const { open: fieldSheetOpen, closeFieldSheet } = useFieldSheet();
-  const { total: fieldNavBadge, suggestedTab: fieldSuggestedTab } = useFieldNavBadge();
-  const [captureOpen, setCaptureOpen] = useState(false);
+  const { total: fieldNavBadge, suggestedTab: fieldSuggestedTab } =
+    useFieldNavBadge();
   const lastNavRef = useRef<{ href: string; at: number } | null>(null);
-
-  useEffect(() => {
-    return subscribeOpenCaptureSheet(() => setCaptureOpen(true));
-  }, []);
-
-  useEffect(() => {
-    publishCaptureSheetOpen(captureOpen);
-  }, [captureOpen]);
 
   useEffect(() => {
     router.prefetch("/peers");
@@ -409,41 +359,21 @@ export function AppNav({ placement }: AppNavProps) {
         isActive: (p) => p.startsWith("/peers"),
         icon: "people",
       },
-      {
-        action: "capture",
-        label: copy.nav.capture,
-        isActive: () => false,
-        icon: "capture",
-      },
     ],
     [copy, fieldNavBadge, fieldSheetOpen],
   );
 
-  const navChrome = (
-    <>
-      {placement === "side" ? (
-        <SideNavRail
-          tabs={tabs}
-          pathname={pathname}
-          onNavigate={navigate}
-          onCapture={() => setCaptureOpen(true)}
-        />
-      ) : (
-        <PortaledBottomNavBar
-          tabs={tabs}
-          pathname={pathname}
-          onNavigate={navigate}
-          onCapture={() => setCaptureOpen(true)}
-          fieldSheetOpen={fieldSheetOpen}
-        />
-      )}
-      <CaptureSheet open={captureOpen} onOpenChange={setCaptureOpen} />
-    </>
-  );
-
-  if (placement === "side") {
-    return navChrome;
-  }
+  const navChrome =
+    placement === "side" ? (
+      <SideNavRail tabs={tabs} pathname={pathname} onNavigate={navigate} />
+    ) : (
+      <PortaledBottomNavBar
+        tabs={tabs}
+        pathname={pathname}
+        onNavigate={navigate}
+        fieldSheetOpen={fieldSheetOpen}
+      />
+    );
 
   return navChrome;
 }

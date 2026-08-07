@@ -1,0 +1,29 @@
+---
+description: Cursor Task 서브에이전트 — 복잡도별 라우팅 (generalPurpose · explore · review…)
+alwaysApply: true
+---
+
+# Cursor Task agent routing
+
+> 복잡한 실행은 `generalPurpose`. 맵이 먼저면 `explore`. 답이 여러 개면 `best-of-n-runner`.
+
+| Agent | Complexity role |
+|---|---|
+| **generalPurpose** | 다단계 조사 · 구현 · 디버깅 · 여러 파일 end-to-end |
+| **explore** (`very thorough`) | 코드베이스를 넓게/깊게 찾는 선행 탐색 |
+| **best-of-n-runner** | 같은 난제를 격리 브랜치에서 여러 번 병렬 시도 |
+| **bugbot** / **security-review** | 리뷰 특화 (구현보다 검수) |
+| **ci-investigator** / **shell** / **cursor-guide** | CI · 터미널 · Cursor 문서처럼 좁은 도메인 |
+
+## Do
+
+- 멀티스텝 구현/디버그는 `generalPurpose`에 상세 프롬프트로 위임
+- 넓은 SSOT·파일 맵이 필요하면 먼저 `explore` (thoroughness 지정)
+- 독립 실험·복수 해법이 필요하면 `best-of-n-runner` (또는 명시적 cloud)
+
+## Don't
+
+- 좁은 grep/한 파일 수정에 `generalPurpose` 남용
+- 구현을 `bugbot` / `security-review`에 맡기기
+- Rimvio 제품 Agent OS(`rimvio-cursor-agent-policy`)와 혼동 — 이쪽은 **Cursor IDE Task** 라우팅만
+- 제품 복잡도 역할은 `.cursor/rules/rimvio-product-agent-roles.mdc` · `resolveRimvioAgentCapabilityRole`

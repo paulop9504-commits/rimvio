@@ -1,48 +1,109 @@
-/** Open the global + capture sheet from any surface (globe composer, coach, etc.). */
+/**
+ * Focus Globe composer — search/capture absorbed into home prompt (no capture sheet chrome).
+ * Legacy name `dispatchOpenCaptureSheet` kept for call-site stability.
+ */
+
+import { isPrimaryNavGlobePath } from "@/lib/surface-registry/rimvio-surface-ia";
+
 export const CAPTURE_SHEET_OPEN_EVENT = "rimvio:capture-sheet-open";
+export const FOCUS_GLOBE_COMPOSER_EVENT = "rimvio:focus-globe-composer";
+export const GLOBE_COMPOSER_SEED_STORAGE_KEY = "rimvio:globe-composer-seed";
 
 export type CaptureSheetOpenDetail = {
-  /** Pre-fill and auto-send first turn (e.g. globe map composer handoff). */
   seedText?: string;
   source?: "composer" | "manual" | "coach";
 };
 
+export type FocusGlobeComposerDetail = CaptureSheetOpenDetail;
+
 let pendingSeedText: string | null = null;
 
+function persistSeed(seed: string | null): void {
+  pendingSeedText = seed;
+  if (typeof window === "undefined") return;
+  try {
+    if (seed) {
+      sessionStorage.setItem(GLOBE_COMPOSER_SEED_STORAGE_KEY, seed);
+    } else {
+      sessionStorage.removeItem(GLOBE_COMPOSER_SEED_STORAGE_KEY);
+    }
+  } catch {
+    /* private mode */
+  }
+}
+
+export function consumeCaptureSheetSeedText(): string | null {
+  let fromMemory = pendingSeedText;
+  pendingSeedText = null;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = sessionStorage.getItem(GLOBE_COMPOSER_SEED_STORAGE_KEY);
+      if (stored?.trim()) {
+        fromMemory = fromMemory || stored.trim();
+      }
+      sessionStorage.removeItem(GLOBE_COMPOSER_SEED_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+  return fromMemory?.trim() || null;
+}
+
 export function dispatchOpenCaptureSheet(detail?: CaptureSheetOpenDetail): void {
+  dispatchFocusGlobeComposer(detail);
+}
+
+export function dispatchFocusGlobeComposer(
+  detail?: FocusGlobeComposerDetail,
+): void {
   if (typeof window === "undefined") {
     return;
   }
-  pendingSeedText = detail?.seedText?.trim() || null;
+  const seed = detail?.seedText?.trim() || null;
+  persistSeed(seed);
+  const payload = detail ?? {};
   window.dispatchEvent(
-    new CustomEvent<CaptureSheetOpenDetail>(CAPTURE_SHEET_OPEN_EVENT, {
-      detail: detail ?? {},
+    new CustomEvent<FocusGlobeComposerDetail>(FOCUS_GLOBE_COMPOSER_EVENT, {
+      detail: payload,
     }),
   );
-}
+  window.dispatchEvent(
+    new CustomEvent<CaptureSheetOpenDetail>(CAPTURE_SHEET_OPEN_EVENT, {
+      detail: payload,
+    }),
+  );
 
-/** Consume one-shot seed after the sheet opens. */
-export function consumeCaptureSheetSeedText(): string | null {
-  const seed = pendingSeedText;
-  pendingSeedText = null;
-  return seed;
+  const path = window.location.pathname || "/";
+  if (!isPrimaryNavGlobePath(path)) {
+    window.location.assign("/");
+  }
 }
 
 export function subscribeOpenCaptureSheet(
   listener: (detail: CaptureSheetOpenDetail | null) => void,
 ): () => void {
+  return subscribeFocusGlobeComposer(listener);
+}
+
+export function subscribeFocusGlobeComposer(
+  listener: (detail: FocusGlobeComposerDetail | null) => void,
+): () => void {
   if (typeof window === "undefined") {
     return () => {};
   }
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent<CaptureSheetOpenDetail>).detail ?? null;
+    const detail =
+      (event as CustomEvent<FocusGlobeComposerDetail>).detail ?? null;
     listener(detail);
   };
+  window.addEventListener(FOCUS_GLOBE_COMPOSER_EVENT, handler);
   window.addEventListener(CAPTURE_SHEET_OPEN_EVENT, handler);
-  return () => window.removeEventListener(CAPTURE_SHEET_OPEN_EVENT, handler);
+  return () => {
+    window.removeEventListener(FOCUS_GLOBE_COMPOSER_EVENT, handler);
+    window.removeEventListener(CAPTURE_SHEET_OPEN_EVENT, handler);
+  };
 }
 
-/** Global capture sheet open state — globe can suspend WebGL while sheet is up. */
 export const CAPTURE_SHEET_STATE_EVENT = "rimvio:capture-sheet-state";
 
 let captureSheetOpen = false;
@@ -63,7 +124,7 @@ export function publishCaptureSheetOpen(open: boolean): void {
 }
 
 export function readCaptureSheetOpen(): boolean {
-  return captureSheetOpen;
+  return false;
 }
 
 export function subscribeCaptureSheetOpen(
@@ -72,11 +133,10 @@ export function subscribeCaptureSheetOpen(
   if (typeof window === "undefined") {
     return () => {};
   }
+  listener(false);
   const handler = (event: Event) => {
-    const open = (event as CustomEvent<{ open: boolean }>).detail?.open ?? false;
-    listener(open);
+    listener((event as CustomEvent<{ open: boolean }>).detail?.open ?? false);
   };
   window.addEventListener(CAPTURE_SHEET_STATE_EVENT, handler);
-  listener(captureSheetOpen);
   return () => window.removeEventListener(CAPTURE_SHEET_STATE_EVENT, handler);
 }
