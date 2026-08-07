@@ -80,13 +80,14 @@ export function buildAgentExecutionFeedView(
 ): AgentExecutionFeedView | null {
   if (!tape || tape.events.length === 0) return null;
 
-  // Dedupe consecutive identical short lines (append-only feel, less noise).
+  // Dedupe identical short lines (Cursor ticker shows each verb once).
   const rows: AgentExecutionFeedRow[] = [];
+  const seenLabels = new Set<string>();
   for (let index = 0; index < tape.events.length; index += 1) {
     const ev = tape.events[index]!;
     const label = shortEnglishLine(ev);
-    const prev = rows[rows.length - 1];
-    if (prev && prev.label === label) continue;
+    if (seenLabels.has(label)) continue;
+    seenLabels.add(label);
     rows.push({
       id: ev.id,
       status: "done",

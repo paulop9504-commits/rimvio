@@ -480,15 +480,15 @@ export async function runWorkspaceAgentLoop(input: {
           (understood.patch?.kind === "spatial_constraint" ||
             understood.patch?.kind === "replace_entity"));
       if (discoveryLike) {
-        await yieldBetweenAgentStages(70);
+        await yieldBetweenAgentStages();
         product = advanceAgentProductStage(
           product,
           "object_discovery",
           `후보 ${visible.length}곳`,
         );
-        await yieldBetweenAgentStages(70);
+        await yieldBetweenAgentStages();
         product = advanceAgentProductStage(product, "object_enrichment");
-        await yieldBetweenAgentStages(70);
+        await yieldBetweenAgentStages();
         product = advanceAgentProductStage(
           product,
           "candidate_evaluation",
@@ -496,16 +496,16 @@ export async function runWorkspaceAgentLoop(input: {
         );
       }
       if (workspaceMutated || toolId === "workspace_patch") {
-        await yieldBetweenAgentStages(60);
+        await yieldBetweenAgentStages();
         product = advanceAgentProductStage(
           product,
           "workspace_patch",
           surfaces.calloutLinesKo[0] ?? statusKo,
         );
       }
-      await yieldBetweenAgentStages(50);
+      await yieldBetweenAgentStages();
       product = advanceAgentProductStage(product, "projection");
-      await yieldBetweenAgentStages(50);
+      await yieldBetweenAgentStages();
       advanceAgentProductStage(product, "agent_status", surfaces.llmReplyKo);
     }
     writeAgentRuntimeProjectionFromWorkspace({

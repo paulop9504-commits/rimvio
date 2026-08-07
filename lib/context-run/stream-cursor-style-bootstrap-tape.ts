@@ -9,11 +9,15 @@ import {
 } from "@/lib/context-run/agent-activity-transcript";
 import { copy } from "@/lib/copy/human-ko";
 
+/** Match AgentExecutionFeed hold (~1.15s) + roll (~0.95s) so lines stay readable. */
+const BOOT_YIELD_MS = 1100;
+const STAGE_YIELD_MS = 1000;
+
 export async function streamCursorStyleBootstrapTape(input?: {
   readonly exploreLabelKo?: string | null;
   readonly toolLabelKo?: string | null;
 }): Promise<void> {
-  await yieldAgentActivityFrame(70);
+  await yieldAgentActivityFrame(BOOT_YIELD_MS);
   appendAgentActivityEvent({
     kind: "explore",
     labelKo:
@@ -23,7 +27,7 @@ export async function streamCursorStyleBootstrapTape(input?: {
     metricKo: copy.globe.activityTrail.exploredSearches(1),
     stage: "object_discovery",
   });
-  await yieldAgentActivityFrame(120);
+  await yieldAgentActivityFrame(BOOT_YIELD_MS);
   appendAgentActivityEvent({
     kind: "tool",
     labelKo:
@@ -32,13 +36,13 @@ export async function streamCursorStyleBootstrapTape(input?: {
     detailKo: copy.globe.activityTrail.runningTool,
     stage: "object_enrichment",
   });
-  await yieldAgentActivityFrame(80);
+  await yieldAgentActivityFrame(BOOT_YIELD_MS);
 }
 
 const AGENT_BOOT_EXPLORE_KO = "후보·조건 탐색";
 const AGENT_BOOT_TOOL_KO = "도구로 후보 조회";
 
 /** Yield between product stages so React can paint Cursor-like midsteps. */
-export async function yieldBetweenAgentStages(ms = 90): Promise<void> {
+export async function yieldBetweenAgentStages(ms = STAGE_YIELD_MS): Promise<void> {
   await yieldAgentActivityFrame(ms);
 }
