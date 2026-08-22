@@ -10,6 +10,7 @@ import {
   deriveBudgetRollup,
   nodesForCapabilityDay,
 } from "@/lib/workspace-capability/derive-budget-timeline";
+import { copy } from "@/lib/copy/human-ko";
 
 export type CapabilityDayCard = {
   readonly day: number;
@@ -26,6 +27,13 @@ export type CapabilityTimelineRow = {
   readonly summaryKo: string;
   readonly kind: ContextWorkspaceNode["kind"];
   readonly amountLabel: string | null;
+  readonly rating: number | null;
+  readonly reviewCount: number | null;
+  readonly thumbnailUrl: string | null;
+  readonly kindLabelKo: string;
+  readonly timeOfDayKo: string;
+  readonly lat: number;
+  readonly lng: number;
 };
 
 export type CapabilityBudgetRollup = {
@@ -131,6 +139,14 @@ function discoverKindLabelKo(n: ContextWorkspaceNode): string {
   return "편의";
 }
 
+function timeOfDayKoForIndex(index: number, total: number): string {
+  if (total <= 1) return copy.globe.itineraryMorning;
+  const ratio = index / Math.max(total - 1, 1);
+  if (ratio < 0.34) return copy.globe.itineraryMorning;
+  if (ratio < 0.67) return copy.globe.itineraryAfternoon;
+  return copy.globe.itineraryEvening;
+}
+
 export function buildWorkspaceCapabilityViewModel(input: {
   readonly state: ContextWorkspaceState;
   readonly layout: WorkspaceCapabilityLayout;
@@ -169,12 +185,19 @@ export function buildWorkspaceCapabilityViewModel(input: {
 
   const focusDay = layout.focusedDay ?? days[0]?.day ?? 1;
   const dayNodes = nodesForCapabilityDay(state, focusDay);
-  const timeline: CapabilityTimelineRow[] = dayNodes.map((n) => ({
+  const timeline: CapabilityTimelineRow[] = dayNodes.map((n, index) => ({
     nodeId: n.id,
     title: n.title,
     summaryKo: n.summaryKo,
     kind: n.kind,
     amountLabel: n.amountLabel,
+    rating: n.rating,
+    reviewCount: n.reviewCount ?? null,
+    thumbnailUrl: n.thumbnailUrl,
+    kindLabelKo: discoverKindLabelKo(n),
+    timeOfDayKo: timeOfDayKoForIndex(index, dayNodes.length),
+    lat: n.lat,
+    lng: n.lng,
   }));
 
   const derived = deriveBudgetRollup(state);

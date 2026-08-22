@@ -9,6 +9,15 @@ import type {
 } from "@/lib/context-run/agent-activity-transcript";
 import { copy } from "@/lib/copy/human-ko";
 
+export type CursorAgentTrailStep = {
+  readonly id: string;
+  readonly tier: "main" | "sub";
+  readonly labelKo: string;
+  readonly detailKo: string | null;
+  readonly active: boolean;
+  readonly done: boolean;
+};
+
 export type CursorAgentTrailNestedStep = {
   readonly id: string;
   readonly titleKo: string;
@@ -22,7 +31,10 @@ export type CursorAgentTrailView = {
   readonly startedAtMs: number;
   readonly running: boolean;
   readonly ranCount: number;
+  readonly toolCount: number;
   readonly exploredCount: number;
+  readonly toolsUsedLineKo: string;
+  readonly steps: readonly CursorAgentTrailStep[];
   /** Cursor: "Thought for 6s" */
   readonly thoughtLineKo: string;
   /** Cursor: "Running tool" / "Planning next moves" */
@@ -77,6 +89,52 @@ function nestedDetailFor(
   return copy.globe.activityTrail.planningMoves;
 }
 
+function buildTrailSteps(
+  events: readonly AgentActivityEvent[],
+  running: boolean,
+): CursorAgentTrailStep[] {
+  const steps: CursorAgentTrailStep[] = [];
+  for (const event of events) {
+    const label = event.labelKo.trim() || event.detailKo?.trim() || "";
+    if (!label) continue;
+
+    if (event.kind === "thought" || event.kind === "verify") {
+      steps.push({
+        id: event.id,
+        tier: "main",
+        labelKo: label,
+        detailKo: event.detailKo?.trim() || null,
+        active: running && event === events[events.length - 1],
+        done: !running || event !== events[events.length - 1],
+      });
+      continue;
+    }
+
+    steps.push({
+      id: event.id,
+      tier: event.kind === "explore" ? "sub" : "main",
+      labelKo: label,
+      detailKo: event.detailKo?.trim() || null,
+      active: running && event === events[events.length - 1],
+      done: !running || event !== events[events.length - 1],
+    });
+  }
+
+  if (steps.length === 0 && events.length > 0) {
+    const last = events[events.length - 1]!;
+    steps.push({
+      id: last.id,
+      tier: "main",
+      labelKo: nestedTitleFor(last),
+      detailKo: nestedDetailFor(last, running),
+      active: running,
+      done: !running,
+    });
+  }
+
+  return steps;
+}
+
 export function buildCursorAgentTrailView(
   tape: AgentActivityTranscript | null,
   nowMs: number = Date.now(),
@@ -88,6 +146,7 @@ export function buildCursorAgentTrailView(
   const toolish = tape.events.filter(
     (e) => e.kind === "tool" || e.kind === "explore" || e.kind === "patch",
   );
+  const toolCount = tape.events.filter((e) => e.kind === "tool" || e.kind === "patch").length;
   const ranCount = Math.max(1, toolish.length || tape.events.length - 1);
   const exploredCount = tape.events.filter((e) => e.kind === "explore").length;
   const endMs = tape.endedAtMs ?? nowMs;
@@ -106,7 +165,10 @@ export function buildCursorAgentTrailView(
     startedAtMs: tape.startedAtMs,
     running: tape.running,
     ranCount,
+    toolCount,
     exploredCount,
+    toolsUsedLineKo: copy.globe.activityTrail.toolsUsed(toolCount),
+    steps: buildTrailSteps(tape.events, tape.running),
     thoughtLineKo: copy.globe.activityTrail.thoughtFor(thoughtSec),
     phaseLineKo: phaseLineFor(last, tape.running),
     summaryLineKo: copy.globe.activityTrail.ranCommands(ranCount),
