@@ -1126,11 +1126,6 @@ export const RimvioGlobe3D = memo(
 
       globeRef.current = globe;
       setGlobeReady(true);
-      } catch (initError) {
-        console.error("[globe-3d] init failed", initError);
-        setWebglInitFailed(true);
-        return;
-      }
 
       return () => {
         if (textureFilterTimer != null) {
@@ -1153,6 +1148,10 @@ export const RimvioGlobe3D = memo(
         globe._destructor();
         globeRef.current = null;
       };
+      } catch (initError) {
+        console.error("[globe-3d] init failed", initError);
+        setWebglInitFailed(true);
+      }
     }, []);
 
     useGlobeAnimationPower({
