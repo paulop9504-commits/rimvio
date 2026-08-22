@@ -8,6 +8,7 @@ import { compressShareVideoFile } from "@/lib/media/share-video-compress/compres
 import { SHARE_VIDEO_MAX_DURATION_SEC } from "@/lib/media/share-video-compress/constants";
 import { readVideoDurationSec } from "@/lib/media/share-video-compress/read-video-duration-sec";
 import { shouldCompressShareVideo } from "@/lib/media/share-video-compress/should-compress-share-video";
+import { isConstrainedMobileDevice } from "@/lib/platform/device";
 
 export type ShareVideoPrepareProgress = {
   phase: "loading" | "compressing";
@@ -39,6 +40,15 @@ export async function prepareShareVideoFile(input: {
   }
 
   if (typeof window === "undefined") {
+    return input.file;
+  }
+
+  if (isConstrainedMobileDevice()) {
+    if (input.file.size > maxBytes) {
+      throw new Error(
+        `${formatBridgeMediaMaxMb(maxBytes)} 이하·${durationCap}초 이내 동영상을 선택해 주세요.`,
+      );
+    }
     return input.file;
   }
 

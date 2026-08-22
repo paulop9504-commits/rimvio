@@ -22,6 +22,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
 import { buildFriendAddQrUrl } from "@/lib/peer-chat/friend-add-qr-url";
+import { isShareUserAbort } from "@/lib/platform/share-abort";
 import type { PinnedSlotIndex } from "@/lib/context/peer-thread-types";
 import { cn } from "@/lib/utils";
 
@@ -109,9 +110,12 @@ export function FriendAddSheet({
         });
         return;
       }
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard?.writeText?.(url);
       toast.success(fa.copyInviteDone);
-    } catch {
+    } catch (error) {
+      if (isShareUserAbort(error)) {
+        return;
+      }
       toast.error(fa.shareFailed);
     }
   };

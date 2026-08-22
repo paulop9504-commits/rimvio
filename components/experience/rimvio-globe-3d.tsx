@@ -283,6 +283,7 @@ export const RimvioGlobe3D = memo(
     const discoveryLensSessionRef = useRef(discoveryLensSession);
     const overviewTextureUrlRef = useRef<string | null>(null);
     const [globeReady, setGlobeReady] = useState(false);
+    const [webglInitFailed, setWebglInitFailed] = useState(false);
     const { textureUrl: overviewTextureUrl } = useGlobeOverviewTexture();
     overviewTextureUrlRef.current = overviewTextureUrl;
 
@@ -657,7 +658,9 @@ export const RimvioGlobe3D = memo(
         return;
       }
 
-      const globe = new Globe(root, {
+      let globe: GlobeInstance;
+      try {
+      globe = new Globe(root, {
         animateIn: true,
         waitForGlobeReady: true,
         rendererConfig: resolveGlobeRendererConfig(),
@@ -1123,6 +1126,11 @@ export const RimvioGlobe3D = memo(
 
       globeRef.current = globe;
       setGlobeReady(true);
+      } catch (initError) {
+        console.error("[globe-3d] init failed", initError);
+        setWebglInitFailed(true);
+        return;
+      }
 
       return () => {
         if (textureFilterTimer != null) {
@@ -1344,6 +1352,33 @@ export const RimvioGlobe3D = memo(
         ? (hintText ??
           "핀 길게 눌러 위치 이동 · 드래그 회전 · 스크롤·핀치로 거리·지명 확대")
         : (hintText ?? "드래그 회전 · 스크롤·핀치로 거리·지명 확대");
+
+    if (webglInitFailed) {
+      return (
+        <div
+          className={cn(
+            "rimvio-globe-space rimvio-globe-space--toss flex min-h-[50dvh] flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center",
+            className,
+          )}
+          data-rimvio-globe-3d
+          data-globe-init-failed
+        >
+          <p className="text-[15px] font-semibold text-[#191f28]">
+            지구를 불러오지 못했어요
+          </p>
+          <p className="max-w-xs text-[14px] leading-relaxed text-[#8b95a1]">
+            새로고침 후 다시 시도해 주세요.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-full bg-[#191f28] px-5 py-2.5 text-[14px] font-semibold text-white"
+          >
+            새로고침
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div

@@ -48,7 +48,11 @@ function writeJsonStorage(key: string, value: string) {
     return;
   }
 
-  localStorage.setItem(key, value);
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode / quota — fail-soft on phone PWA */
+  }
 }
 
 export function readDismissedLinkIds(): Set<string> {

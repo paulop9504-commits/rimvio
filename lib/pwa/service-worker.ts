@@ -142,18 +142,25 @@ export async function subscribeWebPush() {
 }
 
 export async function showServiceWorkerNotification(reminder: LinkReminder) {
+  if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+    return false;
+  }
+
   const registration = await getServiceWorkerRegistration();
   if (!registration) {
     return false;
   }
 
-  await registration.showNotification("Rimvio · 나중에 다시", {
-    body: reminder.title,
-    tag: reminder.id,
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
-    data: { url: reminder.url },
-  });
-
-  return true;
+  try {
+    await registration.showNotification("Rimvio · 나중에 다시", {
+      body: reminder.title,
+      tag: reminder.id,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: reminder.url },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

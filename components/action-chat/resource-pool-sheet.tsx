@@ -211,8 +211,10 @@ export function ResourcePoolSheet({
       return;
     }
     if (item.body) {
-      void navigator.clipboard.writeText(item.body);
-      toast("내용을 복사했어요");
+      void navigator.clipboard
+        ?.writeText?.(item.body)
+        .then(() => toast("내용을 복사했어요"))
+        .catch(() => toast("복사에 실패했어요"));
     }
   };
 
