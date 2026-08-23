@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { HomeCountryPicker } from "@/components/home-country-picker";
 import { LocaleSettingsPicker } from "@/components/locale-settings-picker";
 import { SettingsIntegrationsPanel } from "@/components/settings-integrations-panel";
+import { PcLocalAgentPanel } from "@/components/settings/pc-local-agent-panel";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
 import { SettingsToggle } from "@/components/settings/settings-toggle";
 import { useAlbumSync } from "@/hooks/use-album-sync";
@@ -384,6 +385,12 @@ function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void
       <Suspense fallback={null}>
         <SettingsIntegrationsPanel variant="embedded" />
       </Suspense>
+
+      {user ? (
+        <Suspense fallback={null}>
+          <PcLocalAgentPanel />
+        </Suspense>
+      ) : null}
 
       <SettingsSection title={copy.settings.trustTitle} description={copy.settings.trustHint}>
         <div className="space-y-1.5">
