@@ -45,6 +45,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+.vercel-token.local
 
 # generated docs (npm run store:export:play)
 docs/generated/

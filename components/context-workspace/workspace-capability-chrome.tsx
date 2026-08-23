@@ -13,13 +13,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { CloudSun, X } from "lucide-react";
+import { CloudSun, Navigation, X } from "lucide-react";
 import {
   applyWorkspaceCapabilityOp,
   isCapabilityOpen,
   type WorkspaceCapabilityLayout,
   type WorkspaceCapabilityViewModel,
 } from "@/lib/workspace-capability";
+import { openWorkspaceItineraryRoute } from "@/lib/context-workspace/map/open-workspace-itinerary-route";
 import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
@@ -356,6 +357,44 @@ export function WorkspaceCapabilityChrome({
           )}
         </div>
 
+        {showDayRail && view.days.length > 0 ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute top-3 z-[5] flex max-w-[min(100%,calc(100%-1rem))] justify-center px-2",
+              leftOpen
+                ? "left-[calc(min(220px,28%)+0.5rem)] right-2"
+                : "inset-x-2",
+            )}
+          >
+            <div className="pointer-events-auto flex max-w-full gap-1.5 overflow-x-auto rounded-full bg-white/95 p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.06] backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {view.days.map((d) => {
+                const active = view.focusedDay === d.day;
+                return (
+                  <button
+                    key={d.day}
+                    type="button"
+                    className={cn(
+                      "shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
+                      active
+                        ? "bg-[#191f28] text-white"
+                        : "bg-white text-[#191f28] ring-1 ring-black/[0.08] hover:bg-[#f7f7f7]",
+                    )}
+                    onClick={() =>
+                      applyWorkspaceCapabilityOp({
+                        contextEventId,
+                        op: { type: "set_focused_day", day: d.day },
+                      })
+                    }
+                    data-workspace-day-tab={d.day}
+                  >
+                    {copy.globe.dayTabLabel(d.day)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {leftOpen ? (
           <aside className="pointer-events-none absolute bottom-20 left-2 top-2 z-[4] flex w-[min(220px,28%)] flex-col">
             <div className="pointer-events-auto flex max-h-full min-h-0 flex-col gap-2 overflow-y-auto">
@@ -521,36 +560,111 @@ export function WorkspaceCapabilityChrome({
                 <CapCard
                   title={copy.globe.workspaceCapabilityTimeline}
                   onClose={() => closeCap("timeline")}
-                  defaultMaxH={320}
+                  defaultMaxH={420}
                 >
-                  <ol className="space-y-1.5">
-                    {view.timeline.map((row, index) => (
-                      <li key={row.nodeId}>
-                        <button
-                          type="button"
-                          className="flex w-full gap-2 rounded-xl px-1.5 py-1.5 text-left hover:bg-[#f9fafb]"
-                          onClick={() => onSelectNode(row.nodeId)}
-                        >
-                          <span className="mt-0.5 text-[10px] font-bold tabular-nums text-[#8b95a1]">
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[12px] font-bold text-[#191f28]">
-                              {row.title}
-                            </span>
-                            <span className="block truncate text-[10px] text-[#8b95a1]">
-                              {row.summaryKo}
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                    {view.timeline.length === 0 ? (
-                      <p className="px-1 text-[11px] text-[#8b95a1]">
-                        이 Day에 일정이 없어요
-                      </p>
-                    ) : null}
-                  </ol>
+                  {(() => {
+                    const focused =
+                      view.days.find((d) => d.day === view.focusedDay) ??
+                      view.days[0] ??
+                      null;
+                    const grouped = view.timeline.reduce<
+                      Array<{ label: string; rows: typeof view.timeline }>
+                    >((acc, row) => {
+                      const bucket = acc.find((g) => g.label === row.timeOfDayKo);
+                      if (bucket) {
+                        bucket.rows = [...bucket.rows, row];
+                        return acc;
+                      }
+                      return [...acc, { label: row.timeOfDayKo, rows: [row] }];
+                    }, []);
+
+                    return (
+                      <div className="space-y-3">
+                        {focused ? (
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-semibold text-[#8b95a1]">
+                              {copy.globe.dayTabLabel(focused.day)}
+                            </p>
+                            <p className="text-[15px] font-bold leading-snug text-[#191f28]">
+                              {focused.labelKo}
+                            </p>
+                            <p className="line-clamp-3 text-[11px] leading-relaxed text-[#8b95a1]">
+                              {focused.lineKo}
+                            </p>
+                          </div>
+                        ) : null}
+
+                        {view.timeline.length >= 2 ? (
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#191f28] px-4 py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.98]"
+                            onClick={() => openWorkspaceItineraryRoute(view.timeline)}
+                          >
+                            <Navigation className="size-4" aria-hidden />
+                            {copy.globe.itineraryOpenRoute}
+                          </button>
+                        ) : null}
+
+                        {grouped.map((group) => (
+                          <div key={group.label} className="space-y-1.5">
+                            <p className="text-[11px] font-semibold text-[#8b95a1]">
+                              {group.label}
+                            </p>
+                            {group.rows.map((row) => (
+                              <button
+                                key={row.nodeId}
+                                type="button"
+                                className="flex w-full items-start gap-2.5 rounded-[14px] bg-[#f7f8fa] px-2.5 py-2 text-left ring-1 ring-black/[0.04] hover:bg-[#f2f4f6]"
+                                onClick={() => onSelectNode(row.nodeId)}
+                              >
+                                <span className="relative mt-0.5 h-11 w-11 shrink-0 overflow-hidden rounded-[10px] bg-[#e8ebef]">
+                                  {row.thumbnailUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={row.thumbnailUrl}
+                                      alt=""
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-[#8b95a1]">
+                                      {row.kindLabelKo.slice(0, 2)}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="flex flex-wrap items-center gap-1.5">
+                                    <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#4e5968] ring-1 ring-black/[0.04]">
+                                      {row.kindLabelKo}
+                                    </span>
+                                    {row.rating != null ? (
+                                      <span className="text-[10px] font-semibold tabular-nums text-[#8b95a1]">
+                                        ★ {row.rating.toFixed(1)}
+                                        {row.reviewCount != null
+                                          ? ` (${row.reviewCount.toLocaleString("ko-KR")})`
+                                          : ""}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="mt-0.5 block truncate text-[13px] font-bold text-[#191f28]">
+                                    {row.title}
+                                  </span>
+                                  <span className="block truncate text-[10px] text-[#8b95a1]">
+                                    {row.summaryKo || row.amountLabel}
+                                  </span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+
+                        {view.timeline.length === 0 ? (
+                          <p className="px-1 text-[11px] text-[#8b95a1]">
+                            이 Day에 일정이 없어요
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                 </CapCard>
               ) : null}
 

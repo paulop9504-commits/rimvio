@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Sparkles } from "lucide-react";
+import { Clock3 } from "lucide-react";
 import type { CursorAgentTrailView } from "@/lib/ui/build-cursor-agent-trail-view";
-import { copy } from "@/lib/copy/human-ko";
 import { cn } from "@/lib/utils";
 
 export type CursorAgentActivityTrailProps = {
@@ -13,8 +11,7 @@ export type CursorAgentActivityTrailProps = {
 };
 
 /**
- * Cursor Agent Trail — light hierarchy matching Cursor IDE:
- * Thought Xs · phase verb (spin) · nested Auto step · Exploring · Waiting.
+ * Cursor Agent Trail — vertical stepper (reference: tool count · clock steps · dot sub-steps · summary).
  */
 export function CursorAgentActivityTrail({
   view,
@@ -26,131 +23,91 @@ export function CursorAgentActivityTrail({
     if (!view.running) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 700);
     return () => window.clearInterval(id);
-  }, [view.running, view.nested?.id]);
+  }, [view.running, view.steps.length]);
 
   const thoughtSec = Math.max(
     1,
     Math.round((nowMs - view.startedAtMs) / 1000),
   );
-  const liveThought = view.running
-    ? copy.globe.activityTrail.thoughtFor(thoughtSec)
-    : view.thoughtLineKo;
 
   return (
     <div
-      className={cn("flex flex-col gap-1.5 px-0.5 py-0.5", className)}
+      className={cn("rounded-2xl bg-[#fafafa] px-3 py-2.5", className)}
       data-cursor-agent-activity-trail
       data-finished={view.finished ? "1" : "0"}
       data-running={view.running ? "1" : "0"}
     >
-      <p className="text-[11px] leading-snug text-[#86868b]">{liveThought}</p>
-
-      {view.running && view.phaseLineKo ? (
-        <div className="flex items-center gap-1.5">
-          <Loader2
-            className="size-3 shrink-0 animate-spin text-[#aeaeb2]"
-            strokeWidth={2.25}
-            aria-hidden
-          />
-          <motion.p
-            key={view.phaseLineKo}
-            initial={{ opacity: 0.4 }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-            className="text-[11px] leading-snug text-[#86868b]"
-          >
-            {view.phaseLineKo}
-          </motion.p>
-        </div>
+      {view.toolCount > 0 ? (
+        <p className="mb-2 text-[11px] font-medium text-[#8e8e8e]">
+          {view.toolsUsedLineKo}
+        </p>
       ) : null}
 
-      {!view.running ? (
-        <p className="text-[11px] leading-snug text-[#86868b]">
+      <ol className="relative ml-0.5 space-y-0 border-l border-[#e5e5e5] pl-4">
+        {view.running ? (
+          <li className="relative pb-3">
+            <span className="absolute -left-[1.34rem] top-0.5 flex size-5 items-center justify-center rounded-full bg-white ring-1 ring-[#e5e5e5]">
+              <Clock3 className="size-3 text-[#8e8e8e]" strokeWidth={2} aria-hidden />
+            </span>
+            <p className="text-[13px] leading-snug text-[#3d3d3d]">
+              {view.thoughtLineKo.replace(/\d+초/, `${thoughtSec}초`)}
+            </p>
+            {view.phaseLineKo ? (
+              <p className="mt-1 text-[12px] leading-snug text-[#8e8e8e]">
+                {view.phaseLineKo}
+              </p>
+            ) : null}
+          </li>
+        ) : null}
+
+        {view.steps.map((step) => (
+          <li
+            key={step.id}
+            className={cn(
+              "relative pb-3 last:pb-0",
+              step.tier === "sub" && "pb-2 pl-1",
+            )}
+          >
+            {step.tier === "main" ? (
+              <span className="absolute -left-[1.34rem] top-0.5 flex size-5 items-center justify-center rounded-full bg-white ring-1 ring-[#e5e5e5]">
+                {step.active ? (
+                  <span className="size-2 animate-pulse rounded-full bg-[#8ec5f8]" />
+                ) : step.done ? (
+                  <Clock3 className="size-3 text-[#8e8e8e]" strokeWidth={2} aria-hidden />
+                ) : (
+                  <span className="size-1.5 rounded-full bg-[#c7c7c7]" />
+                )}
+              </span>
+            ) : (
+              <span className="absolute -left-[1.02rem] top-[0.45rem] size-1.5 rounded-full bg-[#c7c7c7]" />
+            )}
+            <p
+              className={cn(
+                "leading-snug",
+                step.tier === "main"
+                  ? "text-[13px] text-[#3d3d3d]"
+                  : "text-[12px] text-[#8e8e8e]",
+                step.active && "font-medium text-[#1d1d1f]",
+              )}
+            >
+              {step.labelKo}
+            </p>
+            {step.detailKo ? (
+              <p className="mt-0.5 text-[11px] leading-snug text-[#aeaeb2]">
+                {step.detailKo}
+              </p>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+
+      {!view.running && view.summaryLineKo ? (
+        <p className="mt-2 border-t border-[#ececec] pt-2 text-[13px] font-semibold leading-snug text-[#1d1d1f]">
           {view.summaryLineKo}
         </p>
       ) : null}
 
-      <p className="text-[13px] font-medium leading-[1.45] text-[#1d1d1f]">
-        {view.goalKo}
-      </p>
-
-      {view.exploredLineKo ? (
-        <p className="text-[11px] leading-snug text-[#86868b]">
-          {view.exploredLineKo}
-        </p>
-      ) : null}
-
-      {view.nested ? (
-        <div className="ml-2.5 border-l border-black/[0.06] pl-2.5 pt-0.5">
-          <div className="flex min-w-0 items-baseline gap-1.5">
-            {view.nested.active ? (
-              <Loader2
-                className="mt-0.5 size-3 shrink-0 animate-spin text-[#3182f6]"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            ) : (
-              <Sparkles
-                className="mt-0.5 size-3 shrink-0 text-[#aeaeb2]"
-                strokeWidth={2}
-                aria-hidden
-              />
-            )}
-            <span className="min-w-0 truncate text-[12px] font-semibold leading-snug text-[#1d1d1f]">
-              {view.nested.titleKo}
-            </span>
-            {view.nested.auto ? (
-              <span className="shrink-0 text-[10px] font-medium tracking-wide text-[#aeaeb2]">
-                {copy.globe.activityTrail.autoBadge}
-              </span>
-            ) : null}
-          </div>
-          <AnimatePresence mode="wait">
-            {view.nested.detailKo ? (
-              <motion.p
-                key={view.nested.detailKo}
-                initial={{ opacity: 0.35 }}
-                animate={{
-                  opacity: view.nested.active ? [0.45, 0.9, 0.45] : 0.72,
-                }}
-                exit={{ opacity: 0 }}
-                transition={
-                  view.nested.active
-                    ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
-                    : { duration: 0.2 }
-                }
-                className="mt-0.5 pl-[1.125rem] text-[11px] leading-snug text-[#86868b]"
-              >
-                {view.nested.detailKo}
-              </motion.p>
-            ) : null}
-          </AnimatePresence>
-        </div>
-      ) : null}
-
-      <AnimatePresence>
-        {view.waitLineKo ? (
-          <motion.p
-            key="wait"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0.5, 0.95, 0.5] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-            className="text-[11px] leading-snug text-[#86868b]"
-          >
-            {view.waitLineKo}
-          </motion.p>
-        ) : view.doneLineKo ? (
-          <motion.p
-            key="done"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-[11px] leading-snug text-[#6e6e73]"
-          >
-            {view.doneLineKo}
-          </motion.p>
-        ) : null}
-      </AnimatePresence>
+      <p className="mt-1.5 text-[12px] leading-snug text-[#6e6e73]">{view.goalKo}</p>
     </div>
   );
 }

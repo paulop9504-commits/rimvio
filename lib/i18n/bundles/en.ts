@@ -496,6 +496,7 @@ export const copyEn: Copy = {
       expandAsk: "Open Workspace to continue?",
       expandHint: "Plan is ready in Workspace · tap Open",
       ranCommands: (n: number) => (n === 1 ? "Ran 1 command" : `Ran ${n} commands`),
+      toolsUsed: (n: number) => (n === 1 ? "Used 1 tool" : `Used ${n} tools`),
       exploredCommands: (n: number) =>
         n === 1 ? "Explored ran 1 command" : `Explored ran ${n} commands`,
       exploredSearches: (n: number) =>
@@ -569,6 +570,12 @@ export const copyEn: Copy = {
       `Queued booking prep for ${placeName}`,
     workspaceOpenTitle: "Workspace",
     workspaceCapabilityDayRail: "Day",
+    dayTabLabel: (day: number) => `Day ${day}`,
+    itineraryOpenRoute: "Open route",
+    itineraryMorning: "Morning",
+    itineraryAfternoon: "Afternoon",
+    itineraryEvening: "Evening",
+    itineraryLunch: "Lunch",
     workspaceCapabilityTimeline: "Timeline",
     workspaceCapabilityBudget: "Budget",
     workspaceCapabilityBooking: "Booking",

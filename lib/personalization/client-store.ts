@@ -49,7 +49,11 @@ function writeJson(key: string, value: unknown) {
     return;
   }
 
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* private mode / quota — fail-soft on phone PWA */
+  }
 }
 
 export function readLocalRecentProfile(): RecentActionProfile {

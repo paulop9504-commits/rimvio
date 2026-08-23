@@ -57,7 +57,7 @@ import { RealityDraftItineraryCard } from "@/components/context-workspace/realit
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
 import { WorkspaceFactAnswerCard } from "@/components/context-workspace/workspace-fact-answer-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
-import { AgentExecutionFeed } from "@/components/globe/chat/agent-execution-feed";
+import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
 import {
   dispatchRealityJump,
   type RealityJumpTarget,
@@ -67,7 +67,7 @@ import {
   subscribeAgentActivityTranscript,
   type AgentActivityTranscript,
 } from "@/lib/context-run/agent-activity-transcript";
-import { buildAgentExecutionFeedView } from "@/lib/ui/build-agent-execution-feed";
+import { buildCursorAgentTrailView } from "@/lib/ui/build-cursor-agent-trail-view";
 import { GLOBE_TOSS_THEME } from "@/lib/globe/globe-toss-theme";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { copy } from "@/lib/copy/human-ko";
@@ -482,7 +482,7 @@ export function WorkspaceCursorDock({
     agent?.currentTaskKo ||
     copy.globe.workspaceChatEmptyHint;
   const nextLabel = agent?.nextSteps[0]?.labelKo ?? null;
-  const trailView = buildAgentExecutionFeedView(activity);
+  const cursorTrailView = buildCursorAgentTrailView(activity);
   const streamOpen =
     transcriptOpen || busy || Boolean(activity?.running);
   const liveWorking = busy || Boolean(activity?.running);
@@ -491,10 +491,11 @@ export function WorkspaceCursorDock({
     .find((t) => t.role === "user")
     ?.text?.trim();
   const showExecutionFeed = Boolean(
-    trailView &&
-      (trailView.running ||
+    cursorTrailView &&
+      (cursorTrailView.running ||
         liveWorking ||
-        (lastUserText && trailView.utterance.trim() === lastUserText)),
+        (lastUserText &&
+          activity?.utterance.trim() === lastUserText)),
   );
 
   const pickImage = useCallback(
@@ -672,7 +673,8 @@ export function WorkspaceCursorDock({
             </span>
             <span className="min-w-0 flex-1 truncate text-[11px] font-normal text-[#86868b]">
               {liveWorking
-                ? trailView?.rows.find((r) => r.status === "running")?.label ||
+                ? cursorTrailView?.phaseLineKo ||
+                  cursorTrailView?.nested?.detailKo ||
                   taskLine
                 : copy.globe.workspaceChatTitle}
             </span>
@@ -695,7 +697,8 @@ export function WorkspaceCursorDock({
                 aria-hidden
               />
               <span className="truncate text-[11px] font-normal text-[#86868b]">
-                {trailView?.rows.find((r) => r.status === "running")?.label ??
+                {cursorTrailView?.phaseLineKo ||
+                  cursorTrailView?.nested?.detailKo ||
                   taskLine}
               </span>
             </div>
@@ -739,8 +742,8 @@ export function WorkspaceCursorDock({
               )}
 
               {/* Cursor order: user command → LIVE Execution Feed append below */}
-              {showExecutionFeed && trailView ? (
-                <AgentExecutionFeed view={trailView} />
+              {showExecutionFeed && cursorTrailView ? (
+                <CursorAgentActivityTrail view={cursorTrailView} />
               ) : null}
 
               {!liveWorking && agent && agent.completedSteps.length > 0 ? (

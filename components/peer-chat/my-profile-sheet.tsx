@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import { buildFriendAddQrUrl } from "@/lib/peer-chat/friend-add-qr-url";
 import { fetchMyAccountProfile } from "@/lib/peer-chat/peer-chat-client";
+import { isShareUserAbort } from "@/lib/platform/share-abort";
 import {
   readCachedMyProfile,
   writeCachedMyProfile,
@@ -110,9 +111,12 @@ export function MyProfileSheet({
         });
         return;
       }
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard?.writeText?.(url);
       toast.success(fa.copyInviteDone);
-    } catch {
+    } catch (error) {
+      if (isShareUserAbort(error)) {
+        return;
+      }
       toast.error(fa.shareFailed);
     }
   };

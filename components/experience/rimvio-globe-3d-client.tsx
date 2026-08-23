@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { forwardRef } from "react";
+import { GlobeErrorBoundary } from "@/components/experience/globe-error-boundary";
 import type {
   RimvioGlobe3DHandle,
   RimvioGlobe3DProps,
@@ -23,6 +24,10 @@ const RimvioGlobe3DLazy = dynamic(
 
 export const RimvioGlobe3DClient = forwardRef<RimvioGlobe3DHandle, RimvioGlobe3DProps>(
   function RimvioGlobe3DClient(props, ref) {
-    return <RimvioGlobe3DLazy {...props} ref={ref} className={cn(props.className)} />;
+    return (
+      <GlobeErrorBoundary>
+        <RimvioGlobe3DLazy {...props} ref={ref} className={cn(props.className)} />
+      </GlobeErrorBoundary>
+    );
   },
 );
