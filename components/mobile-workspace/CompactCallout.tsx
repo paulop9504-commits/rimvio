@@ -38,7 +38,7 @@ export function CompactCallout({
   return (
     <div
       className={cn(
-        "pointer-events-auto flex min-w-[148px] max-w-[220px] items-center gap-2 rounded-2xl bg-black/65 px-3 py-2.5 shadow-xl ring-1 ring-white/15 backdrop-blur-xl",
+        "pointer-events-auto flex min-w-[108px] max-w-[168px] items-center gap-1.5 rounded-xl bg-black/70 px-2.5 py-2 shadow-lg ring-1 ring-white/12 backdrop-blur-xl",
         className,
       )}
       data-mobile-compact-callout
@@ -79,10 +79,10 @@ export function CompactCallout({
         {KIND_EMOJI[entity.kind] ?? "📍"}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-bold text-white">
+        <p className="truncate text-[12px] font-bold text-white">
           {entity.title}
         </p>
-        <p className="truncate text-[11px] font-semibold text-white/65">
+        <p className="truncate text-[10px] font-semibold text-white/70">
           {entity.score != null ? `${entity.score}%` : null}
           {entity.score != null && entity.subtitleKo ? " · " : null}
           {entity.subtitleKo ?? entity.priceLabelKo ?? ""}

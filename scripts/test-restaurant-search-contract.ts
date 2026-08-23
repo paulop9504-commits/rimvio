@@ -52,6 +52,18 @@ assert.equal(
   "canonical place profile should outrank stale GPS or weak anchor text",
 );
 
+const jpBiasOverSeoulGps = resolveRestaurantCountryBias({
+  query: "오사카 맛집",
+  anchorLabel: "오사카",
+  countryBias: null,
+  origin: { lat: 37.5665, lng: 126.978 },
+});
+assert.equal(
+  jpBiasOverSeoulGps,
+  "jp",
+  "destination text should beat viewer GPS in Korea",
+);
+
 const parsed = parseRestaurantSearchIntent("성수에서 조용한 해산물 빼고 로컬 맛집 찾아줘");
 assert.equal(parsed.vibe, "quiet");
 assert.equal(parsed.localityMode, "local");

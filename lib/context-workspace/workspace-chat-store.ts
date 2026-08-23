@@ -7,6 +7,7 @@
 import type { ContextBrief } from "@/lib/context-workspace/context-brief/types";
 import type { RealityDraft } from "@/lib/context-workspace/reality-draft";
 import type { ContextWorkspaceNodeKind } from "@/lib/context-workspace/types";
+import type { FactAnswerWire } from "@/lib/fact-query/types";
 
 export type WorkspaceChatRole = "user" | "assistant";
 
@@ -38,6 +39,7 @@ export type WorkspaceChatTurn = {
   /** Day itinerary SSOT — same nodes as map pins. */
   readonly realityDraft?: RealityDraft | null;
   readonly showLinkedWorkCta?: boolean;
+  readonly factAnswer?: FactAnswerWire | null;
 };
 
 const memory = new Map<string, WorkspaceChatTurn[]>();
@@ -71,6 +73,14 @@ export function clearWorkspaceChat(contextEventId: string): void {
   emit(key);
 }
 
+export function clearWorkspaceChatForTests(contextEventId?: string): void {
+  if (contextEventId?.trim()) {
+    memory.delete(contextEventId.trim());
+    return;
+  }
+  memory.clear();
+}
+
 export function appendWorkspaceChatTurn(input: {
   contextEventId: string;
   role: WorkspaceChatRole;
@@ -81,6 +91,7 @@ export function appendWorkspaceChatTurn(input: {
   contextBrief?: ContextBrief | null;
   realityDraft?: RealityDraft | null;
   showLinkedWorkCta?: boolean;
+  factAnswer?: FactAnswerWire | null;
 }): WorkspaceChatTurn | null {
   const key = input.contextEventId.trim();
   const brief = input.contextBrief ?? null;
@@ -105,6 +116,7 @@ export function appendWorkspaceChatTurn(input: {
     contextBrief: brief,
     realityDraft: draft,
     showLinkedWorkCta: input.showLinkedWorkCta === true,
+    factAnswer: input.factAnswer ?? null,
   };
   const prev = memory.get(key) ?? [];
   memory.set(key, [...prev, turn].slice(-MAX_TURNS));

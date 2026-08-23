@@ -9,7 +9,7 @@ import {
   composeSearchQueryWithFieldControl,
   type ContextFieldSearchControl,
 } from "@/lib/context-field";
-import { searchOsakaDemoCatalog } from "@/lib/search-engine/osaka-demo-catalog";
+import { searchOsakaDemoCatalog, OSAKA_CENTER, looksLikeOsakaContext } from "@/lib/search-engine/osaka-demo-catalog";
 import { rankByValueConsensus } from "@/lib/search-engine/score-value-consensus";
 import { resolveLodgingMockForPlace } from "@/lib/globe/context-hub/lodging-mock-inventory";
 import {
@@ -189,8 +189,17 @@ export function runPlaceSearch(input: PlaceSearchInput): readonly PlaceSearchHit
     return [];
   }
 
-  const baseLat = input.anchorLat ?? 36.3621;
-  const baseLng = input.anchorLng ?? 127.3446;
+  let baseLat = input.anchorLat;
+  let baseLng = input.anchorLng;
+  if (baseLat == null || baseLng == null) {
+    if (looksLikeOsakaContext({ query, anchorLat: input.anchorLat, anchorLng: input.anchorLng })) {
+      baseLat = OSAKA_CENTER.lat;
+      baseLng = OSAKA_CENTER.lng;
+    } else {
+      baseLat = 36.3621;
+      baseLng = 127.3446;
+    }
+  }
   const labels = seedLabels(input.domain, query, input.labels).slice(
     0,
     Math.max(limit, 6),

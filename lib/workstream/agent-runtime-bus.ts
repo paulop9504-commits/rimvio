@@ -22,6 +22,9 @@ export const AGENT_RUNTIME_EVENT_KINDS = [
   "committed",
   "reflection_written",
   "ui_invalidate",
+  "bg_task_queued",
+  "bg_task_started",
+  "bg_task_finished",
 ] as const;
 
 export type AgentRuntimeEventKind = (typeof AGENT_RUNTIME_EVENT_KINDS)[number];

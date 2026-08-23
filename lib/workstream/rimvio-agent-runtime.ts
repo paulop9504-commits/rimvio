@@ -22,7 +22,9 @@ import {
   readAgentMemory,
   type AgentMemory,
 } from "@/lib/workstream/agent-memory";
+import { ensureAgentExecutionStateManager } from "@/lib/workstream/agent-execution-state-manager";
 import { publishAgentRuntimeEvent } from "@/lib/workstream/agent-runtime-bus";
+import { dispatchBackgroundAgentVerification } from "@/lib/workstream/run-background-agent-verification";
 import {
   summarizeAgentRuntimeMetrics,
   timeAgentRuntimeStep,
@@ -92,6 +94,8 @@ export function enterRimvioAgentRuntime(input: {
   const contextEventId =
     input.contextEventId.trim() || `runtime:${input.source}`;
   const utterance = input.utterance?.trim() || null;
+
+  ensureAgentExecutionStateManager();
 
   publishAgentRuntimeEvent({
     kind: "intent_received",
@@ -208,6 +212,15 @@ export function enterRimvioAgentRuntime(input: {
       contextEventId,
       labelKo: judgment.strategy.labelKo,
     });
+
+    if (judgment.strategy.runVerificationLoop) {
+      dispatchBackgroundAgentVerification({
+        contextEventId,
+        event: input.event ?? null,
+        strategy:
+          judgment.strategy.strategy === "recovery" ? "recovery" : "schedule",
+      });
+    }
   }
 
   const capabilities = judgment

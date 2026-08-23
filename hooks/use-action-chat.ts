@@ -54,6 +54,36 @@ import { buildPeerComposerContextBlock } from "@/lib/context/build-peer-composer
 import { isCommandOsInput } from "@/lib/command-os/parse-command-input";
 import { formatMentionComposerBlock, parseActionMention } from "@/lib/event-kernel/action-contracts/parse-action-mention";
 import { tryDispatchLocalMentionTurn } from "@/lib/action-chat/dispatch-local-mention-turn";
+import {
+  tryBuildJarvisPeerSendTurn,
+  tryCommitJarvisPeerSendTurn,
+} from "@/lib/jarvis-peer-send/dispatch-jarvis-peer-send-turn";
+import {
+  tryBuildInAppBookingTurn,
+  tryCommitInAppBookingTurn,
+} from "@/lib/jarvis-in-app-booking/dispatch-in-app-booking-turn";
+import { tryBuildFactQueryTurnAsync } from "@/lib/fact-query/dispatch-fact-query-turn";
+import { readGlobeOrchestratorScopeHint } from "@/lib/globe/globe-orchestrator-scope-bridge";
+import { commitJarvisPeerSend } from "@/lib/jarvis-peer-send/commit-jarvis-peer-send";
+import {
+  applyPeerSendConfirmToMessages,
+  applyPeerSendPickContactToMessages,
+} from "@/lib/jarvis-peer-send/peer-send-message-state";
+import {
+  clearPendingJarvisPeerSend,
+  setPendingJarvisPeerSend,
+} from "@/lib/jarvis-peer-send/pending-jarvis-peer-send-store";
+import { commitInAppBooking } from "@/lib/jarvis-in-app-booking/commit-in-app-booking";
+import {
+  applyBookingDraftConfirmToMessages,
+  applyBookingDraftPickLodgingToMessages,
+} from "@/lib/jarvis-in-app-booking/booking-draft-message-state";
+import {
+  clearPendingInAppBooking,
+  setPendingInAppBooking,
+} from "@/lib/jarvis-in-app-booking/pending-in-app-booking-store";
+import type { BookingLodgingCandidate } from "@/lib/jarvis-in-app-booking/resolve-booking-lodging";
+import type { PeerContact } from "@/lib/context/peer-contact-types";
 import { isLocalInlineMentionFeature } from "@/lib/action-chat/mention-actions/mention-action-inline-features";
 import {
   tryCommitParkingPhotoTurn,
@@ -457,6 +487,8 @@ export function useActionChat(
   const [messages, setMessages] = useState<ActionChatMessage[]>([]);
 
   const [sending, setSending] = useState(false);
+  const [peerSendBusy, setPeerSendBusy] = useState(false);
+  const [bookingDraftBusy, setBookingDraftBusy] = useState(false);
 
   const lastActivityRef = useRef(Date.now());
   const SESSION_IDLE_MS = 5 * 60 * 1000;
@@ -1557,6 +1589,55 @@ export function useActionChat(
       }
 
       if (pendingAttachments.length === 0) {
+        const factQueryTurn = await tryBuildFactQueryTurnAsync({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+        });
+        if (factQueryTurn) {
+          persist([...readActionChatMessages(scopeId), ...factQueryTurn]);
+          return;
+        }
+
+        const commitPeerSendTurn = await tryCommitJarvisPeerSendTurn({
+          text: trimmed,
+          messages: currentBeforeSend,
+        });
+        if (commitPeerSendTurn) {
+          persist(commitPeerSendTurn);
+          return;
+        }
+
+        const commitBookingTurn = tryCommitInAppBookingTurn({
+          text: trimmed,
+          messages: currentBeforeSend,
+        });
+        if (commitBookingTurn) {
+          persist(commitBookingTurn);
+          return;
+        }
+
+        const globeScope = readGlobeOrchestratorScopeHint();
+        const inAppBookingTurn = tryBuildInAppBookingTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+          contextEventId: globeScope?.eventId ?? null,
+          contextLabelKo: globeScope?.title ?? null,
+        });
+        if (inAppBookingTurn) {
+          persist([...readActionChatMessages(scopeId), ...inAppBookingTurn]);
+          return;
+        }
+
+        const jarvisPeerSendTurn = tryBuildJarvisPeerSendTurn({
+          text: trimmed,
+          chatAxis: messageChatAxis,
+          contextEventId: globeScope?.eventId ?? null,
+        });
+        if (jarvisPeerSendTurn) {
+          persist([...readActionChatMessages(scopeId), ...jarvisPeerSendTurn]);
+          return;
+        }
+
         const earlyMasterContext = readClientMasterOrchestratorContext();
         const earlyLocalTurn = tryDispatchLocalMentionTurn({
           text: trimmed,
@@ -2078,6 +2159,136 @@ export function useActionChat(
     [persist, scopeId],
   );
 
+  const confirmPeerSend = useCallback(
+    async (messageId: string) => {
+      const current = readActionChatMessages(scopeId);
+      const target = current.find((message) => message.id === messageId);
+      const wire = target?.inlineChatPeerSend;
+      if (!wire || wire.status !== "pending") {
+        return;
+      }
+      setPeerSendBusy(true);
+      setPendingJarvisPeerSend({ messageId, wire });
+      try {
+        const result = await commitJarvisPeerSend(wire);
+        if (!result.ok) {
+          persist(
+            applyPeerSendConfirmToMessages(
+              current,
+              messageId,
+              { status: "failed", errorKo: result.errorKo },
+              result.errorKo,
+            ),
+          );
+          return;
+        }
+        persist(
+          applyPeerSendConfirmToMessages(
+            current,
+            messageId,
+            { status: "sent", sentMessageId: result.messageId },
+            "전송 완료했습니다. 메신저 탭에서 확인하실 수 있습니다.",
+          ),
+        );
+      } finally {
+        setPeerSendBusy(false);
+      }
+    },
+    [persist, scopeId],
+  );
+
+  const pickPeerSendContact = useCallback(
+    (messageId: string, contact: PeerContact, messageBody: string) => {
+      const current = readActionChatMessages(scopeId);
+      const target = current.find((message) => message.id === messageId);
+      if (!target?.inlineChatPeerSend) {
+        return;
+      }
+      const nextWire = {
+        ...target.inlineChatPeerSend,
+        peerThreadId: contact.peerThreadId,
+        recipientDisplayName: contact.displayName,
+        messageBody,
+        disambiguation: undefined,
+      };
+      persist(
+        applyPeerSendPickContactToMessages(current, messageId, {
+          peerThreadId: contact.peerThreadId,
+          displayName: contact.displayName,
+          messageBody,
+        }),
+      );
+      setPendingJarvisPeerSend({ messageId, wire: nextWire });
+    },
+    [persist, scopeId],
+  );
+
+  const confirmBookingDraft = useCallback(
+    (messageId: string) => {
+      const current = readActionChatMessages(scopeId);
+      const target = current.find((message) => message.id === messageId);
+      const wire = target?.inlineChatBookingDraft;
+      if (!wire || wire.status !== "pending") {
+        return;
+      }
+      setBookingDraftBusy(true);
+      setPendingInAppBooking({ messageId, wire });
+      try {
+        const result = commitInAppBooking(wire);
+        if (!result.ok) {
+          persist(
+            applyBookingDraftConfirmToMessages(
+              current,
+              messageId,
+              { status: "failed", errorKo: result.errorKo },
+              result.errorKo,
+            ),
+          );
+          return;
+        }
+        persist(
+          applyBookingDraftConfirmToMessages(
+            current,
+            messageId,
+            { status: "prepared", operationId: result.operationId },
+            "결재함에 담았어요. Field에서 확인·승인할 수 있습니다.",
+          ),
+        );
+      } finally {
+        setBookingDraftBusy(false);
+      }
+    },
+    [persist, scopeId],
+  );
+
+  const pickBookingLodging = useCallback(
+    (messageId: string, candidate: BookingLodgingCandidate) => {
+      const current = readActionChatMessages(scopeId);
+      const target = current.find((message) => message.id === messageId);
+      if (!target?.inlineChatBookingDraft) {
+        return;
+      }
+      const nextWire = {
+        ...target.inlineChatBookingDraft,
+        placeId: candidate.id,
+        placeName: candidate.labelKo,
+        lat: candidate.lat,
+        lng: candidate.lng,
+        amountLabel: candidate.amountLabel ?? null,
+        disambiguation: undefined,
+      };
+      persist(
+        applyBookingDraftPickLodgingToMessages(current, messageId, candidate),
+      );
+      setPendingInAppBooking({ messageId, wire: nextWire });
+    },
+    [persist, scopeId],
+  );
+
+  const cancelPendingPeerSend = useCallback(() => {
+    clearPendingJarvisPeerSend();
+  }, []);
+
   const confirmInlineFocus = useCallback(
     async (messageId: string) => {
       const hasAccess = await ensureNotificationAccessForFocus(() => {
@@ -2361,6 +2572,20 @@ export function useActionChat(
     cancelInlineFocus,
 
     completeInlineFocus,
+
+    confirmPeerSend,
+
+    pickPeerSendContact,
+
+    cancelPendingPeerSend,
+
+    peerSendBusy,
+
+    confirmBookingDraft,
+
+    pickBookingLodging,
+
+    bookingDraftBusy,
 
     handleFocusHeldInAppAction,
 

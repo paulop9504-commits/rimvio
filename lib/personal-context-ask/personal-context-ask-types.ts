@@ -58,6 +58,8 @@ export type PersonalContextBridgeHit = {
   marketPriceLine?: string | null;
   marketRealizedPriceKrw?: number | null;
   marketRole?: "seeking" | "listing" | null;
+  /** Phase B — lexical vs semantic bridge retrieval. */
+  retrievalSource?: "lexical" | "semantic";
 };
 
 export type PersonalContextAskRecallContext = {

@@ -280,6 +280,34 @@ export type {
   AgentCapabilityRegistration,
 } from "@/lib/workstream/agent-capability-registry";
 export {
+  BG_TASK_ID_PREFIX,
+  clearBackgroundTasksForTests,
+  dispatchBackgroundTask,
+  formatBackgroundTaskId,
+  isBackgroundTaskId,
+  readBackgroundTask,
+  readBackgroundTasks,
+} from "@/lib/workstream/background-task-dispatch";
+export type {
+  BackgroundTaskKind,
+  BackgroundTaskRecord,
+  BackgroundTaskStatus,
+} from "@/lib/workstream/background-task-dispatch";
+export {
+  dispatchBackgroundAgentVerification,
+  runBackgroundAgentVerification,
+} from "@/lib/workstream/run-background-agent-verification";
+export type { BackgroundVerificationResult } from "@/lib/workstream/run-background-agent-verification";
+export {
+  ensureAgentExecutionStateManager,
+  readAgentExecutionStateSnapshot,
+  readAllAgentExecutionStateSnapshots,
+  refreshAgentExecutionStateSnapshot,
+  stopAgentExecutionStateManagerForTests,
+  touchAgentExecutionStateManager,
+} from "@/lib/workstream/agent-execution-state-manager";
+export type { AgentExecutionStateSnapshot } from "@/lib/workstream/agent-execution-state-manager";
+export {
   clearAgentRuntimeEventLogForTests,
   publishAgentRuntimeEvent,
   readAgentRuntimeEventLog,

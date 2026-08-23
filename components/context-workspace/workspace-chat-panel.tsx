@@ -16,6 +16,7 @@ import {
 } from "@/lib/context-workspace/workspace-chat-store";
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
 import { RealityDraftItineraryCard } from "@/components/context-workspace/reality-draft-itinerary-card";
+import { WorkspaceFactAnswerCard } from "@/components/context-workspace/workspace-fact-answer-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
 import {
   dispatchRealityJump,
@@ -82,6 +83,7 @@ function AssistantBubble(props: {
   const { turn, contextEventId } = props;
   const brief = turn.contextBrief ?? null;
   const draft = turn.realityDraft ?? null;
+  const fact = turn.factAnswer ?? null;
   const onRealityJump = (target: RealityJumpTarget) => {
     const ok = dispatchRealityJump({
       contextEventId,
@@ -92,6 +94,17 @@ function AssistantBubble(props: {
       toast.message(copy.globe.realityJumpToast(target.labelKo));
     }
   };
+
+  if (fact) {
+    return (
+      <div className="max-w-[96%] space-y-1.5">
+        <div className="rounded-[18px] rounded-bl-[6px] bg-[#f2f4f6] px-3 py-2 text-[12px] font-medium leading-snug tracking-tight text-[#191f28]">
+          {turn.text}
+        </div>
+        <WorkspaceFactAnswerCard wire={fact} />
+      </div>
+    );
+  }
 
   if (draft || brief) {
     return (

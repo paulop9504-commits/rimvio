@@ -97,6 +97,19 @@ type ActionChatMessageListProps = {
   ) => void;
   onOpenCapture?: () => void;
   onFeedPeerTalkStart?: (contact: PeerContact) => void;
+  onPeerSendConfirm?: (messageId: string) => void;
+  onPeerSendPickContact?: (
+    messageId: string,
+    contact: PeerContact,
+    messageBody: string,
+  ) => void;
+  peerSendBusy?: boolean;
+  onBookingDraftConfirm?: (messageId: string) => void;
+  onBookingDraftPickLodging?: (
+    messageId: string,
+    candidate: import("@/lib/jarvis-in-app-booking/resolve-booking-lodging").BookingLodgingCandidate,
+  ) => void;
+  bookingDraftBusy?: boolean;
   className?: string;
 };
 
@@ -126,6 +139,12 @@ function AssistantOfferMessage({
   onFocusHeldInAppAction,
   onOpenCapture,
   onFeedPeerTalkStart,
+  onPeerSendConfirm,
+  onPeerSendPickContact,
+  peerSendBusy,
+  onBookingDraftConfirm,
+  onBookingDraftPickLodging,
+  bookingDraftBusy,
   onAction,
   bubbleGroup = "single",
 }: {
@@ -159,6 +178,19 @@ function AssistantOfferMessage({
   ) => void;
   onOpenCapture?: () => void;
   onFeedPeerTalkStart?: (contact: PeerContact) => void;
+  onPeerSendConfirm?: (messageId: string) => void;
+  onPeerSendPickContact?: (
+    messageId: string,
+    contact: PeerContact,
+    messageBody: string,
+  ) => void;
+  peerSendBusy?: boolean;
+  onBookingDraftConfirm?: (messageId: string) => void;
+  onBookingDraftPickLodging?: (
+    messageId: string,
+    candidate: import("@/lib/jarvis-in-app-booking/resolve-booking-lodging").BookingLodgingCandidate,
+  ) => void;
+  bookingDraftBusy?: boolean;
   onAction: (action: LinkActionItem) => void;
 }) {
   useActionTrust();
@@ -194,23 +226,40 @@ function AssistantOfferMessage({
 
   if (hasMentionInlinePayload(message)) {
     return (
-      <MentionInlineMessage
-        message={message}
-        calendarOverlayRows={calendarOverlayRows}
-        calendarContextByMessageId={calendarContextByMessageId}
-        onInlineTimerComplete={onInlineTimerComplete}
-        onInlineFocusConfirm={onInlineFocusConfirm}
-        onInlineFocusCancel={onInlineFocusCancel}
-        onInlineFocusComplete={onInlineFocusComplete}
-        onOpenCalendarSheet={onOpenCalendarSheet}
-        onCalendarSpawnPrompt={onCalendarSpawnPrompt}
-        onNavigateSpawnPrompt={onNavigateSpawnPrompt}
-        onScheduleOrganizePrompt={onScheduleOrganizePrompt}
-        onTransferSpawnPrompt={onTransferSpawnPrompt}
-        onFocusHeldInAppAction={onFocusHeldInAppAction}
-        onOpenCapture={onOpenCapture}
-        onFeedPeerTalkStart={onFeedPeerTalkStart}
-      />
+      <div className="space-y-2">
+        {message.inlineChatPeerSend && message.text?.trim() ? (
+          <AiChatBubble group={bubbleGroup}>{message.text}</AiChatBubble>
+        ) : null}
+        {message.inlineChatFactAnswer && message.text?.trim() ? (
+          <AiChatBubble group={bubbleGroup}>{message.text}</AiChatBubble>
+        ) : null}
+        {message.inlineChatBookingDraft && message.text?.trim() ? (
+          <AiChatBubble group={bubbleGroup}>{message.text}</AiChatBubble>
+        ) : null}
+        <MentionInlineMessage
+          message={message}
+          calendarOverlayRows={calendarOverlayRows}
+          calendarContextByMessageId={calendarContextByMessageId}
+          onInlineTimerComplete={onInlineTimerComplete}
+          onInlineFocusConfirm={onInlineFocusConfirm}
+          onInlineFocusCancel={onInlineFocusCancel}
+          onInlineFocusComplete={onInlineFocusComplete}
+          onOpenCalendarSheet={onOpenCalendarSheet}
+          onCalendarSpawnPrompt={onCalendarSpawnPrompt}
+          onNavigateSpawnPrompt={onNavigateSpawnPrompt}
+          onScheduleOrganizePrompt={onScheduleOrganizePrompt}
+          onTransferSpawnPrompt={onTransferSpawnPrompt}
+          onFocusHeldInAppAction={onFocusHeldInAppAction}
+          onOpenCapture={onOpenCapture}
+          onFeedPeerTalkStart={onFeedPeerTalkStart}
+          onPeerSendConfirm={onPeerSendConfirm}
+          onPeerSendPickContact={onPeerSendPickContact}
+          peerSendBusy={peerSendBusy}
+          onBookingDraftConfirm={onBookingDraftConfirm}
+          onBookingDraftPickLodging={onBookingDraftPickLodging}
+          bookingDraftBusy={bookingDraftBusy}
+        />
+      </div>
     );
   }
 
@@ -445,6 +494,12 @@ export function ActionChatMessageList({
   onFocusHeldInAppAction,
   onOpenCapture,
   onFeedPeerTalkStart,
+  onPeerSendConfirm,
+  onPeerSendPickContact,
+  peerSendBusy,
+  onBookingDraftConfirm,
+  onBookingDraftPickLodging,
+  bookingDraftBusy,
   className,
 }: ActionChatMessageListProps) {
   const { requestNavSector, shouldOpenNavSector, navSectorSheet } = useNavSectorPicker({
@@ -547,6 +602,12 @@ export function ActionChatMessageList({
                 onFocusHeldInAppAction={onFocusHeldInAppAction}
                 onOpenCapture={onOpenCapture}
                 onFeedPeerTalkStart={onFeedPeerTalkStart}
+                onPeerSendConfirm={onPeerSendConfirm}
+                onPeerSendPickContact={onPeerSendPickContact}
+                peerSendBusy={peerSendBusy}
+                onBookingDraftConfirm={onBookingDraftConfirm}
+                onBookingDraftPickLodging={onBookingDraftPickLodging}
+                bookingDraftBusy={bookingDraftBusy}
                 onAction={handleAction}
               />
             </div>

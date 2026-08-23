@@ -1,5 +1,7 @@
+import { deriveLoopContextKo as deriveLoopContextKoSsot } from "@/lib/guardian-copy/jarvis-copy-ssot";
 import type { LoopType } from "@/lib/loop-wiring/loop-contract";
 
+/** @deprecated import from `@/lib/guardian-copy` — partner tone default for legacy callers. */
 const LOOP_CONTEXT_KO: Record<LoopType, string> = {
   MORNING_LOOP: "아침 흐름 — 오늘 일정을 먼저 맞추고 있어요",
   TRANSIT_LOOP: "이동 중 — 길찾기·출근에 맞춰 제안해요",
@@ -11,5 +13,7 @@ export function deriveLoopContextKo(loopType: LoopType | null | undefined): stri
   if (!loopType) {
     return null;
   }
-  return LOOP_CONTEXT_KO[loopType] ?? null;
+  return deriveLoopContextKoSsot(loopType, "partner") ?? LOOP_CONTEXT_KO[loopType] ?? null;
 }
+
+export { deriveLoopContextKo as deriveLoopContextKoForTone } from "@/lib/guardian-copy/jarvis-copy-ssot";

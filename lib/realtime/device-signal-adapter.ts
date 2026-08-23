@@ -9,6 +9,8 @@ export type DeviceAdapterInput = {
   idleMinutes?: number;
   screenAwake?: boolean;
   screenJustWoke?: boolean;
+  /** When true, marks first app open of the local day for MORNING_LOOP wiring. */
+  firstUnlockToday?: boolean;
   systemInterruptCount?: number;
   notificationCountLast15Min?: number;
   messageCountLast15Min?: number;
@@ -157,7 +159,8 @@ export function collectDeviceSignals(input: DeviceAdapterInput = {}): DeviceAdap
     mapSearchRecently: input.mapSearchRecently,
     recentCapabilityIds: input.recentCapabilityIds,
     location: input.location,
-    firstUnlockToday: input.screenJustWoke === true,
+    firstUnlockToday:
+      input.firstUnlockToday === true || input.screenJustWoke === true,
     alarmFiredRecently: interrupts >= 1,
   };
 

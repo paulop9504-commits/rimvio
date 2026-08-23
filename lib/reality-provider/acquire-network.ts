@@ -24,6 +24,10 @@ import {
   KOREA_RAIL_LINE_CATALOG,
   resolveKoreaRailLineIdFromText,
 } from "@/lib/geo/korea-rail/line-catalog";
+import {
+  SEOUL_TRANSIT_LINE_LABEL_KO,
+  SEOUL_TRANSIT_STATIONS,
+} from "@/lib/fact-query/data/seoul-transit-ssot";
 import type { RealityNeed, RealityProviderId } from "@/lib/reality-provider/types";
 import type { RealityRailNetworkBundle } from "@/lib/reality-provider/normalize-types";
 
@@ -184,6 +188,35 @@ function koreaRailBundle(utterance: string): RealityRailNetworkBundle {
   };
 }
 
+function seoulMetroBundle(): RealityRailNetworkBundle {
+  const lineIds = Object.keys(SEOUL_TRANSIT_LINE_LABEL_KO) as Array<
+    keyof typeof SEOUL_TRANSIT_LINE_LABEL_KO
+  >;
+  return {
+    providerId: "cached_overlay",
+    regionKo: "서울",
+    family: "seoul_metro",
+    labelKo: "서울 지하철",
+    lines: lineIds.map((id) => ({
+      id,
+      kind: "line" as const,
+      titleKo: SEOUL_TRANSIT_LINE_LABEL_KO[id],
+      shortLabelKo: SEOUL_TRANSIT_LINE_LABEL_KO[id],
+      color: "#0054A6",
+      operatorHint: "metro",
+    })),
+    stations: SEOUL_TRANSIT_STATIONS.map((s) => ({
+      id: s.id,
+      kind: "station" as const,
+      titleKo: s.nameKo,
+      lat: s.lat,
+      lng: s.lng,
+      lineIds: [...s.lines],
+      hub: s.lines.length >= 3,
+    })),
+  };
+}
+
 function acquireCached(need: RealityNeed): AcquireNetworkResult {
   if (need.needId === "shinkansen_network") {
     return {
@@ -231,6 +264,16 @@ function acquireCached(need: RealityNeed): AcquireNetworkResult {
         need.utterance,
       );
     if (uncachedUrban) {
+      const seoul =
+        need.regionKo === "서울" ||
+        /서울\s*지하철|seoul\s*metro|서울\s*메트로/iu.test(need.utterance);
+      if (seoul) {
+        return {
+          ok: true,
+          providerId: "cached_overlay",
+          bundle: seoulMetroBundle(),
+        };
+      }
       const label = need.regionKo?.trim() || "이 도시";
       return {
         ok: false,
@@ -278,7 +321,33 @@ export function acquireNetwork(input: {
 }): AcquireNetworkResult {
   const { need, providerId } = input;
 
-  if (providerId === "gtfs" || providerId === "osm") {
+  if (providerId === "gtfs") {
+    if (
+      need.needId === "metro_network" &&
+      (need.regionKo === "서울" ||
+        need.regionKo === "도쿄" ||
+        need.regionKo === "오사카" ||
+        need.regionKo === "일본")
+    ) {
+      return {
+        ok: true,
+        providerId: "gtfs",
+        bundle:
+          need.regionKo === "서울"
+            ? seoulMetroBundle()
+            : need.regionKo === "오사카"
+              ? osakaMetroBundle(need.utterance)
+              : japanMetroBundle(need.regionKo ?? "일본", need.utterance),
+      };
+    }
+    return {
+      ok: false,
+      providerId,
+      reasonKo: "GTFS feed 미연결 · Fact Query stub 또는 cached_overlay 사용",
+    };
+  }
+
+  if (providerId === "osm") {
     return {
       ok: false,
       providerId,

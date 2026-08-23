@@ -6,11 +6,24 @@ Set-Location $PSScriptRoot\..
 
 $RimvioRepo = "https://github.com/paulop9504-dotcom/rimvio.git"
 $Project = "rimvio"
+$VercelTeam = "yong-s-projects17"
+$VercelOrgId = "team_CYLDDTKnNE4LPDnyNWqLBtEF"
+$VercelProjectId = "prj_EStrLHbcj31DupQI87NMdDRNJSMD"
 $ProdUrl = "https://rimvio.vercel.app"
 
 Write-Host "=== Vercel <-> rimvio Git connect ===" -ForegroundColor Cyan
 
-npx vercel link --yes --project $Project
+if (-not (Test-Path .vercel\project.json)) {
+  New-Item -ItemType Directory -Force -Path .vercel | Out-Null
+  @"
+{
+  "orgId": "$VercelOrgId",
+  "projectId": "$VercelProjectId"
+}
+"@ | Set-Content -Path .vercel\project.json -Encoding utf8
+}
+
+npx vercel link --yes --project $Project --scope $VercelTeam
 
 Write-Host "`nDisconnect legacy glango (if connected)..." -ForegroundColor Yellow
 npx vercel git disconnect --yes 2>$null

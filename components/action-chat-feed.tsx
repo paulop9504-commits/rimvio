@@ -53,11 +53,12 @@ import { useSurfaceTransientHint } from "@/hooks/use-surface-transient-hint";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
 import { routeRimvioPromptUri } from "@/lib/action-chat/rimvio-prompt-router";
 import { buildSurfaceActionKey } from "@/lib/memory";
+import { useMorningUnlockSession } from "@/hooks/use-morning-unlock-session";
 import {
-  deriveSurfaceWhyLineKo,
-  hasActiveDecisionStream,
-  shouldRenderLatentSuggestionLayers,
-} from "@/lib/surface-composition";
+  readMorningPrepDismissDateKey,
+  resolveMorningAutoPrepSurface,
+  shouldRenderLatentLayersWithMorningAutoPrep,
+} from "@/lib/morning-loop";
 import {
   derivePrimaryErrorMessage,
   derivePrimarySuccessMessage,
@@ -230,6 +231,12 @@ export function ActionChatFeed({
     confirmInlineFocus,
     cancelInlineFocus,
     completeInlineFocus,
+    confirmPeerSend,
+    pickPeerSendContact,
+    peerSendBusy,
+    confirmBookingDraft,
+    pickBookingLodging,
+    bookingDraftBusy,
     handleFocusHeldInAppAction,
     eventOsProofRender,
     eventOsLastProof,
@@ -260,16 +267,24 @@ export function ActionChatFeed({
     refreshKey: reminderMap,
   });
   const masterContext = useMemo(() => readClientMasterOrchestratorContext(), [messages]);
+  const morningUnlock = useMorningUnlockSession();
   const surfaceMemory = useSurfaceMemory();
   const synaptic = useSynapticSnapshot();
-  const surfaceState = useRealtimeSurfaceComposition({
-    dateKey: masterContext.currentDate,
-    context: {
-      now: new Date(),
-      completedActionIds: surfaceMemory.completedActionIds,
-      dismissedSurfaceIds: surfaceMemory.dismissedSurfaceIds,
+  const surfaceState = useRealtimeSurfaceComposition(
+    {
+      dateKey: masterContext.currentDate,
+      context: {
+        now: new Date(),
+        completedActionIds: surfaceMemory.completedActionIds,
+        dismissedSurfaceIds: surfaceMemory.dismissedSurfaceIds,
+      },
     },
-  });
+    {
+      isForeground: true,
+      firstUnlockToday: morningUnlock.firstUnlockToday,
+      localTime: morningUnlock.localTime,
+    },
+  );
   const surfaceFrame = surfaceState.frame;
   const { dispatchAndRecord } = useCapabilityDispatch({
     sendPrompt: (text) => {
@@ -361,9 +376,29 @@ export function ActionChatFeed({
     () => hasActiveDecisionStream(surfaceFrame.layout),
     [surfaceFrame],
   );
+  const morningAutoPrep = useMemo(
+    () =>
+      resolveMorningAutoPrepSurface({
+        dominantLoop: surfaceState.dominantLoop,
+        firstUnlockToday: morningUnlock.firstUnlockToday,
+        prepSurfaceVisible: prepSurface.visible,
+        dismissedForDateKey: readMorningPrepDismissDateKey(),
+        dateKey: morningUnlock.dateKey,
+      }),
+    [
+      surfaceState.dominantLoop,
+      morningUnlock.firstUnlockToday,
+      morningUnlock.dateKey,
+      prepSurface.visible,
+    ],
+  );
   const showLatentSuggestionLayers = useMemo(
-    () => shouldRenderLatentSuggestionLayers(surfaceFrame),
-    [surfaceFrame],
+    () =>
+      shouldRenderLatentLayersWithMorningAutoPrep({
+        frame: surfaceFrame,
+        morningAutoPrepVisible: morningAutoPrep.visible,
+      }),
+    [surfaceFrame, morningAutoPrep.visible],
   );
   const surfacePrimaryUx = useMemo(() => {
     if (surfaceTransientHint) {
@@ -730,6 +765,16 @@ export function ActionChatFeed({
               onFeedPeerTalkStart={(contact) => {
                 void startFeedPeerTalk(contact);
               }}
+              onPeerSendConfirm={(messageId) => {
+                void confirmPeerSend(messageId);
+              }}
+              onPeerSendPickContact={pickPeerSendContact}
+              peerSendBusy={peerSendBusy}
+              onBookingDraftConfirm={(messageId) => {
+                confirmBookingDraft(messageId);
+              }}
+              onBookingDraftPickLodging={pickBookingLodging}
+              bookingDraftBusy={bookingDraftBusy}
                 />
               </div>
             </ExecutionTimeline>

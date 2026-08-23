@@ -12,12 +12,38 @@ import {
 import type { ContextWorkspaceState } from "@/lib/context-workspace/types";
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { extractTravelDestination } from "@/lib/experience-run/extract-travel-destination";
+import { resolveTripContextAnchor } from "@/lib/experience-run/resolve-trip-context-anchor";
+import { findEventCandidate } from "@/lib/events/event-store";
 import { concurrentDiscoveryResourceTypes } from "@/lib/globe/context-condition-ai/concurrent-lodging-eatery-cues";
+import { resolveContextDiscoverySearchCoords } from "@/lib/globe/context-hub/resolve-context-discovery-search-coords";
 import { hasLodgingDomainCue } from "@/lib/globe/domain-cues/lodging-domain-cues";
 import { hasEateryDomainCue } from "@/lib/globe/domain-cues/eatery-domain-cues";
 import { invokeRimvioToolAsync } from "@/lib/tool-registry";
 import { syncTravelSdkFrameAfterLodgingSeed } from "@/lib/workspace-sdk/sync-travel-sdk-after-lodging-seed";
 import { seedTravelLodgingForContinuum } from "@/lib/workspace-kind/run-workspace-intent-continuum";
+
+function resolveContinuumDiscoveryCoords(input: {
+  readonly contextEventId: string;
+  readonly dest: string;
+  readonly viewerLat?: number | null;
+  readonly viewerLng?: number | null;
+}): { lat: number; lng: number } {
+  const event = findEventCandidate(input.contextEventId);
+  if (event) {
+    return resolveContextDiscoverySearchCoords(event, {
+      viewerLat: input.viewerLat,
+      viewerLng: input.viewerLng,
+    });
+  }
+  const anchor = resolveTripContextAnchor(input.dest);
+  if (anchor) {
+    return { lat: anchor.lat, lng: anchor.lng };
+  }
+  return {
+    lat: input.viewerLat ?? 36.3621,
+    lng: input.viewerLng ?? 127.3446,
+  };
+}
 
 function resolveDest(input: {
   readonly utterance: string;
@@ -127,6 +153,12 @@ export async function seedTravelDiscoveryForContinuum(input: {
 
   const dest = resolveDest({ utterance, contextEventId });
   let types = concurrentDiscoveryResourceTypes(utterance);
+  const discoveryCoords = resolveContinuumDiscoveryCoords({
+    contextEventId,
+    dest,
+    viewerLat: input.lat,
+    viewerLng: input.lng,
+  });
 
   // Soft cues the concurrent detector may miss on short「호텔이랑 맛집」.
   if (hasLodgingDomainCue(utterance) && !types.includes("hotel")) {
@@ -146,24 +178,24 @@ export async function seedTravelDiscoveryForContinuum(input: {
       last = await seedTravelLodgingForContinuum({
         contextEventId,
         utterance,
-        lat: input.lat,
-        lng: input.lng,
+        lat: discoveryCoords.lat,
+        lng: discoveryCoords.lng,
       });
     } else if (resourceType === "restaurant") {
       last = await seedEatery({
         contextEventId,
         utterance,
         dest,
-        lat: input.lat,
-        lng: input.lng,
+        lat: discoveryCoords.lat,
+        lng: discoveryCoords.lng,
       });
     } else if (resourceType === "activity") {
       last = await seedActivity({
         contextEventId,
         utterance,
         dest,
-        lat: input.lat,
-        lng: input.lng,
+        lat: discoveryCoords.lat,
+        lng: discoveryCoords.lng,
       });
     }
   }

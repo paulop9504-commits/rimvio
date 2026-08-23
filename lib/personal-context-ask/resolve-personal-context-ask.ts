@@ -22,7 +22,10 @@ import {
 import { enrichAskRecallContext } from "@/lib/personal-context-ask/enrich-ask-recall-context";
 import { pickAskPrimaryHit } from "@/lib/personal-context-ask/pick-ask-primary-hit";
 import { resolveMarketTradeRecall } from "@/lib/personal-context-ask/resolve-market-trade-recall";
-import { queryPersonalMemoryTopK } from "@/lib/personal-memory/query-top-k";
+import {
+  mergePhaseBRetrieval,
+  phaseBAllowsSemanticFallback,
+} from "@/lib/personal-context-ask/resolve-phase-b-retrieval";
 import {
   buildRecallEventSnapshot,
   type RecallEventSnapshot,
@@ -68,6 +71,7 @@ function yearMatches(snapshot: RecallEventSnapshot, year: number | null): boolea
 function toHit(
   snapshot: RecallEventSnapshot,
   reasonKo: string,
+  retrievalSource: "lexical" | "semantic" = "lexical",
 ): PersonalContextBridgeHit {
   return {
     eventId: snapshot.eventId,
@@ -83,6 +87,7 @@ function toHit(
     contextKind: null,
     spotLabels: [],
     periodEndIso: null,
+    retrievalSource,
   };
 }
 
@@ -336,54 +341,18 @@ function mergeSemanticHits(input: {
   events: readonly EventCandidate[];
   query: string;
   snapshots: readonly RecallEventSnapshot[];
+  parsed: ParsedPersonalContextQuery;
 }): PersonalContextBridgeHit[] {
-  const semantic = queryPersonalMemoryTopK({
-    query: input.query,
-    events: input.events,
-    k: MAX_HITS,
-  });
-  if (semantic.length === 0) {
+  if (!phaseBAllowsSemanticFallback(input.parsed, input.lexicalHits.length)) {
     return [...input.lexicalHits];
   }
-
-  const byId = new Map(input.snapshots.map((row) => [row.eventId, row]));
-  const merged = new Map<string, PersonalContextBridgeHit>();
-
-  for (const hit of input.lexicalHits) {
-    merged.set(hit.eventId, hit);
-  }
-  for (const row of semantic) {
-    if (merged.has(row.eventId)) {
-      continue;
-    }
-    const snap = byId.get(row.eventId);
-    if (!snap) {
-      continue;
-    }
-    merged.set(row.eventId, toHit(snap, "그때 거기"));
-  }
-
-  const order = [
-    ...input.lexicalHits.map((hit) => hit.eventId),
-    ...semantic.map((row) => row.eventId),
-  ];
-  const seen = new Set<string>();
-  const out: PersonalContextBridgeHit[] = [];
-  for (const id of order) {
-    if (seen.has(id)) {
-      continue;
-    }
-    const hit = merged.get(id);
-    if (!hit) {
-      continue;
-    }
-    seen.add(id);
-    out.push(hit);
-    if (out.length >= MAX_HITS) {
-      break;
-    }
-  }
-  return out;
+  return mergePhaseBRetrieval({
+    lexicalHits: input.lexicalHits,
+    events: input.events,
+    query: input.query,
+    snapshots: input.snapshots,
+    toHit: (snapshot, reasonKo, source) => toHit(snapshot, reasonKo, source),
+  });
 }
 
 function resolveHits(
@@ -424,13 +393,16 @@ function resolveHits(
   if (
     parsed.intent === "travel_recall" ||
     parsed.intent === "general" ||
-    parsed.intent === "place_with_person"
+    parsed.intent === "place_with_person" ||
+    parsed.intent === "bridge_context" ||
+    parsed.intent === "last_meet_place"
   ) {
     return mergeSemanticHits({
       lexicalHits: lexical,
       events,
       query: parsed.raw,
       snapshots,
+      parsed,
     });
   }
   return lexical;

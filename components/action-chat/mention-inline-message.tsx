@@ -1,5 +1,8 @@
 "use client";
 
+import { InlineChatFactAnswerChip } from "@/components/action-chat/inline-chat-fact-answer-chip";
+import { InlineChatBookingDraftChip } from "@/components/action-chat/inline-chat-booking-draft-chip";
+import { InlineChatPeerSendChip } from "@/components/action-chat/inline-chat-peer-send-chip";
 import { InlineChatActionChip } from "@/components/action-chat/inline-chat-action-chip";
 import { InlineChatCalendarChip } from "@/components/action-chat/inline-chat-calendar-chip";
 import { InlineChatFocusChip } from "@/components/action-chat/inline-chat-focus-chip";
@@ -12,6 +15,7 @@ import { InlineChatTransferChip } from "@/components/action-chat/inline-chat-tra
 import type { FocusHeldActionWire } from "@/lib/action-chat/mention-focus/inline-chat-focus";
 import type { ActionChatMessage } from "@/lib/action-chat/orchestrator-types";
 import type { PeerContact } from "@/lib/context/peer-contact-types";
+import type { BookingLodgingCandidate } from "@/lib/jarvis-in-app-booking/resolve-booking-lodging";
 import type { UnifiedCalendarOverlayRow } from "@/lib/calendar/calendar-view-types";
 
 export function hasMentionInlinePayload(message: ActionChatMessage): boolean {
@@ -24,7 +28,10 @@ export function hasMentionInlinePayload(message: ActionChatMessage): boolean {
       message.inlineChatScheduleOrganize ||
       message.inlineChatTransfer ||
       message.inlineChatParking ||
-      message.inlineChatAction,
+      message.inlineChatAction ||
+      message.inlineChatPeerSend ||
+      message.inlineChatFactAnswer ||
+      message.inlineChatBookingDraft,
   );
 }
 
@@ -49,6 +56,19 @@ export type MentionInlineMessageProps = {
   ) => void;
   onOpenCapture?: () => void;
   onFeedPeerTalkStart?: (contact: PeerContact) => void;
+  onPeerSendConfirm?: (messageId: string) => void;
+  onPeerSendPickContact?: (
+    messageId: string,
+    contact: PeerContact,
+    messageBody: string,
+  ) => void;
+  peerSendBusy?: boolean;
+  onBookingDraftConfirm?: (messageId: string) => void;
+  onBookingDraftPickLodging?: (
+    messageId: string,
+    candidate: BookingLodgingCandidate,
+  ) => void;
+  bookingDraftBusy?: boolean;
 };
 
 export function MentionInlineMessage({
@@ -68,8 +88,46 @@ export function MentionInlineMessage({
   onFocusHeldInAppAction,
   onOpenCapture,
   onFeedPeerTalkStart,
+  onPeerSendConfirm,
+  onPeerSendPickContact,
+  peerSendBusy = false,
+  onBookingDraftConfirm,
+  onBookingDraftPickLodging,
+  bookingDraftBusy = false,
 }: MentionInlineMessageProps) {
   const messageId = message.id;
+
+  if (message.inlineChatFactAnswer) {
+    return (
+      <InlineChatFactAnswerChip wire={message.inlineChatFactAnswer} />
+    );
+  }
+
+  if (message.inlineChatPeerSend) {
+    return (
+      <InlineChatPeerSendChip
+        wire={message.inlineChatPeerSend}
+        busy={peerSendBusy}
+        onConfirmSend={() => onPeerSendConfirm?.(messageId)}
+        onPickContact={(contact, body) =>
+          onPeerSendPickContact?.(messageId, contact, body)
+        }
+      />
+    );
+  }
+
+  if (message.inlineChatBookingDraft) {
+    return (
+      <InlineChatBookingDraftChip
+        wire={message.inlineChatBookingDraft}
+        busy={bookingDraftBusy}
+        onConfirmPrepare={() => onBookingDraftConfirm?.(messageId)}
+        onPickLodging={(candidate) =>
+          onBookingDraftPickLodging?.(messageId, candidate)
+        }
+      />
+    );
+  }
 
   if (message.inlineChatAction) {
     return (

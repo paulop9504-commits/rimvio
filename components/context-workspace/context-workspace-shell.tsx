@@ -867,12 +867,15 @@ export function ContextWorkspaceShell({
     [contextEventId],
   );
 
-  // GPT place list — open when search candidates land (simple search UX).
+  // GPT place list — open when search candidates land (desktop only; mobile uses map objects).
   useEffect(() => {
+    if (preferMobileWorkspace) {
+      return;
+    }
     if (carouselNodes.length > 0) {
       setListOpen(true);
     }
-  }, [carouselNodes.length]);
+  }, [carouselNodes.length, preferMobileWorkspace]);
 
   const onSelect = useCallback(
     (nodeId: string, titleHint?: string | null) => {
@@ -1925,7 +1928,7 @@ export function ContextWorkspaceShell({
           </div>
         ) : null}
 
-        {listOpen && !compareDecisionActive ? (
+        {listOpen && !compareDecisionActive && !preferMobileWorkspace ? (
           <div className="pointer-events-none absolute inset-y-3 right-3 z-[12] flex justify-end">
             <WorkspaceGptPlaceListPanel
               open={listOpen}

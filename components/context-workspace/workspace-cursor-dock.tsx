@@ -25,6 +25,7 @@ import {
   subscribeContextWorkspaceUpdated,
 } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
+import { tryDispatchWorkspaceFactQueryTurn } from "@/lib/context-workspace/dispatch-workspace-fact-query-turn";
 import { openWorkspaceForTripPrep } from "@/lib/agent/open-workspace-for-trip-prep";
 import { shouldPrepareTripWorkspaceDraft } from "@/lib/context-workspace/prepare-trip-workspace-draft";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
@@ -54,6 +55,7 @@ import {
 } from "@/lib/context-run/format-agent-plan-progress";
 import { RealityDraftItineraryCard } from "@/components/context-workspace/reality-draft-itinerary-card";
 import { ContextBriefCard } from "@/components/context-workspace/context-brief-card";
+import { WorkspaceFactAnswerCard } from "@/components/context-workspace/workspace-fact-answer-card";
 import { AssistantEntityRichText } from "@/components/globe/assistant-entity-rich-text";
 import { AgentExecutionFeed } from "@/components/globe/chat/agent-execution-feed";
 import {
@@ -109,6 +111,20 @@ function AssistantBubble(props: {
 
   const draft = !dense ? (turn.realityDraft ?? null) : null;
   const brief = !dense ? (turn.contextBrief ?? null) : null;
+  const fact = turn.factAnswer ?? null;
+
+  if (fact) {
+    return (
+      <div className={cn("space-y-1.5", dense ? "max-w-[92%]" : "max-w-[96%]")}>
+        {turn.text.trim() ? (
+          <div className="rounded-[16px] rounded-bl-[6px] bg-[#f2f4f6] px-2.5 py-1.5 text-[12px] leading-snug text-[#191f28]">
+            {turn.text}
+          </div>
+        ) : null}
+        <WorkspaceFactAnswerCard wire={fact} />
+      </div>
+    );
+  }
 
   return (
     <div className={cn("space-y-1.5", dense ? "max-w-[92%]" : "max-w-[96%]")}>
@@ -373,6 +389,19 @@ export function WorkspaceCursorDock({
             labelKo: copy.globe.activityWorkspaceTurn,
             status: "done",
             resultKo: `✓ ${copy.globe.activityDone}`,
+          });
+          setValue("");
+          return;
+        }
+
+        if (await tryDispatchWorkspaceFactQueryTurn({ contextEventId: eventId, text })) {
+          completeAgentExecutionStep("turn-apply");
+          dispatchExecutionFeedStep({
+            graphId,
+            stepId: "apply",
+            labelKo: copy.globe.activityWorkspaceTurn,
+            status: "done",
+            resultKo: "✓ Fact",
           });
           setValue("");
           return;

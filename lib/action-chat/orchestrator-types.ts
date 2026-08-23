@@ -426,6 +426,15 @@ export type ActionChatMessage = {
   /** @톡 — 피드 인라인 대화 스레드(히스토리 + 구분선, 하단 composer 로 전송) */
   feedPeerTalkThread?: import("@/lib/action-chat/feed-peer-talk/feed-peer-talk-types").FeedPeerTalkThreadWire;
 
+  /** Jarvis — Rimvio peer DM draft + confirm send */
+  inlineChatPeerSend?: import("@/lib/jarvis-peer-send/inline-chat-peer-send").InlineChatPeerSendWire;
+
+  /** Fact Query — deterministic answer + map markers */
+  inlineChatFactAnswer?: import("@/lib/fact-query/types").FactAnswerWire;
+
+  /** Jarvis — in-app booking draft + Field commit gate */
+  inlineChatBookingDraft?: import("@/lib/jarvis-in-app-booking/inline-chat-booking-draft").InlineChatBookingDraftWire;
+
 };
 
 

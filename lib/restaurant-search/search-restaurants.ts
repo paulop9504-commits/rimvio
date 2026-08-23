@@ -173,6 +173,13 @@ export function resolveRestaurantCountryBias(
   ) {
     return input.placeProfile.searchHints.countryBias;
   }
+  const seed = `${input.anchorLabel ?? ""} ${input.query}`;
+  if (JP_PATTERN.test(seed)) {
+    return "jp" as const;
+  }
+  if (KR_PATTERN.test(seed)) {
+    return "kr" as const;
+  }
   const origin = input.origin;
   if (origin) {
     const fromCoords = inferCountryCodeFromCoords(origin.lat, origin.lng);
@@ -182,13 +189,6 @@ export function resolveRestaurantCountryBias(
     if (fromCoords === "KR") {
       return "kr" as const;
     }
-  }
-  const seed = `${input.anchorLabel ?? ""} ${input.query}`;
-  if (JP_PATTERN.test(seed)) {
-    return "jp" as const;
-  }
-  if (KR_PATTERN.test(seed)) {
-    return "kr" as const;
   }
   return "global" as const;
 }

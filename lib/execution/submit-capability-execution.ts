@@ -1,6 +1,7 @@
 import type { CapabilityDispatchRequest } from "@/lib/capability-registry/capability-contract";
 import { getCapability } from "@/lib/capability-registry/capability-registry";
 import { resolveCapabilityProvider } from "@/lib/capability-registry/capability-resolver";
+import { gateCapabilityByExecutionTier } from "@/lib/execution-tier";
 import { enqueueExecution } from "@/lib/execution/execution-dispatcher";
 import type { ExecutionDispatchResult } from "@/lib/execution/execution-contract";
 
@@ -37,6 +38,18 @@ function validateCapabilityInputs(
 export function submitCapabilityExecution(
   request: CapabilityDispatchRequest,
 ): ExecutionDispatchResult {
+  const tierGate = gateCapabilityByExecutionTier({
+    capabilityId: request.capabilityId,
+    metadata: request.metadata,
+  });
+  if (!tierGate.allowed) {
+    return {
+      ok: false,
+      reason: tierGate.reason,
+      capabilityId: request.capabilityId,
+    };
+  }
+
   const validationError = validateCapabilityInputs(request);
   if (validationError) {
     return { ok: false, reason: validationError, capabilityId: request.capabilityId };
@@ -58,6 +71,10 @@ export function submitCapabilityExecution(
     inputs: request.inputs,
     label: capability.name,
     mode: capability.executionMode,
-    metadata: request.metadata,
+    metadata: {
+      ...request.metadata,
+      executionTier: String(tierGate.tier),
+      executionTierLabel: tierGate.label,
+    },
   });
 }

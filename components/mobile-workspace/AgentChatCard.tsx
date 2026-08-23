@@ -243,7 +243,7 @@ export function AgentChatCard({
       className={cn(
         "pointer-events-auto w-full max-w-[min(100%,420px)]",
         expanded &&
-          "fixed inset-x-2 z-[60] mx-auto max-w-lg top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))]",
+          "absolute inset-x-2 bottom-0 z-[60] mx-auto max-w-lg pb-[max(0.5rem,env(safe-area-inset-bottom))]",
         className,
       )}
       data-agent-chat-card
@@ -255,8 +255,8 @@ export function AgentChatCard({
           showBody && "flex flex-col",
           showBody &&
             !expanded &&
-            "max-h-[min(52dvh,460px)]",
-          expanded && "h-full max-h-none",
+            "max-h-[min(40dvh,320px)]",
+          expanded && "max-h-[min(38dvh,360px)]",
         )}
       >
         {showBody ? (

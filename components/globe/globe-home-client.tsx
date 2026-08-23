@@ -126,11 +126,13 @@ import { GlobeRealitySurfaceStrip } from "@/components/globe/globe-reality-surfa
 import { GlobeTicketQrViewer } from "@/components/globe/globe-ticket-qr-viewer";
 import { GlobeWorkQueueSheet } from "@/components/globe/globe-work-queue-sheet";
 import type { PriorityStripPayload } from "@/lib/globe/priority-strip";
-import {
-  GlobeHomeMemoryRecallPanel,
+import { GlobeHomeMemoryRecallPanel,
   GlobeHomeMemoryRecallProvider,
   GlobeHomeRecallOneLiner,
 } from "@/components/globe/globe-home-memory-dock";
+import { GlobeMorningPrepOverlay } from "@/components/globe/globe-morning-prep-card";
+import { GlobeEventHorizonPushOverlay } from "@/components/globe/globe-event-horizon-push-card";
+import { GlobeFactProjectionOverlay } from "@/components/globe/globe-fact-projection-card";
 import { GlobePortalIntentPeekPanel } from "@/components/globe/globe-portal-intent-peek";
 import { GlobePhotoIngestUndoBar } from "@/components/globe/globe-photo-ingest-undo-bar";
 import { GlobeTrendBridgeLayer } from "@/components/globe/globe-trend-bridge-layer";
@@ -5685,6 +5687,21 @@ function GlobeHomeBody() {
                   onOpenQueue={() => setWorkQueueOpen(true)}
                 />
                 <GlobeRealitySurfaceStrip projection={visibleRealitySurfaceProjection} />
+                <div className="pointer-events-auto flex w-full justify-center">
+                  <GlobeMorningPrepOverlay />
+                </div>
+                <div className="pointer-events-auto flex w-full justify-center">
+                  <GlobeEventHorizonPushOverlay />
+                </div>
+                <div className="pointer-events-auto flex w-full justify-center">
+                  <GlobeFactProjectionOverlay
+                    onFlyTo={({ lat, lng }) => {
+                      globeRef.current?.flyToPin(lat, lng, "street", {
+                        pinViewportY: 0.55,
+                      });
+                    }}
+                  />
+                </div>
                 <div className="pointer-events-auto flex w-full justify-center">
                   <GlobeHomeRecallOneLiner />
                 </div>

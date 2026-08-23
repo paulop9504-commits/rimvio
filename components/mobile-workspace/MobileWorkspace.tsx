@@ -163,7 +163,6 @@ export function MobileWorkspace({
       });
 
       setBusy(true);
-      setAgentExpanded(true);
       try {
         const result = await applyGlobeWorkspaceAgentTurn({
           contextEventId: eventId,
@@ -213,7 +212,6 @@ export function MobileWorkspace({
         return;
       }
       setBusy(true);
-      setAgentExpanded(true);
       toast.message(copy.feed.captureIntentFound);
       try {
         const prepared = await prepareWorkspaceImageAgentTurn({ file });
@@ -309,8 +307,8 @@ export function MobileWorkspace({
       className={cn("relative flex h-full min-h-0 flex-1 flex-col", className)}
       data-mobile-workspace
     >
-      {/* ~75% Reality Canvas */}
-      <div className="relative min-h-0 flex-[0.78]">
+      {/* ~80% Reality Canvas — agent floats; map stays primary */}
+      <div className="relative min-h-0 flex-[0.85]">
         <RealityMap
           pins={pins}
           selectedId={mobile?.activeEntityId ?? null}
@@ -392,11 +390,15 @@ export function MobileWorkspace({
             busy={busy}
             expanded={agentExpanded}
             onExpandedChange={setAgentExpanded}
-            objects={(mobile?.entities ?? []).slice(0, 4).map((e) => ({
-              id: e.id,
-              title: e.title,
-              subtitleKo: e.priceLabelKo,
-            }))}
+            objects={
+              agentExpanded
+                ? (mobile?.entities ?? []).slice(0, 4).map((e) => ({
+                    id: e.id,
+                    title: e.title,
+                    subtitleKo: e.priceLabelKo,
+                  }))
+                : []
+            }
             onSubmit={(t) => void onCommand(t)}
             onPlus={() => imageInputRef.current?.click()}
             onFocusObject={(id) => {

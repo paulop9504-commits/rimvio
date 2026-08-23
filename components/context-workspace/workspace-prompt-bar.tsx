@@ -10,6 +10,7 @@ import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-work
 import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { appendWorkspaceChatTurn } from "@/lib/context-workspace/workspace-chat-store";
 import { appendWorkspaceSyncedAssistantTurn } from "@/lib/context-workspace/build-workspace-chat-sync";
+import { tryDispatchWorkspaceFactQueryTurn } from "@/lib/context-workspace/dispatch-workspace-fact-query-turn";
 import {
   ANCHOR_RETYPE_CHIP_UTTERANCE,
 } from "@/lib/context-workspace/reality-anchor";
@@ -128,6 +129,19 @@ export function WorkspacePromptBar({
             labelKo: copy.globe.activityWorkspaceTurn,
             status: "done",
             resultKo: `✓ ${copy.globe.activityDone}`,
+          });
+          setValue("");
+          return;
+        }
+
+        if (await tryDispatchWorkspaceFactQueryTurn({ contextEventId: eventId, text })) {
+          completeAgentExecutionStep("turn-apply");
+          dispatchExecutionFeedStep({
+            graphId,
+            stepId: "apply",
+            labelKo: copy.globe.activityWorkspaceTurn,
+            status: "done",
+            resultKo: "✓ Fact",
           });
           setValue("");
           return;
