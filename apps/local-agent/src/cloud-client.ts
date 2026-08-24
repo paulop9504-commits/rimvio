@@ -310,26 +310,3 @@ export async function runTask(
     await client.failTask(task.id, message);
   }
 }
-  log("TASK", `Received task ${task.id}`);
-  log("TASK", `Starting ${task.type}`);
-
-  const required = defaultRequired(task);
-  const gap = router.check(required);
-
-  if (!gap.ready) {
-    log("CAPABILITY", `Missing: ${gap.missing.join(", ")}`);
-    await client.setTaskWaiting(task.id, gap.missing);
-    log("TASK", `Waiting for user approval — task ${task.id}`);
-    return;
-  }
-
-  try {
-    const result = await engine.execute(task);
-    await client.completeTask(task.id, result);
-    log("TASK", `Completed ${task.id}`);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "task_failed";
-    logError("TASK", `Failed ${task.id}`, err);
-    await client.failTask(task.id, message);
-  }
-}
