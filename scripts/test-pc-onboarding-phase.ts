@@ -112,6 +112,15 @@ assert.ok(!desktopMain.includes("createExecutionEngine"));
 const desktop = readFileSync(join(process.cwd(), "apps/pc-desktop/package.json"), "utf8");
 assert.ok(desktop.includes("Rimvio-Setup.exe"));
 assert.ok(desktop.includes("runAfterFinish"));
+assert.ok(desktop.includes("electron-updater"));
+assert.ok(desktop.includes('"provider": "github"'));
+
+const desktopMainJs = readFileSync(
+  join(process.cwd(), "apps/pc-desktop/src/main.cjs"),
+  "utf8",
+);
+assert.ok(desktopMainJs.includes("checkForUpdates"));
+assert.ok(desktopMainJs.includes("setLoginItemSettings"));
 
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
 assert.ok(setupUrl.includes("releases/latest/download/Rimvio-Setup.exe"));

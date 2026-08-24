@@ -8,6 +8,17 @@ const HEALTH = "http://127.0.0.1:38472/health";
 
 let tray = null;
 let agentChild = null;
+let quitting = false;
+let lastHealth = null;
+let updateLabel = "";
+let updateReady = false;
+let autoUpdater = null;
+
+try {
+  autoUpdater = require("electron-updater").autoUpdater;
+} catch {
+  autoUpdater = null;
+}
 
 function packagedAgentPath() {
   return path.join(process.resourcesPath, "agent.cjs");
@@ -18,7 +29,7 @@ function unpackagedAgentEntry() {
 }
 
 function startAgent() {
-  if (agentChild) {
+  if (agentChild || quitting) {
     return;
   }
   const env = {
@@ -57,6 +68,9 @@ function startAgent() {
 
   agentChild.on("exit", () => {
     agentChild = null;
+    if (!quitting) {
+      setTimeout(startAgent, 2500);
+    }
   });
 }
 
@@ -82,12 +96,15 @@ function rebuildTray(health) {
   if (!tray) {
     return;
   }
+  lastHealth = health;
   const paired = Boolean(health?.paired);
   const code = health?.displayCode ? String(health.displayCode) : "";
   const status = paired ? "연결됨" : code ? `연결 준비 ${code}` : "연결 대기";
-  tray.setToolTip(`Rimvio PC · ${status}`);
-  const menu = Menu.buildFromTemplate([
+  const tip = updateLabel ? `Rimvio PC · ${status} · ${updateLabel}` : `Rimvio PC · ${status}`;
+  tray.setToolTip(tip);
+  const template = [
     { label: `Rimvio PC · ${status}`, enabled: false },
+    ...(updateLabel ? [{ label: updateLabel, enabled: false }] : []),
     { type: "separator" },
     {
       label: "Rimvio 열기",
@@ -95,10 +112,58 @@ function rebuildTray(health) {
         void shell.openExternal("https://rimvio.com/?pcConnect=1");
       },
     },
-    { type: "separator" },
-    { label: "종료", click: () => app.quit() },
-  ]);
-  tray.setContextMenu(menu);
+    {
+      label: "업데이트 확인",
+      click: () => {
+        if (autoUpdater && app.isPackaged) {
+          updateLabel = "업데이트 확인 중";
+          rebuildTray(lastHealth);
+          void autoUpdater.checkForUpdates();
+        }
+      },
+    },
+  ];
+  if (updateReady && autoUpdater) {
+    template.push({
+      label: "지금 업데이트하고 다시 시작",
+      click: () => {
+        quitting = true;
+        autoUpdater.quitAndInstall(false, true);
+      },
+    });
+  }
+  template.push({ type: "separator" }, { label: "종료", click: () => app.quit() });
+  tray.setContextMenu(Menu.buildFromTemplate(template));
+}
+
+function wireAutoUpdate() {
+  if (!autoUpdater || !app.isPackaged) {
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("checking-for-update", () => {
+    updateLabel = "업데이트 확인 중";
+    rebuildTray(lastHealth);
+  });
+  autoUpdater.on("update-available", () => {
+    updateLabel = "업데이트 받는 중";
+    rebuildTray(lastHealth);
+  });
+  autoUpdater.on("update-not-available", () => {
+    updateLabel = "";
+    rebuildTray(lastHealth);
+  });
+  autoUpdater.on("error", () => {
+    updateLabel = "";
+    rebuildTray(lastHealth);
+  });
+  autoUpdater.on("update-downloaded", () => {
+    updateReady = true;
+    updateLabel = "다시 시작하면 업데이트";
+    rebuildTray(lastHealth);
+  });
+  void autoUpdater.checkForUpdates();
 }
 
 const TRAY_PNG =
@@ -111,11 +176,13 @@ app.whenReady().then(() => {
   tray = new Tray(nativeImage.createFromDataURL(TRAY_PNG));
   rebuildTray(null);
   startAgent();
+  wireAutoUpdate();
   setInterval(() => pollHealth(rebuildTray), 2000);
   pollHealth(rebuildTray);
 });
 
 app.on("before-quit", () => {
+  quitting = true;
   if (agentChild && !agentChild.killed) {
     agentChild.kill();
   }

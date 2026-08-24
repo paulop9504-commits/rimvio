@@ -1,7 +1,7 @@
 {
   "name": "rimvio-pc",
   "productName": "Rimvio PC",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Rimvio PC — connect this computer to Rimvio",
   "author": "Rimvio",
@@ -9,7 +9,10 @@
   "scripts": {
     "start": "electron .",
     "bundle-agent": "npx esbuild ../local-agent/src/desktop-main.ts --bundle --platform=node --format=cjs --outfile=resources/agent.cjs --external:playwright",
-    "dist": "npm run bundle-agent && electron-builder --win nsis"
+    "dist": "npm run bundle-agent && electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "electron": "^35.1.2",
@@ -22,7 +25,8 @@
       "output": "dist"
     },
     "files": [
-      "src/main.cjs"
+      "src/main.cjs",
+      "package.json"
     ],
     "extraResources": [
       {
@@ -30,6 +34,11 @@
         "to": "agent.cjs"
       }
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "paulop9504-commits",
+      "repo": "rimvio"
+    },
     "win": {
       "target": [
         "nsis"
