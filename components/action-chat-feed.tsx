@@ -49,6 +49,7 @@ import { useSurfaceMemory } from "@/hooks/use-surface-memory";
 import { useSynapticSnapshot } from "@/hooks/use-synaptic-snapshot";
 import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
 import { deriveLoopContextKo } from "@/lib/surface-composition/loop-why-copy";
+import { hasActiveDecisionStream } from "@/lib/surface";
 import { useSurfaceTransientHint } from "@/hooks/use-surface-transient-hint";
 import { useCapabilityDispatch } from "@/hooks/use-capability-dispatch";
 import { routeRimvioPromptUri } from "@/lib/action-chat/rimvio-prompt-router";
