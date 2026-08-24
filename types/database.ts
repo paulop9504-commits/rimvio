@@ -320,6 +320,21 @@ export type PcLocalAgentInstallJobRow = {
   progress_pct: number;
 };
 
+export type PcLocalAgentDesktopSessionRow = {
+  id: string;
+  nonce: string;
+  status: "pending" | "approved" | "exchanged" | "expired";
+  user_id: string | null;
+  device_id: string | null;
+  device_name: string;
+  callback_port: number;
+  exchange_hash: string | null;
+  pending_token: string | null;
+  permissions: Record<string, boolean> | null;
+  expires_at: string;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -750,6 +765,25 @@ export type Database = {
           progress_pct?: number;
         };
         Update: Partial<PcLocalAgentInstallJobRow>;
+        Relationships: [];
+      };
+      pc_local_agent_desktop_sessions: {
+        Row: PcLocalAgentDesktopSessionRow;
+        Insert: {
+          id?: string;
+          nonce: string;
+          status?: PcLocalAgentDesktopSessionRow["status"];
+          user_id?: string | null;
+          device_id?: string | null;
+          device_name?: string;
+          callback_port?: number;
+          exchange_hash?: string | null;
+          pending_token?: string | null;
+          permissions?: Record<string, boolean> | null;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: Partial<PcLocalAgentDesktopSessionRow>;
         Relationships: [];
       };
     };

@@ -35,8 +35,8 @@ import {
 
 const WATCH_MS = 3_000;
 const TASK_POLL_MS = 2_000;
-let watchTimer: ReturnType<typeof setInterval> | null = null;
-let taskTimer: ReturnType<typeof setInterval> | null = null;
+let watchTimer: number | null = null;
+let taskTimer: number | null = null;
 let lastPhase = "";
 let watchBusy = false;
 
