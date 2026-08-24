@@ -465,8 +465,7 @@ html {
     inset 0 -1px 0 rgba(28, 28, 30, 0.05);
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
-  overflow: hidden;
-  isolation: isolate;
+  overflow: visible;
   position: relative;
 }
 
@@ -859,7 +858,7 @@ body:has([data-context-workspace-open]) [data-rimvio-globe-3d] {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: 10100;
+  z-index: 20000;
   display: flex;
   justify-content: center;
   align-items: flex-end;

@@ -142,6 +142,7 @@ function NavTabButton({
   return (
     <Link
       href={tab.href}
+      prefetch
       aria-label={tab.label}
       aria-current={active ? "page" : undefined}
       data-nav-href={tab.href}
@@ -330,17 +331,13 @@ export function AppNav({ placement }: AppNavProps) {
         return;
       }
 
-      const isSame =
-        (href === "/" && isPrimaryNavGlobePath(pathname)) ||
-        pathname === href ||
-        pathname.startsWith(`${href}/`);
-      if (isSame) {
-        return;
+      if (fieldSheetOpen) {
+        closeFieldSheet();
       }
-
-      router.push(href);
+      // Globe / 친구 are <Link href>. Do not also router.push — Next.js
+      // cancels both navigations and the 친구 tab looks dead.
     },
-    [closeFieldSheet, fieldSheetOpen, fieldSuggestedTab, pathname, router],
+    [closeFieldSheet, fieldSheetOpen, fieldSuggestedTab],
   );
 
   const tabs = useMemo<NavTab[]>(

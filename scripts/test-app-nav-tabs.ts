@@ -22,6 +22,10 @@ assert.ok(appNav.includes("data-nav-href") && appNav.includes("<button"));
 assert.ok(appNav.includes('href={tab.href}') || appNav.includes('href="/peers"'));
 assert.ok(appNav.includes("data-nav-link"));
 assert.ok(appNav.includes("<Link"));
+assert.ok(
+  !appNav.includes("router.push(href)"),
+  "Globe/친구 Link must own navigation — extra router.push cancels /peers",
+);
 assert.ok(globals.includes(".rimvio-bottom-nav-pill"));
 assert.ok(appNav.includes("rimvio-bottom-nav-icon-pill--active"));
 assert.ok(
