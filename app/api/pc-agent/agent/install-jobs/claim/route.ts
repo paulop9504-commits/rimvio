@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  const claimed = [];
+  const claimed: NonNullable<typeof jobs> = [];
 
   for (const job of jobs) {
     const { data: updated } = await admin
