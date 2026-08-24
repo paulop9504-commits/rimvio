@@ -221,6 +221,93 @@ export type PersonalGlobePinRow = {
   cell_key: string | null;
 };
 
+export type PcLocalAgentDeviceRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  type: "PC";
+  status: "ONLINE" | "OFFLINE";
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PcLocalAgentPairingCodeRow = {
+  id: string;
+  user_id: string;
+  code: string;
+  expires_at: string;
+  consumed_at: string | null;
+  device_id: string | null;
+  created_at: string;
+};
+
+export type PcLocalAgentDeviceTokenRow = {
+  device_id: string;
+  token_hash: string;
+  created_at: string;
+  revoked_at: string | null;
+};
+
+export type PcLocalAgentTaskRow = {
+  id: string;
+  user_id: string;
+  device_id: string;
+  type: "OPEN_URL";
+  payload: Json;
+  status:
+    | "CREATED"
+    | "QUEUED"
+    | "RUNNING"
+    | "WAITING"
+    | "COMPLETED"
+    | "FAILED"
+    | "CANCELLED";
+  result: Json | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  claimed_by_agent_at: string | null;
+  waiting_expires_at: string | null;
+};
+
+export type PcLocalAgentCapabilityRow = {
+  id: string;
+  device_id: string;
+  capability_id: string;
+  version: string;
+  status: "installed" | "failed" | "revoked";
+  installed_at: string;
+  metadata: Json;
+};
+
+export type PcLocalAgentCapabilityRequestRow = {
+  id: string;
+  user_id: string;
+  device_id: string;
+  task_id: string;
+  required_capabilities: string[];
+  reason: string;
+  status: "pending" | "approved" | "cancelled" | "completed";
+  created_at: string;
+  approved_at: string | null;
+  completed_at: string | null;
+};
+
+export type PcLocalAgentInstallJobRow = {
+  id: string;
+  request_id: string;
+  device_id: string;
+  capability_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  progress_pct: number;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -542,6 +629,114 @@ export type Database = {
           cover_theme?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      pc_local_agent_devices: {
+        Row: PcLocalAgentDeviceRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          name?: string;
+          type?: "PC";
+          status?: "ONLINE" | "OFFLINE";
+          last_seen_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<PcLocalAgentDeviceRow>;
+        Relationships: [];
+      };
+      pc_local_agent_pairing_codes: {
+        Row: PcLocalAgentPairingCodeRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          code: string;
+          expires_at: string;
+          consumed_at?: string | null;
+          device_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<PcLocalAgentPairingCodeRow>;
+        Relationships: [];
+      };
+      pc_local_agent_device_tokens: {
+        Row: PcLocalAgentDeviceTokenRow;
+        Insert: {
+          device_id: string;
+          token_hash: string;
+          created_at?: string;
+          revoked_at?: string | null;
+        };
+        Update: Partial<PcLocalAgentDeviceTokenRow>;
+        Relationships: [];
+      };
+      pc_local_agent_tasks: {
+        Row: PcLocalAgentTaskRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          device_id: string;
+          type: "OPEN_URL";
+          payload?: Json;
+          status?: PcLocalAgentTaskRow["status"];
+          result?: Json | null;
+          error?: string | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          claimed_by_agent_at?: string | null;
+          waiting_expires_at?: string | null;
+        };
+        Update: Partial<PcLocalAgentTaskRow>;
+        Relationships: [];
+      };
+      pc_local_agent_capabilities: {
+        Row: PcLocalAgentCapabilityRow;
+        Insert: {
+          id?: string;
+          device_id: string;
+          capability_id: string;
+          version?: string;
+          status?: PcLocalAgentCapabilityRow["status"];
+          installed_at?: string;
+          metadata?: Json;
+        };
+        Update: Partial<PcLocalAgentCapabilityRow>;
+        Relationships: [];
+      };
+      pc_local_agent_capability_requests: {
+        Row: PcLocalAgentCapabilityRequestRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          device_id: string;
+          task_id: string;
+          required_capabilities?: string[];
+          reason?: string;
+          status?: PcLocalAgentCapabilityRequestRow["status"];
+          created_at?: string;
+          approved_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: Partial<PcLocalAgentCapabilityRequestRow>;
+        Relationships: [];
+      };
+      pc_local_agent_install_jobs: {
+        Row: PcLocalAgentInstallJobRow;
+        Insert: {
+          id?: string;
+          request_id: string;
+          device_id: string;
+          capability_id: string;
+          status?: PcLocalAgentInstallJobRow["status"];
+          error?: string | null;
+          created_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          progress_pct?: number;
+        };
+        Update: Partial<PcLocalAgentInstallJobRow>;
         Relationships: [];
       };
     };
