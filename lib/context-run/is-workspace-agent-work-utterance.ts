@@ -13,6 +13,7 @@ import { isSpatialDiscoveryUtterance } from "@/lib/spatial-retrieval/apply-spati
 import { isCompoundActionUtterance } from "@/lib/action-planner";
 import { isNewTripGlobeIngressUtterance } from "@/lib/context-run/is-new-trip-globe-ingress-utterance";
 import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
+import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
 import { hasActiveWorkspaceForGlobePrompt } from "@/lib/context-run/resolve-active-workspace-context";
 import { classifyWorkspaceKind } from "@/lib/workspace-kind/classify-workspace-kind";
 
@@ -36,6 +37,7 @@ const ACTIVE_FOLLOW_RE =
 export function isWorkspaceAgentWorkUtterance(utterance: string): boolean {
   const text = utterance.trim();
   if (!text) return false;
+  if (isPcPurchaseContinuityUtterance(text)) return false;
   // Knowledge / explain Q — conversational lane (never Continuum / Agent mint).
   if (
     /(?:가|은|는)?\s*뭐야|[?？]\s*$|(?:을|를)?\s*설명해(?:\s*줘)?|tell\s+me\s+about|what\s+is\b|what'?s\b/iu.test(

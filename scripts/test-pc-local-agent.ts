@@ -19,6 +19,11 @@ import {
   compareCapabilityVersions,
   isUpdateAvailable,
 } from "../lib/pc-local-agent/capabilities";
+import {
+  extractPcPurchaseTitle,
+  isPcPurchaseContinuityUtterance,
+  resolvePcContinuityTarget,
+} from "../lib/pc-local-agent/purchase-intent";
 
 function selfTest(): void {
   assertTaskTransition("CREATED", "QUEUED");
@@ -74,6 +79,19 @@ function selfTest(): void {
   }
   if (isUpdateAvailable("1.1.0", "1.1.0")) {
     throw new Error("same_version_no_update");
+  }
+
+  if (!isPcPurchaseContinuityUtterance("쿠팡에서 생수 사")) {
+    throw new Error("purchase_should_match");
+  }
+  if (isPcPurchaseContinuityUtterance("오늘 일정 보여줘")) {
+    throw new Error("calendar_should_not_match");
+  }
+  if (extractPcPurchaseTitle("생수 좀 사줘") !== "생수 구매") {
+    throw new Error("purchase_title");
+  }
+  if (resolvePcContinuityTarget("휴지 주문해") !== "pc") {
+    throw new Error("purchase_target_pc");
   }
 
   console.log("pc-local-agent self-test ok (phase D)");

@@ -26,6 +26,9 @@ import { activateDiscoveryExecutionSnapshot } from "@/lib/globe/discovery-execut
 import { copy } from "@/lib/copy/human-ko";
 import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layout";
 import { isScoutMapRevealUtterance } from "@/lib/globe/context-condition-ai/is-scout-map-reveal-utterance";
+import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
+import { runPcPurchaseContinuity } from "@/lib/pc-local-agent/run-purchase-continuity";
+import { appendPcContinuityPreviewTurn } from "@/lib/pc-local-agent/append-preview-turn";
 import { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
 import {
   readContextConditionLastBatch,
@@ -1102,6 +1105,25 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
       });
     }
     appendContextAgentComposeTurn(event.id, { role: "user", text: line });
+
+    if (isPcPurchaseContinuityUtterance(line)) {
+      void runPcPurchaseContinuity(line).then((result) => {
+        if (!event) {
+          return;
+        }
+        if (result.kind === "preview") {
+          appendPcContinuityPreviewTurn(event.id, result);
+        } else if (result.kind === "blocked") {
+          appendContextAgentComposeTurn(event.id, {
+            role: "assistant",
+            kind: "text",
+            text: result.messageKo,
+          });
+        }
+        setComposeThread(readContextAgentComposeThread(event.id));
+      });
+      return true;
+    }
 
     if (isScoutMapRevealUtterance(line)) {
       const thread = readContextAgentComposeThread(event.id);

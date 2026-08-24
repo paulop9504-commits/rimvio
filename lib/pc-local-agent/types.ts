@@ -14,6 +14,8 @@ export type PcAgentTaskType = "OPEN_URL";
 
 export type OpenUrlPayload = {
   url: string;
+  title?: string;
+  intent?: "purchase";
   requiredCapabilities?: string[];
   waitReason?: "capability_required";
   resumeAfterInstall?: boolean;

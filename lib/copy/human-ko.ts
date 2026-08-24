@@ -497,6 +497,19 @@ export const copy = {
     globeComposePipelineVerify: "확인하는 중…",
     globeComposeGlobeApplyPrefix: "지구에 반영 ·",
     workspacePreviewExpand: "펼치기",
+    pcContinuity: {
+      eyebrow: "PC에서 실행",
+      pcFallback: "내 PC",
+      started: (title: string, device: string) =>
+        `${device}에서 ${title} 작업을 시작했어요.`,
+      needPc: "연결된 PC가 온라인일 때 이어서 할 수 있어요",
+      needLogin: "로그인하면 PC로 이어서 실행해요",
+      stepQueued: "준비 중",
+      stepBrowserOpen: "브라우저 열림",
+      stepWaiting: "상품 선택 대기",
+      stepReady: "PC에서 이어서 진행 중",
+      stepFailed: "진행하지 못했어요",
+    },
     /** Cursor-style Agent Activity Trail (streaming progress). */
     activityTrail: {
       title: "에이전트 실행",

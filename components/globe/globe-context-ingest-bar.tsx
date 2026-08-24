@@ -25,6 +25,10 @@ import { canQuickListMarketCompose } from "@/lib/globe/market/build-market-quick
 import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
+import { runPcPurchaseContinuity } from "@/lib/pc-local-agent/run-purchase-continuity";
+import { appendPcContinuityPreviewTurn } from "@/lib/pc-local-agent/append-preview-turn";
+import { appendContextAgentComposeTurn } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import {
   readAgentActivityTranscript,
   subscribeAgentActivityTranscript,
@@ -573,6 +577,41 @@ export const GlobeContextIngestBar = forwardRef<
       setBusy(true);
       onComposeOpen?.();
       try {
+        if (isPcPurchaseContinuityUtterance(value)) {
+          const result = await runPcPurchaseContinuity(value);
+          const eventId = routingContextEventId ?? attachHintId;
+          if (result.kind !== "skip") {
+            if (eventId) {
+              appendContextAgentComposeTurn(eventId, { role: "user", text: value });
+              if (result.kind === "preview") {
+                appendPcContinuityPreviewTurn(eventId, result);
+                onAttached?.(eventId);
+              } else {
+                appendContextAgentComposeTurn(eventId, {
+                  role: "assistant",
+                  kind: "text",
+                  text: result.messageKo,
+                });
+              }
+            }
+            const line = result.messageKo;
+            syncPortalComposeTurnToChat({
+              graphId: ensureGlobeChatGraphId(),
+              userText: value,
+              assistantText: line,
+            });
+            showComposerHint(line, {
+              tone: result.kind === "preview" ? "success" : "error",
+              durationMs: 5000,
+            });
+            setClarifyPlaceholder(null);
+            setOperatorChoices(null);
+            setText("");
+            setMenuOpen(false);
+            return;
+          }
+        }
+
         const advancedAssistantText = tryAdvanceDestinationFromMessage?.(value);
         if (advancedAssistantText) {
           const graphId = ensureGlobeChatGraphId();
@@ -752,6 +791,8 @@ export const GlobeContextIngestBar = forwardRef<
     },
     [
       attachHintId,
+      routingContextEventId,
+      onAttached,
       busy,
       clearComposerHint,
       contextRunHandlers,

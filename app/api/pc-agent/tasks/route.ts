@@ -38,11 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const deviceId = body.deviceId?.trim();
   const type = body.type ?? "OPEN_URL";
-  if (!deviceId) {
-    return NextResponse.json({ error: "missing_device_id" }, { status: 400 });
-  }
   if (type !== "OPEN_URL") {
     return NextResponse.json({ error: "unsupported_task_type" }, { status: 400 });
   }
@@ -55,6 +51,22 @@ export async function POST(request: NextRequest) {
   const admin = createServiceRoleClient();
   if (!admin) {
     return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
+  }
+
+  let deviceId = body.deviceId?.trim();
+  if (!deviceId) {
+    const { data: online } = await admin
+      .from("pc_local_agent_devices")
+      .select("id")
+      .eq("user_id", auth.user.id)
+      .eq("status", "ONLINE")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    deviceId = online?.id;
+  }
+  if (!deviceId) {
+    return NextResponse.json({ error: "device_offline" }, { status: 409 });
   }
 
   const { data: device } = await admin
@@ -73,6 +85,8 @@ export async function POST(request: NextRequest) {
 
   const payload = {
     url: body.payload!.url.trim(),
+    ...(body.payload?.title?.trim() ? { title: body.payload.title.trim() } : {}),
+    ...(body.payload?.intent ? { intent: body.payload.intent } : {}),
     ...(body.payload?.requiredCapabilities?.length
       ? { requiredCapabilities: body.payload.requiredCapabilities }
       : {}),

@@ -117,6 +117,12 @@ export type WorkspacePreviewComposePayload = {
   readonly nodes: readonly WorkspacePreviewComposeNode[];
 };
 
+export type PcContinuityPreviewComposePayload = {
+  readonly taskId: string;
+  readonly title: string;
+  readonly deviceName: string | null;
+};
+
 export type WorkspaceSdkComposePayload = {
   readonly frame: import("@/lib/workspace-sdk/types").WorkspaceSdkFrame;
 };
@@ -199,6 +205,12 @@ export type ContextAgentComposeTurnInput =
       kind: "workspace_sdk";
       text: string;
       payload: WorkspaceSdkComposePayload;
+    }
+  | {
+      role: "assistant";
+      kind: "pc_continuity_preview";
+      text: string;
+      payload: PcContinuityPreviewComposePayload;
     };
 
 export type ContextAgentComposeTurn =
@@ -286,6 +298,14 @@ export type ContextAgentComposeTurn =
       text: string;
       payload: WorkspaceSdkComposePayload;
       atIso: string;
+    }
+  | {
+      id: string;
+      role: "assistant";
+      kind: "pc_continuity_preview";
+      text: string;
+      payload: PcContinuityPreviewComposePayload;
+      atIso: string;
     };
 
 const EVENT_NAME = "rimvio-context-agent-compose-thread";
@@ -355,6 +375,7 @@ export function appendContextAgentComposeTurn(
     last.kind !== "intake_slots" &&
     last.kind !== "ask_chips" &&
     last.kind !== "execution_timeline" &&
+    last.kind !== "pc_continuity_preview" &&
     last.text === row.text
   ) {
     return last;

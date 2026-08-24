@@ -6,6 +6,7 @@ import type { RealityJumpTarget } from "@/lib/globe/reality-jump";
 import { GlobeScoutFeedGateComposeCard } from "@/components/globe/globe-scout-feed-gate-compose-card";
 import { ContextWorkspacePreviewCard } from "@/components/context-workspace/context-workspace-preview-card";
 import { WorkspaceSdkPrepCard } from "@/components/workspace-sdk/workspace-sdk-prep-card";
+import { PcContinuityPreviewCard } from "@/components/pc-continuity-preview-card";
 import { GlobeContextScoutResultCard } from "@/components/globe/globe-context-scout-result-card";
 import { GlobeLodgingRoomCardList } from "@/components/globe/globe-lodging-room-card-list";
 import { GlobeIntakeSlotsComposeCard } from "@/components/globe/intake/globe-intake-slots-compose-card";
@@ -204,6 +205,18 @@ export function GlobeAssistantComposeThread({
           return (
             <div key={turn.id} className="flex justify-start max-w-[96%]">
               <WorkspaceSdkPrepCard frame={turn.payload.frame} />
+            </div>
+          );
+        }
+
+        if (turn.kind === "pc_continuity_preview") {
+          return (
+            <div key={turn.id} className="flex justify-start max-w-[96%]">
+              <PcContinuityPreviewCard
+                taskId={turn.payload.taskId}
+                title={turn.payload.title}
+                deviceName={turn.payload.deviceName}
+              />
             </div>
           );
         }

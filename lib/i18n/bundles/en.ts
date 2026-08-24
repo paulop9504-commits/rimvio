@@ -487,6 +487,19 @@ export const copyEn: Copy = {
     globeComposePipelineVerify: "Checking…",
     globeComposeGlobeApplyPrefix: "On globe ·",
     workspacePreviewExpand: "Open",
+    pcContinuity: {
+      eyebrow: "Running on PC",
+      pcFallback: "My PC",
+      started: (title: string, device: string) =>
+        `Started ${title} on ${device}.`,
+      needPc: "Turn on your PC Agent to continue",
+      needLogin: "Sign in to continue on your PC",
+      stepQueued: "Queued",
+      stepBrowserOpen: "Browser opened",
+      stepWaiting: "Waiting for product choice",
+      stepReady: "Continuing on PC",
+      stepFailed: "Couldn’t continue",
+    },
     activityTrail: {
       title: "Agent run",
       boot: "Warming up",
