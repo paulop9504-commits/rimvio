@@ -8,6 +8,8 @@ export * from "./token";
 export * from "./capabilities";
 export * from "./pc-permissions";
 export * from "./desktop-connect";
+export * from "./adopt-logged-in-pc";
 export * from "./onboarding-phase";
 export * from "./setup-url";
 export * from "./program-install-catalog";
+export * from "./remote-command";

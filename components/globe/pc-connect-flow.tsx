@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
-import { DEFAULT_PC_AGENT_PERMISSIONS } from "@/lib/pc-local-agent/pc-permissions";
+import { adoptLoggedInPc } from "@/lib/pc-local-agent/adopt-logged-in-pc";
 import {
+  isDesktopConnectNonce,
   localAgentAnnounceUrl,
-  localAgentCallbackUrl,
   localAgentHealthUrl,
-  localAgentWebPairUrl,
 } from "@/lib/pc-local-agent/desktop-connect";
 import {
   derivePcOnboardingPhase,
@@ -33,16 +32,15 @@ export function PcConnectFlow({
   const copy = useCopy();
   const pc = copy.globe.pcContinuity;
   const { user } = useAuth();
-  const accountName =
-    user?.user_metadata?.display_name ||
-    user?.email?.split("@")[0] ||
-    pc.pcFallback;
 
-  const [introDone, setIntroDone] = useState(Boolean(nonce || installQuery));
-  const [setupDownloaded, setSetupDownloaded] = useState(Boolean(nonce));
+  const desktopNonce = isDesktopConnectNonce(nonce) ? nonce!.trim() : null;
+  const [introDone, setIntroDone] = useState(
+    Boolean(desktopNonce || installQuery),
+  );
+  const [setupDownloaded, setSetupDownloaded] = useState(Boolean(desktopNonce));
   const [health, setHealth] = useState<LocalAgentHealth | null>(null);
-  const [pairingRequested, setPairingRequested] = useState(Boolean(nonce));
-  const [showPerms, setShowPerms] = useState(Boolean(nonce));
+  const [pairingRequested, setPairingRequested] = useState(Boolean(desktopNonce));
+  const [showPerms, setShowPerms] = useState(false);
   const [flowStartedAt] = useState(() => Date.now());
   const [deviceName, setDeviceName] = useState(pc.pcFallback);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -50,6 +48,7 @@ export function PcConnectFlow({
   const [newCloudDeviceAfterStart, setNewCloudDeviceAfterStart] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoJoinLock = useRef(false);
 
   const localUnpaired = Boolean(health?.ok && !health.paired);
 
@@ -141,68 +140,47 @@ export function PcConnectFlow({
     }
   }, [phase, connectedThisSession]);
 
-  const consent = async () => {
+  useEffect(() => {
+    if (user && !installQuery) {
+      setIntroDone(true);
+    }
+  }, [user, installQuery]);
+
+  const consent = useCallback(async () => {
     setBusy(true);
     setError(null);
     setPairingRequested(true);
     try {
-      if (nonce) {
-        const res = await fetch("/api/pc-agent/desktop/approve", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            nonce,
-            permissions: DEFAULT_PC_AGENT_PERMISSIONS,
-          }),
-        });
-        if (!res.ok) {
-          throw new Error("approve_failed");
-        }
-        const data = (await res.json()) as {
-          deviceId?: string;
-          deviceName?: string;
-          exchange?: string;
-        };
-        setDeviceId(data.deviceId ?? null);
-        setDeviceName(data.deviceName || pc.pcFallback);
-        if (data.exchange && nonce) {
-          void fetch(localAgentCallbackUrl({ nonce, exchange: data.exchange }), {
-            mode: "no-cors",
-          }).catch(() => undefined);
-        }
-        return;
-      }
-
-      const pairRes = await fetch("/api/pc-agent/pairing", { method: "POST" });
-      if (!pairRes.ok) {
-        throw new Error("pairing_failed");
-      }
-      const pairing = (await pairRes.json()) as { code?: string };
-      if (!pairing.code) {
-        throw new Error("pairing_failed");
-      }
-      const local = await fetch(localAgentWebPairUrl(), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          code: pairing.code,
-          deviceName: pc.pcFallback,
-          consent: true,
-        }),
+      const result = await adoptLoggedInPc({
+        nonce: desktopNonce,
+        deviceName: pc.pcFallback,
       });
-      if (!local.ok) {
-        throw new Error("pair_failed");
+      if (!result.ok) {
+        throw new Error(result.reason);
       }
-      const paired = (await local.json()) as { deviceName?: string };
-      setDeviceName(paired.deviceName || pc.pcFallback);
-      setConnectedThisSession(true);
+      setDeviceId(result.deviceId);
+      setDeviceName(result.deviceName || pc.pcFallback);
+      if (result.didPair) {
+        setConnectedThisSession(true);
+      }
     } catch {
       setError(pc.connectFailed);
       setPairingRequested(false);
     } finally {
       setBusy(false);
     }
-  };
+  }, [desktopNonce, pc.connectFailed, pc.pcFallback]);
+
+  useEffect(() => {
+    if (!user || autoJoinLock.current || connectedThisSession) {
+      return;
+    }
+    if (!desktopNonce && !localUnpaired) {
+      return;
+    }
+    autoJoinLock.current = true;
+    void consent();
+  }, [user, desktopNonce, localUnpaired, connectedThisSession, consent]);
 
   const primary = (label: string, onClick: () => void) => (
     <button
@@ -255,6 +233,11 @@ export function PcConnectFlow({
 
             {phase === "INSTALL" ? (
               <div className="mt-4">
+                {user ? (
+                  <p className="mb-3 text-[13px] leading-relaxed text-white/65">
+                    {pc.sameAccountHint}
+                  </p>
+                ) : null}
                 <PcProgramInstallList
                   query={installQuery?.trim() || "Rimvio PC 설치"}
                   onStarted={(id) => {
@@ -268,14 +251,20 @@ export function PcConnectFlow({
 
             {phase === "AGENT_STARTING" || phase === "AGENT_ONLINE" ? (
               <p className="mt-4 text-[13px] leading-relaxed text-white/65">
-                {pc.findingTitle}
+                {user ? pc.joiningHint : pc.findingTitle}
               </p>
             ) : null}
 
-            {phase === "PAIRING_REQUIRED" && !showPerms ? (
+            {phase === "PAIRING" ? (
+              <p className="mt-4 text-[13px] leading-relaxed text-white/65">
+                {pc.joiningHint}
+              </p>
+            ) : null}
+
+            {phase === "PAIRING_REQUIRED" && !user ? (
               <>
                 <p className="mt-4 text-[14px] font-medium text-white">
-                  {user ? pc.askAccount(accountName) : pc.askTitle}
+                  {pc.askTitle}
                 </p>
                 {health?.displayCode ? (
                   <p className="mt-2 font-mono text-[18px] tracking-wide text-white">
@@ -287,7 +276,7 @@ export function PcConnectFlow({
               </>
             ) : null}
 
-            {showPerms && phase !== "CONNECTED" ? (
+            {showPerms && !user && phase !== "CONNECTED" ? (
               <>
                 <p className="mt-4 text-[15px] font-semibold text-white">{pc.permTitle}</p>
                 <ul className="mt-3 space-y-1 text-[13px] text-white/80">
@@ -303,6 +292,18 @@ export function PcConnectFlow({
                 {error ? <p className="mt-2 text-[12px] text-rose-300">{error}</p> : null}
                 <div className="mt-4">{primary(pc.consentCta, () => void consent())}</div>
               </>
+            ) : null}
+
+            {user && error ? (
+              <div className="mt-3">
+                <p className="text-[12px] text-rose-300">{error}</p>
+                <div className="mt-3">
+                  {primary(pc.connectCta, () => {
+                    autoJoinLock.current = false;
+                    void consent();
+                  })}
+                </div>
+              </div>
             ) : null}
 
             {phase === "CONNECTED" ? (

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import {
+  isDesktopConnectNonce,
   PC_CONNECT_EVENT,
   PC_CONNECT_INSPECT_ID,
   PC_CONNECT_START_INSTALL_EVENT,
@@ -113,14 +114,12 @@ export function GlobeResumeDeviceSection({
     const stored = sessionStorage.getItem("rimvio-pc-connect-nonce")?.trim();
     if (stored) {
       sessionStorage.removeItem("rimvio-pc-connect-nonce");
-      setConnectNonce(stored);
+      setConnectNonce(isDesktopConnectNonce(stored) ? stored : null);
       onInspect(PC_CONNECT_INSPECT_ID);
     }
     const onConnect = (event: Event) => {
       const nonce = (event as CustomEvent<{ nonce?: string }>).detail?.nonce?.trim();
-      if (nonce) {
-        setConnectNonce(nonce);
-      }
+      setConnectNonce(nonce && isDesktopConnectNonce(nonce) ? nonce : null);
       onInspect(PC_CONNECT_INSPECT_ID);
     };
     window.addEventListener(PC_CONNECT_EVENT, onConnect);
@@ -270,7 +269,7 @@ export function GlobeResumeDeviceSection({
               <span className="block truncate text-[14px] font-medium">💻 {pc.pcFallback}</span>
               <span className="text-[11px] text-white/45">{pc.notConnected}</span>
               <span className="mt-0.5 block text-[12px] font-medium text-white/80">
-                {pc.connectCta}
+                {user ? pc.sameAccountHint : pc.connectCta}
               </span>
             </span>
           </button>

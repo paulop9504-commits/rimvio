@@ -7,6 +7,7 @@ import { GlobeContextAgentMapButton } from "@/components/globe/globe-context-age
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
 import { GlobeContextBrainStrip } from "@/components/globe/globe-context-brain-strip";
 import { GlobeContextHubRail } from "@/components/globe/globe-context-hub-rail";
+import { PcSameAccountAutoJoin } from "@/components/globe/pc-same-account-auto-join";
 import { useMemoryRecallContext } from "@/components/globe/globe-home-memory-dock";
 import type { RimvioGlobeHubHandle } from "@/components/experience/rimvio-globe-hub";
 import type { GlobeContextPeopleFilter } from "@/lib/globe/globe-context-people-filter";
@@ -20,6 +21,7 @@ import {
   subscribeLiveWorks,
 } from "@/lib/globe/live-work/live-work-store";
 import {
+  isDesktopConnectNonce,
   PC_CONNECT_EVENT,
   PC_CONNECT_OPEN_SIDEBAR_EVENT,
 } from "@/lib/pc-local-agent/desktop-connect";
@@ -129,13 +131,15 @@ export function GlobeHomeLeftChrome({
   }, []);
 
   useEffect(() => {
-    const nonce = searchParams.get("pcConnect")?.trim();
-    if (!nonce) {
+    const raw = searchParams.get("pcConnect")?.trim();
+    if (!raw) {
       return;
     }
     setContainerSpaceOpen(true);
-    sessionStorage.setItem("rimvio-pc-connect-nonce", nonce);
-    window.dispatchEvent(new CustomEvent(PC_CONNECT_EVENT, { detail: { nonce } }));
+    if (isDesktopConnectNonce(raw)) {
+      sessionStorage.setItem("rimvio-pc-connect-nonce", raw);
+      window.dispatchEvent(new CustomEvent(PC_CONNECT_EVENT, { detail: { nonce: raw } }));
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -151,6 +155,7 @@ export function GlobeHomeLeftChrome({
 
   return (
     <div className="pointer-events-none absolute left-3 top-[max(0.5rem,env(safe-area-inset-top))] z-20 flex max-h-[calc(100%-var(--rimvio-globe-ingest-offset)-5.5rem)] flex-col items-start gap-1.5">
+      <PcSameAccountAutoJoin signedIn={Boolean(authUserId)} />
       {!mapMediaFocusOpen ? (
         <>
           <div className="pointer-events-auto">

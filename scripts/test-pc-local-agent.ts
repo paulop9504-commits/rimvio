@@ -34,6 +34,7 @@ import {
   isPcAgentNavigableUrl,
 } from "../lib/pc-local-agent/url-safety";
 import { pickBestValueCandidate } from "../apps/local-agent/src/execution/shop-pick.ts";
+import { resolvePcRemoteCommand } from "../lib/pc-local-agent/remote-command";
 
 function selfTest(): void {
   assertTaskTransition("CREATED", "QUEUED");
@@ -154,6 +155,23 @@ function selfTest(): void {
   ]);
   if (pick?.href !== "/mid") {
     throw new Error("pick_cheapest_among_quality");
+  }
+
+  const yt = resolvePcRemoteCommand("유튜브에서 비 오는 소리 틀어줘");
+  if (yt.kind !== "open_url" || !yt.url.includes("youtube.com")) {
+    throw new Error("remote_youtube");
+  }
+  const buy = resolvePcRemoteCommand("쿠팡에서 생수 사");
+  if (buy.kind !== "purchase") {
+    throw new Error("remote_purchase");
+  }
+  const link = resolvePcRemoteCommand("https://www.example.com/ok 열어");
+  if (link.kind !== "open_url" || !link.url.startsWith("https://www.example.com")) {
+    throw new Error("remote_url");
+  }
+  const search = resolvePcRemoteCommand("서울 날씨");
+  if (search.kind !== "open_url" || !search.url.includes("google.com/search")) {
+    throw new Error("remote_google");
   }
 
   console.log("pc-local-agent self-test ok (phase D)");

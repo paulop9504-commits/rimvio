@@ -7,6 +7,7 @@ import {
   onboardingChecklist,
 } from "../lib/pc-local-agent/onboarding-phase";
 import { generateDisplayPairingCode } from "../lib/pc-local-agent/token";
+import { isDesktopConnectNonce } from "../lib/pc-local-agent/desktop-connect";
 
 assert.equal(
   derivePcOnboardingPhase({
@@ -58,7 +59,7 @@ assert.equal(
     localUnpaired: true,
   }),
   "PAIRING_REQUIRED",
-  "install must not attach an account until the signed-in user approves",
+  "install must not attach an account until the signed-in user is present on this machine",
 );
 
 assert.equal(
@@ -95,9 +96,20 @@ assert.equal(list.find((row) => row.id === "done")?.done, false);
 const code = generateDisplayPairingCode();
 assert.match(code, /^[A-Z0-9]{4}-[A-Z0-9]{2}$/);
 
+assert.equal(isDesktopConnectNonce("1"), false);
+assert.equal(isDesktopConnectNonce("true"), false);
+assert.equal(isDesktopConnectNonce(null), false);
+assert.equal(isDesktopConnectNonce("abcdefghijklmnop"), true);
+
+const adopt = readFileSync(
+  join(process.cwd(), "lib/pc-local-agent/adopt-logged-in-pc.ts"),
+  "utf8",
+);
+assert.ok(adopt.includes("consent: true"));
+
 const flow = readFileSync(join(process.cwd(), "components/globe/pc-connect-flow.tsx"), "utf8");
 assert.ok(flow.includes("data-pc-connect-phase"));
-assert.ok(flow.includes("consent: true"));
+assert.ok(flow.includes("adoptLoggedInPc"));
 assert.ok(!flow.includes('setStep("done")'));
 assert.ok(!flow.includes("Rimvio PC Agent"));
 
@@ -121,6 +133,21 @@ const desktopMainJs = readFileSync(
 );
 assert.ok(desktopMainJs.includes("checkForUpdates"));
 assert.ok(desktopMainJs.includes("setLoginItemSettings"));
+
+const remoteUi = readFileSync(
+  join(process.cwd(), "components/globe/pc-remote-chat-overlay.tsx"),
+  "utf8",
+);
+assert.ok(remoteUi.includes("data-pc-remote-chat"));
+assert.ok(remoteUi.includes("runPcRemoteCommand"));
+assert.ok(!remoteUi.includes("Local Agent"));
+
+const dock = readFileSync(
+  join(process.cwd(), "components/globe/globe-capture-dock.tsx"),
+  "utf8",
+);
+assert.ok(dock.includes("PcRemoteChatOverlay"));
+assert.ok(dock.includes("data-pc-remote-open"));
 
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
 assert.ok(setupUrl.includes("releases/latest/download/Rimvio-Setup.exe"));

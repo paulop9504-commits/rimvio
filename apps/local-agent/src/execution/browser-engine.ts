@@ -74,9 +74,7 @@ export class BrowserExecutionEngine implements ExecutionEngine {
     }
 
     const shop = task.payload.intent === "purchase";
-    if (shop) {
-      await ensureChromeForShopRun(report);
-    }
+    await ensureChromeForShopRun(report);
     const page = await getPage();
     await report?.({ phase: "BROWSER_OPENED", url, graphNode: "FIND_PRODUCT" });
 
@@ -126,8 +124,9 @@ export class BrowserExecutionEngine implements ExecutionEngine {
     log("BROWSER", `Navigating to ${url}`);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
     log("BROWSER", "Page open");
-    await report?.({ phase: "PAGE_READY", url: page.url() });
-    return { success: true, url: page.url(), message: "browser_left_open", hold: "none" };
+    const shot = await screenshotJpeg(page);
+    await report?.({ phase: "PAGE_READY", url: page.url(), screenshotJpeg: shot });
+    return { success: true, url: page.url(), message: "browser_left_open", hold: "none", screenshotJpeg: shot };
   }
 
   async checkout(task: AgentTask, report?: ProgressReporter): Promise<ExecutionResult> {

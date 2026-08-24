@@ -48,3 +48,9 @@ export function pcConnectAppUrl(origin: string, nonce: string): string {
   url.searchParams.set("pcConnect", nonce);
   return url.toString();
 }
+
+/** Tray uses `?pcConnect=1`. Real desktop sessions use a long nonce. */
+export function isDesktopConnectNonce(value: string | null | undefined): boolean {
+  const v = value?.trim() ?? "";
+  return v.length >= 16;
+}

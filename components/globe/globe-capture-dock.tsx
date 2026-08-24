@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from "react";
 import {
   GlobeActionPillGuide,
   readPillSubmitText,
@@ -10,12 +10,14 @@ import { GlobePhotoPlaceWalkthrough } from "@/components/globe/globe-photo-place
 import { GlobePhotoIngestProgressStrip } from "@/components/globe/globe-photo-ingest-progress-strip";
 import { GlobePlaceVerifyCard } from "@/components/globe/globe-place-verify-card";
 import { GlobeKnowledgePlacementConfirmCard } from "@/components/globe/globe-knowledge-placement-confirm-card";
+import { PcRemoteChatOverlay } from "@/components/globe/pc-remote-chat-overlay";
 import type { GlobeKnowledgePlacementPending } from "@/lib/globe/globe-knowledge-placement-pending";
 import { buildMapIntentPills } from "@/lib/globe/build-map-intent-pills";
 import type { GlobePhotoIngestDraft } from "@/lib/globe/prepare-globe-photo-ingest-draft";
 import type { PhotoIngestFileItem } from "@/lib/globe/photo-ingest-file-progress";
+import { useCopy } from "@/hooks/use-copy";
+import { usePcOnlineDevice } from "@/hooks/use-pc-online-device";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
 
 export type GlobeCaptureDockProps = {
   className?: string;
@@ -85,8 +87,24 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
   ) {
     const ingestRef = useRef<GlobeContextIngestBarHandle>(null);
     useImperativeHandle(ref, () => ingestRef.current as GlobeContextIngestBarHandle);
+    const pcCopy = useCopy().globe.pcContinuity;
+    const onlinePc = usePcOnlineDevice();
+    const [remoteOpen, setRemoteOpen] = useState(false);
+
+    useEffect(() => {
+      if (!onlinePc?.id || typeof window === "undefined") {
+        return;
+      }
+      const key = "rimvio-pc-remote-opened";
+      if (sessionStorage.getItem(key) === onlinePc.id) {
+        return;
+      }
+      sessionStorage.setItem(key, onlinePc.id);
+      setRemoteOpen(true);
+    }, [onlinePc?.id]);
 
     const photoActive = photoFlow.open;
+    const hideCompose = composeHidden || remoteOpen;
     const showPlaceVerify = Boolean(placeVerifyEventId) && !photoActive;
     const showKnowledgePlacement =
       Boolean(knowledgePlacementPending) && !photoActive && !showPlaceVerify;
@@ -94,6 +112,11 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
 
     return (
       <>
+        <PcRemoteChatOverlay
+          open={remoteOpen}
+          device={onlinePc}
+          onClose={() => setRemoteOpen(false)}
+        />
         {photoActive ? (
           <div
             className="pointer-events-none fixed inset-0 z-[31] flex flex-col items-center justify-center gap-3 px-5 pb-[calc(var(--rimvio-bottom-nav-offset)+0.5rem)] pt-[max(3.25rem,env(safe-area-inset-top))]"
@@ -167,12 +190,23 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
           </div>
         ) : null}
 
-        {!photoActive && !composeHidden ? (
+        {!photoActive && !hideCompose ? (
           <div
             className="pointer-events-none mx-auto flex w-full max-w-[min(100%,32rem)] flex-col gap-1.5"
             data-globe-ingest-compact="pill"
-            data-globe-prompt-shell="gpt"
+            data-globe-prompt-shell={onlinePc ? "pc-remote" : "gpt"}
           >
+            {onlinePc ? (
+              <button
+                type="button"
+                data-pc-remote-open
+                onClick={() => setRemoteOpen(true)}
+                className="pointer-events-auto mx-auto mb-0.5 inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white/80 shadow-sm ring-1 ring-white/12 backdrop-blur-md"
+              >
+                <span className="size-1.5 rounded-full bg-emerald-400" />
+                {pcCopy.remoteOpenCta}
+              </button>
+            ) : null}
             {!suppressMapIntentPills ? (
               <GlobeActionPillGuide
                 pills={mapPills}
@@ -189,7 +223,10 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
             <GlobeContextIngestBar
               ref={ingestRef}
               {...ingest}
-              className="pointer-events-auto relative inset-auto bottom-auto w-full"
+              className={cn(
+                "pointer-events-auto relative inset-auto bottom-auto w-full",
+                onlinePc && "[&_[data-globe-prompt-style]]:ring-1 [&_[data-globe-prompt-style]]:ring-emerald-400/35",
+              )}
             />
             {composeAccessory ? (
               <div className="pointer-events-auto pt-0.5">{composeAccessory}</div>
