@@ -1,5 +1,6 @@
 import type { LiveWork, LiveWorkPhase } from "@/lib/globe/live-work/types";
 import {
+  LIVE_WORK_OPEN_CHAT,
   LIVE_WORK_RECENT_HIGHLIGHT_MS,
   LIVE_WORK_UPDATED,
 } from "@/lib/globe/live-work/types";

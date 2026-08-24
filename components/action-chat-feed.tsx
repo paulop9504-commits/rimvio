@@ -49,6 +49,7 @@ import { useSurfaceMemory } from "@/hooks/use-surface-memory";
 import { useSynapticSnapshot } from "@/hooks/use-synaptic-snapshot";
 import { SurfaceStabilityStrip } from "@/components/surface-composition/surface-stability-strip";
 import { deriveLoopContextKo } from "@/lib/surface-composition/loop-why-copy";
+import { shouldRenderLatentSuggestionLayers } from "@/lib/surface-composition/surface-collapse-controller";
 import { deriveSurfaceWhyLineKo } from "@/lib/surface-composition/surface-why-copy";
 import { hasActiveDecisionStream } from "@/lib/surface";
 import { useSurfaceTransientHint } from "@/hooks/use-surface-transient-hint";
@@ -396,6 +397,7 @@ export function ActionChatFeed({
   );
   const showLatentSuggestionLayers = useMemo(
     () =>
+      shouldRenderLatentSuggestionLayers(surfaceFrame) &&
       shouldRenderLatentLayersWithMorningAutoPrep({
         frame: surfaceFrame,
         morningAutoPrepVisible: morningAutoPrep.visible,

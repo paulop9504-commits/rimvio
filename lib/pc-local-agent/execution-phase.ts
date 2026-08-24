@@ -116,13 +116,12 @@ export function canTransitionExecutionPhase(
   }
 
   if (from === "WAITING_USER") {
-    return to === "APPROVED" || to === "PAUSED";
+    return to === "APPROVED";
   }
   if (from === "HUMAN_REQUIRED" || from === "AUTH_REQUIRED") {
     return (
       to === "ACTION_RUNNING" ||
       to === "WAITING_USER" ||
-      to === "PAUSED" ||
       to === "HUMAN_REQUIRED" ||
       to === "AUTH_REQUIRED"
     );
@@ -131,15 +130,10 @@ export function canTransitionExecutionPhase(
     return to === "QUEUED" || to === "DISPATCHED" || to === "RUNNING";
   }
   if (to === "APPROVED") {
-    return from === "WAITING_USER";
+    return false;
   }
   if (to === "COMPLETED") {
-    if (
-      from === "WAITING_USER" ||
-      from === "HUMAN_REQUIRED" ||
-      from === "AUTH_REQUIRED" ||
-      from === "ACTION_RUNNING"
-    ) {
+    if (from === "ACTION_RUNNING") {
       return false;
     }
     return (
@@ -156,7 +150,6 @@ export function canTransitionExecutionPhase(
   if (from === "APPROVED") {
     return (
       to === "ACTION_RUNNING" ||
-      to === "VERIFYING" ||
       to === "HUMAN_REQUIRED" ||
       to === "AUTH_REQUIRED"
     );
@@ -177,7 +170,7 @@ export function canTransitionExecutionPhase(
     return true;
   }
   if (to === "HUMAN_REQUIRED" || to === "AUTH_REQUIRED" || to === "WAITING_USER") {
-    return fromIdx >= 0 || from === "ACTION_RUNNING" || from === "APPROVED";
+    return fromIdx >= 0 || from === "ACTION_RUNNING";
   }
   return false;
 }
