@@ -238,7 +238,7 @@ export const copyEn: Copy = {
     liveWorkStepSite: "Opened Coupang",
     liveWorkStepProduct: "Checked product",
     liveWorkStepPay: "Waiting to pay",
-    liveWorkWaitingPc: "Waiting for PC",
+    liveWorkWaitingPc: "Tuning the PC · it will run as soon as it’s connected",
     liveWorkWaitingUser: "Waiting to approve payment",
     liveWorkHumanRequired: "Extra verification needed. Check the PC screen.",
     liveWorkApproved: "Approved · checking out",
@@ -509,10 +509,19 @@ export const copyEn: Copy = {
       eyebrow: "Running on PC",
       pcFallback: "My PC",
       started: (title: string, device: string) =>
-        `${device}: preparing ${title}. Approve on your phone before payment.`,
-      needPc: "Connect your PC to start this work",
-      waitingPcQueued: "PC is off. It will continue when the PC comes online.",
-      needLogin: "Sign in to continue on your PC",
+        `${device}: running ${title}. Approve on your phone before payment.`,
+      needPc: "Installing what this run needs. It will execute as soon as that’s ready.",
+      waitingPcQueued: "Agent is waiting on this PC. It will run the moment the PC is on.",
+      agentRunGoal: (title: string) => `Run ${title}`,
+      agentPlan:
+        "Match the item, install anything this run needs, then execute on the PC without stopping.",
+      agentNeedPrograms:
+        "Installing the programs this run needs, then continuing immediately.",
+      agentWaitingOnline:
+        "Tuning the PC link. When it’s on, this run continues without stopping.",
+      agentOpeningShop: "Opening the browser and searching Coupang",
+      agentAwaitHuman: "About to pay. Approve here to continue.",
+      needLogin: "Sign in and this run continues on your PC",
       stepQueued: "Queued",
       stepBrowserOpen: "Browser opened",
       stepWaiting: "Bank/CAPTCHA on the PC",
@@ -571,6 +580,14 @@ export const copyEn: Copy = {
       doneTitle: "Your PC is connected to Rimvio.",
       doneCta: "Done",
       connectFailed: "Couldn’t connect right now. Try again.",
+      programOfferTitle: "Install and keep running",
+      programOfferBody:
+        "These programs belong to this run. Tap to install — the agent continues right after.",
+      programInstallCta: (name: string) => `Install ${name}`,
+      programInstalling: "Downloading…",
+      programRimvioPc: "Rimvio PC",
+      programCursor: "Cursor",
+      programChrome: "Chrome",
     },
     activityTrail: {
       title: "Agent run",

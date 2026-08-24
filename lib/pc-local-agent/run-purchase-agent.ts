@@ -1,0 +1,293 @@
+/**
+ * Purchase as a Cursor-style Agent Run — plan, install missing programs, dispatch,
+ * keep polling. Never stop on "PC offline". Human Commit still owns payment.
+ */
+
+import { copy } from "@/lib/copy/human-ko";
+import { appendPcContinuityPreviewTurn } from "@/lib/pc-local-agent/append-preview-turn";
+import {
+  beginAgentActivityTranscript,
+  appendAgentActivityEvent,
+  finishAgentActivityTranscript,
+} from "@/lib/context-run/agent-activity-transcript";
+import {
+  beginAgentActivityTrail,
+  finishAgentActivityTrail,
+} from "@/lib/context-run/sync-agent-activity-trail";
+import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
+import {
+  syncPortalComposeProgramInstallToChat,
+  syncPortalComposeTurnToChat,
+} from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import { extractPcPurchaseTitle } from "@/lib/pc-local-agent/purchase-intent";
+import type { PcAgentTask } from "@/lib/pc-local-agent";
+import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
+import {
+  clearPendingPcPurchase,
+  patchPendingPcPurchase,
+  readPendingPcPurchase,
+  writePendingPcPurchase,
+} from "@/lib/pc-local-agent/pending-purchase-intent";
+import {
+  runPcPurchaseContinuity,
+  type PcPurchaseContinuityResult,
+} from "@/lib/pc-local-agent/run-purchase-continuity";
+
+const WATCH_MS = 3_000;
+const TASK_POLL_MS = 2_000;
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+let taskTimer: ReturnType<typeof setInterval> | null = null;
+let lastPhase = "";
+let watchBusy = false;
+
+function pcCopy() {
+  return copy.globe.pcContinuity;
+}
+
+function startTrail(utterance: string, contextEventId: string | null): void {
+  const title = extractPcPurchaseTitle(utterance);
+  const goalKo = pcCopy().agentRunGoal(title);
+  beginAgentActivityTranscript({
+    contextEventId: contextEventId?.trim() || `shop:${Date.now()}`,
+    utterance,
+  });
+  beginAgentActivityTrail({
+    goalKo,
+    contextEventId,
+  });
+  appendAgentActivityEvent({
+    kind: "thought",
+    labelKo: pcCopy().agentPlan,
+    detailKo: title,
+    stage: "planner",
+  });
+}
+
+function applyResultToChat(input: {
+  utterance: string;
+  result: Exclude<PcPurchaseContinuityResult, { kind: "skip" }>;
+  contextEventId: string | null;
+}): void {
+  const graphId = ensureGlobeChatGraphId();
+  if (input.result.kind === "arming") {
+    syncPortalComposeProgramInstallToChat({
+      graphId,
+      userText: input.utterance,
+      assistantText: `${input.result.messageKo}\n${pcCopy().programOfferBody}`,
+      query: input.result.query,
+    });
+    return;
+  }
+  if (input.result.kind === "preview") {
+    if (input.contextEventId?.trim()) {
+      appendPcContinuityPreviewTurn(input.contextEventId.trim(), input.result);
+    }
+    syncPortalComposeTurnToChat({
+      graphId,
+      userText: input.utterance,
+      assistantText: input.result.messageKo,
+    });
+    return;
+  }
+  syncPortalComposeTurnToChat({
+    graphId,
+    userText: input.utterance,
+    assistantText: input.result.messageKo,
+  });
+}
+
+function stopTaskWatch(): void {
+  if (taskTimer) {
+    clearInterval(taskTimer);
+    taskTimer = null;
+  }
+}
+
+function watchTask(taskId: string, goalKo: string, contextEventId: string | null): void {
+  stopTaskWatch();
+  lastPhase = "";
+  const tick = async () => {
+    try {
+      const res = await fetch(`/api/pc-agent/tasks/${encodeURIComponent(taskId)}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        return;
+      }
+      const data = (await res.json()) as { task?: PcAgentTask };
+      const task = data.task;
+      if (!task) {
+        return;
+      }
+      const phase = readExecutionPhase(task);
+      if (phase === lastPhase) {
+        return;
+      }
+      lastPhase = phase;
+      if (phase === "RUNNING" || phase === "DISPATCHED") {
+        appendAgentActivityEvent({
+          kind: "tool",
+          labelKo: pcCopy().agentOpeningShop,
+          stage: "object_discovery",
+        });
+      }
+      if (phase === "BROWSER_OPENED" || phase === "PAGE_READY") {
+        appendAgentActivityEvent({
+          kind: "tool",
+          labelKo: pcCopy().stepBrowserOpen,
+          stage: "prepare",
+        });
+      }
+      if (phase === "ACTION_RUNNING") {
+        appendAgentActivityEvent({
+          kind: "patch",
+          labelKo: copy.globe.liveWorkStepProduct,
+          stage: "workspace_patch",
+        });
+      }
+      if (phase === "WAITING_USER" || phase === "HUMAN_REQUIRED" || phase === "AUTH_REQUIRED") {
+        finishAgentActivityTrail({
+          goalKo,
+          summaryKo: pcCopy().agentAwaitHuman,
+          contextEventId,
+        });
+        stopTaskWatch();
+      }
+      if (phase === "COMPLETED") {
+        finishAgentActivityTrail({
+          goalKo,
+          summaryKo: pcCopy().stepReady,
+          contextEventId,
+        });
+        stopTaskWatch();
+        clearPendingPcPurchase();
+      }
+      if (phase === "FAILED" || phase === "CANCELLED") {
+        finishAgentActivityTranscript({ summaryKo: pcCopy().stepFailed });
+        stopTaskWatch();
+      }
+    } catch {
+      /* keep watching */
+    }
+  };
+  void tick();
+  if (typeof window !== "undefined") {
+    taskTimer = window.setInterval(() => void tick(), TASK_POLL_MS);
+  }
+}
+
+async function dispatchPending(): Promise<void> {
+  const pending = readPendingPcPurchase();
+  if (!pending || watchBusy) {
+    return;
+  }
+  if (pending.taskId) {
+    return;
+  }
+  watchBusy = true;
+  try {
+    const result = await runPcPurchaseContinuity(
+      pending.utterance,
+      pending.contextEventId ?? undefined,
+    );
+    if (result.kind === "preview") {
+      appendAgentActivityEvent({
+        kind: "tool",
+        labelKo: result.queuedOffline
+          ? pcCopy().agentWaitingOnline
+          : pcCopy().agentOpeningShop,
+        stage: "object_discovery",
+      });
+      if (pending.contextEventId) {
+        appendPcContinuityPreviewTurn(pending.contextEventId, result);
+      }
+      patchPendingPcPurchase({ taskId: result.task.id });
+      const goalKo = pcCopy().agentRunGoal(extractPcPurchaseTitle(pending.utterance));
+      watchTask(result.task.id, goalKo, pending.contextEventId);
+      if (!result.queuedOffline) {
+        /* still watch phases */
+      }
+    }
+  } finally {
+    watchBusy = false;
+  }
+}
+
+export function ensurePcPurchaseAgentWatch(): void {
+  if (typeof window === "undefined" || watchTimer) {
+    return;
+  }
+  watchTimer = window.setInterval(() => {
+    void dispatchPending();
+  }, WATCH_MS);
+  void dispatchPending();
+}
+
+export async function startPcPurchaseAgentRun(input: {
+  utterance: string;
+  contextEventId?: string | null;
+}): Promise<PcPurchaseContinuityResult> {
+  const utterance = input.utterance.trim();
+  const contextEventId = input.contextEventId?.trim() || null;
+  const title = extractPcPurchaseTitle(utterance);
+  const goalKo = pcCopy().agentRunGoal(title);
+
+  startTrail(utterance, contextEventId);
+  const result = await runPcPurchaseContinuity(utterance, contextEventId ?? undefined);
+  if (result.kind === "skip") {
+    finishAgentActivityTranscript();
+    return result;
+  }
+
+  applyResultToChat({ utterance, result, contextEventId });
+
+  if (result.kind === "login") {
+    appendAgentActivityEvent({
+      kind: "status",
+      labelKo: result.messageKo,
+      stage: "agent_status",
+    });
+    finishAgentActivityTrail({
+      goalKo,
+      summaryKo: result.messageKo,
+      contextEventId,
+    });
+    return result;
+  }
+
+  if (result.kind === "arming") {
+    appendAgentActivityEvent({
+      kind: "tool",
+      labelKo: pcCopy().agentNeedPrograms,
+      stage: "prepare",
+    });
+    writePendingPcPurchase({ utterance, contextEventId });
+    ensurePcPurchaseAgentWatch();
+    return result;
+  }
+
+  appendAgentActivityEvent({
+    kind: "tool",
+    labelKo: result.queuedOffline ? pcCopy().agentWaitingOnline : pcCopy().agentOpeningShop,
+    stage: "object_discovery",
+  });
+  writePendingPcPurchase({
+    utterance,
+    contextEventId,
+    taskId: result.task.id,
+  });
+  ensurePcPurchaseAgentWatch();
+  watchTask(result.task.id, goalKo, contextEventId);
+  return result;
+}
+
+export function resetPcPurchaseAgentWatchForTests(): void {
+  if (watchTimer) {
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+  stopTaskWatch();
+  watchBusy = false;
+  lastPhase = "";
+  clearPendingPcPurchase();
+}

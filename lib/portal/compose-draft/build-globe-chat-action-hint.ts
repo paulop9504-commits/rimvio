@@ -153,6 +153,9 @@ export function buildGlobeChatActionHint(input: {
   }
 
   const last = input.messages[input.messages.length - 1];
+  if (last?.kind === "program_install") {
+    return null;
+  }
   if (last?.kind === "slot_prompt") {
     if (slotPromptHasChips(last)) {
       return null;

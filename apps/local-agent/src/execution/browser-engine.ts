@@ -2,6 +2,7 @@ import type { BrowserContext, Page } from "playwright";
 import type { AgentTask, ExecutionEngine, ExecutionResult, ProgressReporter } from "./types.js";
 import { log } from "../logger.js";
 import { openChromeSession, type ChromeSession } from "./chrome-session.js";
+import { ensureChromeForShopRun } from "./ensure-chrome.js";
 import {
   completeCheckoutAfterApproval,
   isPaymentNavigation,
@@ -72,9 +73,12 @@ export class BrowserExecutionEngine implements ExecutionEngine {
       throw new Error("checkout_blocked");
     }
 
+    const shop = task.payload.intent === "purchase";
+    if (shop) {
+      await ensureChromeForShopRun(report);
+    }
     const page = await getPage();
     await report?.({ phase: "BROWSER_OPENED", url, graphNode: "FIND_PRODUCT" });
-    const shop = task.payload.intent === "purchase";
 
     if (shop) {
       const result = await prepareShopOnPage(page, {

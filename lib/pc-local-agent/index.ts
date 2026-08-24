@@ -10,3 +10,4 @@ export * from "./pc-permissions";
 export * from "./desktop-connect";
 export * from "./onboarding-phase";
 export * from "./setup-url";
+export * from "./program-install-catalog";

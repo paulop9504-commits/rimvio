@@ -17,13 +17,16 @@ import {
   type PcOnboardingPhase,
 } from "@/lib/pc-local-agent/onboarding-phase";
 import { cn } from "@/lib/utils";
+import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
 
 export function PcConnectFlow({
   nonce,
+  installQuery,
   onDone,
   onCancel,
 }: {
   nonce: string | null;
+  installQuery?: string | null;
   onDone: (deviceId: string | null) => void;
   onCancel: () => void;
 }) {
@@ -35,7 +38,7 @@ export function PcConnectFlow({
     user?.email?.split("@")[0] ||
     pc.pcFallback;
 
-  const [introDone, setIntroDone] = useState(Boolean(nonce));
+  const [introDone, setIntroDone] = useState(Boolean(nonce || installQuery));
   const [setupDownloaded, setSetupDownloaded] = useState(Boolean(nonce));
   const [health, setHealth] = useState<LocalAgentHealth | null>(null);
   const [pairingRequested, setPairingRequested] = useState(Boolean(nonce));
@@ -137,15 +140,6 @@ export function PcConnectFlow({
       setConnectedThisSession(true);
     }
   }, [phase, connectedThisSession]);
-
-  const download = async () => {
-    const res = await fetch("/api/pc-agent/desktop/download");
-    const data = (await res.json()) as { available?: boolean; url?: string };
-    if (data.available && data.url) {
-      window.location.href = data.url;
-    }
-    setSetupDownloaded(true);
-  };
 
   const consent = async () => {
     setBusy(true);
@@ -260,10 +254,16 @@ export function PcConnectFlow({
             </ol>
 
             {phase === "INSTALL" ? (
-              <>
-                <p className="mt-4 text-[13px] text-white/65">{pc.prepareBody}</p>
-                <div className="mt-3">{primary(pc.download, () => void download())}</div>
-              </>
+              <div className="mt-4">
+                <PcProgramInstallList
+                  query={installQuery?.trim() || "Rimvio PC 설치"}
+                  onStarted={(id) => {
+                    if (id === "rimvio-pc") {
+                      setSetupDownloaded(true);
+                    }
+                  }}
+                />
+              </div>
             ) : null}
 
             {phase === "AGENT_STARTING" || phase === "AGENT_ONLINE" ? (

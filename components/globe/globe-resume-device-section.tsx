@@ -8,6 +8,7 @@ import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import {
   PC_CONNECT_EVENT,
   PC_CONNECT_INSPECT_ID,
+  PC_CONNECT_START_INSTALL_EVENT,
 } from "@/lib/pc-local-agent/desktop-connect";
 import {
   subscribePcAgentDevicesRealtime,
@@ -65,6 +66,7 @@ export function GlobeResumeDeviceSection({
   const [devices, setDevices] = useState<PcAgentDevice[]>([]);
   const [tasks, setTasks] = useState<PcAgentTask[]>([]);
   const [connectNonce, setConnectNonce] = useState<string | null>(null);
+  const [installQuery, setInstallQuery] = useState<string | null>(null);
   const [permsOpen, setPermsOpen] = useState(false);
   const prevOnline = useRef<Set<string>>(new Set());
 
@@ -122,7 +124,19 @@ export function GlobeResumeDeviceSection({
       onInspect(PC_CONNECT_INSPECT_ID);
     };
     window.addEventListener(PC_CONNECT_EVENT, onConnect);
-    return () => window.removeEventListener(PC_CONNECT_EVENT, onConnect);
+    const onInstall = (event: Event) => {
+      const query =
+        (event as CustomEvent<{ query?: string }>).detail?.query?.trim() ||
+        sessionStorage.getItem("rimvio-pc-install-query")?.trim() ||
+        "Rimvio PC 설치";
+      setInstallQuery(query);
+      onInspect(PC_CONNECT_INSPECT_ID);
+    };
+    window.addEventListener(PC_CONNECT_START_INSTALL_EVENT, onInstall);
+    return () => {
+      window.removeEventListener(PC_CONNECT_EVENT, onConnect);
+      window.removeEventListener(PC_CONNECT_START_INSTALL_EVENT, onInstall);
+    };
   }, [onInspect]);
 
   useEffect(() => {
@@ -152,6 +166,7 @@ export function GlobeResumeDeviceSection({
     return (
       <PcConnectFlow
         nonce={connectNonce}
+        installQuery={installQuery}
         onCancel={onBack}
         onDone={(id) => {
           void refresh();

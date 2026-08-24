@@ -26,8 +26,8 @@ import { dispatchContextRun } from "@/lib/context-run/dispatch-context-run";
 import { applyGlobeWorkspaceAgentTurn } from "@/lib/context-run/apply-globe-workspace-agent-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
 import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
-import { runPcPurchaseContinuity } from "@/lib/pc-local-agent/run-purchase-continuity";
-import { appendPcContinuityPreviewTurn } from "@/lib/pc-local-agent/append-preview-turn";
+import { startPcPurchaseAgentRun } from "@/lib/pc-local-agent/run-purchase-agent";
+import { isPcProgramInstallUtterance } from "@/lib/pc-local-agent/program-install-catalog";
 import { appendContextAgentComposeTurn } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import {
   readAgentActivityTranscript,
@@ -39,7 +39,10 @@ import { offerIngressConvergeChipsClient } from "@/lib/globe-ingress/offer-ingre
 import { interpretMessyForGlobeComposer } from "@/lib/messy-prompt-interpreter/adapters/globe-composer-adapter";
 import { readActiveRunState } from "@/lib/context-run/run-state-store";
 import { ensureGlobeChatGraphId } from "@/lib/globe/chat/ensure-globe-chat-graph-id";
-import { syncPortalComposeTurnToChat } from "@/lib/globe/chat/sync-portal-compose-to-chat";
+import {
+  syncPortalComposeProgramInstallToChat,
+  syncPortalComposeTurnToChat,
+} from "@/lib/globe/chat/sync-portal-compose-to-chat";
 import { composeTripFlowChatAssistantLine } from "@/lib/globe/trip-situation-router/build-trip-flow-chat-lines";
 import { ingestComposeChatPhoto } from "@/lib/globe/chat/globe-chat-session-bridge";
 import type { ContextRunEffectHandlers } from "@/lib/context-run/ingress-types";
@@ -578,13 +581,15 @@ export const GlobeContextIngestBar = forwardRef<
       onComposeOpen?.();
       try {
         if (isPcPurchaseContinuityUtterance(value)) {
-          const result = await runPcPurchaseContinuity(value, routingContextEventId ?? attachHintId);
           const eventId = routingContextEventId ?? attachHintId;
+          const result = await startPcPurchaseAgentRun({
+            utterance: value,
+            contextEventId: eventId,
+          });
           if (result.kind !== "skip") {
             if (eventId) {
               appendContextAgentComposeTurn(eventId, { role: "user", text: value });
               if (result.kind === "preview") {
-                appendPcContinuityPreviewTurn(eventId, result);
                 onAttached?.(eventId);
               } else {
                 appendContextAgentComposeTurn(eventId, {
@@ -594,14 +599,8 @@ export const GlobeContextIngestBar = forwardRef<
                 });
               }
             }
-            const line = result.messageKo;
-            syncPortalComposeTurnToChat({
-              graphId: ensureGlobeChatGraphId(),
-              userText: value,
-              assistantText: line,
-            });
-            showComposerHint(line, {
-              tone: result.kind === "preview" ? "success" : "error",
+            showComposerHint(result.messageKo, {
+              tone: result.kind === "login" ? "error" : "success",
               durationMs: 5000,
             });
             setClarifyPlaceholder(null);
@@ -610,6 +609,31 @@ export const GlobeContextIngestBar = forwardRef<
             setMenuOpen(false);
             return;
           }
+        }
+
+        if (isPcProgramInstallUtterance(value)) {
+          const line = `${copy.globe.pcContinuity.programOfferTitle}\n${copy.globe.pcContinuity.programOfferBody}`;
+          syncPortalComposeProgramInstallToChat({
+            graphId: ensureGlobeChatGraphId(),
+            userText: value,
+            assistantText: line,
+            query: value,
+          });
+          showComposerHint(line, { tone: "success", durationMs: 5000 });
+          const eventId = routingContextEventId ?? attachHintId;
+          if (eventId) {
+            appendContextAgentComposeTurn(eventId, { role: "user", text: value });
+            appendContextAgentComposeTurn(eventId, {
+              role: "assistant",
+              kind: "text",
+              text: line,
+            });
+          }
+          setClarifyPlaceholder(null);
+          setOperatorChoices(null);
+          setText("");
+          setMenuOpen(false);
+          return;
         }
 
         const advancedAssistantText = tryAdvanceDestinationFromMessage?.(value);

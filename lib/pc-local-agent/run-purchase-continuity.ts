@@ -7,11 +7,19 @@ import {
   isPcPurchaseContinuityUtterance,
   resolvePcPurchaseOpenUrl,
 } from "@/lib/pc-local-agent/purchase-intent";
+import { PC_PURCHASE_PROGRAM_QUERY } from "@/lib/pc-local-agent/program-install-catalog";
 
 export type PcPurchaseContinuityResult =
   | { kind: "skip" }
-  | { kind: "preview"; task: PcAgentTask; deviceName: string; messageKo: string }
-  | { kind: "blocked"; messageKo: string };
+  | {
+      kind: "preview";
+      task: PcAgentTask;
+      deviceName: string;
+      messageKo: string;
+      queuedOffline: boolean;
+    }
+  | { kind: "arming"; messageKo: string; query: string }
+  | { kind: "login"; messageKo: string };
 
 export async function runPcPurchaseContinuity(
   utterance: string,
@@ -23,17 +31,25 @@ export async function runPcPurchaseContinuity(
   const title = extractPcPurchaseTitle(utterance);
   const devicesRes = await fetch("/api/pc-agent/devices");
   if (devicesRes.status === 401) {
-    return { kind: "blocked", messageKo: copy.globe.pcContinuity.needLogin };
+    return { kind: "login", messageKo: copy.globe.pcContinuity.needLogin };
   }
   if (!devicesRes.ok) {
-    return { kind: "blocked", messageKo: copy.globe.pcContinuity.needPc };
+    return {
+      kind: "arming",
+      messageKo: copy.globe.pcContinuity.agentNeedPrograms,
+      query: PC_PURCHASE_PROGRAM_QUERY,
+    };
   }
   const devicesBody = (await devicesRes.json()) as { devices?: PcAgentDevice[] };
   const list = devicesBody.devices ?? [];
   const online = list.find((row) => row.status === "ONLINE");
   const device = online ?? list[0];
   if (!device) {
-    return { kind: "blocked", messageKo: copy.globe.pcContinuity.needPc };
+    return {
+      kind: "arming",
+      messageKo: copy.globe.pcContinuity.agentNeedPrograms,
+      query: PC_PURCHASE_PROGRAM_QUERY,
+    };
   }
 
   const res = await fetch("/api/pc-agent/tasks", {
@@ -51,10 +67,14 @@ export async function runPcPurchaseContinuity(
     }),
   });
   if (res.status === 401) {
-    return { kind: "blocked", messageKo: copy.globe.pcContinuity.needLogin };
+    return { kind: "login", messageKo: copy.globe.pcContinuity.needLogin };
   }
   if (!res.ok) {
-    return { kind: "blocked", messageKo: copy.globe.pcContinuity.needPc };
+    return {
+      kind: "arming",
+      messageKo: copy.globe.pcContinuity.agentNeedPrograms,
+      query: PC_PURCHASE_PROGRAM_QUERY,
+    };
   }
   const data = (await res.json()) as { task: PcAgentTask };
   bindPcPurchaseLiveWork({
@@ -67,8 +87,12 @@ export async function runPcPurchaseContinuity(
     kind: "preview",
     task: data.task,
     deviceName: device.name,
+    queuedOffline,
     messageKo: queuedOffline
-      ? copy.globe.pcContinuity.waitingPcQueued
-      : copy.globe.pcContinuity.started(title, device.name || copy.globe.pcContinuity.pcFallback),
+      ? copy.globe.pcContinuity.agentWaitingOnline
+      : copy.globe.pcContinuity.started(
+          title,
+          device.name || copy.globe.pcContinuity.pcFallback,
+        ),
   };
 }

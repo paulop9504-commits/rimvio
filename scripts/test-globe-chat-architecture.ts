@@ -18,6 +18,8 @@ assert.ok(
   "chat composer sits above floating bottom nav",
 );
 assert.ok(chat.includes("pointer-events-none"), "chat root lets bottom nav receive taps");
+assert.ok(chat.includes('kind === "program_install"'), "install offers render in chat bubbles");
+assert.ok(chat.includes("PcProgramInstallList"), "install buttons live in chat");
 
 const home = readFileSync(join(root, "components/globe/globe-home-client.tsx"), "utf8");
 assert.ok(home.includes("GlobeChatScreen"), "home mounts chat screen");

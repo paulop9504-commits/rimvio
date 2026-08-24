@@ -1,5 +1,6 @@
 import type {
   GlobeChatImageMessage,
+  GlobeChatProgramInstallMessage,
   GlobeChatMessage,
   GlobeChatResourceCompleteMessage,
   GlobeChatSession,
@@ -67,6 +68,26 @@ export function appendGlobeChatSlotPromptMessage(input: {
     slotId: input.slotId,
     choices: input.choices,
     categoryOptions: input.categoryOptions,
+    createdAt: new Date().toISOString(),
+  };
+  session.messages = [...session.messages, message];
+  session.updatedAt = message.createdAt;
+  emit(input.graphId);
+  return message;
+}
+
+export function appendGlobeChatProgramInstallMessage(input: {
+  graphId: string;
+  text: string;
+  query: string;
+}): GlobeChatProgramInstallMessage {
+  const session = ensureSession(input.graphId);
+  const message: GlobeChatProgramInstallMessage = {
+    id: nextId(),
+    role: "assistant",
+    kind: "program_install",
+    text: input.text.trim(),
+    query: input.query.trim(),
     createdAt: new Date().toISOString(),
   };
   session.messages = [...session.messages, message];

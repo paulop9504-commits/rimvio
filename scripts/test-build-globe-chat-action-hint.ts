@@ -101,6 +101,21 @@ function main() {
   assert.equal(photos.pills.length, 0);
   assert.match(photos.bodyKo, /＋/u);
 
+  const programInstall = buildGlobeChatActionHint({
+    composeState: null,
+    messages: [
+      {
+        id: "p1",
+        role: "assistant",
+        kind: "program_install",
+        text: copy.globe.pcContinuity.programOfferBody,
+        query: "Cursor 설치해줘",
+        createdAt: "5",
+      },
+    ],
+  });
+  assert.equal(programInstall, null);
+
   const emptyChat = buildGlobeChatActionHint({
     composeState: null,
     messages: [],

@@ -245,7 +245,7 @@ export const copy = {
     liveWorkStepSite: "쿠팡 접속",
     liveWorkStepProduct: "상품 확인",
     liveWorkStepPay: "결제 승인 대기",
-    liveWorkWaitingPc: "PC 연결 대기 중",
+    liveWorkWaitingPc: "PC를 맞추는 중 · 연결되면 바로 실행해요",
     liveWorkWaitingUser: "결제 승인 대기",
     liveWorkHumanRequired: "추가 인증이 필요해요. PC 화면에서 확인해주세요.",
     liveWorkApproved: "승인됨 · 결제 진행",
@@ -519,10 +519,19 @@ export const copy = {
       eyebrow: "PC에서 실행",
       pcFallback: "내 PC",
       started: (title: string, device: string) =>
-        `${device}에서 ${title}을 준비해요. 결제 직전에는 여기서 승인해 주세요.`,
-      needPc: "내 PC를 연결하면 이 작업을 시작할 수 있어요",
-      waitingPcQueued: "PC가 꺼져 있어요. 켜지면 이어서 실행해요",
-      needLogin: "로그인하면 PC로 이어서 실행해요",
+        `${device}에서 ${title}을 실행해요. 결제 직전에는 여기서 승인해 주세요.`,
+      needPc: "필요한 프로그램을 맞추는 중이에요. 설치되면 바로 실행해요",
+      waitingPcQueued: "PC가 켜지는 대로 바로 실행해요. 에이전트가 대기 중이에요",
+      agentRunGoal: (title: string) => `${title} 실행`,
+      agentPlan:
+        "살 물건을 맞추고, 필요한 프로그램을 준비한 다음 PC에서 바로 실행해요",
+      agentNeedPrograms:
+        "실행에 필요한 프로그램을 설치한 뒤 멈추지 않고 바로 이어가요",
+      agentWaitingOnline:
+        "PC 연결을 맞추는 중이에요. 켜지면 멈추지 않고 바로 실행해요",
+      agentOpeningShop: "브라우저를 열고 쿠팡에서 찾는 중",
+      agentAwaitHuman: "결제 직전이에요. 여기서 승인하면 이어가요",
+      needLogin: "로그인하면 PC로 바로 실행해요",
       stepQueued: "준비 중",
       stepBrowserOpen: "브라우저 열림",
       stepWaiting: "인증·CAPTCHA는 PC에서",
@@ -582,6 +591,14 @@ export const copy = {
       doneTitle: "내 PC가 Rimvio에 연결됐어요.",
       doneCta: "완료",
       connectFailed: "지금 연결하지 못했어요. 다시 시도해주세요.",
+      programOfferTitle: "설치하고 바로 실행",
+      programOfferBody:
+        "이 Run에 필요한 프로그램이에요. 누르면 설치하고 에이전트가 이어서 실행해요.",
+      programInstallCta: (name: string) => `${name} 설치`,
+      programInstalling: "받는 중…",
+      programRimvioPc: "Rimvio PC",
+      programCursor: "Cursor",
+      programChrome: "Chrome",
     },
     /** Cursor-style Agent Activity Trail (streaming progress). */
     activityTrail: {

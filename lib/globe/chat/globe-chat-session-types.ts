@@ -47,11 +47,21 @@ export type GlobeChatSlotPromptMessage = {
   createdAt: string;
 };
 
+export type GlobeChatProgramInstallMessage = {
+  id: string;
+  role: "assistant";
+  kind: "program_install";
+  text: string;
+  query: string;
+  createdAt: string;
+};
+
 export type GlobeChatMessage =
   | GlobeChatTextMessage
   | GlobeChatImageMessage
   | GlobeChatResourceCompleteMessage
-  | GlobeChatSlotPromptMessage;
+  | GlobeChatSlotPromptMessage
+  | GlobeChatProgramInstallMessage;
 
 export type GlobeChatSession = {
   graphId: string;

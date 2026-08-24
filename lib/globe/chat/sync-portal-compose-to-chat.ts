@@ -1,4 +1,5 @@
 import {
+  appendGlobeChatProgramInstallMessage,
   appendGlobeChatSlotPromptMessage,
   appendGlobeChatTextMessage,
   readGlobeChatSession,
@@ -63,4 +64,29 @@ export function syncPortalComposeClarifyToChat(input: {
     });
   }
   return true;
+}
+
+export function syncPortalComposeProgramInstallToChat(input: {
+  graphId: string;
+  userText: string;
+  assistantText: string;
+  query: string;
+}): void {
+  const trimmedUser = input.userText.trim();
+  if (trimmedUser) {
+    const session = readGlobeChatSession(input.graphId);
+    const last = session?.messages[session.messages.length - 1];
+    const alreadyShown =
+      last?.kind === "text" &&
+      last.role === "user" &&
+      last.text.trim() === trimmedUser;
+    if (!alreadyShown) {
+      appendGlobeChatTextMessage({ graphId: input.graphId, role: "user", text: trimmedUser });
+    }
+  }
+  appendGlobeChatProgramInstallMessage({
+    graphId: input.graphId,
+    text: input.assistantText,
+    query: input.query,
+  });
 }

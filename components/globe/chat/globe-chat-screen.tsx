@@ -9,6 +9,7 @@ import { GlobeChatAnswerHint } from "@/components/globe/chat/globe-chat-answer-h
 import { GlobeChatCompletionCard } from "@/components/globe/chat/globe-chat-completion-card";
 import { GlobeChatEmptyState } from "@/components/globe/chat/globe-chat-empty-state";
 import { GlobeChatSlotChips } from "@/components/globe/chat/globe-chat-slot-chips";
+import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
 import { GlobeComposeDraftCard } from "@/components/globe/execution-feed/globe-compose-draft-card";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
 import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
@@ -478,6 +479,16 @@ export function GlobeChatScreen({
                           {copy.globe.chatImageFailed}
                         </span>
                       ) : null}
+                    </div>
+                  </div>
+                );
+              }
+              if (message.kind === "program_install") {
+                return (
+                  <div key={message.id} className="flex justify-start">
+                    <div className={cn("max-w-[92%]", globeChatLight.aiBubble)}>
+                      <p className="whitespace-pre-wrap">{message.text}</p>
+                      <PcProgramInstallList query={message.query} tone="chat" />
                     </div>
                   </div>
                 );
