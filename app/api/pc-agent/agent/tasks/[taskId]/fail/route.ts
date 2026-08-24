@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (existing.status === "FAILED") {
     return NextResponse.json({ ok: true, idempotent: true });
   }
-  if (existing.status !== "RUNNING" && existing.status !== "QUEUED") {
+  if (existing.status !== "RUNNING" && existing.status !== "QUEUED" && existing.status !== "DISPATCHED" && existing.status !== "ACTION_RUNNING" && existing.status !== "BROWSER_OPENED" && existing.status !== "PAGE_READY" && existing.status !== "VERIFYING" && existing.status !== "APPROVED") {
     return NextResponse.json({ error: "invalid_status" }, { status: 409 });
   }
 
@@ -53,7 +53,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       completed_at: now,
     })
     .eq("id", taskId)
-    .in("status", ["RUNNING", "QUEUED"])
+    .in("status", [
+      "RUNNING",
+      "QUEUED",
+      "DISPATCHED",
+      "ACTION_RUNNING",
+      "BROWSER_OPENED",
+      "PAGE_READY",
+      "VERIFYING",
+      "APPROVED",
+    ])
     .select("*")
     .maybeSingle();
 

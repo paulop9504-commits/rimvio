@@ -1,0 +1,212 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/use-auth";
+import { useCopy } from "@/hooks/use-copy";
+import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
+import {
+  subscribePcAgentDevicesRealtime,
+  subscribePcAgentTasksRealtime,
+} from "@/lib/pc-local-agent/client-realtime";
+import { bindPcPurchaseLiveWork } from "@/lib/globe/live-work/bind-pc-purchase-work";
+import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
+import { cn } from "@/lib/utils";
+
+function formatAgo(iso: string | null, nowMs: number): string {
+  if (!iso) {
+    return "—";
+  }
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) {
+    return "—";
+  }
+  const sec = Math.max(0, Math.round((nowMs - t) / 1000));
+  if (sec < 5) {
+    return "방금";
+  }
+  if (sec < 60) {
+    return `${sec}초 전`;
+  }
+  const min = Math.round(sec / 60);
+  return `${min}분 전`;
+}
+
+export function GlobeResumeDeviceSection({
+  inspectDeviceId,
+  onInspect,
+  onBack,
+}: {
+  inspectDeviceId: string | null;
+  onInspect: (id: string | null) => void;
+  onBack: () => void;
+}) {
+  const copy = useCopy();
+  const pc = copy.globe.pcContinuity;
+  const { user } = useAuth();
+  const [devices, setDevices] = useState<PcAgentDevice[]>([]);
+  const [tasks, setTasks] = useState<PcAgentTask[]>([]);
+  const prevOnline = useRef<Set<string>>(new Set());
+
+  const refresh = useCallback(async () => {
+    const [dRes, tRes] = await Promise.all([
+      fetch("/api/pc-agent/devices", { cache: "no-store" }),
+      fetch("/api/pc-agent/tasks?limit=20", { cache: "no-store" }),
+    ]);
+    let nextDevices: PcAgentDevice[] = [];
+    if (dRes.ok) {
+      const data = (await dRes.json()) as { devices?: PcAgentDevice[] };
+      nextDevices = data.devices ?? [];
+      setDevices(nextDevices);
+    }
+    if (tRes.ok) {
+      const data = (await tRes.json()) as { tasks?: PcAgentTask[] };
+      const list = data.tasks ?? [];
+      setTasks(list);
+      for (const task of list) {
+        const device = nextDevices.find((row) => row.id === task.device_id);
+        bindPcPurchaseLiveWork({
+          contextEventId: `shop:${task.id}`,
+          task,
+          deviceName: device?.name || pc.pcFallback,
+        });
+      }
+    }
+  }, [pc.pcFallback]);
+
+  useEffect(() => {
+    void refresh();
+    if (!user?.id) {
+      return;
+    }
+    const unsubD = subscribePcAgentDevicesRealtime(user.id, () => void refresh());
+    const unsubT = subscribePcAgentTasksRealtime(user.id, () => void refresh());
+    return () => {
+      unsubD();
+      unsubT();
+    };
+  }, [user?.id, refresh]);
+
+  useEffect(() => {
+    const onlineIds = new Set(
+      devices.filter((row) => row.status === "ONLINE").map((row) => row.id),
+    );
+    const resumed = tasks.some((task) => {
+      const wasOff = !prevOnline.current.has(task.device_id);
+      return (
+        wasOff &&
+        onlineIds.has(task.device_id) &&
+        readExecutionPhase(task) !== "PC_OFFLINE" &&
+        (task.status === "QUEUED" || task.status === "RUNNING")
+      );
+    });
+    if (resumed && prevOnline.current.size > 0) {
+      toast.message(pc.resumeToast);
+    }
+    prevOnline.current = onlineIds;
+  }, [devices, tasks, pc.resumeToast]);
+
+  const now = Date.now();
+  const inspect = devices.find((row) => row.id === inspectDeviceId) ?? null;
+  const running = tasks.filter((task) => {
+    if (task.device_id !== inspect?.id) {
+      return false;
+    }
+    const phase = readExecutionPhase(task);
+    return phase !== "COMPLETED" && phase !== "FAILED" && phase !== "CANCELLED";
+  }).length;
+
+  if (inspect) {
+    const online = inspect.status === "ONLINE";
+    return (
+      <div className="space-y-3 px-2" data-resume-device-inspect>
+        <button type="button" onClick={onBack} className="text-[12px] text-white/50">
+          {copy.globe.containerSpaceRuntimeBack}
+        </button>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3">
+          <p className="text-[15px] font-semibold text-white">💻 {inspect.name}</p>
+          <p className="mt-1 text-[12px] text-white/55">
+            ● {online ? pc.online : pc.offline}
+          </p>
+          <p className="mt-3 text-[12px] text-white/50">{pc.agentVersion}</p>
+          <p className="text-[12px] text-white/50">{pc.lastHeartbeat}</p>
+          <p className="text-[13px] text-white/80">
+            {formatAgo(inspect.last_seen_at, now)}
+          </p>
+          <p className="mt-3 text-[13px] text-white/80">{pc.runningCount(running)}</p>
+          <div className="mt-3 flex flex-col gap-2">
+            <button
+              type="button"
+              className="rounded-full bg-white/10 px-3 py-2 text-[13px] font-medium text-white"
+              onClick={() => {
+                void fetch(`/api/pc-agent/devices/${inspect.id}`, {
+                  method: "PATCH",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ action: "test" }),
+                }).then(() => void refresh());
+              }}
+            >
+              {pc.connectionTest}
+            </button>
+            <button
+              type="button"
+              className="rounded-full bg-white/10 px-3 py-2 text-[13px] font-medium text-white"
+              onClick={() => {
+                void fetch(`/api/pc-agent/devices/${inspect.id}`, {
+                  method: "PATCH",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ action: "revoke" }),
+                }).then(() => {
+                  onInspect(null);
+                  void refresh();
+                });
+              }}
+            >
+              {pc.disconnect}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <section data-globe-resume-devices>
+      <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+        {copy.globe.resumeSidebarDevices}
+      </p>
+      <div className="space-y-px">
+        {devices.map((device) => (
+          <button
+            key={device.id}
+            type="button"
+            onClick={() => onInspect(device.id)}
+            className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-white/85 hover:bg-white/[0.06]"
+          >
+            <span
+              className={cn(
+                "mt-0.5 size-2 shrink-0 rounded-full",
+                device.status === "ONLINE" ? "bg-emerald-400" : "bg-white/25",
+              )}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-medium">
+                💻 {device.name || pc.pcFallback}
+              </span>
+              <span className="text-[11px] text-white/45">
+                ● {device.status === "ONLINE" ? pc.online : pc.offline}
+              </span>
+            </span>
+          </button>
+        ))}
+        <div className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-white/85">
+          <span className="mt-0.5 size-2 shrink-0 rounded-full bg-emerald-400" />
+          <span>
+            <span className="block text-[14px] font-medium">📱 {pc.phoneLabel}</span>
+            <span className="text-[11px] text-white/45">● {pc.phoneConnected}</span>
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}

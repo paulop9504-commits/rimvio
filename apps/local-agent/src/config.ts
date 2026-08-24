@@ -24,7 +24,7 @@ export function loadConfig(args: string[]): AgentConfig {
   const pairMode = args.includes("--pair");
 
   return {
-    apiBaseUrl: readEnv("RIMVIO_API_BASE_URL", "http://localhost:3000").replace(/\/$/, ""),
+    apiBaseUrl: readEnv("RIMVIO_API_BASE_URL", "https://rimvio.com").replace(/\/$/, ""),
     deviceId: process.env.RIMVIO_DEVICE_ID?.trim() ?? "",
     deviceToken: process.env.RIMVIO_DEVICE_TOKEN?.trim() ?? "",
     executionEngine: process.env.RIMVIO_EXECUTION_ENGINE?.trim() || "browser",

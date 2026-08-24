@@ -212,7 +212,10 @@ export function usePcLocalAgent() {
             deviceId,
             type: "OPEN_URL",
             payload: {
-              url: "https://example.com",
+              url: "https://www.coupang.com/np/search?q=%EC%83%9D%EC%88%98",
+              title: "생수 구매",
+              query: "생수",
+              intent: "purchase",
               ...(requiredCapabilities?.length ? { requiredCapabilities } : {}),
             },
           }),

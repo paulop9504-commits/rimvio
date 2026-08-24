@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type RefObject } from "react";
+import { useState, useMemo, useEffect, type RefObject } from "react";
 import { GlobeContainerSpaceButton } from "@/components/globe/globe-container-space-button";
 import { GlobeContextAgentMapButton } from "@/components/globe/globe-context-agent-map-button";
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
@@ -14,6 +14,10 @@ import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import type { GlobeContextPeerOption } from "@/lib/globe/list-globe-context-peer-options";
 import type { GlobeContextTimelineEntry } from "@/lib/globe/list-globe-context-timeline";
 import { findLifeEventCandidate } from "@/lib/life-read-model";
+import {
+  listInProgressLiveWorks,
+  subscribeLiveWorks,
+} from "@/lib/globe/live-work/live-work-store";
 
 export type GlobeHomeLeftChromeProps = {
   mapMediaFocusOpen: boolean;
@@ -109,7 +113,14 @@ export function GlobeHomeLeftChrome({
   trendBridge,
 }: GlobeHomeLeftChromeProps) {
   const [containerSpaceOpen, setContainerSpaceOpen] = useState(false);
+  const [liveCount, setLiveCount] = useState(0);
   const memoryRecall = useMemoryRecallContext();
+
+  useEffect(() => {
+    const sync = () => setLiveCount(listInProgressLiveWorks().length);
+    sync();
+    return subscribeLiveWorks(sync);
+  }, []);
 
   const hubEvent = useMemo(() => {
     const eventId = hubEventId?.trim();
@@ -123,6 +134,7 @@ export function GlobeHomeLeftChrome({
           <div className="pointer-events-auto">
             <GlobeContainerSpaceButton
               open={containerSpaceOpen}
+              liveCount={liveCount}
               onPress={() => setContainerSpaceOpen((open) => !open)}
             />
           </div>

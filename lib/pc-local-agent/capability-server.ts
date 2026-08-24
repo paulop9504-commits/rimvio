@@ -195,7 +195,7 @@ export async function cancelCapabilityRequest(
       error: "capability_install_cancelled",
     })
     .eq("id", request.task_id)
-    .eq("status", "WAITING");
+    .in("status", ["WAITING", "AUTH_REQUIRED"]);
 
   return true;
 }
@@ -210,7 +210,7 @@ export async function expireStaleWaitingTasks(userId?: string): Promise<number> 
   let query = admin
     .from("pc_local_agent_tasks")
     .select("id, user_id")
-    .eq("status", "WAITING")
+    .in("status", ["WAITING", "WAITING_USER", "AUTH_REQUIRED"])
     .lt("waiting_expires_at", now);
 
   if (userId) {
@@ -231,7 +231,7 @@ export async function expireStaleWaitingTasks(userId?: string): Promise<number> 
         completed_at: now,
       })
       .eq("id", task.id)
-      .eq("status", "WAITING");
+      .in("status", ["WAITING", "WAITING_USER", "AUTH_REQUIRED"]);
 
     await admin
       .from("pc_local_agent_capability_requests")
@@ -340,7 +340,7 @@ export async function completeInstallJob(
       error: null,
     })
     .eq("id", request.task_id)
-    .eq("status", "WAITING");
+    .in("status", ["WAITING", "AUTH_REQUIRED"]);
 
   return { resumed: true, taskId: request.task_id };
 }

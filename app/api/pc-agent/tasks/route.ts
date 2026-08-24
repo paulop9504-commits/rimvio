@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuthUser } from "@/lib/auth/api-auth";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import type { OpenUrlPayload, PcAgentTaskType } from "@/lib/pc-local-agent";
+import { isPcAgentNavigableUrl } from "@/lib/pc-local-agent/url-safety";
+import { initialTaskResult } from "@/lib/pc-local-agent/task-dispatch";
+import { purchaseNodeForPhase } from "@/lib/pc-local-agent/purchase-graph";
 
 type CreateTaskBody = {
   deviceId?: string;
@@ -14,13 +17,16 @@ function validateOpenUrlPayload(payload: OpenUrlPayload | undefined): string | n
   if (!url) {
     return "missing_url";
   }
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return "invalid_url_protocol";
+  if (!isPcAgentNavigableUrl(url)) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return "invalid_url_protocol";
+      }
+    } catch {
+      return "invalid_url";
     }
-  } catch {
-    return "invalid_url";
+    return "checkout_blocked";
   }
   return null;
 }
@@ -55,15 +61,14 @@ export async function POST(request: NextRequest) {
 
   let deviceId = body.deviceId?.trim();
   if (!deviceId) {
-    const { data: online } = await admin
+    const { data: preferred } = await admin
       .from("pc_local_agent_devices")
-      .select("id")
+      .select("id, status")
       .eq("user_id", auth.user.id)
-      .eq("status", "ONLINE")
       .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    deviceId = online?.id;
+      .limit(8);
+    const online = (preferred ?? []).find((row) => row.status === "ONLINE");
+    deviceId = online?.id ?? preferred?.[0]?.id;
   }
   if (!deviceId) {
     return NextResponse.json({ error: "device_offline" }, { status: 409 });
@@ -79,17 +84,22 @@ export async function POST(request: NextRequest) {
   if (!device) {
     return NextResponse.json({ error: "device_not_found" }, { status: 404 });
   }
-  if (device.status !== "ONLINE") {
-    return NextResponse.json({ error: "device_offline" }, { status: 409 });
-  }
 
+  const offline = device.status !== "ONLINE";
+  const phase = offline ? "PC_OFFLINE" : "QUEUED";
   const payload = {
     url: body.payload!.url.trim(),
     ...(body.payload?.title?.trim() ? { title: body.payload.title.trim() } : {}),
+    ...(body.payload?.query?.trim() ? { query: body.payload.query.trim() } : {}),
     ...(body.payload?.intent ? { intent: body.payload.intent } : {}),
     ...(body.payload?.requiredCapabilities?.length
       ? { requiredCapabilities: body.payload.requiredCapabilities }
       : {}),
+    graphRoot: body.payload?.intent === "purchase" ? "PURCHASE" : undefined,
+    graphNode:
+      body.payload?.intent === "purchase"
+        ? purchaseNodeForPhase(phase) ?? "FIND_PRODUCT"
+        : undefined,
   };
   const { data: task, error } = await admin
     .from("pc_local_agent_tasks")
@@ -99,6 +109,7 @@ export async function POST(request: NextRequest) {
       type,
       payload,
       status: "QUEUED",
+      result: initialTaskResult(phase),
     })
     .select("*")
     .single();

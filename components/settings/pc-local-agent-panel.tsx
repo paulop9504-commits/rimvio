@@ -27,13 +27,13 @@ function StatusDot({ online }: { online: boolean }) {
 function taskStepIcon(status: PcAgentTaskStatus, step: PcAgentTaskStatus): string {
   const order = TASK_STATUS_ORDER;
   const normalized =
-    status === "FAILED" ? "RUNNING" : status === "CANCELLED" ? "WAITING" : status;
+    status === "FAILED" ? "RUNNING" : status === "CANCELLED" ? "WAITING_USER" : status;
   const statusIdx = order.indexOf(normalized);
   const stepIdx = order.indexOf(step);
   if (status === "FAILED" && step === "RUNNING") {
     return "✕";
   }
-  if (status === "CANCELLED" && step === "WAITING") {
+  if (status === "CANCELLED" && step === "WAITING_USER") {
     return "✕";
   }
   if (statusIdx > stepIdx) {
@@ -50,14 +50,14 @@ function TaskProgress({ task }: { task: PcAgentTask }) {
   const steps: { key: PcAgentTaskStatus; label: string }[] = [
     { key: "QUEUED", label: "Queued" },
     { key: "RUNNING", label: "Running" },
-    { key: "WAITING", label: "Waiting for approval" },
+    { key: "WAITING_USER", label: "Waiting for approval" },
     { key: "COMPLETED", label: status === "FAILED" ? "Failed" : "Completed" },
   ];
 
   const visibleSteps =
-    status === "WAITING" || status === "CANCELLED"
+    status === "WAITING" || status === "WAITING_USER" || status === "CANCELLED"
       ? steps
-      : steps.filter((s) => s.key !== "WAITING");
+      : steps.filter((s) => s.key !== "WAITING_USER");
 
   return (
     <div className="mt-3 space-y-1 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
@@ -67,7 +67,7 @@ function TaskProgress({ task }: { task: PcAgentTask }) {
           {taskStepIcon(status, step.key)} {step.label}
         </p>
       ))}
-      {status === "WAITING" && task.waiting_expires_at ? (
+      { (status === "WAITING" || status === "WAITING_USER") && task.waiting_expires_at ? (
         <p className="pt-1 text-[11px] text-muted-foreground">
           승인 만료: {new Date(task.waiting_expires_at).toLocaleTimeString()}
         </p>

@@ -4208,6 +4208,12 @@ function GlobeHomeBody() {
   }, []);
 
   useEffect(() => {
+    const onOpen = () => openGlobeChat();
+    window.addEventListener("rimvio:live-work-open-chat", onOpen);
+    return () => window.removeEventListener("rimvio:live-work-open-chat", onOpen);
+  }, [openGlobeChat]);
+
+  useEffect(() => {
     if (!contextConditionPromptOpen) {
       return;
     }

@@ -97,6 +97,7 @@ async function main(): Promise<void> {
 
   console.log("required tables:", REQUIRED_TABLES.join(", "));
   console.log("phase D columns: waiting_expires_at, progress_pct (applied via migration 072)");
+  console.log("phase E statuses: 16 execution phases (applied via migration 073)");
   console.log("pc-local-agent schema smoke ok");
 }
 

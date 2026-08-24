@@ -50,7 +50,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!task) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (task.status !== "RUNNING") {
+  if (
+    task.status !== "RUNNING" &&
+    task.status !== "DISPATCHED" &&
+    task.status !== "BROWSER_OPENED" &&
+    task.status !== "PAGE_READY" &&
+    task.status !== "ACTION_RUNNING"
+  ) {
     return NextResponse.json({ error: "invalid_status" }, { status: 409 });
   }
 
@@ -68,13 +74,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const { data: waitingTask, error: waitError } = await admin
     .from("pc_local_agent_tasks")
     .update({
-      status: "WAITING",
+      status: "AUTH_REQUIRED",
       payload,
       error: null,
       waiting_expires_at: waitingExpiresAt,
+      result: {
+        phase: "AUTH_REQUIRED",
+        latestEvent: "capability_required",
+      },
     })
     .eq("id", taskId)
-    .eq("status", "RUNNING")
     .select("*")
     .maybeSingle();
 

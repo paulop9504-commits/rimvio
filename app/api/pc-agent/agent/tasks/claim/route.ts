@@ -4,6 +4,13 @@ import {
   authenticatePcAgentRequest,
   touchDeviceHeartbeat,
 } from "@/lib/pc-local-agent/server-auth";
+import type { PcAgentTask } from "@/lib/pc-local-agent";
+import {
+  isCheckoutResumePhase,
+  isClaimableQueuedPhase,
+  readExecutionPhase,
+  readTaskResult,
+} from "@/lib/pc-local-agent/execution-phase";
 
 export async function POST(request: NextRequest) {
   const auth = await authenticatePcAgentRequest(request);
@@ -18,36 +25,57 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "service_unavailable" }, { status: 503 });
   }
 
-  const { data: task } = await admin
+  const { data: queued } = await admin
     .from("pc_local_agent_tasks")
     .select("*")
     .eq("device_id", auth.deviceId)
     .eq("user_id", auth.userId)
-    .eq("status", "QUEUED")
+    .in("status", ["QUEUED", "DISPATCHED"])
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(8);
 
-  if (!task) {
-    return NextResponse.json({ task: null });
+  const ready = (queued ?? []).find((row) =>
+    isClaimableQueuedPhase(readExecutionPhase(row as PcAgentTask)),
+  );
+
+  if (ready) {
+    const now = new Date().toISOString();
+    const result = {
+      ...readTaskResult((ready as PcAgentTask).result),
+      phase: "DISPATCHED" as const,
+      latestEvent: "dispatched",
+    };
+    const { data: claimed, error } = await admin
+      .from("pc_local_agent_tasks")
+      .update({
+        status: "DISPATCHED",
+        started_at: now,
+        claimed_by_agent_at: now,
+        result,
+      })
+      .eq("id", ready.id)
+      .in("status", ["QUEUED", "DISPATCHED"])
+      .select("*")
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ task: claimed ?? null });
   }
 
-  const now = new Date().toISOString();
-  const { data: claimed, error } = await admin
+  const { data: approved } = await admin
     .from("pc_local_agent_tasks")
-    .update({
-      status: "RUNNING",
-      started_at: now,
-      claimed_by_agent_at: now,
-    })
-    .eq("id", task.id)
-    .eq("status", "QUEUED")
     .select("*")
-    .maybeSingle();
+    .eq("device_id", auth.deviceId)
+    .eq("user_id", auth.userId)
+    .eq("status", "APPROVED")
+    .order("created_at", { ascending: true })
+    .limit(8);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const resume = (approved ?? []).find((row) =>
+    isCheckoutResumePhase(readExecutionPhase(row as PcAgentTask)),
+  );
 
-  return NextResponse.json({ task: claimed ?? null });
+  return NextResponse.json({ task: (resume as PcAgentTask | undefined) ?? null });
 }

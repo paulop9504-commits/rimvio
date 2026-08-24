@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { authenticatePcAgentRequest } from "@/lib/pc-local-agent/server-auth";
 import type { OpenUrlResult } from "@/lib/pc-local-agent";
+import {
+  readExecutionPhase,
+  readTaskResult,
+} from "@/lib/pc-local-agent/execution-phase";
+import type { PcAgentTask } from "@/lib/pc-local-agent";
 
 type RouteContext = { params: Promise<{ taskId: string }> };
 
@@ -30,7 +35,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { data: existing } = await admin
     .from("pc_local_agent_tasks")
-    .select("id, status, device_id")
+    .select("*")
     .eq("id", taskId)
     .eq("device_id", auth.deviceId)
     .maybeSingle();
@@ -41,7 +46,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (existing.status === "COMPLETED") {
     return NextResponse.json({ ok: true, idempotent: true });
   }
-  if (existing.status !== "RUNNING") {
+  const phase = readExecutionPhase(existing as PcAgentTask);
+  if (phase === "WAITING_USER" || phase === "HUMAN_REQUIRED" || phase === "AUTH_REQUIRED") {
+    return NextResponse.json({ error: "approval_required" }, { status: 409 });
+  }
+  const completable = new Set([
+    "RUNNING",
+    "DISPATCHED",
+    "BROWSER_OPENED",
+    "PAGE_READY",
+    "ACTION_RUNNING",
+    "APPROVED",
+    "VERIFYING",
+  ]);
+  if (!completable.has(existing.status as string)) {
     return NextResponse.json({ error: "invalid_status" }, { status: 409 });
   }
 
@@ -50,12 +68,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     .from("pc_local_agent_tasks")
     .update({
       status: "COMPLETED",
-      result: body.result ?? { success: true },
+      result: {
+        ...readTaskResult((existing as PcAgentTask).result),
+        ...body.result,
+        success: true,
+        phase: "COMPLETED",
+        latestEvent: body.result?.latestEvent ?? "completed",
+      },
       completed_at: now,
       error: null,
     })
     .eq("id", taskId)
-    .eq("status", "RUNNING")
     .select("*")
     .maybeSingle();
 

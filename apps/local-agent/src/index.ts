@@ -25,7 +25,13 @@ async function main(): Promise<void> {
 
   requirePairedCredentials(config);
   log("AGENT", "Connected");
+  log("AGENT", `Cloud ${config.apiBaseUrl}`);
   log("AGENT", `Device ${config.deviceId}`);
+  log("AGENT", `Engine ${config.executionEngine}`);
+  log(
+    "AGENT",
+    "Chrome login: start Chrome with --remote-debugging-port=9222 then keep this agent running",
+  );
 
   let router = CapabilityRouter.withBuiltinOnly();
   try {

@@ -258,11 +258,22 @@ export type PcLocalAgentTaskRow = {
   status:
     | "CREATED"
     | "QUEUED"
+    | "DISPATCHED"
     | "RUNNING"
-    | "WAITING"
+    | "BROWSER_OPENED"
+    | "PAGE_READY"
+    | "ACTION_RUNNING"
+    | "WAITING_USER"
+    | "APPROVED"
+    | "VERIFYING"
     | "COMPLETED"
     | "FAILED"
-    | "CANCELLED";
+    | "CANCELLED"
+    | "PAUSED"
+    | "PC_OFFLINE"
+    | "AUTH_REQUIRED"
+    | "HUMAN_REQUIRED"
+    | "WAITING";
   result: Json | null;
   error: string | null;
   created_at: string;

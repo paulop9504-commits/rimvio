@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { hashDeviceToken } from "@/lib/pc-local-agent/token";
+import { parkDeviceTasksOffline } from "@/lib/pc-local-agent/task-dispatch";
 import {
   PC_AGENT_HEARTBEAT_TIMEOUT_MS,
   type PcAgentDevice,
@@ -62,13 +63,24 @@ export async function authenticatePcAgentRequest(
   };
 }
 
-export async function markStaleDevicesOffline(userId?: string): Promise<void> {
+export async function markStaleDevicesOffline(userId?: string): Promise<string[]> {
   const admin = createServiceRoleClient();
   if (!admin) {
-    return;
+    return [];
   }
 
   const cutoff = new Date(Date.now() - PC_AGENT_HEARTBEAT_TIMEOUT_MS).toISOString();
+  let staleQuery = admin
+    .from("pc_local_agent_devices")
+    .select("id")
+    .eq("status", "ONLINE")
+    .lt("last_seen_at", cutoff);
+  if (userId) {
+    staleQuery = staleQuery.eq("user_id", userId);
+  }
+  const { data: stale } = await staleQuery;
+  const ids = (stale ?? []).map((row) => row.id as string);
+
   let query = admin
     .from("pc_local_agent_devices")
     .update({
@@ -83,6 +95,10 @@ export async function markStaleDevicesOffline(userId?: string): Promise<void> {
   }
 
   await query;
+  for (const id of ids) {
+    await parkDeviceTasksOffline(id);
+  }
+  return ids;
 }
 
 export async function touchDeviceHeartbeat(deviceId: string): Promise<void> {

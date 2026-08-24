@@ -261,7 +261,7 @@
     "test:engine": "npx tsx scripts/test-engine-registry.ts && npx tsx scripts/test-flight-prep-flow.ts && npx tsx scripts/test-transit-prep-flow.ts && npx tsx scripts/test-finance-prep-flow.ts && npx tsx scripts/test-engine-event-timeline.ts && npx tsx scripts/test-engine-team-collab.ts && npx tsx scripts/test-discovery-quality-gate.ts && npx tsx scripts/test-engine-turn-plan-sync.ts && npx tsx scripts/test-capability-invocation-timeline.ts && npx tsx scripts/test-context-installed-engines.ts && npx tsx scripts/test-blueprint-engine-sync.ts && npx tsx scripts/test-engine-store-ui.ts && npx tsx scripts/test-plan-step-auto-advance.ts && npx tsx scripts/test-plan-step-sequencer.ts",
     "test:execution-plane": "npx tsx scripts/test-execution-plane.ts && npx tsx scripts/test-execution-boundary.ts",
     "test:learning-layer": "npx tsx scripts/test-learning-layer.ts && npx tsx scripts/test-learning-boundary.ts",
-    "test:loop-wiring": "npx tsx scripts/test-loop-wiring.ts && npx tsx scripts/test-loop-wiring-boundary.ts && npx tsx scripts/test-morning-auto-prep.ts && npx tsx scripts/test-event-horizon-push.ts && npx tsx scripts/test-jarvis-phase-b.ts && npx tsx scripts/test-jarvis-phase-9.ts && npx tsx scripts/test-jarvis-peer-send.ts && npx tsx scripts/test-jarvis-in-app-booking.ts && npx tsx scripts/test-fact-query.ts && npx tsx scripts/test-workspace-fact-query.ts && npx tsx scripts/test-pc-local-agent.ts && npx tsx scripts/test-pc-local-agent-schema.ts",
+    "test:loop-wiring": "npx tsx scripts/test-loop-wiring.ts && npx tsx scripts/test-loop-wiring-boundary.ts && npx tsx scripts/test-morning-auto-prep.ts && npx tsx scripts/test-event-horizon-push.ts && npx tsx scripts/test-jarvis-phase-b.ts && npx tsx scripts/test-jarvis-phase-9.ts && npx tsx scripts/test-jarvis-peer-send.ts && npx tsx scripts/test-jarvis-in-app-booking.ts && npx tsx scripts/test-fact-query.ts && npx tsx scripts/test-workspace-fact-query.ts && npx tsx scripts/test-pc-local-agent.ts && npx tsx scripts/test-pc-local-agent-schema.ts && npx tsx scripts/test-pc-execution-layer-v2.ts && npx tsx scripts/test-live-work-sidebar.ts",
     "test:realtime": "npx tsx scripts/test-realtime.ts && npx tsx scripts/test-realtime-boundary.ts",
     "test:stability": "npx tsx scripts/test-stability.ts && npx tsx scripts/test-stability-boundary.ts",
     "test:platform": "npx tsx scripts/test-platform.ts && npx tsx scripts/test-platform-boundary.ts",
@@ -452,7 +452,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "allowScripts": {
     "sharp@0.34.5": true,

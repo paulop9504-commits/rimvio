@@ -3,18 +3,30 @@ export type PcAgentDeviceType = "PC";
 
 export type PcAgentTaskStatus =
   | "CREATED"
-  | "QUEUED"
-  | "RUNNING"
   | "WAITING"
+  | "QUEUED"
+  | "DISPATCHED"
+  | "RUNNING"
+  | "BROWSER_OPENED"
+  | "PAGE_READY"
+  | "ACTION_RUNNING"
+  | "WAITING_USER"
+  | "APPROVED"
+  | "VERIFYING"
   | "COMPLETED"
   | "FAILED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "PAUSED"
+  | "PC_OFFLINE"
+  | "AUTH_REQUIRED"
+  | "HUMAN_REQUIRED";
 
 export type PcAgentTaskType = "OPEN_URL";
 
 export type OpenUrlPayload = {
   url: string;
   title?: string;
+  query?: string;
   intent?: "purchase";
   requiredCapabilities?: string[];
   waitReason?: "capability_required";
@@ -24,8 +36,19 @@ export type OpenUrlPayload = {
 export type PcAgentTaskPayload = OpenUrlPayload;
 
 export type OpenUrlResult = {
-  success: boolean;
-  url: string;
+  success?: boolean;
+  url?: string;
+  message?: string;
+  phase?: string;
+  graphNode?: string;
+  latestEvent?: string;
+  screenshotJpeg?: string;
+  product?: {
+    title?: string;
+    price?: string;
+    delivery?: string;
+  };
+  parkedReason?: "pc_offline";
 };
 
 export type PcAgentDevice = {

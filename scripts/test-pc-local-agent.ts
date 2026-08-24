@@ -23,14 +23,23 @@ import {
   extractPcPurchaseTitle,
   isPcPurchaseContinuityUtterance,
   resolvePcContinuityTarget,
+  extractPcPurchaseQuery,
+  resolvePcPurchaseOpenUrl,
+  isPcAgentCheckoutUrl,
 } from "../lib/pc-local-agent/purchase-intent";
+import {
+  isPcAgentDemoAllowlistedUrl,
+  isPcAgentNavigableUrl,
+} from "../lib/pc-local-agent/url-safety";
+import { pickBestValueCandidate } from "../apps/local-agent/src/execution/shop-pick.ts";
 
 function selfTest(): void {
   assertTaskTransition("CREATED", "QUEUED");
   assertTaskTransition("QUEUED", "RUNNING");
   assertTaskTransition("RUNNING", "WAITING");
   assertTaskTransition("WAITING", "RUNNING");
-  assertTaskTransition("RUNNING", "COMPLETED");
+  assertTaskTransition("WAITING", "QUEUED");
+  assertTaskTransition("RUNNING", "CANCELLED");
 
   if (canTransitionTaskStatus("COMPLETED", "RUNNING")) {
     throw new Error("terminal_should_not_transition");
@@ -92,6 +101,47 @@ function selfTest(): void {
   }
   if (resolvePcContinuityTarget("휴지 주문해") !== "pc") {
     throw new Error("purchase_target_pc");
+  }
+  if (extractPcPurchaseQuery("쿠팡에서 생수 사") !== "생수") {
+    throw new Error("purchase_query");
+  }
+  const openUrl = resolvePcPurchaseOpenUrl("쿠팡에서 생수 사");
+  if (!openUrl.includes("coupang.com") || !openUrl.includes("%EC%83%9D%EC%88%98")) {
+    throw new Error("purchase_open_url");
+  }
+  if (!isPcPurchaseContinuityUtterance("물티슈 사줘")) {
+    throw new Error("generic_buy_should_match");
+  }
+  if (extractPcPurchaseQuery("물티슈 좀 사줘") !== "물티슈") {
+    throw new Error("generic_purchase_query");
+  }
+  if (extractPcPurchaseQuery("물 좀 사줘") !== "생수") {
+    throw new Error("water_purchase_query");
+  }
+  const cartUrl = "https://www.coupang.com/np/cart";
+  if (isPcAgentCheckoutUrl(cartUrl)) {
+    throw new Error("cart_should_allow");
+  }
+  if (!isPcAgentCheckoutUrl("https://www.coupang.com/vp/checkout")) {
+    throw new Error("checkout_should_block");
+  }
+  if (isPcAgentCheckoutUrl(openUrl)) {
+    throw new Error("search_should_allow");
+  }
+  if (!isPcAgentDemoAllowlistedUrl("https://example.com")) {
+    throw new Error("example_allowlist");
+  }
+  if (!isPcAgentNavigableUrl("https://example.com/")) {
+    throw new Error("example_navigable");
+  }
+
+  const pick = pickBestValueCandidate([
+    { href: "/cheap-low", price: 1000, rating: 2.1, reviewCount: 3, rocket: false },
+    { href: "/best", price: 3900, rating: 4.7, reviewCount: 220, rocket: true },
+    { href: "/mid", price: 2500, rating: 4.1, reviewCount: 40, rocket: false },
+  ]);
+  if (pick?.href !== "/mid") {
+    throw new Error("pick_cheapest_among_quality");
   }
 
   console.log("pc-local-agent self-test ok (phase D)");

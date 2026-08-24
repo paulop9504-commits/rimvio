@@ -17,6 +17,8 @@ import {
   formatResumeRelativeTime,
   isResumeLiveActivity,
 } from "@/lib/globe/resume-sidebar/format-resume-relative-time";
+import { collectManagedLiveWorks } from "@/lib/globe/live-work/collect-managed-sidebar-rows";
+import type { LiveWork, LiveWorkPhase } from "@/lib/globe/live-work/types";
 import { listPinnedWorkspaceIds } from "@/lib/globe/resume-sidebar/pinned-workspace-ids";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import type { SocialBubblePeer } from "@/lib/social/bubble-state";
@@ -31,6 +33,8 @@ export type ResumeWorkspaceRow = {
   readonly live: boolean;
   readonly pinned: boolean;
   readonly updatedAtIso: string;
+  readonly workPhase?: LiveWorkPhase;
+  readonly liveWorkId?: string;
 };
 
 export type ResumeFriendRow = {
@@ -45,10 +49,37 @@ export type ResumeFriendRow = {
 };
 
 export type GlobeResumeSidebarModel = {
+  readonly inProgress: readonly ResumeWorkspaceRow[];
   readonly pinned: readonly ResumeWorkspaceRow[];
   readonly friends: readonly ResumeFriendRow[];
   readonly recent: readonly ResumeWorkspaceRow[];
 };
+
+function liveWorkToRow(work: LiveWork): ResumeWorkspaceRow {
+  const mark =
+    work.phase === "needs_approval"
+      ? "◉"
+      : work.phase === "waiting_pc"
+        ? "⏸"
+        : work.phase === "running"
+          ? "●"
+          : "✓";
+  return {
+    kind: "workspace",
+    contextEventId: work.contextEventId,
+    title: `${work.glyph} ${work.title}`.trim(),
+    subtitle: work.statusLine,
+    relativeLabel: mark,
+    live:
+      work.phase === "running" ||
+      work.phase === "needs_approval" ||
+      work.phase === "waiting_pc",
+    pinned: false,
+    updatedAtIso: work.updatedAtIso,
+    workPhase: work.phase,
+    liveWorkId: work.id,
+  };
+}
 
 function capsuleToRow(
   capsule: CapsuleProjection,
@@ -105,25 +136,47 @@ export function buildGlobeResumeSidebarModel(input?: {
   const maxPinned = input?.maxPinned ?? 6;
   const maxFriends = input?.maxFriends ?? 8;
   const maxRecent = input?.maxRecent ?? 10;
-  const activeId = input?.activeEventId?.trim() ?? "";
+
+  const managed = collectManagedLiveWorks(nowMs);
+  const occupied = new Set(managed.occupiedIds);
+  const inProgress: ResumeWorkspaceRow[] = managed.inProgress.map(liveWorkToRow);
 
   const pinSet = new Set(listPinnedWorkspaceIds());
-  if (activeId) pinSet.add(activeId);
 
   const capsules = [...listCapsuleProjections()].sort((a, b) =>
     b.updatedAtIso.localeCompare(a.updatedAtIso),
   );
   const capsuleById = new Map(capsules.map((c) => [c.contextEventId, c] as const));
 
+  for (const capsule of capsules) {
+    if (occupied.has(capsule.contextEventId)) continue;
+    if (
+      !capsule.hasPendingAgentPlan &&
+      !readContextWorkspaceExpanded(capsule.contextEventId)
+    ) {
+      continue;
+    }
+    inProgress.push({
+      ...capsuleToRow(capsule, false, nowMs),
+      live: true,
+      relativeLabel: "●",
+      workPhase: "running",
+    });
+    occupied.add(capsule.contextEventId);
+  }
+
   const pinnedRows: ResumeWorkspaceRow[] = [];
   for (const id of pinSet) {
     const capsule = capsuleById.get(id);
     if (capsule) {
+      if (occupied.has(id)) continue;
       pinnedRows.push(capsuleToRow(capsule, true, nowMs));
+      occupied.add(id);
       continue;
     }
     const state = readContextWorkspace(id);
     if (state && state.status !== "closed") {
+      if (occupied.has(id)) continue;
       pinnedRows.push({
         kind: "workspace",
         contextEventId: id,
@@ -136,18 +189,14 @@ export function buildGlobeResumeSidebarModel(input?: {
         pinned: true,
         updatedAtIso: state.updatedAtIso,
       });
-    }
-  }
-
-  if (pinnedRows.length === 0) {
-    for (const capsule of capsules.slice(0, Math.min(2, maxPinned))) {
-      pinnedRows.push(capsuleToRow(capsule, false, nowMs));
+      occupied.add(id);
     }
   }
 
   const pinnedIds = new Set(pinnedRows.map((r) => r.contextEventId));
-  const recentRows: ResumeWorkspaceRow[] = [];
+  const recentRows: ResumeWorkspaceRow[] = managed.recentlySettled.map(liveWorkToRow);
   for (const capsule of capsules) {
+    if (occupied.has(capsule.contextEventId)) continue;
     if (pinnedIds.has(capsule.contextEventId)) continue;
     recentRows.push(capsuleToRow(capsule, false, nowMs));
   }
@@ -157,6 +206,7 @@ export function buildGlobeResumeSidebarModel(input?: {
     .sort((a, b) => b.sortMs - a.sortMs)
     .slice(0, 24);
   for (const entry of flat) {
+    if (occupied.has(entry.eventId)) continue;
     if (pinnedIds.has(entry.eventId)) continue;
     if (recentRows.some((r) => r.contextEventId === entry.eventId)) continue;
     const row = timelineToWorkspaceRow(entry, false, nowMs);
@@ -205,6 +255,7 @@ export function buildGlobeResumeSidebarModel(input?: {
   }
 
   return {
+    inProgress,
     pinned: pinnedRows.slice(0, maxPinned),
     friends,
     recent: recentRows.slice(0, maxRecent),
