@@ -1,12 +1,27 @@
 import http from "node:http";
 import { exec } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import type { CloudClient } from "./cloud-client.js";
 import type { AgentConfig } from "./config.js";
-import { writePcCredentials } from "./credential-store.js";
+import { readPcCredentials, writePcCredentials } from "./credential-store.js";
 import { log, logError } from "./logger.js";
 
-const PORT = 38472;
-const WEB_PAIR_WAIT_MS = 90_000;
+function generateDisplayPairingCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const pick = (n: number) =>
+    Array.from({ length: n }, () => alphabet[randomBytes(1)[0]! % alphabet.length]).join("");
+  return `${pick(4)}-${pick(2)}`;
+}
+
+export const PC_LOCAL_BRIDGE_PORT = 38472;
+const BROWSER_FALLBACK_MS = 75_000;
+
+export type PcBridgeState = {
+  paired: boolean;
+  displayCode: string;
+  webPresence: boolean;
+  starting: boolean;
+};
 
 function cors(res: http.ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -24,21 +39,45 @@ function openBrowser(url: string): void {
   exec(cmd, () => undefined);
 }
 
-export async function connectThisPc(config: AgentConfig, client: CloudClient): Promise<AgentConfig> {
-  let paired = Boolean(config.deviceId && config.deviceToken);
-  let resolvePair: ((value: AgentConfig) => void) | null = null;
-  const done = new Promise<AgentConfig>((resolve) => {
-    resolvePair = resolve;
-  });
+function healthBody(state: PcBridgeState) {
+  const phase = state.paired
+    ? "connected"
+    : state.starting
+      ? "starting"
+      : "pairing_required";
+  return {
+    ok: true,
+    paired: state.paired,
+    phase,
+    displayCode: state.paired ? null : state.displayCode,
+    webPresence: state.webPresence,
+  };
+}
+
+export function startPcLocalBridge(input: {
+  config: AgentConfig;
+  client: CloudClient;
+  initialPaired: boolean;
+  onPaired: (next: AgentConfig) => void;
+}): { server: http.Server; state: PcBridgeState } {
+  const state: PcBridgeState = {
+    paired: input.initialPaired,
+    displayCode: generateDisplayPairingCode(),
+    webPresence: false,
+    starting: !input.initialPaired,
+  };
 
   const finish = (next: AgentConfig) => {
-    paired = true;
+    if (state.paired) {
+      return;
+    }
+    state.paired = true;
     writePcCredentials({
       deviceId: next.deviceId,
       deviceToken: next.deviceToken,
       deviceName: next.deviceName,
     });
-    resolvePair?.(next);
+    input.onPaired(next);
   };
 
   const server = http.createServer((req, res) => {
@@ -49,11 +88,18 @@ export async function connectThisPc(config: AgentConfig, client: CloudClient): P
       return;
     }
 
-    const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`);
+    const url = new URL(req.url ?? "/", `http://127.0.0.1:${PC_LOCAL_BRIDGE_PORT}`);
 
     if (req.method === "GET" && url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true, paired }));
+      res.end(JSON.stringify(healthBody(state)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/announce") {
+      state.webPresence = true;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
       return;
     }
 
@@ -63,21 +109,35 @@ export async function connectThisPc(config: AgentConfig, client: CloudClient): P
         for await (const chunk of req) {
           chunks.push(chunk as Buffer);
         }
-        let body: { code?: string; deviceName?: string } = {};
+        let body: { code?: string; deviceName?: string; consent?: boolean } = {};
         try {
           body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
             code?: string;
             deviceName?: string;
+            consent?: boolean;
           };
         } catch {
           res.writeHead(400);
           res.end(JSON.stringify({ error: "invalid_json" }));
           return;
         }
+        if (!body.consent) {
+          res.writeHead(403, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "consent_required" }));
+          return;
+        }
+        if (state.paired) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, already: true }));
+          return;
+        }
         try {
-          const result = await client.pairWithCode(body.code ?? "", body.deviceName || config.deviceName);
+          const result = await input.client.pairWithCode(
+            body.code ?? "",
+            body.deviceName || input.config.deviceName,
+          );
           const next = {
-            ...config,
+            ...input.config,
             deviceId: result.deviceId,
             deviceToken: result.deviceToken,
             deviceName: result.deviceName,
@@ -99,9 +159,9 @@ export async function connectThisPc(config: AgentConfig, client: CloudClient): P
       const exchange = url.searchParams.get("exchange") ?? "";
       void (async () => {
         try {
-          const result = await client.exchangeDesktopSession(nonce, exchange);
+          const result = await input.client.exchangeDesktopSession(nonce, exchange);
           const next = {
-            ...config,
+            ...input.config,
             deviceId: result.deviceId,
             deviceToken: result.deviceToken,
             deviceName: result.deviceName,
@@ -122,29 +182,56 @@ export async function connectThisPc(config: AgentConfig, client: CloudClient): P
     res.end();
   });
 
-  await new Promise<void>((resolve) => {
-    server.listen(PORT, "127.0.0.1", () => resolve());
+  return { server, state };
+}
+
+export async function listenPcLocalBridge(
+  server: http.Server,
+  state?: PcBridgeState,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(PC_LOCAL_BRIDGE_PORT, "127.0.0.1", () => resolve());
   });
-  log("AGENT", "Waiting to connect this PC");
+  if (state) {
+    state.starting = false;
+  }
+}
 
-  const timedOut = await Promise.race([
-    done.then(() => false),
-    new Promise<boolean>((resolve) => {
-      setTimeout(() => resolve(true), WEB_PAIR_WAIT_MS);
-    }),
-  ]);
+export async function connectThisPc(
+  config: AgentConfig,
+  client: CloudClient,
+  bridge: { state: PcBridgeState },
+): Promise<AgentConfig> {
+  if (config.deviceId && config.deviceToken) {
+    bridge.state.paired = true;
+    return config;
+  }
 
-  if (timedOut && !paired) {
+  log("AGENT", `Waiting for Rimvio to approve this PC (${bridge.state.displayCode})`);
+
+  void (async () => {
+    await new Promise((r) => setTimeout(r, BROWSER_FALLBACK_MS));
+    if (bridge.state.paired || bridge.state.webPresence) {
+      return;
+    }
     try {
-      const session = await client.createDesktopSession(config.deviceName, PORT);
+      const session = await client.createDesktopSession(config.deviceName, PC_LOCAL_BRIDGE_PORT);
       log("AGENT", "Open Rimvio in the browser to finish connecting");
       openBrowser(session.approveUrl);
     } catch (err) {
       logError("ERROR", "desktop session failed", err);
     }
-  }
+  })();
 
-  const next = await done;
-  server.close();
-  return next;
+  while (!bridge.state.paired) {
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  const stored = readPcCredentials();
+  return {
+    ...config,
+    deviceId: stored?.deviceId || config.deviceId,
+    deviceToken: stored?.deviceToken || config.deviceToken,
+    deviceName: stored?.deviceName || config.deviceName,
+  };
 }

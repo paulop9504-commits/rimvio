@@ -4,6 +4,7 @@
     "node_modules",
     "scripts",
     "tests",
+    "apps",
     "lib/testing/**",
     "lib/data-architect/**",
     "lib/react-atomic-frame-binder/**",

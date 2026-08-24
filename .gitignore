@@ -78,3 +78,7 @@ data/seed-learning-aggregate.json
 .public-staging/
 
 supabase/.temp/
+apps/pc-desktop/dist/
+apps/pc-desktop/node_modules/
+apps/pc-desktop/resources/agent.cjs
+

@@ -8,3 +8,5 @@ export * from "./token";
 export * from "./capabilities";
 export * from "./pc-permissions";
 export * from "./desktop-connect";
+export * from "./onboarding-phase";
+export * from "./setup-url";

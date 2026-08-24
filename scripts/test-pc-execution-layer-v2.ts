@@ -223,6 +223,7 @@ const connectFlowSrc = readFileSync(
   "utf8",
 );
 assert.ok(connectFlowSrc.includes("data-pc-connect-flow"));
+assert.ok(connectFlowSrc.includes("data-pc-connect-phase"));
 assert.ok(!connectFlowSrc.includes("Local Agent"));
 assert.ok(!connectFlowSrc.includes("Daemon"));
 

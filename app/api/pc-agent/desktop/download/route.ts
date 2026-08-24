@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
+import {
+  RIMVIO_PC_SETUP_FILENAME,
+  resolvePcSetupDownloadUrl,
+} from "@/lib/pc-local-agent/setup-url";
 
 export async function GET() {
-  const url =
-    process.env.RIMVIO_PC_SETUP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_RIMVIO_PC_SETUP_URL?.trim() ||
-    "";
-  const filename = "Rimvio-Setup.exe";
-  if (!url) {
-    return NextResponse.json({
-      available: false,
-      filename,
-    });
-  }
+  const url = resolvePcSetupDownloadUrl();
   return NextResponse.json({
-    available: true,
+    available: Boolean(url),
     url,
-    filename,
+    filename: RIMVIO_PC_SETUP_FILENAME,
   });
 }

@@ -4,7 +4,11 @@ import { CapabilityRouter } from "./capabilities/router.js";
 import { runInstallJobs } from "./capabilities/install-handler.js";
 import { createExecutionEngine } from "./execution/index.js";
 import { writePcCredentials } from "./credential-store.js";
-import { connectThisPc } from "./pairing-server.js";
+import {
+  connectThisPc,
+  listenPcLocalBridge,
+  startPcLocalBridge,
+} from "./pairing-server.js";
 import { log, logError } from "./logger.js";
 
 const runningTasks = new Set<string>();
@@ -12,6 +16,19 @@ const runningTasks = new Set<string>();
 async function main(): Promise<void> {
   const config = loadConfig(process.argv.slice(2));
   const client = new CloudClient(config);
+
+  const { server, state } = startPcLocalBridge({
+    config,
+    client,
+    initialPaired: Boolean(config.deviceId && config.deviceToken),
+    onPaired: (next) => {
+      config.deviceId = next.deviceId;
+      config.deviceToken = next.deviceToken;
+      config.deviceName = next.deviceName;
+    },
+  });
+  await listenPcLocalBridge(server, state);
+  log("AGENT", "Rimvio PC is running");
 
   if (process.argv.includes("--pair")) {
     log("AGENT", "Connecting this PC to Rimvio…");
@@ -26,7 +43,7 @@ async function main(): Promise<void> {
     config.deviceName = result.deviceName;
     log("AGENT", "Connected");
   } else if (!config.deviceId || !config.deviceToken) {
-    const next = await connectThisPc(config, client);
+    const next = await connectThisPc(config, client, { state });
     config.deviceId = next.deviceId;
     config.deviceToken = next.deviceToken;
     config.deviceName = next.deviceName;

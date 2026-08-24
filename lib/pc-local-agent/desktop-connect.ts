@@ -8,8 +8,8 @@ export function localAgentHealthUrl(port = PC_AGENT_LOCAL_CALLBACK_PORT): string
   return `http://127.0.0.1:${port}/health`;
 }
 
-export function localAgentWebPairUrl(port = PC_AGENT_LOCAL_CALLBACK_PORT): string {
-  return `http://127.0.0.1:${port}/web-pair`;
+export function localAgentAnnounceUrl(port = PC_AGENT_LOCAL_CALLBACK_PORT): string {
+  return `http://127.0.0.1:${port}/announce`;
 }
 
 export function localAgentCallbackUrl(input: {
