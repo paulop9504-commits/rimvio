@@ -20,14 +20,14 @@ const ALL_APPS_RE = /프로그램|앱들?|소프트웨어/iu;
 export function cursorSetupUrl(): string {
   return (
     process.env.RIMVIO_CURSOR_SETUP_URL?.trim() ||
-    "https://www.cursor.com/download/stable/win32-x64-user"
+    "https://cursor.com/api/download?platform=win32-x64-user&releaseTrack=stable"
   );
 }
 
 export function chromeSetupUrl(): string {
   return (
     process.env.RIMVIO_CHROME_SETUP_URL?.trim() ||
-    "https://dl.google.com/chrome/install/ChromeStandaloneSetup64.exe"
+    "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
   );
 }
 
@@ -48,7 +48,7 @@ export function programFilename(id: PcProgramId): string {
   if (id === "cursor") {
     return "CursorUserSetup.exe";
   }
-  return "ChromeStandaloneSetup64.exe";
+  return "ChromeSetup.exe";
 }
 
 export function programNameKey(id: PcProgramId): PcProgramInstallOffer["nameKey"] {
@@ -110,6 +110,14 @@ export function resolveProgramInstallOffers(utterance: string): PcProgramInstall
   return (["rimvio-pc", "cursor", "chrome"] as const)
     .filter((id) => ids.has(id))
     .map(toOffer);
+}
+
+export function isPcProgramId(value: string): value is PcProgramId {
+  return value === "rimvio-pc" || value === "cursor" || value === "chrome";
+}
+
+export function programClientDownloadPath(id: PcProgramId): string {
+  return `/api/pc-agent/programs/download?id=${id}`;
 }
 
 export function isPcProgramInstallUtterance(utterance: string): boolean {

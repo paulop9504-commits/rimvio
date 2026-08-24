@@ -22,6 +22,14 @@ assert.ok(cursor.some((row) => row.id === "cursor"));
 
 const chrome = resolveProgramInstallOffers("크롬 깔아줘");
 assert.ok(chrome.some((row) => row.id === "chrome"));
+assert.ok(chrome.some((row) => row.url.includes("chrome_installer.exe")));
+assert.ok(!chrome.some((row) => row.url.includes("ChromeStandaloneSetup64")));
+
+const downloadRoute = readFileSync(
+  join(process.cwd(), "app/api/pc-agent/programs/download/route.ts"),
+  "utf8",
+);
+assert.ok(downloadRoute.includes("win32-x64-user"));
 
 const all = resolveProgramInstallOffers("필요한 프로그램 설치해줘");
 assert.equal(all.length, 3);

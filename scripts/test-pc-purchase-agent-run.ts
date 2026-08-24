@@ -34,7 +34,8 @@ const paths = chromeExecutableCandidates({
   PROGRAMFILES: "C:\\Program Files",
 });
 assert.ok(paths.some((p) => p.includes("Google\\Chrome\\Application\\chrome.exe") || p.includes("Google/Chrome/Application/chrome.exe")));
-assert.ok(chromeSetupDownloadUrl().includes("Chrome"));
+assert.ok(chromeSetupDownloadUrl().includes("chrome_installer.exe"));
+assert.ok(!chromeSetupDownloadUrl().includes("ChromeStandaloneSetup64"));
 
 clearPendingPcPurchase();
 writePendingPcPurchase({ utterance: "쿠팡에서 물 사", contextEventId: "ctx1" });

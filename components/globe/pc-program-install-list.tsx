@@ -5,9 +5,10 @@ import { useCopy } from "@/hooks/use-copy";
 import type { PcProgramInstallOffer } from "@/lib/pc-local-agent/program-install-catalog";
 import { cn } from "@/lib/utils";
 
-function startDownload(url: string) {
+function startDownload(url: string, filename: string) {
   const link = document.createElement("a");
   link.href = url;
+  link.download = filename;
   link.rel = "noopener";
   document.body.appendChild(link);
   link.click();
@@ -70,7 +71,7 @@ export function PcProgramInstallList({
             type="button"
             data-pc-program-id={program.id}
             onClick={() => {
-              startDownload(program.url);
+              startDownload(program.url, program.filename);
               setStarted(program.id);
               onStarted?.(program.id);
             }}

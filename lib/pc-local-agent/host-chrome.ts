@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-/** Chrome installer the PC agent can fetch when the shop run needs a browser. */
-export const CHROME_SETUP_FILENAME = "ChromeStandaloneSetup64.exe";
+/** Official Chrome setup for double-click. StandaloneSetup64.exe shows "Invalid option". */
+export const CHROME_SETUP_FILENAME = "ChromeSetup.exe";
 
 export function chromeSetupDownloadUrl(): string {
   return (
     process.env.RIMVIO_CHROME_SETUP_URL?.trim() ||
-    "https://dl.google.com/chrome/install/ChromeStandaloneSetup64.exe"
+    "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
   );
 }
 
