@@ -6,12 +6,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import {
+  PC_CONNECT_EVENT,
+  PC_CONNECT_INSPECT_ID,
+} from "@/lib/pc-local-agent/desktop-connect";
+import {
   subscribePcAgentDevicesRealtime,
   subscribePcAgentTasksRealtime,
 } from "@/lib/pc-local-agent/client-realtime";
 import { bindPcPurchaseLiveWork } from "@/lib/globe/live-work/bind-pc-purchase-work";
 import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
+import { parsePcAgentPermissions } from "@/lib/pc-local-agent/pc-permissions";
 import { cn } from "@/lib/utils";
+import { PcConnectFlow } from "@/components/globe/pc-connect-flow";
 
 function formatAgo(iso: string | null, nowMs: number): string {
   if (!iso) {
@@ -32,6 +38,18 @@ function formatAgo(iso: string | null, nowMs: number): string {
   return `${min}분 전`;
 }
 
+function activeTaskForDevice(tasks: PcAgentTask[], deviceId: string): PcAgentTask | null {
+  return (
+    tasks.find((task) => {
+      if (task.device_id !== deviceId) {
+        return false;
+      }
+      const phase = readExecutionPhase(task);
+      return phase !== "COMPLETED" && phase !== "FAILED" && phase !== "CANCELLED";
+    }) ?? null
+  );
+}
+
 export function GlobeResumeDeviceSection({
   inspectDeviceId,
   onInspect,
@@ -46,6 +64,8 @@ export function GlobeResumeDeviceSection({
   const { user } = useAuth();
   const [devices, setDevices] = useState<PcAgentDevice[]>([]);
   const [tasks, setTasks] = useState<PcAgentTask[]>([]);
+  const [connectNonce, setConnectNonce] = useState<string | null>(null);
+  const [permsOpen, setPermsOpen] = useState(false);
   const prevOnline = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
@@ -88,6 +108,24 @@ export function GlobeResumeDeviceSection({
   }, [user?.id, refresh]);
 
   useEffect(() => {
+    const stored = sessionStorage.getItem("rimvio-pc-connect-nonce")?.trim();
+    if (stored) {
+      sessionStorage.removeItem("rimvio-pc-connect-nonce");
+      setConnectNonce(stored);
+      onInspect(PC_CONNECT_INSPECT_ID);
+    }
+    const onConnect = (event: Event) => {
+      const nonce = (event as CustomEvent<{ nonce?: string }>).detail?.nonce?.trim();
+      if (nonce) {
+        setConnectNonce(nonce);
+      }
+      onInspect(PC_CONNECT_INSPECT_ID);
+    };
+    window.addEventListener(PC_CONNECT_EVENT, onConnect);
+    return () => window.removeEventListener(PC_CONNECT_EVENT, onConnect);
+  }, [onInspect]);
+
+  useEffect(() => {
     const onlineIds = new Set(
       devices.filter((row) => row.status === "ONLINE").map((row) => row.id),
     );
@@ -107,17 +145,26 @@ export function GlobeResumeDeviceSection({
   }, [devices, tasks, pc.resumeToast]);
 
   const now = Date.now();
+  const connecting = inspectDeviceId === PC_CONNECT_INSPECT_ID;
   const inspect = devices.find((row) => row.id === inspectDeviceId) ?? null;
-  const running = tasks.filter((task) => {
-    if (task.device_id !== inspect?.id) {
-      return false;
-    }
-    const phase = readExecutionPhase(task);
-    return phase !== "COMPLETED" && phase !== "FAILED" && phase !== "CANCELLED";
-  }).length;
+
+  if (connecting) {
+    return (
+      <PcConnectFlow
+        nonce={connectNonce}
+        onCancel={onBack}
+        onDone={(id) => {
+          void refresh();
+          onInspect(id);
+        }}
+      />
+    );
+  }
 
   if (inspect) {
     const online = inspect.status === "ONLINE";
+    const running = activeTaskForDevice(tasks, inspect.id);
+    const perms = parsePcAgentPermissions(inspect.permissions);
     return (
       <div className="space-y-3 px-2" data-resume-device-inspect>
         <button type="button" onClick={onBack} className="text-[12px] text-white/50">
@@ -126,15 +173,35 @@ export function GlobeResumeDeviceSection({
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3">
           <p className="text-[15px] font-semibold text-white">💻 {inspect.name}</p>
           <p className="mt-1 text-[12px] text-white/55">
-            ● {online ? pc.online : pc.offline}
+            {online ? "●" : "○"} {online ? pc.online : pc.offline}
           </p>
-          <p className="mt-3 text-[12px] text-white/50">{pc.agentVersion}</p>
-          <p className="text-[12px] text-white/50">{pc.lastHeartbeat}</p>
-          <p className="text-[13px] text-white/80">
-            {formatAgo(inspect.last_seen_at, now)}
-          </p>
-          <p className="mt-3 text-[13px] text-white/80">{pc.runningCount(running)}</p>
+          {running ? (
+            <p className="mt-3 text-[13px] text-white/80">
+              {pc.runningWithTitle(running.payload.title || pc.pcFallback)}
+            </p>
+          ) : (
+            <p className="mt-3 text-[13px] text-white/80">{pc.runningCount(0)}</p>
+          )}
+          <p className="mt-3 text-[12px] text-white/50">{pc.lastHeartbeat}</p>
+          <p className="text-[13px] text-white/80">{formatAgo(inspect.last_seen_at, now)}</p>
           <div className="mt-3 flex flex-col gap-2">
+            <button
+              type="button"
+              className="rounded-full bg-white/10 px-3 py-2 text-[13px] font-medium text-white"
+              onClick={() => setPermsOpen((open) => !open)}
+            >
+              {pc.managePerms}
+            </button>
+            {permsOpen ? (
+              <div className="rounded-xl bg-black/20 px-3 py-2 text-[12px] text-white/70" data-pc-perm-manage>
+                <p>✓ {pc.permBrowser} {perms.browser ? "" : "○"}</p>
+                <p>✓ {pc.permWeb}</p>
+                <p>✓ {pc.permApps}</p>
+                <p>✓ {pc.permStatus}</p>
+                <p>✓ {pc.permScreen}</p>
+                <p className="mt-2 text-white/45">{pc.permSensitive}</p>
+              </div>
+            ) : null}
             <button
               type="button"
               className="rounded-full bg-white/10 px-3 py-2 text-[13px] font-medium text-white"
@@ -176,29 +243,56 @@ export function GlobeResumeDeviceSection({
         {copy.globe.resumeSidebarDevices}
       </p>
       <div className="space-y-px">
-        {devices.map((device) => (
+        {devices.length === 0 ? (
           <button
-            key={device.id}
             type="button"
-            onClick={() => onInspect(device.id)}
+            data-pc-connect-cta
+            onClick={() => onInspect(PC_CONNECT_INSPECT_ID)}
             className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-white/85 hover:bg-white/[0.06]"
           >
-            <span
-              className={cn(
-                "mt-0.5 size-2 shrink-0 rounded-full",
-                device.status === "ONLINE" ? "bg-emerald-400" : "bg-white/25",
-              )}
-            />
+            <span className="mt-0.5 size-2 shrink-0 rounded-full bg-white/25" />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[14px] font-medium">
-                💻 {device.name || pc.pcFallback}
-              </span>
-              <span className="text-[11px] text-white/45">
-                ● {device.status === "ONLINE" ? pc.online : pc.offline}
+              <span className="block truncate text-[14px] font-medium">💻 {pc.pcFallback}</span>
+              <span className="text-[11px] text-white/45">{pc.notConnected}</span>
+              <span className="mt-0.5 block text-[12px] font-medium text-white/80">
+                {pc.connectCta}
               </span>
             </span>
           </button>
-        ))}
+        ) : (
+          devices.map((device) => {
+            const running = activeTaskForDevice(tasks, device.id);
+            const online = device.status === "ONLINE";
+            return (
+              <button
+                key={device.id}
+                type="button"
+                onClick={() => onInspect(device.id)}
+                className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-white/85 hover:bg-white/[0.06]"
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 size-2 shrink-0 rounded-full",
+                    online ? "bg-emerald-400" : "bg-white/25",
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-medium">
+                    💻 {device.name || pc.pcFallback}
+                  </span>
+                  <span className="text-[11px] text-white/45">
+                    {online ? "●" : "○"} {online ? pc.online : pc.offline}
+                  </span>
+                  {running ? (
+                    <span className="mt-0.5 block truncate text-[11px] text-white/55">
+                      {pc.runningWithTitle(running.payload.title || pc.pcFallback)}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })
+        )}
         <div className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-white/85">
           <span className="mt-0.5 size-2 shrink-0 rounded-full bg-emerald-400" />
           <span>

@@ -85,7 +85,7 @@ export function PeerTalkContactBubbles({
   return (
     <div
       className={cn(
-        "flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "pointer-events-auto relative z-20 flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
       aria-label="톡할 친구"

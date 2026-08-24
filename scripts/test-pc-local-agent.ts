@@ -10,7 +10,9 @@ import {
   hashDeviceToken,
   generateDeviceToken,
   generatePairingCode,
+  generateDesktopNonce,
 } from "../lib/pc-local-agent/token";
+import { parsePcAgentPermissions } from "../lib/pc-local-agent/pc-permissions";
 import {
   CapabilityRouter,
   DEMO_CAPABILITY_ID,
@@ -57,6 +59,16 @@ function selfTest(): void {
   const code = generatePairingCode();
   if (!/^\d{6}$/.test(code)) {
     throw new Error("pairing_code_format");
+  }
+
+  const nonce = generateDesktopNonce();
+  if (nonce.length < 16) {
+    throw new Error("desktop_nonce");
+  }
+
+  const perms = parsePcAgentPermissions({ browser: false });
+  if (perms.browser !== false || perms.webWork !== true) {
+    throw new Error("pc_permissions_default");
   }
 
   const gapBuiltin = resolveCapabilityGap([], ["browser.basic"]);

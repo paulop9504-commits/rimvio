@@ -381,7 +381,7 @@ export function PeerFriendsRail({
         />
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white pb-[var(--rimvio-bottom-nav-offset)] lg:pb-4">
         {showAiLane ? (
           <PeerAiCoordinationList />
         ) : showAlignmentEmpty ? (
@@ -440,7 +440,7 @@ export function PeerFriendsRail({
                     href={href}
                     onMouseEnter={() => prefetchPeerMessages(group.threadId)}
                     onTouchStart={() => prefetchPeerMessages(group.threadId)}
-                    className={PEERS_CHAT_LIST.row}
+                    className={cn(PEERS_CHAT_LIST.row, "relative z-[1]")}
                   >
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f6] text-[#4e5968]">
                       <Users className="size-5" aria-hidden />
@@ -502,6 +502,7 @@ export function PeerFriendsRail({
                     className={cn(
                       PEERS_CHAT_LIST.row,
                       isUnread && PEERS_CHAT_LIST.rowUnread,
+                      "relative z-[1]",
                     )}
                   >
                     <PeerProfileAvatar

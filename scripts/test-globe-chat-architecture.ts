@@ -13,6 +13,11 @@ const chat = readFileSync(join(root, "components/globe/chat/globe-chat-screen.ts
 assert.ok(chat.includes("GlobeChatScreen"), "fullscreen chat screen exists");
 assert.ok(chat.includes("FlowStatusBar"), "flow status bar in chat");
 assert.ok(chat.includes('data-globe-chat-screen'), "chat screen marker");
+assert.ok(
+  chat.includes("mb-[var(--rimvio-bottom-nav-offset)]"),
+  "chat composer sits above floating bottom nav",
+);
+assert.ok(chat.includes("pointer-events-none"), "chat root lets bottom nav receive taps");
 
 const home = readFileSync(join(root, "components/globe/globe-home-client.tsx"), "utf8");
 assert.ok(home.includes("GlobeChatScreen"), "home mounts chat screen");

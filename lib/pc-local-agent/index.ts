@@ -6,3 +6,5 @@ export * from "./purchase-graph";
 export * from "./url-safety";
 export * from "./token";
 export * from "./capabilities";
+export * from "./pc-permissions";
+export * from "./desktop-connect";

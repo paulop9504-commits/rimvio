@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const { deviceId } = await context.params;
-  let body: { action?: string };
+  let body: { action?: string; permissions?: unknown };
   try {
     body = (await request.json()) as { action?: string };
   } catch {
@@ -40,6 +40,27 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       device,
       online: device.status === "ONLINE",
     });
+  }
+
+  if (body.action === "permissions") {
+    const { parsePcAgentPermissions } = await import(
+      "@/lib/pc-local-agent/pc-permissions"
+    );
+    const permissions = parsePcAgentPermissions(body.permissions);
+    const { data: updated, error } = await admin
+      .from("pc_local_agent_devices")
+      .update({
+        permissions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", deviceId)
+      .eq("user_id", auth.user.id)
+      .select("*")
+      .maybeSingle();
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ device: updated });
   }
 
   if (body.action !== "revoke") {

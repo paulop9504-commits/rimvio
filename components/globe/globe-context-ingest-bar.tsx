@@ -578,7 +578,7 @@ export const GlobeContextIngestBar = forwardRef<
       onComposeOpen?.();
       try {
         if (isPcPurchaseContinuityUtterance(value)) {
-          const result = await runPcPurchaseContinuity(value);
+          const result = await runPcPurchaseContinuity(value, routingContextEventId ?? attachHintId);
           const eventId = routingContextEventId ?? attachHintId;
           if (result.kind !== "skip") {
             if (eventId) {

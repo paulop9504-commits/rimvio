@@ -21,7 +21,7 @@ async function waitForNav(page: Page) {
   await page.waitForSelector('[data-testid="rimvio-bottom-nav"]', {
     timeout: 20_000,
   });
-  await page.waitForSelector('[data-testid="rimvio-bottom-nav"] button[data-nav-href]', {
+  await page.waitForSelector('[data-testid="rimvio-bottom-nav"] [data-nav-href]', {
     timeout: 10_000,
   });
 }
@@ -36,7 +36,7 @@ async function probeHits(page: Page) {
 
     const navStyle = getComputedStyle(nav);
     const anchorStyle = anchor ? getComputedStyle(anchor) : null;
-    const links = Array.from(nav.querySelectorAll("button[data-nav-href]"));
+    const links = Array.from(nav.querySelectorAll("[data-nav-href]"));
 
     const samples = links.map((a) => {
       const r = a.getBoundingClientRect();
@@ -74,7 +74,7 @@ async function probeHits(page: Page) {
 
 async function tapTab(page: Page, href: string): Promise<TabResult> {
   const link = page.locator(
-    `[data-testid="rimvio-bottom-nav"] button[data-nav-href="${href}"]`,
+    `[data-testid="rimvio-bottom-nav"] [data-nav-href="${href}"]`,
   );
   const found = (await link.count()) > 0;
 

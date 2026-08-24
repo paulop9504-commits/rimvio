@@ -48,6 +48,7 @@ const model = buildGlobeResumeSidebarModel({
   ],
 });
 
+assert.ok(Array.isArray(model.inProgress));
 assert.ok(Array.isArray(model.pinned));
 assert.ok(Array.isArray(model.friends));
 assert.ok(Array.isArray(model.recent));
@@ -64,6 +65,7 @@ const list = readFileSync(
 assert.ok(list.includes('data-resume-kind="workspace"'));
 assert.ok(list.includes('data-resume-kind="friend"'));
 assert.ok(list.includes("resumeCapsuleWorkspace"));
+assert.ok(list.includes("data-globe-resume-in-progress"));
 assert.ok(list.includes("/peers/"));
 
 const shell = readFileSync(

@@ -1107,7 +1107,7 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
     appendContextAgentComposeTurn(event.id, { role: "user", text: line });
 
     if (isPcPurchaseContinuityUtterance(line)) {
-      void runPcPurchaseContinuity(line).then((result) => {
+      void runPcPurchaseContinuity(line, event.id).then((result) => {
         if (!event) {
           return;
         }

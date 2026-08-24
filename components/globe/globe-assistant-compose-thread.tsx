@@ -216,6 +216,7 @@ export function GlobeAssistantComposeThread({
                 taskId={turn.payload.taskId}
                 title={turn.payload.title}
                 deviceName={turn.payload.deviceName}
+                contextEventId={contextEventId}
               />
             </div>
           );

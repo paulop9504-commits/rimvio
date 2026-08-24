@@ -192,7 +192,6 @@ export function FivePeerHub({
   const beginDrag = useCallback(
     (target: DragTarget, peerThreadId?: string) =>
       (event: React.PointerEvent<HTMLElement>) => {
-        event.preventDefault();
         suppressClickRef.current = false;
         clearLongPress();
         dragRef.current = {
@@ -211,7 +210,6 @@ export function FivePeerHub({
             clearLongPress();
           }, 520);
         }
-        event.currentTarget.setPointerCapture(event.pointerId);
       },
     [clearLongPress, onTogglePeerLens],
   );
@@ -228,6 +226,9 @@ export function FivePeerHub({
         session.moved = true;
         suppressClickRef.current = true;
         clearLongPress();
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
       }
 
       if (!session.moved) {

@@ -39,6 +39,7 @@ const REQUIRED_TABLES = [
   "pc_local_agent_capabilities",
   "pc_local_agent_capability_requests",
   "pc_local_agent_install_jobs",
+  "pc_local_agent_desktop_sessions",
 ] as const;
 
 const REQUIRED_TASK_COLUMNS = ["waiting_expires_at"] as const;
@@ -97,7 +98,7 @@ async function main(): Promise<void> {
 
   console.log("required tables:", REQUIRED_TABLES.join(", "));
   console.log("phase D columns: waiting_expires_at, progress_pct (applied via migration 072)");
-  console.log("phase E statuses: 16 execution phases (applied via migration 073)");
+    console.log("desktop connect: permissions + sessions (applied via migration 074)");
   console.log("pc-local-agent schema smoke ok");
 }
 

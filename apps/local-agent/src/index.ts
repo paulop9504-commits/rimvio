@@ -3,6 +3,8 @@ import { CloudClient, runTask } from "./cloud-client.js";
 import { CapabilityRouter } from "./capabilities/router.js";
 import { runInstallJobs } from "./capabilities/install-handler.js";
 import { createExecutionEngine } from "./execution/index.js";
+import { writePcCredentials } from "./credential-store.js";
+import { connectThisPc } from "./pairing-server.js";
 import { log, logError } from "./logger.js";
 
 const runningTasks = new Set<string>();
@@ -12,15 +14,22 @@ async function main(): Promise<void> {
   const client = new CloudClient(config);
 
   if (process.argv.includes("--pair")) {
-    log("AGENT", "Pairing with Rimvio Cloud...");
+    log("AGENT", "Connecting this PC to Rimvio…");
     const result = await client.pair();
-    log("AGENT", "Device registered");
-    console.log("");
-    console.log("Save these credentials to your .env:");
-    console.log(`RIMVIO_DEVICE_ID=${result.deviceId}`);
-    console.log(`RIMVIO_DEVICE_TOKEN=${result.deviceToken}`);
-    console.log("");
-    return;
+    writePcCredentials({
+      deviceId: result.deviceId,
+      deviceToken: result.deviceToken,
+      deviceName: result.deviceName,
+    });
+    config.deviceId = result.deviceId;
+    config.deviceToken = result.deviceToken;
+    config.deviceName = result.deviceName;
+    log("AGENT", "Connected");
+  } else if (!config.deviceId || !config.deviceToken) {
+    const next = await connectThisPc(config, client);
+    config.deviceId = next.deviceId;
+    config.deviceToken = next.deviceToken;
+    config.deviceName = next.deviceName;
   }
 
   requirePairedCredentials(config);

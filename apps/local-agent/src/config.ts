@@ -1,3 +1,5 @@
+import { readPcCredentials } from "./credential-store.js";
+
 export type AgentConfig = {
   apiBaseUrl: string;
   deviceId: string;
@@ -22,25 +24,25 @@ function readEnv(name: string, fallback?: string): string {
 
 export function loadConfig(args: string[]): AgentConfig {
   const pairMode = args.includes("--pair");
+  const stored = readPcCredentials();
 
   return {
     apiBaseUrl: readEnv("RIMVIO_API_BASE_URL", "https://rimvio.com").replace(/\/$/, ""),
-    deviceId: process.env.RIMVIO_DEVICE_ID?.trim() ?? "",
-    deviceToken: process.env.RIMVIO_DEVICE_TOKEN?.trim() ?? "",
+    deviceId: process.env.RIMVIO_DEVICE_ID?.trim() || stored?.deviceId || "",
+    deviceToken: process.env.RIMVIO_DEVICE_TOKEN?.trim() || stored?.deviceToken || "",
     executionEngine: process.env.RIMVIO_EXECUTION_ENGINE?.trim() || "browser",
     heartbeatIntervalMs: Number(process.env.RIMVIO_HEARTBEAT_INTERVAL_MS ?? 15_000),
     taskPollIntervalMs: Number(process.env.RIMVIO_TASK_POLL_INTERVAL_MS ?? 2_000),
     pairingCode: pairMode
       ? readEnv("RIMVIO_PAIRING_CODE")
       : process.env.RIMVIO_PAIRING_CODE?.trim(),
-    deviceName: process.env.RIMVIO_DEVICE_NAME?.trim() || "My PC",
+    deviceName:
+      process.env.RIMVIO_DEVICE_NAME?.trim() || stored?.deviceName || "My PC",
   };
 }
 
 export function requirePairedCredentials(config: AgentConfig): void {
   if (!config.deviceId || !config.deviceToken) {
-    throw new Error(
-      "RIMVIO_DEVICE_ID and RIMVIO_DEVICE_TOKEN are required. Run with --pair first.",
-    );
+    throw new Error("This PC is not connected to Rimvio yet.");
   }
 }

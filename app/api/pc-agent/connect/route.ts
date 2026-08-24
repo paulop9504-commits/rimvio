@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { generateDeviceToken, hashDeviceToken } from "@/lib/pc-local-agent";
-import { seedBuiltinCapabilities } from "@/lib/pc-local-agent/capability-server";
+import { registerPcDevice } from "@/lib/pc-local-agent/register-pc-device";
 
 type ConnectBody = {
   code?: string;
@@ -40,49 +39,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_or_expired_code" }, { status: 401 });
   }
 
-  const { data: device, error: deviceError } = await admin
-    .from("pc_local_agent_devices")
-    .insert({
-      user_id: pairing.user_id,
-      name: deviceName,
-      type: "PC",
-      status: "ONLINE",
-      last_seen_at: now,
-    })
-    .select("*")
-    .single();
-
-  if (deviceError || !device) {
-    return NextResponse.json(
-      { error: deviceError?.message ?? "device_create_failed" },
-      { status: 500 },
-    );
-  }
-
-  const deviceToken = generateDeviceToken();
-  const { error: tokenError } = await admin.from("pc_local_agent_device_tokens").insert({
-    device_id: device.id,
-    token_hash: hashDeviceToken(deviceToken),
+  const registered = await registerPcDevice({
+    userId: pairing.user_id,
+    deviceName,
   });
-
-  if (tokenError) {
-    await admin.from("pc_local_agent_devices").delete().eq("id", device.id);
-    return NextResponse.json({ error: tokenError.message }, { status: 500 });
+  if ("error" in registered) {
+    return NextResponse.json({ error: registered.error }, { status: registered.status });
   }
 
   await admin
     .from("pc_local_agent_pairing_codes")
     .update({
       consumed_at: now,
-      device_id: device.id,
+      device_id: registered.device.id,
     })
     .eq("id", pairing.id);
 
-  await seedBuiltinCapabilities(device.id);
-
   return NextResponse.json({
-    deviceId: device.id,
-    deviceToken,
-    deviceName: device.name,
+    deviceId: registered.device.id,
+    deviceToken: registered.deviceToken,
+    deviceName: registered.device.name,
   });
 }

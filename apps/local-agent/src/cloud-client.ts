@@ -20,18 +20,13 @@ export class CloudClient {
     };
   }
 
-  async pair(): Promise<ConnectResponse> {
-    const code = this.config.pairingCode;
-    if (!code) {
-      throw new Error("RIMVIO_PAIRING_CODE required for pairing");
-    }
-
+  async pairWithCode(code: string, deviceName?: string): Promise<ConnectResponse> {
     const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/connect`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code,
-        deviceName: this.config.deviceName,
+        deviceName: deviceName || this.config.deviceName,
       }),
     });
 
@@ -40,6 +35,41 @@ export class CloudClient {
       throw new Error(err.error ?? `pair_failed_${res.status}`);
     }
 
+    return (await res.json()) as ConnectResponse;
+  }
+
+  async pair(): Promise<ConnectResponse> {
+    const code = this.config.pairingCode;
+    if (!code) {
+      throw new Error("RIMVIO_PAIRING_CODE required for pairing");
+    }
+    return this.pairWithCode(code, this.config.deviceName);
+  }
+
+  async createDesktopSession(
+    deviceName: string,
+    callbackPort: number,
+  ): Promise<{ nonce: string; approveUrl: string }> {
+    const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/desktop/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceName, callbackPort }),
+    });
+    if (!res.ok) {
+      throw new Error(`desktop_session_${res.status}`);
+    }
+    return (await res.json()) as { nonce: string; approveUrl: string };
+  }
+
+  async exchangeDesktopSession(nonce: string, exchange: string): Promise<ConnectResponse> {
+    const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/desktop/exchange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nonce, exchange }),
+    });
+    if (!res.ok) {
+      throw new Error(`desktop_exchange_${res.status}`);
+    }
     return (await res.json()) as ConnectResponse;
   }
 

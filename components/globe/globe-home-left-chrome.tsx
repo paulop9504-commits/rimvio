@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, type RefObject } from "react";
+import { useSearchParams } from "next/navigation";
 import { GlobeContainerSpaceButton } from "@/components/globe/globe-container-space-button";
 import { GlobeContextAgentMapButton } from "@/components/globe/globe-context-agent-map-button";
 import { GlobeContainerSpaceSidebar } from "@/components/globe/globe-container-space-sidebar";
@@ -18,6 +19,10 @@ import {
   listInProgressLiveWorks,
   subscribeLiveWorks,
 } from "@/lib/globe/live-work/live-work-store";
+import {
+  PC_CONNECT_EVENT,
+  PC_CONNECT_OPEN_SIDEBAR_EVENT,
+} from "@/lib/pc-local-agent/desktop-connect";
 
 export type GlobeHomeLeftChromeProps = {
   mapMediaFocusOpen: boolean;
@@ -115,11 +120,28 @@ export function GlobeHomeLeftChrome({
   const [containerSpaceOpen, setContainerSpaceOpen] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const memoryRecall = useMemoryRecallContext();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const sync = () => setLiveCount(listInProgressLiveWorks().length);
     sync();
     return subscribeLiveWorks(sync);
+  }, []);
+
+  useEffect(() => {
+    const nonce = searchParams.get("pcConnect")?.trim();
+    if (!nonce) {
+      return;
+    }
+    setContainerSpaceOpen(true);
+    sessionStorage.setItem("rimvio-pc-connect-nonce", nonce);
+    window.dispatchEvent(new CustomEvent(PC_CONNECT_EVENT, { detail: { nonce } }));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const open = () => setContainerSpaceOpen(true);
+    window.addEventListener(PC_CONNECT_OPEN_SIDEBAR_EVENT, open);
+    return () => window.removeEventListener(PC_CONNECT_OPEN_SIDEBAR_EVENT, open);
   }, []);
 
   const hubEvent = useMemo(() => {

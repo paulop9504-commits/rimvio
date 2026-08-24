@@ -212,7 +212,19 @@ const deviceSrc = readFileSync(
   "utf8",
 );
 assert.ok(deviceSrc.includes("data-globe-resume-devices"));
+assert.ok(deviceSrc.includes("data-pc-connect-cta"));
+assert.ok(deviceSrc.includes("PcConnectFlow"));
+assert.ok(!deviceSrc.includes("Local Agent"));
 assert.ok(!deviceSrc.includes("Device Dashboard"));
+assert.ok(!deviceSrc.includes("Execution Layer"));
+
+const connectFlowSrc = readFileSync(
+  join(process.cwd(), "components/globe/pc-connect-flow.tsx"),
+  "utf8",
+);
+assert.ok(connectFlowSrc.includes("data-pc-connect-flow"));
+assert.ok(!connectFlowSrc.includes("Local Agent"));
+assert.ok(!connectFlowSrc.includes("Daemon"));
 
 const realtimeSrc = readFileSync(
   join(process.cwd(), "lib/pc-local-agent/client-realtime.ts"),

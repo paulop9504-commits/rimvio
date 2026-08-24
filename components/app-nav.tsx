@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   RimvioNavChatIcon,
@@ -76,6 +77,33 @@ function NavTabIcon({
   }
 }
 
+function NavTabInner({
+  tab,
+  active,
+}: {
+  tab: NavTab;
+  active: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "rimvio-bottom-nav-icon-pill pointer-events-none relative flex items-center justify-center",
+        active && "rimvio-bottom-nav-icon-pill--active",
+      )}
+    >
+      <NavTabIcon icon={tab.icon} active={active} />
+      {tab.badge != null && tab.badge > 0 ? (
+        <span
+          className="absolute -right-0.5 -top-0.5 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#3182f6] px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(49,130,246,0.45)]"
+          aria-hidden
+        >
+          {tab.badge > 9 ? "9+" : tab.badge}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function NavTabButton({
   tab,
   active,
@@ -87,66 +115,44 @@ function NavTabButton({
   onNavigate: (href: string) => void;
   className?: string;
 }) {
-  const activatedRef = useRef(false);
-  const activate = () => {
-    onNavigate(tab.href);
-  };
+  const tabClass = cn(
+    "rimvio-bottom-nav-tab relative z-[1] flex size-12 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-transform active:scale-[0.94] touch-manipulation",
+    className,
+  );
+
+  if (tab.href === "/field") {
+    return (
+      <button
+        type="button"
+        aria-label={tab.label}
+        aria-current={active ? "page" : undefined}
+        data-nav-href={tab.href}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onNavigate(tab.href);
+        }}
+        className={tabClass}
+      >
+        <NavTabInner tab={tab} active={active} />
+      </button>
+    );
+  }
 
   return (
-    <button
-      type="button"
+    <Link
+      href={tab.href}
       aria-label={tab.label}
       aria-current={active ? "page" : undefined}
       data-nav-href={tab.href}
-      onPointerUp={(event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) {
-          return;
-        }
-        event.preventDefault();
-        event.stopPropagation();
-        activatedRef.current = true;
-        activate();
-        window.setTimeout(() => {
-          activatedRef.current = false;
-        }, 400);
+      data-nav-link
+      onClick={() => {
+        onNavigate(tab.href);
       }}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (activatedRef.current) {
-          return;
-        }
-        activate();
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== "Enter" && event.key !== " ") {
-          return;
-        }
-        event.preventDefault();
-        activate();
-      }}
-      className={cn(
-        "rimvio-bottom-nav-tab relative z-[1] flex size-12 shrink-0 items-center justify-center border-0 bg-transparent p-0 transition-transform active:scale-[0.94] touch-manipulation",
-        className,
-      )}
+      className={tabClass}
     >
-      <span
-        className={cn(
-          "rimvio-bottom-nav-icon-pill pointer-events-none relative flex items-center justify-center",
-          active && "rimvio-bottom-nav-icon-pill--active",
-        )}
-      >
-        <NavTabIcon icon={tab.icon} active={active} />
-        {tab.badge != null && tab.badge > 0 ? (
-          <span
-            className="absolute -right-0.5 -top-0.5 flex size-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#3182f6] px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_2px_6px_rgba(49,130,246,0.45)]"
-            aria-hidden
-          >
-            {tab.badge > 9 ? "9+" : tab.badge}
-          </span>
-        ) : null}
-      </span>
-    </button>
+      <NavTabInner tab={tab} active={active} />
+    </Link>
   );
 }
 

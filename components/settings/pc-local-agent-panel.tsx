@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardCopy, FileText, Loader2, Monitor, Play, Puzzle } from "lucide-react";
+import { FileText, Monitor, Play, Puzzle } from "lucide-react";
 import { toast } from "sonner";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-section";
+import { useCopy } from "@/hooks/use-copy";
 import { useAuth } from "@/hooks/use-auth";
 import { usePcLocalAgent } from "@/hooks/use-pc-local-agent";
 import { TASK_STATUS_ORDER } from "@/lib/pc-local-agent/task-state-machine";
@@ -208,39 +208,27 @@ function CapabilityApprovalCard({
 }
 
 export function PcLocalAgentPanel() {
+  const copy = useCopy();
+  const pc = copy.globe.pcContinuity;
   const { user } = useAuth();
   const {
     devices,
     onlineDevice,
-    pairingCode,
-    pairingExpiresAt,
     loading,
     activeTask,
     pendingRequests,
     installedCapabilities,
     activeInstallJobs,
-    createPairingCode,
     runTestTask,
     runCapabilityTestTask,
     runPdfCapabilityTestTask,
     approveCapabilityRequest,
     cancelCapabilityRequest,
   } = usePcLocalAgent();
-  const [copied, setCopied] = useState(false);
 
   if (!user) {
     return null;
   }
-
-  const handleCopyCode = async () => {
-    if (!pairingCode) {
-      return;
-    }
-    await navigator.clipboard.writeText(pairingCode);
-    setCopied(true);
-    toast.success("페어링 코드가 복사되었습니다");
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleTest = async () => {
     if (!onlineDevice) {
@@ -282,14 +270,11 @@ export function PcLocalAgentPanel() {
   };
 
   return (
-    <SettingsSection
-      title="PC Agent"
-      description="로컬 PC에서 Rimvio Agent를 실행하면 브라우저 작업을 위임할 수 있습니다."
-    >
-      <SettingsRow label="Agent" hint={onlineDevice ? "연결됨" : "오프라인"}>
+    <SettingsSection title={pc.settingsTitle} description={pc.settingsHint}>
+      <SettingsRow label={pc.pcFallback} hint={onlineDevice ? pc.online : pc.offline}>
         <div className="flex items-center gap-2 text-[13px] text-foreground">
           <StatusDot online={Boolean(onlineDevice)} />
-          {onlineDevice ? "Connected" : "Offline"}
+          {onlineDevice ? pc.connected : pc.offline}
         </div>
       </SettingsRow>
 
@@ -337,40 +322,6 @@ export function PcLocalAgentPanel() {
       ) : null}
 
       <div className="mt-3 space-y-2 border-t border-white/[0.05] pt-3">
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
-          PC에서 Local Agent를 실행한 뒤 아래 코드로 페어링하세요.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              void createPairingCode().catch(() => toast.error("페어링 코드 생성 실패"));
-            }}
-            className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-foreground hover:bg-white/[0.08] disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="inline h-4 w-4 animate-spin" /> : "페어링 코드 생성"}
-          </button>
-          {pairingCode ? (
-            <button
-              type="button"
-              onClick={() => void handleCopyCode()}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 font-mono text-[14px] font-semibold tracking-widest text-emerald-200"
-            >
-              {pairingCode}
-              <ClipboardCopy className="h-3.5 w-3.5" />
-              {copied ? "복사됨" : ""}
-            </button>
-          ) : null}
-        </div>
-        {pairingExpiresAt ? (
-          <p className="text-[11px] text-muted-foreground">
-            만료: {new Date(pairingExpiresAt).toLocaleTimeString()}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-3 space-y-2 border-t border-white/[0.05] pt-3">
         <button
           type="button"
           disabled={loading || !onlineDevice}
@@ -400,7 +351,7 @@ export function PcLocalAgentPanel() {
         </button>
         {!onlineDevice ? (
           <p className="text-center text-[11px] text-muted-foreground">
-            PC Agent가 온라인일 때 사용할 수 있습니다
+            {pc.settingsHint}
           </p>
         ) : null}
       </div>

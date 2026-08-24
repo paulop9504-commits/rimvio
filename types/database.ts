@@ -230,6 +230,7 @@ export type PcLocalAgentDeviceRow = {
   last_seen_at: string | null;
   created_at: string;
   updated_at: string;
+  permissions?: Record<string, boolean>;
 };
 
 export type PcLocalAgentPairingCodeRow = {
@@ -651,6 +652,7 @@ export type Database = {
           type?: "PC";
           status?: "ONLINE" | "OFFLINE";
           last_seen_at?: string | null;
+          permissions?: Record<string, boolean>;
           created_at?: string;
           updated_at?: string;
         };

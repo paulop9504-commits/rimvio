@@ -60,6 +60,7 @@ export type PcAgentDevice = {
   last_seen_at: string | null;
   created_at: string;
   updated_at: string;
+  permissions?: Record<string, boolean> | null;
 };
 
 export type PcAgentTask = {
