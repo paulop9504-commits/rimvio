@@ -9,6 +9,7 @@ export const NETWORK_ABSORB_FAMILIES = [
   "japan_metro",
   "shinkansen",
   "korea_rail",
+  "seoul_metro",
 ] as const;
 
 export type NetworkAbsorbFamily = (typeof NETWORK_ABSORB_FAMILIES)[number];

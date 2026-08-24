@@ -57,7 +57,7 @@ export function tryBuildFactQueryTurn(input: {
   if (!wire) {
     return null;
   }
-  return buildTurn(input);
+  return buildTurn({ ...input, wire });
 }
 
 export async function tryBuildFactQueryTurnAsync(input: {
@@ -69,7 +69,7 @@ export async function tryBuildFactQueryTurnAsync(input: {
   if (!wire) {
     return null;
   }
-  return buildTurn(input);
+  return buildTurn({ ...input, wire });
 }
 
 export function projectFactAnswerToGlobe(wire: FactAnswerWire): void {

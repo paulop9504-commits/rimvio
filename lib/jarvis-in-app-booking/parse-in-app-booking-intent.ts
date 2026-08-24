@@ -14,9 +14,9 @@ const SEARCH_ONLY =
   /(?:찾아|찾기|추천|검색|보여|주변|근처|nearby|search)/iu;
 
 const PLACE_PATTERNS: readonly RegExp[] = [
-  /^(?<place>.+?)\s*(?:호텔|숙소|hotel|lodging)\s*(?:예약|booking|book|reserve)(?:해)?(?:줘|주세요|할게)?\s*$/iu,
-  /^(?<place>.+?)\s*(?:예약|booking|book|reserve)(?:해)?(?:줘|주세요|할게)?\s*$/iu,
-  /^(?:in-app\s*booking|앱\s*에서)\s*(?<place>.+?)\s*(?:예약)?(?:해)?(?:줘|주세요)?\s*$/iu,
+  /^(.+?)\s*(?:호텔|숙소|hotel|lodging)\s*(?:예약|booking|book|reserve)(?:해)?(?:줘|주세요|할게)?\s*$/iu,
+  /^(.+?)\s*(?:예약|booking|book|reserve)(?:해)?(?:줘|주세요|할게)?\s*$/iu,
+  /^(?:in-app\s*booking|앱\s*에서)\s*(.+?)\s*(?:예약)?(?:해)?(?:줘|주세요)?\s*$/iu,
 ];
 
 function cleanPlaceQuery(raw: string): string {
@@ -44,10 +44,10 @@ export function parseInAppBookingIntent(
 
   for (const pattern of PLACE_PATTERNS) {
     const match = raw.match(pattern);
-    if (!match?.groups?.place) {
+    if (!match?.[1]) {
       continue;
     }
-    const placeQuery = cleanPlaceQuery(match.groups.place);
+    const placeQuery = cleanPlaceQuery(match[1]);
     if (!placeQuery || placeQuery.length < 2) {
       continue;
     }

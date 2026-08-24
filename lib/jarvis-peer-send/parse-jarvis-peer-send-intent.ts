@@ -13,10 +13,10 @@ export type JarvisPeerSendIntent = {
 const RECIPIENT_SUFFIX = /(?:한테|에게|께)$/u;
 
 const SEND_PATTERNS: readonly RegExp[] = [
-  /^(?<recipient>.+?)(?:한테|에게|께)\s+(?<intent>.+?)\s*(?:메신저|메시지|톡|dm|DM)(?:\s*(?:으로|로))?\s*(?:보내|전송|써|작성)(?:줘|주세요|해)?\s*$/iu,
-  /^(?<recipient>.+?)(?:한테|에게|께)\s+(?<intent>.+?)\s*(?:라고|이라고)\s*(?:해|말)(?:줘|주세요)?\s*$/iu,
-  /^(?<recipient>.+?)(?:한테|에게|께)\s+(?<intent>.+?)\s*(?:공유|전달)(?:해)?(?:줘|주세요)?\s*$/iu,
-  /^(?<recipient>.+?)(?:한테|에게|께)\s+(?<intent>.+?)\s*(?:보내|전송)(?:줘|주세요|해)?\s*$/iu,
+  /^(.+?)(?:한테|에게|께)\s+(.+?)\s*(?:메신저|메시지|톡|dm|DM)(?:\s*(?:으로|로))?\s*(?:보내|전송|써|작성)(?:줘|주세요|해)?\s*$/iu,
+  /^(.+?)(?:한테|에게|께)\s+(.+?)\s*(?:라고|이라고)\s*(?:해|말)(?:줘|주세요)?\s*$/iu,
+  /^(.+?)(?:한테|에게|께)\s+(.+?)\s*(?:공유|전달)(?:해)?(?:줘|주세요)?\s*$/iu,
+  /^(.+?)(?:한테|에게|께)\s+(.+?)\s*(?:보내|전송)(?:줘|주세요|해)?\s*$/iu,
 ];
 
 const SHARE_TRIP_HINT =
@@ -50,11 +50,11 @@ export function parseJarvisPeerSendIntent(
 
   for (const pattern of SEND_PATTERNS) {
     const match = raw.match(pattern);
-    if (!match?.groups?.recipient || !match.groups.intent) {
+    if (!match?.[1] || !match[2]) {
       continue;
     }
-    const recipientQuery = normalizeRecipientQuery(match.groups.recipient);
-    const intentText = cleanIntentText(match.groups.intent);
+    const recipientQuery = normalizeRecipientQuery(match[1]);
+    const intentText = cleanIntentText(match[2]);
     if (!recipientQuery || !intentText) {
       continue;
     }

@@ -153,7 +153,6 @@ import {
   setFeedPeerTalkSession,
   subscribeFeedPeerTalkSession,
 } from "@/lib/action-chat/feed-peer-talk/feed-peer-talk-session";
-import type { PeerContact } from "@/lib/context/peer-contact-types";
 
 import { buildActionsFromConfirmationData } from "@/lib/action-chat/build-confirmation-actions";
 import { buildActionsFromBatchPending } from "@/lib/action-chat/build-batch-pending-actions";

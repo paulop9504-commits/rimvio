@@ -22,6 +22,7 @@ import { OSAKA_METRO_LINE_IDS } from "@/lib/geo/osaka-metro/line-catalog";
 import { JAPAN_METRO_LINE_IDS } from "@/lib/geo/japan-metro/line-catalog";
 import { JAPAN_SHINKANSEN_LINE_IDS } from "@/lib/geo/japan-shinkansen/line-catalog";
 import { KOREA_RAIL_LINE_IDS } from "@/lib/geo/korea-rail/line-catalog";
+import { SEOUL_TRANSIT_LINE_LABEL_KO } from "@/lib/fact-query/data/seoul-transit-ssot";
 
 export type ProjectNetworkAbsorbResult = {
   readonly statusKo: string;
@@ -43,6 +44,8 @@ function catalogSize(family: NetworkAbsorbFamily): number {
       return JAPAN_SHINKANSEN_LINE_IDS.length;
     case "korea_rail":
       return KOREA_RAIL_LINE_IDS.length;
+    case "seoul_metro":
+      return Object.keys(SEOUL_TRANSIT_LINE_LABEL_KO).length;
   }
 }
 

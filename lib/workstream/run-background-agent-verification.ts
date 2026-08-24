@@ -115,11 +115,12 @@ export function dispatchBackgroundAgentVerification(input: {
     contextEventId: input.contextEventId,
     labelKo: "일정 검증",
     sync: input.sync,
-    run: () =>
-      runBackgroundAgentVerification({
+    run: async () => {
+      await runBackgroundAgentVerification({
         contextEventId: input.contextEventId,
         event: input.event,
         strategy: input.strategy,
-      }),
+      });
+    },
   });
 }

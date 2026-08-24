@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
 type PeerTalkContactBubblesProps = {
-  contacts: PeerContact[];
+  contacts: readonly PeerContact[];
   onPick: (contact: PeerContact) => void;
   className?: string;
 };

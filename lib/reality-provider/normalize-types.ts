@@ -32,7 +32,8 @@ export type RealityRailNetworkBundle = {
     | "osaka_metro"
     | "japan_metro"
     | "shinkansen"
-    | "korea_rail";
+    | "korea_rail"
+    | "seoul_metro";
   readonly labelKo: string;
   readonly lines: readonly RealityLineObject[];
   readonly stations: readonly RealityStationObject[];

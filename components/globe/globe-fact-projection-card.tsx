@@ -5,8 +5,8 @@ import { X } from "lucide-react";
 import {
   readFactProjection,
   subscribeFactProjection,
-  type FactProjectionState,
 } from "@/lib/fact-query/fact-projection-store";
+import type { FactEvidenceItem, FactProjectionState } from "@/lib/fact-query/types";
 import { cn } from "@/lib/utils";
 
 export type GlobeFactProjectionCardProps = {
@@ -27,7 +27,7 @@ export function GlobeFactProjectionCard({
     return subscribeFactProjection((next) => {
       setState(next);
       const highlight =
-        next.wire.evidence.find((e) => e.id === next.wire.highlightId) ??
+        next.wire.evidence.find((e: FactEvidenceItem) => e.id === next.wire.highlightId) ??
         next.wire.evidence[0];
       if (highlight && onFlyTo) {
         onFlyTo({
@@ -45,7 +45,7 @@ export function GlobeFactProjectionCard({
 
   const wire = state.wire;
   const highlight =
-    wire.evidence.find((e) => e.id === wire.highlightId) ?? wire.evidence[0];
+    wire.evidence.find((e: FactEvidenceItem) => e.id === wire.highlightId) ?? wire.evidence[0];
 
   return (
     <div

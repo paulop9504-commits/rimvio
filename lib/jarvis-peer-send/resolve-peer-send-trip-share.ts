@@ -39,7 +39,7 @@ export function resolvePeerSendTripShare(
   }
 
   const brief = buildContextBrief(ws);
-  if (brief.groundsKo.length === 0 && brief.roles.length === 0) {
+  if (!brief || (brief.groundsKo.length === 0 && brief.roles.length === 0)) {
     return null;
   }
 

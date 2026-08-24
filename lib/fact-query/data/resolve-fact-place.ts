@@ -95,7 +95,7 @@ export function resolveFactPlace(query: string): FactPlace | null {
 
   if (/호텔|숙소|hotel/u.test(trimmed)) {
     for (const row of CITY_ANCHORS) {
-      if (rowMatchesQuery(trimmed, { ...row, nameJa: "" })) {
+      if (rowMatchesQuery(trimmed, { ...row, nameKo: row.labelKo, nameJa: "" })) {
         return {
           id: row.id,
           labelKo: row.labelKo,
