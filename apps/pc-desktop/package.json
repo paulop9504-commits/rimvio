@@ -1,7 +1,7 @@
 {
   "name": "rimvio-pc",
   "productName": "Rimvio PC",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Rimvio PC — connect this computer to Rimvio",
   "author": "Rimvio",
@@ -28,6 +28,7 @@
       "src/main.cjs",
       "src/preload.cjs",
       "src/ui/**",
+      "build/icon.png",
       "package.json"
     ],
     "extraResources": [
@@ -42,6 +43,7 @@
       "repo": "rimvio"
     },
     "win": {
+      "icon": "build/icon.png",
       "target": [
         "nsis"
       ],

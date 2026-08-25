@@ -6,6 +6,11 @@ import type { ExecutionEngine } from "./execution/types.js";
 import { log, logError } from "./logger.js";
 
 const runningTasks = new Set<string>();
+let kickPoll: (() => void) | null = null;
+
+export function kickPairedWorkPoll(): void {
+  kickPoll?.();
+}
 
 /** Heartbeat + claim/execute after this PC is connected. */
 export function startPairedWorkLoops(input: {
@@ -15,6 +20,7 @@ export function startPairedWorkLoops(input: {
 }): { stop: () => void } {
   const { config, client, engine } = input;
   let shuttingDown = false;
+  let ticking = false;
   let router = CapabilityRouter.withBuiltinOnly();
 
   void client.fetchInstalledCapabilities().then((installed) => {
@@ -35,49 +41,58 @@ export function startPairedWorkLoops(input: {
   });
   log("AGENT", "Heartbeat started");
 
-  const pollLoop = setInterval(() => {
-    if (shuttingDown) {
+  const tick = async () => {
+    if (shuttingDown || ticking) {
       return;
     }
-    void (async () => {
-      try {
-        const installJobs = await client.claimInstallJobs();
-        if (installJobs.length > 0) {
-          log("CAPABILITY", `Processing ${installJobs.length} install job(s)`);
-          await runInstallJobs(
-            installJobs,
-            async (jobId) => {
-              const result = await client.completeInstallJob(jobId);
-              if (result.resumed) {
-                log("TASK", `Resumed task ${result.taskId ?? "unknown"}`);
-              }
-            },
-            async (jobId, error) => {
-              await client.failInstallJob(jobId, error);
-            },
-            async (jobId, progressPct) => {
-              await client.updateInstallProgress(jobId, progressPct);
-            },
-          );
-          const installed = await client.fetchInstalledCapabilities();
-          router = CapabilityRouter.withBuiltinOnly();
-          router.updateInstalled(installed);
-        }
-
-        const task = await client.claimTask();
-        if (!task || runningTasks.has(task.id)) {
-          return;
-        }
-        runningTasks.add(task.id);
-        try {
-          await runTask(client, task, engine, router);
-        } finally {
-          runningTasks.delete(task.id);
-        }
-      } catch (err) {
-        logError("ERROR", "Poll failed", err);
+    ticking = true;
+    try {
+      const installJobs = await client.claimInstallJobs();
+      if (installJobs.length > 0) {
+        log("CAPABILITY", `Processing ${installJobs.length} install job(s)`);
+        await runInstallJobs(
+          installJobs,
+          async (jobId) => {
+            const result = await client.completeInstallJob(jobId);
+            if (result.resumed) {
+              log("TASK", `Resumed task ${result.taskId ?? "unknown"}`);
+            }
+          },
+          async (jobId, error) => {
+            await client.failInstallJob(jobId, error);
+          },
+          async (jobId, progressPct) => {
+            await client.updateInstallProgress(jobId, progressPct);
+          },
+        );
+        const installed = await client.fetchInstalledCapabilities();
+        router = CapabilityRouter.withBuiltinOnly();
+        router.updateInstalled(installed);
       }
-    })();
+
+      const task = await client.claimTask();
+      if (!task || runningTasks.has(task.id)) {
+        return;
+      }
+      runningTasks.add(task.id);
+      try {
+        await runTask(client, task, engine, router);
+      } finally {
+        runningTasks.delete(task.id);
+      }
+    } catch (err) {
+      logError("ERROR", "Poll failed", err);
+    } finally {
+      ticking = false;
+    }
+  };
+
+  kickPoll = () => {
+    void tick();
+  };
+
+  const pollLoop = setInterval(() => {
+    void tick();
   }, config.taskPollIntervalMs);
 
   const stop = () => {
@@ -85,6 +100,7 @@ export function startPairedWorkLoops(input: {
       return;
     }
     shuttingDown = true;
+    kickPoll = null;
     clearInterval(heartbeatLoop);
     clearInterval(pollLoop);
   };

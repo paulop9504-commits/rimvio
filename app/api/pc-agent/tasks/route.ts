@@ -3,8 +3,7 @@ import { requireAuthUser } from "@/lib/auth/api-auth";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import type { OpenUrlPayload, PcAgentTaskType } from "@/lib/pc-local-agent";
 import { isPcAgentNavigableUrl } from "@/lib/pc-local-agent/url-safety";
-import { initialTaskResult } from "@/lib/pc-local-agent/task-dispatch";
-import { purchaseNodeForPhase } from "@/lib/pc-local-agent/purchase-graph";
+import { insertQueuedOpenUrlTask } from "@/lib/pc-local-agent/task-dispatch";
 
 type CreateTaskBody = {
   deviceId?: string;
@@ -85,40 +84,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "device_not_found" }, { status: 404 });
   }
 
-  const offline = device.status !== "ONLINE";
-  const phase = offline ? "PC_OFFLINE" : "QUEUED";
-  const payload = {
-    url: body.payload!.url.trim(),
-    ...(body.payload?.title?.trim() ? { title: body.payload.title.trim() } : {}),
-    ...(body.payload?.query?.trim() ? { query: body.payload.query.trim() } : {}),
-    ...(body.payload?.intent ? { intent: body.payload.intent } : {}),
-    ...(body.payload?.requiredCapabilities?.length
-      ? { requiredCapabilities: body.payload.requiredCapabilities }
-      : {}),
-    graphRoot: body.payload?.intent === "purchase" ? "PURCHASE" : undefined,
-    graphNode:
-      body.payload?.intent === "purchase"
-        ? purchaseNodeForPhase(phase) ?? "FIND_PRODUCT"
-        : undefined,
-  };
-  const { data: task, error } = await admin
-    .from("pc_local_agent_tasks")
-    .insert({
-      user_id: auth.user.id,
-      device_id: deviceId,
-      type,
-      payload,
-      status: "QUEUED",
-      result: initialTaskResult(phase),
-    })
-    .select("*")
-    .single();
-
-  if (error || !task) {
-    return NextResponse.json({ error: error?.message ?? "task_create_failed" }, { status: 500 });
+  const created = await insertQueuedOpenUrlTask({
+    userId: auth.user.id,
+    deviceId,
+    payload: {
+      url: body.payload!.url.trim(),
+      title: body.payload?.title,
+      query: body.payload?.query,
+      intent: body.payload?.intent,
+      requiredCapabilities: body.payload?.requiredCapabilities,
+    },
+    offline,
+  });
+  if ("error" in created) {
+    return NextResponse.json({ error: created.error }, { status: created.status });
   }
 
-  return NextResponse.json({ task });
+  return NextResponse.json({ task: created.task });
 }
 
 export async function GET(request: NextRequest) {

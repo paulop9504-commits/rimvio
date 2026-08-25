@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import type { PcAgentTask } from "@/lib/pc-local-agent/types";
+import type { OpenUrlPayload, PcAgentTask } from "@/lib/pc-local-agent/types";
+import { purchaseNodeForPhase } from "@/lib/pc-local-agent/purchase-graph";
 import {
   applyReportedPhase,
   parkTaskForPcOffline,
@@ -186,6 +187,50 @@ export async function resumeParkedTasksForDevice(deviceId: string): Promise<numb
     }
   }
   return n;
+}
+
+export async function insertQueuedOpenUrlTask(input: {
+  userId: string;
+  deviceId: string;
+  payload: OpenUrlPayload;
+  offline: boolean;
+}): Promise<{ task: PcAgentTask } | { error: string; status: number }> {
+  const db = admin();
+  if (!db) {
+    return { error: "service_unavailable", status: 503 };
+  }
+  const phase = input.offline ? "PC_OFFLINE" : "QUEUED";
+  const url = input.payload.url.trim();
+  const payload = {
+    url,
+    ...(input.payload.title?.trim() ? { title: input.payload.title.trim() } : {}),
+    ...(input.payload.query?.trim() ? { query: input.payload.query.trim() } : {}),
+    ...(input.payload.intent ? { intent: input.payload.intent } : {}),
+    ...(input.payload.requiredCapabilities?.length
+      ? { requiredCapabilities: input.payload.requiredCapabilities }
+      : {}),
+    graphRoot: input.payload.intent === "purchase" ? "PURCHASE" : undefined,
+    graphNode:
+      input.payload.intent === "purchase"
+        ? purchaseNodeForPhase(phase) ?? "FIND_PRODUCT"
+        : undefined,
+  };
+  const { data: task, error } = await db
+    .from("pc_local_agent_tasks")
+    .insert({
+      user_id: input.userId,
+      device_id: input.deviceId,
+      type: "OPEN_URL",
+      payload,
+      status: "QUEUED",
+      result: initialTaskResult(phase),
+    })
+    .select("*")
+    .single();
+  if (error || !task) {
+    return { error: error?.message ?? "task_create_failed", status: 500 };
+  }
+  return { task: task as PcAgentTask };
 }
 
 export function initialTaskResult(phase: PcExecutionPhase): PcAgentTaskResult {

@@ -610,7 +610,7 @@ export const copy = {
         "이 Run에 필요한 프로그램이에요. 누르면 설치하고 에이전트가 이어서 실행해요.",
       programInstallCta: (name: string) => `${name} 설치`,
       programInstalling: "받는 중…",
-      programRimvioPc: "Rimvio PC 0.1.5",
+      programRimvioPc: "Rimvio PC 0.1.6",
       programCursor: "Cursor",
       programChrome: "Chrome",
     },

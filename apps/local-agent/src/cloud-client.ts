@@ -96,6 +96,24 @@ export class CloudClient {
     return data.installedIds ?? [];
   }
 
+  async createSelfTask(payload: {
+    url: string;
+    title?: string;
+    query?: string;
+    intent?: "purchase";
+  }): Promise<AgentTask> {
+    const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/agent/tasks`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({ type: "OPEN_URL", payload }),
+    });
+    if (!res.ok) {
+      throw new Error(`self_task_failed_${res.status}`);
+    }
+    const data = (await res.json()) as { task: AgentTask };
+    return data.task;
+  }
+
   async claimTask(): Promise<AgentTask | null> {
     const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/agent/tasks/claim`, {
       method: "POST",

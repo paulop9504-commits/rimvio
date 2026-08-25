@@ -76,6 +76,42 @@ function startAgent() {
   });
 }
 
+function fetchJsonPost(url, body) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify(body);
+    const req = http.request(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
+      },
+      (res) => {
+        let chunk = "";
+        res.on("data", (part) => {
+          chunk += part;
+        });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(chunk));
+          } catch {
+            resolve(null);
+          }
+        });
+      },
+    );
+    req.on("error", () => resolve(null));
+    req.write(data);
+    req.end();
+  });
+}
+
+function appIconPath() {
+  return path.join(__dirname, "..", "build", "icon.png");
+}
+
 function fetchJson(url) {
   return new Promise((resolve) => {
     http
@@ -112,6 +148,7 @@ function showMainWindow() {
     minWidth: 880,
     minHeight: 620,
     backgroundColor: "#dfe6ee",
+    icon: appIconPath(),
     show: false,
     autoHideMenuBar: true,
     title: "Rimvio PC",
@@ -234,6 +271,10 @@ if (!gotLock) {
     return { health, work };
   });
 
+  ipcMain.handle("pc-run", async (_event, text) => {
+    return fetchJsonPost("http://127.0.0.1:38472/run", { text });
+  });
+
   ipcMain.handle("pc-open-rimvio", async () => {
     await shell.openExternal("https://rimvio.com/?pcConnect=1");
     return true;
@@ -243,7 +284,11 @@ if (!gotLock) {
     if (process.platform === "win32") {
       app.setLoginItemSettings({ openAtLogin: true, enabled: true });
     }
-    tray = new Tray(nativeImage.createFromDataURL(TRAY_PNG));
+    tray = new Tray(
+      fs.existsSync(appIconPath())
+        ? nativeImage.createFromPath(appIconPath()).resize({ width: 16, height: 16 })
+        : nativeImage.createFromDataURL(TRAY_PNG),
+    );
     rebuildTray(null);
     startAgent();
     showMainWindow();

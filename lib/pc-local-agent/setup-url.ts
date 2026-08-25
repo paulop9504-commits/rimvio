@@ -1,5 +1,5 @@
 /** Bump with `apps/pc-desktop/package.json` when shipping a new installer. */
-export const RIMVIO_PC_SETUP_VERSION = "0.1.5";
+export const RIMVIO_PC_SETUP_VERSION = "0.1.6";
 export const RIMVIO_PC_SETUP_FILENAME = "Rimvio-Setup.exe";
 export const RIMVIO_PC_SETUP_DOWNLOAD_FILENAME = `Rimvio-Setup-${RIMVIO_PC_SETUP_VERSION}.exe`;
 

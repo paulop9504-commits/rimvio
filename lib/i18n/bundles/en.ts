@@ -599,7 +599,7 @@ export const copyEn: Copy = {
         "These programs belong to this run. Tap to install — the agent continues right after.",
       programInstallCta: (name: string) => `Install ${name}`,
       programInstalling: "Downloading…",
-      programRimvioPc: "Rimvio PC 0.1.5",
+      programRimvioPc: "Rimvio PC 0.1.6",
       programCursor: "Cursor",
       programChrome: "Chrome",
     },

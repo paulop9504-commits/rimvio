@@ -5,7 +5,13 @@ import type { CloudClient } from "./cloud-client.js";
 import type { AgentConfig } from "./config.js";
 import { readPcCredentials, writePcCredentials } from "./credential-store.js";
 import { log, logError } from "./logger.js";
-import { readPcWork } from "./pc-work-view.js";
+import { readPcWork, publishPcWork } from "./pc-work-view.js";
+import { kickPairedWorkPoll } from "./run-paired-agent.js";
+import { resolvePcRemoteCommand } from "../../../lib/pc-local-agent/remote-command.ts";
+import {
+  extractPcPurchaseTitle,
+  resolvePcPurchaseOpenUrl,
+} from "../../../lib/pc-local-agent/purchase-intent.ts";
 
 function generateDisplayPairingCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -100,6 +106,68 @@ export function startPcLocalBridge(input: {
     if (req.method === "GET" && url.pathname === "/work") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(readPcWork()));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/run") {
+      void (async () => {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer);
+        }
+        let text = "";
+        try {
+          const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { text?: string };
+          text = body.text?.trim() ?? "";
+        } catch {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "invalid_json" }));
+          return;
+        }
+        if (!text) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "empty" }));
+          return;
+        }
+        if (!state.paired) {
+          res.writeHead(409, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "not_connected", openRimvio: true }));
+          return;
+        }
+        const plan = resolvePcRemoteCommand(text);
+        if (plan.kind === "install") {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true, openRimvio: true }));
+          return;
+        }
+        const openUrl =
+          plan.kind === "purchase" ? resolvePcPurchaseOpenUrl(text) : plan.url;
+        const title =
+          plan.kind === "purchase" ? extractPcPurchaseTitle(text) : plan.title;
+        publishPcWork({
+          running: true,
+          title,
+          userLine: text,
+          url: openUrl,
+          phase: "RUNNING",
+          previewTitle: openUrl.replace(/^https?:\/\//, "").split("/")[0] || "실행 화면",
+        });
+        try {
+          await input.client.createSelfTask({
+            url: openUrl,
+            title,
+            query: text,
+            intent: plan.kind === "purchase" ? "purchase" : undefined,
+          });
+          kickPairedWorkPoll();
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (err) {
+          logError("ERROR", "local run failed", err);
+          res.writeHead(502, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "run_failed" }));
+        }
+      })();
       return;
     }
 

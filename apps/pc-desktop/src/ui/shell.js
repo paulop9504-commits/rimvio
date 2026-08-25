@@ -197,7 +197,12 @@ document.getElementById("composer").addEventListener("submit", (event) => {
   if (!text) {
     return;
   }
-  void window.rimvioPc.openRimvio();
+  void (async () => {
+    const result = await window.rimvioPc.run(text);
+    if (result?.openRimvio || result?.error === "not_connected") {
+      void window.rimvioPc.openRimvio();
+    }
+  })();
 });
 
 document.getElementById("btn-plus").addEventListener("click", () => {
