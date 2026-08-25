@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import {
   isPcDesktopAppId,
   type PcDesktopAppId,
-} from "../../../lib/pc-local-agent/pc-desktop-work.ts";
+} from "../../../../lib/pc-local-agent/pc-desktop-work.ts";
 import { log } from "../logger.js";
 
 const execFileAsync = promisify(execFile);
