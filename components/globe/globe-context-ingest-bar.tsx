@@ -587,17 +587,8 @@ export const GlobeContextIngestBar = forwardRef<
             contextEventId: eventId,
           });
           if (result.kind !== "skip") {
-            if (eventId) {
-              appendContextAgentComposeTurn(eventId, { role: "user", text: value });
-              if (result.kind === "preview") {
-                onAttached?.(eventId);
-              } else {
-                appendContextAgentComposeTurn(eventId, {
-                  role: "assistant",
-                  kind: "text",
-                  text: result.messageKo,
-                });
-              }
+            if (eventId && result.kind === "preview") {
+              onAttached?.(eventId);
             }
             showComposerHint(result.messageKo, {
               tone: result.kind === "login" ? "error" : "success",

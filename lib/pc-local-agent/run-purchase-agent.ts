@@ -106,6 +106,8 @@ function stopTaskWatch(): void {
 function watchTask(taskId: string, goalKo: string, contextEventId: string | null): void {
   stopTaskWatch();
   lastPhase = "";
+  const startedAt = Date.now();
+  let warnedStuck = false;
   const tick = async () => {
     try {
       const res = await fetch(`/api/pc-agent/tasks/${encodeURIComponent(taskId)}`, {
@@ -120,6 +122,18 @@ function watchTask(taskId: string, goalKo: string, contextEventId: string | null
         return;
       }
       const phase = readExecutionPhase(task);
+      if (
+        !warnedStuck &&
+        (phase === "QUEUED" || phase === "PC_OFFLINE") &&
+        Date.now() - startedAt > 20_000
+      ) {
+        warnedStuck = true;
+        appendAgentActivityEvent({
+          kind: "status",
+          labelKo: pcCopy().agentNotPickedUp,
+          stage: "agent_status",
+        });
+      }
       if (phase === lastPhase) {
         return;
       }
@@ -195,7 +209,7 @@ async function dispatchPending(): Promise<void> {
         kind: "tool",
         labelKo: result.queuedOffline
           ? pcCopy().agentWaitingOnline
-          : pcCopy().agentOpeningShop,
+          : pcCopy().agentQueued,
         stage: "object_discovery",
       });
       if (pending.contextEventId) {
@@ -268,7 +282,7 @@ export async function startPcPurchaseAgentRun(input: {
 
   appendAgentActivityEvent({
     kind: "tool",
-    labelKo: result.queuedOffline ? pcCopy().agentWaitingOnline : pcCopy().agentOpeningShop,
+    labelKo: result.queuedOffline ? pcCopy().agentWaitingOnline : pcCopy().agentQueued,
     stage: "object_discovery",
   });
   writePendingPcPurchase({

@@ -117,9 +117,17 @@ const desktopMain = readFileSync(
   join(process.cwd(), "apps/local-agent/src/desktop-main.ts"),
   "utf8",
 );
-assert.ok(desktopMain.includes("Heartbeat started"));
+assert.ok(desktopMain.includes("SystemBrowserEngine"));
+assert.ok(desktopMain.includes("startPairedWorkLoops"));
 assert.ok(!desktopMain.includes("playwright"));
 assert.ok(!desktopMain.includes("createExecutionEngine"));
+
+const paired = readFileSync(
+  join(process.cwd(), "apps/local-agent/src/run-paired-agent.ts"),
+  "utf8",
+);
+assert.ok(paired.includes("Heartbeat started"));
+assert.ok(paired.includes("claimTask"));
 
 const desktop = readFileSync(join(process.cwd(), "apps/pc-desktop/package.json"), "utf8");
 assert.ok(desktop.includes("Rimvio-Setup.exe"));

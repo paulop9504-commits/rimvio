@@ -510,6 +510,9 @@ export const copyEn: Copy = {
       pcFallback: "My PC",
       started: (title: string, device: string) =>
         `${device}: running ${title}. Approve on your phone before payment.`,
+      agentQueued: "Sent to the PC. Continues when the browser opens.",
+      agentNotPickedUp:
+        "This PC didn’t pick up the run. Install the latest Rimvio PC and say it again.",
       needPc: "Installing what this run needs. It will execute as soon as that’s ready.",
       waitingPcQueued: "Agent is waiting on this PC. It will run the moment the PC is on.",
       agentRunGoal: (title: string) => `Run ${title}`,

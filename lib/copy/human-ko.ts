@@ -519,7 +519,10 @@ export const copy = {
       eyebrow: "PC에서 실행",
       pcFallback: "내 PC",
       started: (title: string, device: string) =>
-        `${device}에서 ${title}을 실행해요. 결제 직전에는 여기서 승인해 주세요.`,
+        `${device}에서 ${title}를 실행해요. 결제 직전에는 여기서 승인해 주세요.`,
+      agentQueued: "PC로 보냈어요. 브라우저가 열리면 바로 이어가요",
+      agentNotPickedUp:
+        "PC가 작업을 받지 못했어요. Rimvio PC를 최신으로 설치한 뒤 다시 말해 주세요",
       needPc: "필요한 프로그램을 맞추는 중이에요. 설치되면 바로 실행해요",
       waitingPcQueued: "PC가 켜지는 대로 바로 실행해요. 에이전트가 대기 중이에요",
       agentRunGoal: (title: string) => `${title} 실행`,

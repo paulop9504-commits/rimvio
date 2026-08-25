@@ -5,11 +5,13 @@ import {
   listenPcLocalBridge,
   startPcLocalBridge,
 } from "./pairing-server.js";
+import { SystemBrowserEngine } from "./execution/system-browser-engine.js";
+import { startPairedWorkLoops } from "./run-paired-agent.js";
 import { log, logError } from "./logger.js";
 
 /**
- * Packaged Rimvio PC entry: bridge + pairing + heartbeat.
- * Browser execution stays in `index.ts` (dev / later installer).
+ * Packaged Rimvio PC: pair, heartbeat, claim cloud tasks, open the system browser.
+ * Playwright stays in the dev `index.ts` entry only.
  */
 async function main(): Promise<void> {
   const config = loadConfig(process.argv.slice(2));
@@ -40,19 +42,14 @@ async function main(): Promise<void> {
   log("AGENT", `Cloud ${config.apiBaseUrl}`);
   log("AGENT", `Device ${config.deviceId}`);
 
-  const heartbeatLoop = setInterval(() => {
-    void client.heartbeat().catch((err) => {
-      logError("ERROR", "Heartbeat failed", err);
-    });
-  }, config.heartbeatIntervalMs);
-
-  void client.heartbeat().catch((err) => {
-    logError("ERROR", "Initial heartbeat failed", err);
+  const { stop } = startPairedWorkLoops({
+    config,
+    client,
+    engine: new SystemBrowserEngine(),
   });
-  log("AGENT", "Heartbeat started");
 
   const shutdown = () => {
-    clearInterval(heartbeatLoop);
+    stop();
     process.exit(0);
   };
   process.on("SIGINT", shutdown);

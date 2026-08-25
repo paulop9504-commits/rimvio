@@ -7,7 +7,7 @@ import {
   CHROME_SETUP_FILENAME,
   chromeSetupDownloadUrl,
   isChromeInstalled,
-} from "../../../lib/pc-local-agent/host-chrome.ts";
+} from "../../../../lib/pc-local-agent/host-chrome.ts";
 import { log, logError } from "../logger.js";
 import type { ProgressReporter } from "./types.js";
 
