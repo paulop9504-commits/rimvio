@@ -44,7 +44,7 @@ async function screenshotJpeg(page: Page): Promise<string | undefined> {
   try {
     const buf = await page.screenshot({ type: "jpeg", quality: 42, fullPage: false });
     const b64 = buf.toString("base64");
-    return b64.slice(0, 80_000);
+    return b64.slice(0, 220_000);
   } catch {
     return undefined;
   }

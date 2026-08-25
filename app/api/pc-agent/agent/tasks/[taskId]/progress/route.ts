@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const screenshot =
     typeof body.screenshotJpeg === "string"
-      ? body.screenshotJpeg.slice(0, 80_000)
+      ? body.screenshotJpeg.slice(0, 220_000)
       : undefined;
 
   const reported = await reportTaskExecutionPhase({

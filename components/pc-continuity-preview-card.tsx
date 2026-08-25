@@ -53,7 +53,6 @@ export function PcContinuityPreviewCard({
   const { user } = useAuth();
   const [task, setTask] = useState<PcAgentTask | null>(null);
   const [busy, setBusy] = useState(false);
-  const [watchScreen, setWatchScreen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -89,15 +88,21 @@ export function PcContinuityPreviewCard({
     return unsub;
   }, [user?.id, refresh]);
 
+  const phaseForPoll = task ? readExecutionPhase(task) : "QUEUED";
+  const stillLive =
+    phaseForPoll !== "COMPLETED" &&
+    phaseForPoll !== "FAILED" &&
+    phaseForPoll !== "CANCELLED";
+
   useEffect(() => {
-    if (!watchScreen) {
+    if (!stillLive) {
       return;
     }
     const id = window.setInterval(() => {
       void refresh();
-    }, 2000);
+    }, 1_400);
     return () => window.clearInterval(id);
-  }, [watchScreen, refresh]);
+  }, [stillLive, refresh]);
 
   const phase = task ? readExecutionPhase(task) : "QUEUED";
   const result = readTaskResult(task?.result ?? null);
@@ -173,7 +178,7 @@ export function PcContinuityPreviewCard({
     current?: boolean;
     label: string;
   }) => (
-    <p className="text-[13px] text-foreground">
+    <p className={cn("text-[13px] text-foreground", current && !done && "text-emerald-300")}>
       {done ? "✓" : current ? "◉" : "○"} {label}
     </p>
   );
@@ -185,15 +190,25 @@ export function PcContinuityPreviewCard({
         className,
       )}
       data-live-work-object
+      data-pc-live-run
     >
-      <p className="text-[11px] font-medium text-muted-foreground">{pc.eyebrow}</p>
+      <p className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+        {active ? (
+          <span className="inline-flex items-center gap-1 text-emerald-400">
+            <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+            {copy.globe.liveWorkLive}
+          </span>
+        ) : (
+          pc.eyebrow
+        )}
+      </p>
       <p className="mt-0.5 text-[14px] font-semibold text-foreground">
         {task?.payload.title ?? title}
       </p>
       <p className="mt-1 text-[12px] text-muted-foreground">
         💻 {deviceName?.trim() || pc.pcFallback}
       </p>
-      <p className="mt-1 text-[11px] text-muted-foreground" data-task-phase={phase}>
+      <p className="sr-only" data-task-phase={phase}>
         {phase}
       </p>
       {result.product?.title ? (
@@ -207,9 +222,12 @@ export function PcContinuityPreviewCard({
           배송 예정: {result.product.delivery}
         </p>
       ) : null}
-      <div className="mt-2 space-y-0.5">
-        <Step done={pcOk} label={copy.globe.liveWorkStepPc} />
-        <Step done={siteOk} label={copy.globe.liveWorkStepSite} />
+      <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {copy.globe.liveWorkPlan}
+      </p>
+      <div className="mt-1 space-y-0.5">
+        <Step done={pcOk} current={phase === "QUEUED" || phase === "DISPATCHED" || phase === "RUNNING"} label={copy.globe.liveWorkStepPc} />
+        <Step done={siteOk} current={phase === "BROWSER_OPENED" || phase === "PAGE_READY"} label={copy.globe.liveWorkStepSite} />
         <Step
           done={productOk}
           current={phase === "ACTION_RUNNING"}
@@ -222,27 +240,18 @@ export function PcContinuityPreviewCard({
         />
       </div>
       <p className="mt-2 text-[13px] text-foreground">● {mark}</p>
-      {result.latestEvent ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">{result.latestEvent}</p>
-      ) : null}
       {phase === "WAITING_USER" ? (
         <p className="mt-2 text-[13px] font-medium text-amber-200">{pc.payWarning}</p>
       ) : null}
-      <button
-        type="button"
-        className="mt-2 text-[12px] font-medium text-white/70 underline-offset-2 hover:underline"
-        onClick={() => setWatchScreen((v) => !v)}
-        data-pc-screen-toggle
-      >
-        {copy.globe.liveWorkViewPcScreen}
-      </button>
-      {result.screenshotJpeg && (watchScreen || result.screenshotJpeg) ? (
-        // eslint-disable-next-line @next/next/no-img-element
+      {result.screenshotJpeg ? (
         <img
           alt=""
-          className="mt-2 w-full rounded-xl border border-white/10"
+          className="mt-2 w-full rounded-xl border border-white/10 shadow-sm"
           src={`data:image/jpeg;base64,${result.screenshotJpeg}`}
+          data-pc-live-screen
         />
+      ) : active ? (
+        <p className="mt-2 text-[12px] text-muted-foreground">{copy.globe.liveWorkViewPcScreen}…</p>
       ) : null}
       {task?.error ? (
         <p className="mt-1 text-[12px] text-red-500">{task.error}</p>

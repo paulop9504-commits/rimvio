@@ -71,7 +71,15 @@ const systemEngine = readFileSync(
   join(process.cwd(), "apps/local-agent/src/execution/system-browser-engine.ts"),
   "utf8",
 );
-assert.ok(systemEngine.includes("openSystemBrowser"));
+assert.ok(systemEngine.includes("captureDesktopJpegBase64"));
+assert.ok(systemEngine.includes("snapshot"));
 assert.ok(!systemEngine.includes("playwright"));
+
+const capture = readFileSync(
+  join(process.cwd(), "apps/local-agent/src/execution/capture-desktop.ts"),
+  "utf8",
+);
+assert.ok(capture.includes("PrimaryScreen"));
+assert.ok(capture.includes("image/jpeg"));
 
 console.log("pc-purchase-agent-run ok");

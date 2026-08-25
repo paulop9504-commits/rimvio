@@ -9,6 +9,7 @@ import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import { subscribePcAgentTasksRealtime } from "@/lib/pc-local-agent/client-realtime";
 import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
 import { runPcRemoteCommand } from "@/lib/pc-local-agent/run-remote-command";
+import { PcContinuityPreviewCard } from "@/components/pc-continuity-preview-card";
 import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +100,7 @@ export function PcRemoteChatOverlay({
     if (!open || !user?.id) {
       return;
     }
-    return subscribePcAgentTasksRealtime(user.id, () => {
+    const pull = () => {
       const ids = taskIdsRef.current;
       if (ids.size === 0) {
         return;
@@ -114,7 +115,13 @@ export function PcRemoteChatOverlay({
           }
         })
         .catch(() => undefined);
-    });
+    };
+    const unsub = subscribePcAgentTasksRealtime(user.id, pull);
+    const id = window.setInterval(pull, 1_400);
+    return () => {
+      unsub();
+      window.clearInterval(id);
+    };
   }, [open, user?.id, patchTaskTurn]);
 
   const submit = async (event?: FormEvent) => {
@@ -208,7 +215,15 @@ export function PcRemoteChatOverlay({
                   ) : (
                     <div key={turn.id} className="max-w-[92%] space-y-3">
                       <p className="text-[15px] leading-relaxed text-white/88">{turn.text}</p>
-                      {turn.screenshotJpeg ? (
+                      {turn.taskId ? (
+                        <PcContinuityPreviewCard
+                          taskId={turn.taskId}
+                          title={turn.text}
+                          deviceName={device?.name}
+                          className="bg-white/[0.04] text-white"
+                        />
+                      ) : null}
+                      {!turn.taskId && turn.screenshotJpeg ? (
                         <img
                           src={`data:image/jpeg;base64,${turn.screenshotJpeg}`}
                           alt=""

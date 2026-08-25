@@ -147,7 +147,7 @@ const remoteUi = readFileSync(
   "utf8",
 );
 assert.ok(remoteUi.includes("data-pc-remote-chat"));
-assert.ok(remoteUi.includes("runPcRemoteCommand"));
+assert.ok(remoteUi.includes("PcContinuityPreviewCard"));
 assert.ok(!remoteUi.includes("Local Agent"));
 
 const dock = readFileSync(

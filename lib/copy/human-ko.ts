@@ -250,7 +250,9 @@ export const copy = {
     liveWorkHumanRequired: "추가 인증이 필요해요. PC 화면에서 확인해주세요.",
     liveWorkApproved: "승인됨 · 결제 진행",
     liveWorkApprovePurchase: "구매 승인",
-    liveWorkViewPcScreen: "PC 화면 보기",
+    liveWorkViewPcScreen: "PC 화면",
+    liveWorkLive: "LIVE",
+    liveWorkPlan: "진행",
     resumeSidebarDevices: "기기",
     resumeSidebarEmpty:
       "말해 보세요.\n작업장·친구 대화가 여기 이어가기로 쌓여요.",

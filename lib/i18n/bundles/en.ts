@@ -243,7 +243,9 @@ export const copyEn: Copy = {
     liveWorkHumanRequired: "Extra verification needed. Check the PC screen.",
     liveWorkApproved: "Approved · checking out",
     liveWorkApprovePurchase: "Approve purchase",
-    liveWorkViewPcScreen: "View PC screen",
+    liveWorkViewPcScreen: "PC screen",
+    liveWorkLive: "LIVE",
+    liveWorkPlan: "Progress",
     resumeSidebarDevices: "Devices",
     resumeSidebarEmpty:
       "Just say what you need.\nWorkspaces and friend chats land here to resume.",
