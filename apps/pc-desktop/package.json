@@ -1,7 +1,7 @@
 {
   "name": "rimvio-pc",
   "productName": "Rimvio PC",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Rimvio PC — connect this computer to Rimvio",
   "author": "Rimvio",
@@ -26,6 +26,8 @@
     },
     "files": [
       "src/main.cjs",
+      "src/preload.cjs",
+      "src/ui/**",
       "package.json"
     ],
     "extraResources": [

@@ -1,12 +1,14 @@
-const { app, Tray, Menu, nativeImage, shell } = require("electron");
+const { app, Tray, Menu, nativeImage, shell, BrowserWindow, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const http = require("node:http");
 
 const HEALTH = "http://127.0.0.1:38472/health";
+const WORK = "http://127.0.0.1:38472/work";
 
 let tray = null;
+let mainWindow = null;
 let agentChild = null;
 let quitting = false;
 let lastHealth = null;
@@ -74,22 +76,70 @@ function startAgent() {
   });
 }
 
+function fetchJson(url) {
+  return new Promise((resolve) => {
+    http
+      .get(url, (res) => {
+        let body = "";
+        res.on("data", (chunk) => {
+          body += chunk;
+        });
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(body));
+          } catch {
+            resolve(null);
+          }
+        });
+      })
+      .on("error", () => resolve(null));
+  });
+}
+
 function pollHealth(onUpdate) {
-  http
-    .get(HEALTH, (res) => {
-      let body = "";
-      res.on("data", (chunk) => {
-        body += chunk;
-      });
-      res.on("end", () => {
-        try {
-          onUpdate(JSON.parse(body));
-        } catch {
-          onUpdate(null);
-        }
-      });
-    })
-    .on("error", () => onUpdate(null));
+  void fetchJson(HEALTH).then((body) => onUpdate(body));
+}
+
+function showMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  mainWindow = new BrowserWindow({
+    width: 1180,
+    height: 760,
+    minWidth: 880,
+    minHeight: 620,
+    backgroundColor: "#dfe6ee",
+    show: false,
+    autoHideMenuBar: true,
+    title: "Rimvio PC",
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#00000000",
+      symbolColor: "#3f3f46",
+      height: 40,
+    },
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  mainWindow.once("ready-to-show", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
+  mainWindow.on("close", (event) => {
+    if (!quitting && process.platform === "win32") {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+  void mainWindow.loadFile(path.join(__dirname, "ui", "shell.html"));
 }
 
 function rebuildTray(health) {
@@ -106,6 +156,12 @@ function rebuildTray(health) {
     { label: `Rimvio PC · ${status}`, enabled: false },
     ...(updateLabel ? [{ label: updateLabel, enabled: false }] : []),
     { type: "separator" },
+    {
+      label: "Rimvio PC 열기",
+      click: () => {
+        showMainWindow();
+      },
+    },
     {
       label: "Rimvio 열기",
       click: () => {
@@ -169,17 +225,37 @@ function wireAutoUpdate() {
 const TRAY_PNG =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIUlEQVQ4y2NgGAWjYBSMglEwCkbBKBgFo2AUjIJRMAoGNwAAM/wBAQ0Kz4oAAAAASUVORK5CYII=";
 
-app.whenReady().then(() => {
-  if (process.platform === "win32") {
-    app.setLoginItemSettings({ openAtLogin: true, enabled: true });
-  }
-  tray = new Tray(nativeImage.createFromDataURL(TRAY_PNG));
-  rebuildTray(null);
-  startAgent();
-  wireAutoUpdate();
-  setInterval(() => pollHealth(rebuildTray), 2000);
-  pollHealth(rebuildTray);
-});
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  ipcMain.handle("pc-snapshot", async () => {
+    const [health, work] = await Promise.all([fetchJson(HEALTH), fetchJson(WORK)]);
+    return { health, work };
+  });
+
+  ipcMain.handle("pc-open-rimvio", async () => {
+    await shell.openExternal("https://rimvio.com/?pcConnect=1");
+    return true;
+  });
+
+  app.whenReady().then(() => {
+    if (process.platform === "win32") {
+      app.setLoginItemSettings({ openAtLogin: true, enabled: true });
+    }
+    tray = new Tray(nativeImage.createFromDataURL(TRAY_PNG));
+    rebuildTray(null);
+    startAgent();
+    showMainWindow();
+    wireAutoUpdate();
+    setInterval(() => pollHealth(rebuildTray), 2000);
+    pollHealth(rebuildTray);
+  });
+
+  app.on("second-instance", () => {
+    showMainWindow();
+  });
+}
 
 app.on("before-quit", () => {
   quitting = true;

@@ -2,6 +2,7 @@ import type { AgentConfig } from "./config.js";
 import type { AgentTask, ExecutionResult, InstallJob } from "./execution/types.js";
 import { defaultRequired } from "./capabilities/router.js";
 import { log, logError } from "./logger.js";
+import { publishPcWork } from "./pc-work-view.js";
 
 type ConnectResponse = {
   deviceId: string;
@@ -241,6 +242,16 @@ export async function runTask(
 ): Promise<void> {
   log("TASK", `Received task ${task.id}`);
   log("TASK", `Starting ${task.type}`);
+  const title = task.payload.title || task.payload.query || "실행 중";
+  publishPcWork({
+    running: true,
+    title,
+    userLine: task.payload.query || task.payload.title || "",
+    planLine: "",
+    url: task.payload.url || "",
+    phase: "RUNNING",
+    previewTitle: (task.payload.url || "").replace(/^https?:\/\//, "").split("/")[0] || "실행 화면",
+  });
 
   const required = defaultRequired(task);
   const gap = router.check(required);
@@ -253,6 +264,15 @@ export async function runTask(
   }
 
   const report: import("./execution/types.js").ProgressReporter = async (input) => {
+    publishPcWork({
+      running: true,
+      phase: input.phase,
+      url: input.url || task.payload.url || "",
+      screenshotJpeg: input.screenshotJpeg ?? undefined,
+      previewTitle: input.url
+        ? input.url.replace(/^https?:\/\//, "").split("/")[0]
+        : undefined,
+    });
     await client.reportProgress(task.id, input);
   };
 
@@ -322,7 +342,7 @@ export async function runTask(
         if (engine.snapshot) {
           const shot = await engine.snapshot();
           if (shot) {
-            await client.reportProgress(task.id, {
+            await report({
               phase: "WAITING_USER",
               screenshotJpeg: shot,
             });
@@ -333,6 +353,7 @@ export async function runTask(
     }
 
     await client.completeTask(task.id, result);
+    publishPcWork({ running: false, phase: "DONE" });
     log("TASK", `Completed ${task.id}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "task_failed";

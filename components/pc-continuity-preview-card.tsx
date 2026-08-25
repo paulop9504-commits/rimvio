@@ -178,106 +178,104 @@ export function PcContinuityPreviewCard({
     current?: boolean;
     label: string;
   }) => (
-    <p className={cn("text-[13px] text-foreground", current && !done && "text-emerald-300")}>
-      {done ? "✓" : current ? "◉" : "○"} {label}
+    <p className={cn("text-[13px] text-[#3a3a3c]", current && !done && "text-[#0a84ff]")}>
+      {done ? "✓" : current ? "●" : "○"} {label}
     </p>
   );
+
+  const shot = result.screenshotJpeg;
 
   return (
     <div
       className={cn(
-        "w-full rounded-2xl border border-white/[0.08] bg-rimvio-surface/95 px-3.5 py-3 text-left shadow-sm",
+        "w-full overflow-hidden rounded-[16px] border border-black/[0.08] bg-white text-left shadow-[0_1px_0_rgba(255,255,255,0.9)_inset]",
         className,
       )}
       data-live-work-object
       data-pc-live-run
     >
-      <p className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-black/[0.06] px-3.5 py-2.5">
+        <span className="text-[13px] font-semibold tracking-tight text-[#1c1c1e]">
+          {task?.payload.title ?? title}
+        </span>
         {active ? (
-          <span className="inline-flex items-center gap-1 text-emerald-400">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+          <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[#34c759]">
+            <span className="size-1.5 animate-pulse rounded-full bg-[#34c759]" />
             {copy.globe.liveWorkLive}
           </span>
         ) : (
-          pc.eyebrow
+          <span className="ml-auto text-[11px] text-[#8e8e93]">{pc.eyebrow}</span>
         )}
-      </p>
-      <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-        {task?.payload.title ?? title}
-      </p>
-      <p className="mt-1 text-[12px] text-muted-foreground">
-        💻 {deviceName?.trim() || pc.pcFallback}
-      </p>
-      <p className="sr-only" data-task-phase={phase}>
-        {phase}
-      </p>
-      {result.product?.title ? (
-        <p className="mt-2 text-[13px] text-foreground">
-          {result.product.title}
-          {result.product.price ? ` · ${result.product.price}` : ""}
-        </p>
-      ) : null}
-      {result.product?.delivery ? (
-        <p className="text-[12px] text-muted-foreground">
-          배송 예정: {result.product.delivery}
-        </p>
-      ) : null}
-      <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        {copy.globe.liveWorkPlan}
-      </p>
-      <div className="mt-1 space-y-0.5">
-        <Step done={pcOk} current={phase === "QUEUED" || phase === "DISPATCHED" || phase === "RUNNING"} label={copy.globe.liveWorkStepPc} />
-        <Step done={siteOk} current={phase === "BROWSER_OPENED" || phase === "PAGE_READY"} label={copy.globe.liveWorkStepSite} />
-        <Step
-          done={productOk}
-          current={phase === "ACTION_RUNNING"}
-          label={copy.globe.liveWorkStepProduct}
-        />
-        <Step
-          done={payDone}
-          current={payWait && !payDone}
-          label={copy.globe.liveWorkStepPay}
-        />
       </div>
-      <p className="mt-2 text-[13px] text-foreground">● {mark}</p>
-      {phase === "WAITING_USER" ? (
-        <p className="mt-2 text-[13px] font-medium text-amber-200">{pc.payWarning}</p>
-      ) : null}
-      {result.screenshotJpeg ? (
-        <img
-          alt=""
-          className="mt-2 w-full rounded-xl border border-white/10 shadow-sm"
-          src={`data:image/jpeg;base64,${result.screenshotJpeg}`}
-          data-pc-live-screen
-        />
-      ) : active ? (
-        <p className="mt-2 text-[12px] text-muted-foreground">{copy.globe.liveWorkViewPcScreen}…</p>
-      ) : null}
-      {task?.error ? (
-        <p className="mt-1 text-[12px] text-red-500">{task.error}</p>
-      ) : null}
-      {active ? (
-        <div className="mt-3 flex gap-2">
-          {canApprove ? (
+      <div className="px-3.5 py-3">
+        <p className="text-[12.5px] text-[#8e8e93]">{deviceName?.trim() || pc.pcFallback}</p>
+        <p className="sr-only" data-task-phase={phase}>
+          {phase}
+        </p>
+        {result.product?.title ? (
+          <p className="mt-2 text-[13.5px] tracking-tight text-[#1c1c1e]">
+            {result.product.title}
+            {result.product.price ? ` · ${result.product.price}` : ""}
+          </p>
+        ) : null}
+        {result.product?.delivery ? (
+          <p className="text-[12px] text-[#8e8e93]">배송 예정: {result.product.delivery}</p>
+        ) : null}
+        <p className="mt-2 text-[11px] font-medium text-[#8e8e93]">{copy.globe.liveWorkPlan}</p>
+        <div className="mt-1 space-y-0.5">
+          <Step done={pcOk} current={phase === "QUEUED" || phase === "DISPATCHED" || phase === "RUNNING"} label={copy.globe.liveWorkStepPc} />
+          <Step done={siteOk} current={phase === "BROWSER_OPENED" || phase === "PAGE_READY"} label={copy.globe.liveWorkStepSite} />
+          <Step
+            done={productOk}
+            current={phase === "ACTION_RUNNING"}
+            label={copy.globe.liveWorkStepProduct}
+          />
+          <Step
+            done={payDone}
+            current={payWait && !payDone}
+            label={copy.globe.liveWorkStepPay}
+          />
+        </div>
+        <p className="mt-2 text-[13px] text-[#2c2c2e]">{mark}</p>
+        {phase === "WAITING_USER" ? (
+          <p className="mt-2 text-[13px] font-medium text-[#b45309]">{pc.payWarning}</p>
+        ) : null}
+        {shot ? (
+          <img
+            alt=""
+            className="mt-3 w-full rounded-[12px] border border-black/[0.06] object-cover shadow-sm"
+            src={`data:image/jpeg;base64,${shot}`}
+            data-pc-live-screen
+          />
+        ) : active ? (
+          <p className="mt-2 text-[12px] text-[#8e8e93]">{copy.globe.liveWorkViewPcScreen}…</p>
+        ) : null}
+        {task?.error ? (
+          <p className="mt-1 text-[12px] text-red-500">{task.error}</p>
+        ) : null}
+        {active ? (
+          <div className="mt-3 flex gap-2">
+            {canApprove ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onApprove()}
+                className="flex-1 rounded-full bg-[#111] px-3 py-2 text-[13px] font-semibold text-white"
+              >
+                {copy.globe.liveWorkApprovePurchase}
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={busy}
-              onClick={() => void onApprove()}
-              className="flex-1 rounded-full bg-foreground px-3 py-2 text-[13px] font-semibold text-background"
+              onClick={() => void onStop()}
+              className="flex-1 rounded-full bg-black/[0.05] px-3 py-2 text-[13px] font-semibold text-[#1c1c1e]"
             >
-              {copy.globe.liveWorkApprovePurchase}
+              {copy.globe.liveWorkStop}
             </button>
-          ) : null}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void onStop()}
-            className="flex-1 rounded-full bg-black/[0.06] px-3 py-2 text-[13px] font-semibold text-foreground"
-          >
-            {copy.globe.liveWorkStop}
-          </button>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Loader2, X } from "lucide-react";
+import { ArrowUp, Folder, Plus, Shield, X } from "lucide-react";
 import { useCopy } from "@/hooks/use-copy";
 import { useAuth } from "@/hooks/use-auth";
 import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
@@ -156,35 +156,35 @@ export function PcRemoteChatOverlay({
     }
   };
 
+  const title = device?.name?.trim() || pc.remoteTitle;
+
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-[60] flex flex-col bg-[#171717] text-white"
+          className="fixed inset-0 z-[60] flex flex-col text-[#1c1c1e]"
           data-pc-remote-chat
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 12 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          style={{
+            background:
+              "radial-gradient(900px 520px at 12% 0%, rgba(186,214,255,.85), transparent 58%), radial-gradient(720px 480px at 92% 8%, rgba(232,214,255,.7), transparent 52%), linear-gradient(180deg,#e7edf4,#dfe6ee)",
+          }}
         >
-          <header className="flex items-center justify-between px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-            <div className="min-w-0">
-              <p className="text-[15px] font-medium tracking-tight">{pc.remoteTitle}</p>
-              <p className="mt-0.5 text-[12px] text-white/45">
-                {device ? (
-                  <>
-                    <span className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400" />
-                    {device.name || pc.pcFallback} · {pc.online}
-                  </>
-                ) : (
-                  pc.notConnected
-                )}
+          <header className="flex items-center gap-2 px-3 pb-2 pt-[max(0.7rem,env(safe-area-inset-top))]">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] text-[#8e8e93]">
+                Rimvio <span className="mx-1 text-[#c7c7cc]">›</span> {title}
+                <span className="mx-1 text-[#c7c7cc]">·</span> 진행
               </p>
+              <p className="mt-1 truncate text-[20px] font-semibold tracking-tight">{title}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="flex size-9 items-center justify-center rounded-full text-white/55 hover:bg-white/8 hover:text-white"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-[#8e8e93] hover:bg-white/70"
               aria-label={copy.globe.containerSpaceRuntimeBack}
             >
               <X className="size-5" strokeWidth={1.75} />
@@ -197,37 +197,37 @@ export function PcRemoteChatOverlay({
             data-pc-remote-thread
           >
             {turns.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                <p className="text-[18px] font-medium tracking-tight">{pc.remoteTitle}</p>
-                <p className="mt-2 max-w-[16rem] text-[14px] leading-relaxed text-white/45">
+              <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+                <p className="max-w-[16rem] text-[15px] leading-relaxed text-[#636366]">
                   {pc.remoteEmpty}
                 </p>
               </div>
             ) : (
-              <div className="mx-auto flex w-full max-w-lg flex-col gap-5 py-4">
+              <div className="mx-auto flex w-full max-w-lg flex-col gap-5 py-3">
                 {turns.map((turn) =>
                   turn.role === "user" ? (
                     <div key={turn.id} className="flex justify-end">
-                      <p className="max-w-[85%] rounded-[1.25rem] bg-[#303030] px-4 py-2.5 text-[15px] leading-relaxed">
+                      <p className="max-w-[85%] rounded-[18px] bg-[#ececee] px-4 py-2.5 text-[15px] leading-relaxed tracking-tight">
                         {turn.text}
                       </p>
                     </div>
                   ) : (
-                    <div key={turn.id} className="max-w-[92%] space-y-3">
-                      <p className="text-[15px] leading-relaxed text-white/88">{turn.text}</p>
+                    <div key={turn.id} className="max-w-[94%] space-y-3">
+                      <p className="text-[15px] leading-relaxed tracking-tight text-[#2c2c2e]">
+                        {turn.text}
+                      </p>
                       {turn.taskId ? (
                         <PcContinuityPreviewCard
                           taskId={turn.taskId}
                           title={turn.text}
                           deviceName={device?.name}
-                          className="bg-white/[0.04] text-white"
                         />
                       ) : null}
                       {!turn.taskId && turn.screenshotJpeg ? (
                         <img
                           src={`data:image/jpeg;base64,${turn.screenshotJpeg}`}
                           alt=""
-                          className="max-h-48 rounded-2xl object-cover shadow-sm"
+                          className="max-h-52 w-full rounded-[16px] object-cover shadow-[0_18px_40px_rgba(16,24,40,0.12)]"
                         />
                       ) : null}
                       {turn.installQuery ? (
@@ -237,7 +237,7 @@ export function PcRemoteChatOverlay({
                   ),
                 )}
                 {busy ? (
-                  <p className="text-[13px] text-white/40">{pc.remoteRunning}</p>
+                  <p className="text-[13px] text-[#8e8e93]">{pc.remoteRunning}</p>
                 ) : null}
               </div>
             )}
@@ -245,34 +245,43 @@ export function PcRemoteChatOverlay({
 
           <form
             onSubmit={(event) => void submit(event)}
-            className="mx-auto w-full max-w-lg px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-1"
+            className="mx-auto w-full max-w-lg px-3 pb-[max(0.55rem,env(safe-area-inset-bottom))] pt-1"
           >
-            <div className="flex items-end gap-2 rounded-[1.75rem] bg-[#2f2f2f] px-3 py-2 shadow-sm">
+            <div className="flex items-center gap-1 rounded-[27px] border border-black/[0.04] bg-white px-2 py-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)]">
+              <span className="flex size-9 items-center justify-center text-[#8e8e93]">
+                <Plus className="size-[18px]" strokeWidth={1.8} />
+              </span>
               <input
                 ref={inputRef}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 placeholder={pc.remotePlaceholder}
-                className="min-h-[44px] min-w-0 flex-1 bg-transparent px-2 text-[16px] text-white outline-none placeholder:text-white/35"
+                className="min-h-[40px] min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#a1a1a6]"
                 data-pc-remote-input
               />
               <button
                 type="submit"
                 disabled={busy || !text.trim()}
                 className={cn(
-                  "mb-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
-                  text.trim() && !busy
-                    ? "bg-white text-black"
-                    : "bg-white/12 text-white/30",
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-full transition-colors",
+                  text.trim() && !busy ? "bg-[#111] text-white" : "bg-[#111]/20 text-white/70",
                 )}
                 aria-label={copy.globe.ingestSendAria}
               >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="size-[18px]" strokeWidth={2.5} />
-                )}
+                <ArrowUp className="size-[16px]" strokeWidth={2.4} />
               </button>
+            </div>
+            <div className="mt-2 flex items-center gap-4 px-2 text-[12px] text-[#6e6e73]">
+              <span className="inline-flex items-center gap-1.5">
+                <Folder className="size-3.5 opacity-70" strokeWidth={1.8} />
+                {device ? pc.online : pc.notConnected}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Shield className="size-3.5 text-[#34c759]" strokeWidth={1.8} />
+                보호
+              </span>
+              <span className="ml-auto">Rimvio</span>
+              <span>바로</span>
             </div>
           </form>
         </motion.div>

@@ -5,6 +5,7 @@ import type { CloudClient } from "./cloud-client.js";
 import type { AgentConfig } from "./config.js";
 import { readPcCredentials, writePcCredentials } from "./credential-store.js";
 import { log, logError } from "./logger.js";
+import { readPcWork } from "./pc-work-view.js";
 
 function generateDisplayPairingCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -93,6 +94,12 @@ export function startPcLocalBridge(input: {
     if (req.method === "GET" && url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(healthBody(state)));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/work") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(readPcWork()));
       return;
     }
 

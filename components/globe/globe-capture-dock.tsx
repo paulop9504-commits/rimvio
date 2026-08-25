@@ -201,9 +201,9 @@ export const GlobeCaptureDock = forwardRef<GlobeContextIngestBarHandle, GlobeCap
                 type="button"
                 data-pc-remote-open
                 onClick={() => setRemoteOpen(true)}
-                className="pointer-events-auto mx-auto mb-0.5 inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white/80 shadow-sm ring-1 ring-white/12 backdrop-blur-md"
+                className="pointer-events-auto mx-auto mb-0.5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-[#1c1c1e] shadow-[0_8px_24px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.04] backdrop-blur-md"
               >
-                <span className="size-1.5 rounded-full bg-emerald-400" />
+                <span className="size-1.5 rounded-full bg-[#34c759]" />
                 {pcCopy.remoteOpenCta}
               </button>
             ) : null}

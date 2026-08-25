@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <title>Rimvio PC</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <div class="app" data-pc-shell>
+      <aside class="rail">
+        <div class="rail-tools">
+          <button type="button" class="icon-btn" id="btn-search" title="찾기" aria-label="찾기">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16.5 16.5L21 21" />
+            </svg>
+          </button>
+          <button type="button" class="icon-btn" id="btn-new" title="새 대화" aria-label="새 대화">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        </div>
+        <div class="rail-list" id="recents"></div>
+      </aside>
+
+      <main class="stage">
+        <header class="chrome">
+          <div class="chrome-nav" aria-hidden="true">
+            <button type="button" class="nav-btn" tabindex="-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <button type="button" class="nav-btn" tabindex="-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <button type="button" class="nav-btn" tabindex="-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.2-5.5M4 4v5h5"/></svg>
+            </button>
+          </div>
+          <p class="crumb" id="crumb">Rimvio <span>›</span> 내 PC <span>·</span> 진행</p>
+          <button type="button" class="pin" id="btn-pin" aria-label="고정" title="고정">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path d="M12 17v5M8 3l8 4-2 6H10L8 7z" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="workspace">
+          <div class="thread" id="thread"></div>
+          <aside class="pip" id="pip" hidden>
+            <div class="pip-bar">
+              <span class="pip-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="pip-title" id="pip-title">실행 화면</span>
+              <button type="button" id="pip-close" aria-label="닫기">×</button>
+            </div>
+            <div class="pip-frame">
+              <img id="pip-img" alt="" />
+            </div>
+          </aside>
+        </div>
+
+        <div class="dock">
+          <form class="composer" id="composer">
+            <button type="button" class="plus" id="btn-plus" aria-label="맥락 더하기">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            <input
+              id="reply"
+              type="text"
+              maxlength="400"
+              autocomplete="off"
+              placeholder="이어서 말하기, @로 맥락"
+            />
+            <button type="submit" class="send" aria-label="보내기">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4">
+                <path d="M12 19V5M6 11l6-6 6 6" />
+              </svg>
+            </button>
+          </form>
+          <div class="status-row">
+            <span class="chip" id="chip-pc">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v10H4zM8 20h8"/></svg>
+            <span class="chip-label" id="chip-pc-label">이 PC</span>
+            </span>
+            <span class="chip on" id="chip-guard">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+              보호
+            </span>
+            <span class="chip chip-right">
+              Rimvio
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+            <span class="chip">
+              바로
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="./shell.js"></script>
+  </body>
+</html>

@@ -132,7 +132,8 @@ assert.ok(paired.includes("claimTask"));
 const desktop = readFileSync(join(process.cwd(), "apps/pc-desktop/package.json"), "utf8");
 assert.ok(desktop.includes("Rimvio-Setup.exe"));
 assert.ok(desktop.includes("runAfterFinish"));
-assert.ok(desktop.includes("electron-updater"));
+assert.ok(desktop.includes("src/ui/**"));
+assert.ok(desktop.includes("preload.cjs"));
 assert.ok(desktop.includes('"provider": "github"'));
 
 const desktopMainJs = readFileSync(
@@ -141,6 +142,27 @@ const desktopMainJs = readFileSync(
 );
 assert.ok(desktopMainJs.includes("checkForUpdates"));
 assert.ok(desktopMainJs.includes("setLoginItemSettings"));
+assert.ok(desktopMainJs.includes("BrowserWindow"));
+assert.ok(desktopMainJs.includes("backgroundColor"));
+assert.ok(desktopMainJs.includes("shell.html"));
+assert.ok(desktopMainJs.includes("38472/work"));
+
+const shellHtml = readFileSync(
+  join(process.cwd(), "apps/pc-desktop/src/ui/shell.html"),
+  "utf8",
+);
+assert.ok(shellHtml.includes("이어서 말하기"));
+assert.ok(shellHtml.includes("data-pc-shell"));
+assert.ok(shellHtml.includes("pip-title"));
+assert.ok(!shellHtml.includes("Local Agent"));
+assert.ok(!shellHtml.includes("GPT-"));
+
+const pairing = readFileSync(
+  join(process.cwd(), "apps/local-agent/src/pairing-server.ts"),
+  "utf8",
+);
+assert.ok(pairing.includes('pathname === "/work"'));
+assert.ok(pairing.includes("readPcWork"));
 
 const remoteUi = readFileSync(
   join(process.cwd(), "components/globe/pc-remote-chat-overlay.tsx"),
@@ -160,6 +182,6 @@ assert.ok(dock.includes("data-pc-remote-open"));
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
 assert.ok(setupUrl.includes("releases/download/rimvio-pc-"));
 assert.ok(setupUrl.includes("RIMVIO_PC_SETUP_VERSION"));
-assert.ok(setupUrl.includes("0.1.4"));
+assert.ok(setupUrl.includes("0.1.5"));
 
 console.log("pc-onboarding-phase ok");
