@@ -158,7 +158,8 @@ assert.ok(dock.includes("PcRemoteChatOverlay"));
 assert.ok(dock.includes("data-pc-remote-open"));
 
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
-assert.ok(setupUrl.includes("releases/latest/download/Rimvio-Setup.exe"));
-assert.ok(setupUrl.includes("RIMVIO_PC_SETUP_URL"));
+assert.ok(setupUrl.includes("releases/download/rimvio-pc-"));
+assert.ok(setupUrl.includes("RIMVIO_PC_SETUP_VERSION"));
+assert.ok(setupUrl.includes("0.1.4"));
 
 console.log("pc-onboarding-phase ok");

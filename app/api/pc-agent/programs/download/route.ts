@@ -39,7 +39,9 @@ export async function GET(request: Request) {
   }
   try {
     const url = await resolveRedirectUrl(id);
-    return NextResponse.redirect(url, 302);
+    const res = NextResponse.redirect(url, 302);
+    res.headers.set("Cache-Control", "no-store");
+    return res;
   } catch {
     return NextResponse.json({ error: "download_unavailable" }, { status: 502 });
   }

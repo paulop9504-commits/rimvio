@@ -1,4 +1,8 @@
-import { resolvePcSetupDownloadUrl } from "@/lib/pc-local-agent/setup-url";
+import {
+  RIMVIO_PC_SETUP_DOWNLOAD_FILENAME,
+  RIMVIO_PC_SETUP_VERSION,
+  resolvePcSetupDownloadUrl,
+} from "@/lib/pc-local-agent/setup-url";
 
 export type PcProgramId = "rimvio-pc" | "cursor" | "chrome";
 
@@ -43,7 +47,7 @@ export function programUrl(id: PcProgramId): string {
 
 export function programFilename(id: PcProgramId): string {
   if (id === "rimvio-pc") {
-    return "Rimvio-Setup.exe";
+    return RIMVIO_PC_SETUP_DOWNLOAD_FILENAME;
   }
   if (id === "cursor") {
     return "CursorUserSetup.exe";
@@ -117,6 +121,9 @@ export function isPcProgramId(value: string): value is PcProgramId {
 }
 
 export function programClientDownloadPath(id: PcProgramId): string {
+  if (id === "rimvio-pc") {
+    return `/api/pc-agent/programs/download?id=${id}&v=${encodeURIComponent(RIMVIO_PC_SETUP_VERSION)}`;
+  }
   return `/api/pc-agent/programs/download?id=${id}`;
 }
 

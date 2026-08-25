@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  RIMVIO_PC_SETUP_FILENAME,
+  RIMVIO_PC_SETUP_DOWNLOAD_FILENAME,
   resolvePcSetupDownloadUrl,
 } from "@/lib/pc-local-agent/setup-url";
 
@@ -9,6 +9,6 @@ export async function GET() {
   return NextResponse.json({
     available: Boolean(url),
     url,
-    filename: RIMVIO_PC_SETUP_FILENAME,
+    filename: RIMVIO_PC_SETUP_DOWNLOAD_FILENAME,
   });
 }
