@@ -11,6 +11,7 @@ import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
 import { runPcRemoteCommand } from "@/lib/pc-local-agent/run-remote-command";
 import { PcContinuityPreviewCard } from "@/components/pc-continuity-preview-card";
 import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
+import { PcSetupUpdateCard } from "@/components/globe/pc-setup-update-card";
 import { cn } from "@/lib/utils";
 
 type RemoteTurn = {
@@ -201,6 +202,15 @@ export function PcRemoteChatOverlay({
                 <p className="max-w-[16rem] text-[15px] leading-relaxed text-[#636366]">
                   {pc.remoteEmpty}
                 </p>
+                {device?.needsUpdate ? (
+                  <div className="mt-5 w-full max-w-sm">
+                    <PcSetupUpdateCard
+                      reportedVersion={device.appVersion}
+                      needsUpdate
+                      tone="chat"
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="mx-auto flex w-full max-w-lg flex-col gap-5 py-3">
@@ -238,6 +248,13 @@ export function PcRemoteChatOverlay({
                 )}
                 {busy ? (
                   <p className="text-[13px] text-[#8e8e93]">{pc.remoteRunning}</p>
+                ) : null}
+                {device?.needsUpdate ? (
+                  <PcSetupUpdateCard
+                    reportedVersion={device.appVersion}
+                    needsUpdate
+                    tone="chat"
+                  />
                 ) : null}
               </div>
             )}

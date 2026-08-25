@@ -38,6 +38,13 @@ function startAgent() {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
     RIMVIO_API_BASE_URL: process.env.RIMVIO_API_BASE_URL || "https://rimvio.com",
+    RIMVIO_PC_APP_VERSION: (() => {
+      try {
+        return require("../package.json").version;
+      } catch {
+        return "0.0.0";
+      }
+    })(),
   };
 
   if (app.isPackaged && fs.existsSync(packagedAgentPath())) {

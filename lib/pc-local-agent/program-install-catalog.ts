@@ -65,6 +65,8 @@ export function programNameKey(id: PcProgramId): PcProgramInstallOffer["nameKey"
   return "programChrome";
 }
 
+/** Internal query: only the current Rimvio PC installer. */
+export const PC_SETUP_UPDATE_QUERY = "__rimvio_pc_update__";
 /** Internal query: purchase Run needs Rimvio PC + Chrome, not Cursor. */
 export const PC_PURCHASE_PROGRAM_QUERY = "__purchase_run__";
 
@@ -90,6 +92,9 @@ export function resolveProgramInstallOffers(utterance: string): PcProgramInstall
   const text = utterance.trim();
   if (!text) {
     return [];
+  }
+  if (text === PC_SETUP_UPDATE_QUERY) {
+    return [toOffer("rimvio-pc")];
   }
   if (text === PC_PURCHASE_PROGRAM_QUERY) {
     return programsForPcPurchaseRun();

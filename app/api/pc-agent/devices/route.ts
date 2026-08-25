@@ -3,6 +3,12 @@ import { requireAuthUser } from "@/lib/auth/api-auth";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { markStaleDevicesOffline } from "@/lib/pc-local-agent/server-auth";
 import { expireStaleWaitingTasks } from "@/lib/pc-local-agent/capability-server";
+import {
+  pcAppNeedsUpdate,
+  readReportedPcAppVersion,
+} from "@/lib/pc-local-agent/pc-app-version";
+import { RIMVIO_PC_SETUP_VERSION } from "@/lib/pc-local-agent/setup-url";
+import type { PcAgentDevice } from "@/lib/pc-local-agent";
 
 export async function GET() {
   const auth = await requireAuthUser();
@@ -28,5 +34,15 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ devices: data ?? [] });
+  return NextResponse.json({
+    devices: (data ?? []).map((row) => {
+      const appVersion = readReportedPcAppVersion(row);
+      return {
+        ...row,
+        appVersion,
+        expectedVersion: RIMVIO_PC_SETUP_VERSION,
+        needsUpdate: pcAppNeedsUpdate(appVersion),
+      } satisfies PcAgentDevice;
+    }),
+  });
 }

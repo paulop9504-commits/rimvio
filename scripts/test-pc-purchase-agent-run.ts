@@ -62,7 +62,8 @@ const agent = readFileSync(
 assert.ok(agent.includes("beginAgentActivityTrail"));
 assert.ok(agent.includes("ensurePcPurchaseAgentWatch"));
 assert.ok(agent.includes("agentQueued"));
-assert.ok(agent.includes("agentNotPickedUp"));
+assert.ok(agent.includes("agentNeedLatest"));
+assert.ok(agent.includes("PC_SETUP_UPDATE_QUERY"));
 
 assert.match(copy.globe.pcContinuity.started("생수 구매", "내 PC"), /구매를 실행/);
 assert.ok(!/구매을/.test(copy.globe.pcContinuity.started("생수 구매", "내 PC")));

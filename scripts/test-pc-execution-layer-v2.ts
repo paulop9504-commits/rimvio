@@ -243,6 +243,7 @@ assert.ok(previewSrc.includes('action: "approve"'));
 assert.ok(previewSrc.includes("screenshotJpeg"));
 assert.ok(previewSrc.includes("data-pc-live-run"));
 assert.ok(previewSrc.includes("data-pc-live-screen"));
+assert.ok(previewSrc.includes("PcSetupUpdateCard"));
 assert.ok(previewSrc.includes("1_400"));
 
 clearLiveWorksForTests();

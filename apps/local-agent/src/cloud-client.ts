@@ -75,9 +75,14 @@ export class CloudClient {
   }
 
   async heartbeat(): Promise<void> {
+    const version =
+      process.env.RIMVIO_PC_APP_VERSION?.trim() ||
+      process.env.npm_package_version?.trim() ||
+      "";
     const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/agent/heartbeat`, {
       method: "POST",
       headers: this.headers(),
+      body: JSON.stringify({ version }),
     });
     if (!res.ok) {
       throw new Error(`heartbeat_failed_${res.status}`);

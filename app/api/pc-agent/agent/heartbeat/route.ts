@@ -12,7 +12,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  await touchDeviceHeartbeat(auth.deviceId);
+  let appVersion: string | null = null;
+  try {
+    const body = (await request.json()) as { version?: unknown };
+    appVersion = typeof body.version === "string" ? body.version : null;
+  } catch {
+    appVersion = null;
+  }
+
+  await touchDeviceHeartbeat(auth.deviceId, appVersion);
   await expireStaleWaitingTasks(auth.userId);
   const resumed = await resumeParkedTasksForDevice(auth.deviceId);
 

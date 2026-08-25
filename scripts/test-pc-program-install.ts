@@ -5,8 +5,14 @@ import { join } from "node:path";
 import {
   isPcProgramInstallUtterance,
   listAllProgramInstallOffers,
+  PC_SETUP_UPDATE_QUERY,
   resolveProgramInstallOffers,
 } from "../lib/pc-local-agent/program-install-catalog";
+import {
+  isPcAppVersionCurrent,
+  pcAppNeedsUpdate,
+  readReportedPcAppVersion,
+} from "../lib/pc-local-agent/pc-app-version";
 
 assert.equal(resolveProgramInstallOffers("호텔 찾아줘").length, 0);
 assert.equal(resolveProgramInstallOffers("설치해줘").length, 0);
@@ -36,6 +42,14 @@ assert.equal(all.length, 3);
 
 assert.equal(isPcProgramInstallUtterance("내 PC 연결"), true);
 assert.equal(listAllProgramInstallOffers().length, 3);
+
+const update = resolveProgramInstallOffers(PC_SETUP_UPDATE_QUERY);
+assert.equal(update.length, 1);
+assert.equal(update[0]?.id, "rimvio-pc");
+assert.equal(isPcAppVersionCurrent("0.1.6", "0.1.6"), true);
+assert.equal(isPcAppVersionCurrent("0.1.5", "0.1.6"), false);
+assert.equal(pcAppNeedsUpdate(null, "0.1.6"), true);
+assert.equal(readReportedPcAppVersion({ permissions: { appVersion: "0.1.5" } }), "0.1.5");
 
 const ingest = readFileSync(
   join(process.cwd(), "components/globe/globe-context-ingest-bar.tsx"),

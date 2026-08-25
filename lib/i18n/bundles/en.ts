@@ -515,6 +515,11 @@ export const copyEn: Copy = {
       agentQueued: "Sent to the PC. Continues when the browser opens.",
       agentNotPickedUp:
         "This PC didn’t pick up the run. Install the latest Rimvio PC and say it again.",
+      agentNeedLatest: (version: string) =>
+        `This PC didn’t pick up the run. Install Rimvio PC ${version} and say it again.`,
+      versionMismatch: (have: string, need: string) =>
+        `This PC is ${have}. ${need} is required. Download and install again.`,
+      reinstallSetupCta: (version: string) => `Download Rimvio PC ${version}`,
       needPc: "Installing what this run needs. It will execute as soon as that’s ready.",
       waitingPcQueued: "Agent is waiting on this PC. It will run the moment the PC is on.",
       agentRunGoal: (title: string) => `Run ${title}`,
@@ -599,7 +604,7 @@ export const copyEn: Copy = {
         "These programs belong to this run. Tap to install — the agent continues right after.",
       programInstallCta: (name: string) => `Install ${name}`,
       programInstalling: "Downloading…",
-      programRimvioPc: "Rimvio PC 0.1.6",
+      programRimvioPc: "Rimvio PC 0.1.7",
       programCursor: "Cursor",
       programChrome: "Chrome",
     },

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCopy } from "@/hooks/use-copy";
 import { subscribePcAgentTasksRealtime } from "@/lib/pc-local-agent/client-realtime";
-import type { PcAgentTask } from "@/lib/pc-local-agent";
+import { PcSetupUpdateCard } from "@/components/globe/pc-setup-update-card";
+import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import { bindPcPurchaseLiveWork } from "@/lib/globe/live-work/bind-pc-purchase-work";
 import { patchLiveWork, readLiveWorkByContext } from "@/lib/globe/live-work/live-work-store";
 import {
@@ -53,6 +54,11 @@ export function PcContinuityPreviewCard({
   const { user } = useAuth();
   const [task, setTask] = useState<PcAgentTask | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stuck, setStuck] = useState(false);
+  const [pcSetup, setPcSetup] = useState<{
+    appVersion: string | null;
+    needsUpdate: boolean;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -103,6 +109,37 @@ export function PcContinuityPreviewCard({
     }, 1_400);
     return () => window.clearInterval(id);
   }, [stillLive, refresh]);
+
+  useEffect(() => {
+    const waiting =
+      phaseForPoll === "QUEUED" ||
+      phaseForPoll === "PC_OFFLINE" ||
+      phaseForPoll === "DISPATCHED";
+    if (!waiting) {
+      setStuck(false);
+      return;
+    }
+    const id = window.setTimeout(() => setStuck(true), 8_000);
+    return () => window.clearTimeout(id);
+  }, [phaseForPoll]);
+
+  useEffect(() => {
+    void fetch("/api/pc-agent/devices", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { devices?: PcAgentDevice[] } | null) => {
+        const list = data?.devices ?? [];
+        const row = list.find((item) => item.status === "ONLINE") ?? list[0];
+        if (!row) {
+          setPcSetup({ appVersion: null, needsUpdate: true });
+          return;
+        }
+        setPcSetup({
+          appVersion: row.appVersion ?? null,
+          needsUpdate: Boolean(row.needsUpdate),
+        });
+      })
+      .catch(() => undefined);
+  }, [taskId]);
 
   const phase = task ? readExecutionPhase(task) : "QUEUED";
   const result = readTaskResult(task?.result ?? null);
@@ -237,6 +274,15 @@ export function PcContinuityPreviewCard({
           />
         </div>
         <p className="mt-2 text-[13px] text-[#2c2c2e]">{mark}</p>
+        {stuck || pcSetup?.needsUpdate ? (
+          <div className="mt-3">
+            <PcSetupUpdateCard
+              reportedVersion={pcSetup?.appVersion}
+              needsUpdate={pcSetup?.needsUpdate}
+              tone="chat"
+            />
+          </div>
+        ) : null}
         {phase === "WAITING_USER" ? (
           <p className="mt-2 text-[13px] font-medium text-[#b45309]">{pc.payWarning}</p>
         ) : null}

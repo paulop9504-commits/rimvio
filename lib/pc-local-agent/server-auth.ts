@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { hashDeviceToken } from "@/lib/pc-local-agent/token";
 import { parkDeviceTasksOffline } from "@/lib/pc-local-agent/task-dispatch";
+import { parsePcAppVersion } from "@/lib/pc-local-agent/pc-app-version";
+import { permissionsWithAppVersion } from "@/lib/pc-local-agent/pc-permissions";
 import {
   PC_AGENT_HEARTBEAT_TIMEOUT_MS,
   type PcAgentDevice,
@@ -101,19 +103,29 @@ export async function markStaleDevicesOffline(userId?: string): Promise<string[]
   return ids;
 }
 
-export async function touchDeviceHeartbeat(deviceId: string): Promise<void> {
+export async function touchDeviceHeartbeat(
+  deviceId: string,
+  appVersion?: string | null,
+): Promise<void> {
   const admin = createServiceRoleClient();
   if (!admin) {
     return;
   }
 
   const now = new Date().toISOString();
-  await admin
-    .from("pc_local_agent_devices")
-    .update({
-      status: "ONLINE",
-      last_seen_at: now,
-      updated_at: now,
-    })
-    .eq("id", deviceId);
+  const version = parsePcAppVersion(appVersion);
+  const patch: Record<string, unknown> = {
+    status: "ONLINE",
+    last_seen_at: now,
+    updated_at: now,
+  };
+  if (version) {
+    const { data: row } = await admin
+      .from("pc_local_agent_devices")
+      .select("permissions")
+      .eq("id", deviceId)
+      .maybeSingle();
+    patch.permissions = permissionsWithAppVersion(row?.permissions, version);
+  }
+  await admin.from("pc_local_agent_devices").update(patch).eq("id", deviceId);
 }

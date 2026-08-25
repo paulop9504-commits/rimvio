@@ -26,3 +26,17 @@ export function parsePcAgentPermissions(raw: unknown): PcAgentPermissions {
     screen: row.screen !== false,
   };
 }
+
+export function permissionsWithAppVersion(
+  raw: unknown,
+  version: string,
+): Record<string, unknown> {
+  const parsed = parsePcAgentPermissions(raw);
+  const extra =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    ...extra,
+    ...parsed,
+    appVersion: version,
+  };
+}

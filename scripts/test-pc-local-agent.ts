@@ -12,7 +12,7 @@ import {
   generatePairingCode,
   generateDesktopNonce,
 } from "../lib/pc-local-agent/token";
-import { parsePcAgentPermissions } from "../lib/pc-local-agent/pc-permissions";
+import { parsePcAgentPermissions, permissionsWithAppVersion } from "../lib/pc-local-agent/pc-permissions";
 import {
   CapabilityRouter,
   DEMO_CAPABILITY_ID,
@@ -70,6 +70,10 @@ function selfTest(): void {
   const perms = parsePcAgentPermissions({ browser: false });
   if (perms.browser !== false || perms.webWork !== true) {
     throw new Error("pc_permissions_default");
+  }
+  const withVer = permissionsWithAppVersion({ browser: false }, "0.1.6");
+  if (withVer.appVersion !== "0.1.6" || withVer.browser !== false) {
+    throw new Error("permissions_app_version");
   }
 
   const gapBuiltin = resolveCapabilityGap([], ["browser.basic"]);

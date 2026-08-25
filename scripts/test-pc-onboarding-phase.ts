@@ -136,7 +136,7 @@ assert.ok(desktop.includes("runAfterFinish"));
 assert.ok(desktop.includes("src/ui/**"));
 assert.ok(desktop.includes("preload.cjs"));
 assert.ok(desktop.includes("build/icon.png"));
-assert.ok(desktop.includes("0.1.6"));
+assert.ok(desktop.includes("0.1.7"));
 assert.ok(existsSync(join(process.cwd(), "apps/pc-desktop/build/icon.png")));
 assert.ok(desktop.includes('"provider": "github"'));
 
@@ -150,7 +150,7 @@ assert.ok(desktopMainJs.includes("BrowserWindow"));
 assert.ok(desktopMainJs.includes("backgroundColor"));
 assert.ok(desktopMainJs.includes("shell.html"));
 assert.ok(desktopMainJs.includes("38472/run"));
-assert.ok(desktopMainJs.includes("pc-run"));
+assert.ok(desktopMainJs.includes("RIMVIO_PC_APP_VERSION"));
 
 const shellHtml = readFileSync(
   join(process.cwd(), "apps/pc-desktop/src/ui/shell.html"),
@@ -193,6 +193,6 @@ assert.ok(dock.includes("data-pc-remote-open"));
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
 assert.ok(setupUrl.includes("releases/download/rimvio-pc-"));
 assert.ok(setupUrl.includes("RIMVIO_PC_SETUP_VERSION"));
-assert.ok(setupUrl.includes("0.1.6"));
+assert.ok(setupUrl.includes("0.1.7"));
 
 console.log("pc-onboarding-phase ok");

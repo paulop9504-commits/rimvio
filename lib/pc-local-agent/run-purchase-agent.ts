@@ -19,7 +19,8 @@ import {
   syncPortalComposeProgramInstallToChat,
   syncPortalComposeTurnToChat,
 } from "@/lib/globe/chat/sync-portal-compose-to-chat";
-import { extractPcPurchaseTitle } from "@/lib/pc-local-agent/purchase-intent";
+import { PC_SETUP_UPDATE_QUERY } from "@/lib/pc-local-agent/program-install-catalog";
+import { RIMVIO_PC_SETUP_VERSION } from "@/lib/pc-local-agent/setup-url";
 import type { PcAgentTask } from "@/lib/pc-local-agent";
 import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
 import {
@@ -103,7 +104,12 @@ function stopTaskWatch(): void {
   }
 }
 
-function watchTask(taskId: string, goalKo: string, contextEventId: string | null): void {
+function watchTask(
+  taskId: string,
+  goalKo: string,
+  contextEventId: string | null,
+  utterance: string,
+): void {
   stopTaskWatch();
   lastPhase = "";
   const startedAt = Date.now();
@@ -130,8 +136,14 @@ function watchTask(taskId: string, goalKo: string, contextEventId: string | null
         warnedStuck = true;
         appendAgentActivityEvent({
           kind: "status",
-          labelKo: pcCopy().agentNotPickedUp,
+          labelKo: pcCopy().agentNeedLatest(RIMVIO_PC_SETUP_VERSION),
           stage: "agent_status",
+        });
+        syncPortalComposeProgramInstallToChat({
+          graphId: ensureGlobeChatGraphId(),
+          userText: utterance,
+          assistantText: pcCopy().agentNeedLatest(RIMVIO_PC_SETUP_VERSION),
+          query: PC_SETUP_UPDATE_QUERY,
         });
       }
       if (phase === lastPhase) {
@@ -217,7 +229,7 @@ async function dispatchPending(): Promise<void> {
       }
       patchPendingPcPurchase({ taskId: result.task.id });
       const goalKo = pcCopy().agentRunGoal(extractPcPurchaseTitle(pending.utterance));
-      watchTask(result.task.id, goalKo, pending.contextEventId);
+      watchTask(result.task.id, goalKo, pending.contextEventId, pending.utterance);
       if (!result.queuedOffline) {
         /* still watch phases */
       }
@@ -291,7 +303,7 @@ export async function startPcPurchaseAgentRun(input: {
     taskId: result.task.id,
   });
   ensurePcPurchaseAgentWatch();
-  watchTask(result.task.id, goalKo, contextEventId);
+  watchTask(result.task.id, goalKo, contextEventId, utterance);
   return result;
 }
 

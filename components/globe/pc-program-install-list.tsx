@@ -20,11 +20,13 @@ export function PcProgramInstallList({
   className,
   onStarted,
   tone = "sidebar",
+  ctaLabel,
 }: {
   query: string;
   className?: string;
   onStarted?: (id: string) => void;
   tone?: "sidebar" | "chat";
+  ctaLabel?: string;
 }) {
   const pc = useCopy().globe.pcContinuity;
   const [programs, setPrograms] = useState<PcProgramInstallOffer[]>([]);
@@ -84,7 +86,7 @@ export function PcProgramInstallList({
           >
             {started === program.id
               ? pc.programInstalling
-              : pc.programInstallCta(name(program.nameKey))}
+              : (ctaLabel ?? pc.programInstallCta(name(program.nameKey)))}
           </button>
         ))}
       </div>
