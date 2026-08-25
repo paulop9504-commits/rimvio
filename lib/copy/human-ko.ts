@@ -529,6 +529,10 @@ export const copy = {
         `PC가 작업을 받지 못했어요. Rimvio PC ${version}을 설치한 뒤 다시 말해 주세요`,
       versionMismatch: (have: string, need: string) =>
         `이 PC는 ${have}이에요. ${need}이 필요해요. 다시 받아 설치해 주세요.`,
+      versionUnknown: (need: string) =>
+        `이 PC 버전을 아직 못 읽었어요. Rimvio PC ${need}을 설치해 주세요.`,
+      versionCurrent: (have: string) =>
+        `이 PC는 ${have}이에요. 그대로 안 되면 같은 버전을 다시 받아 주세요.`,
       reinstallSetupCta: (version: string) => `Rimvio PC ${version} 다시 받기`,
       needPc: "필요한 프로그램을 맞추는 중이에요. 설치되면 바로 실행해요",
       waitingPcQueued: "PC가 켜지는 대로 바로 실행해요. 에이전트가 대기 중이에요",
@@ -615,7 +619,7 @@ export const copy = {
         "이 Run에 필요한 프로그램이에요. 누르면 설치하고 에이전트가 이어서 실행해요.",
       programInstallCta: (name: string) => `${name} 설치`,
       programInstalling: "받는 중…",
-      programRimvioPc: "Rimvio PC 0.1.7",
+      programRimvioPc: "Rimvio PC 0.1.8",
       programCursor: "Cursor",
       programChrome: "Chrome",
     },

@@ -519,6 +519,10 @@ export const copyEn: Copy = {
         `This PC didn’t pick up the run. Install Rimvio PC ${version} and say it again.`,
       versionMismatch: (have: string, need: string) =>
         `This PC is ${have}. ${need} is required. Download and install again.`,
+      versionUnknown: (need: string) =>
+        `Couldn't read this PC version. Install Rimvio PC ${need}.`,
+      versionCurrent: (have: string) =>
+        `This PC is ${have}. If it still won't run, download the same build again.`,
       reinstallSetupCta: (version: string) => `Download Rimvio PC ${version}`,
       needPc: "Installing what this run needs. It will execute as soon as that’s ready.",
       waitingPcQueued: "Agent is waiting on this PC. It will run the moment the PC is on.",
@@ -604,7 +608,7 @@ export const copyEn: Copy = {
         "These programs belong to this run. Tap to install — the agent continues right after.",
       programInstallCta: (name: string) => `Install ${name}`,
       programInstalling: "Downloading…",
-      programRimvioPc: "Rimvio PC 0.1.7",
+      programRimvioPc: "Rimvio PC 0.1.8",
       programCursor: "Cursor",
       programChrome: "Chrome",
     },

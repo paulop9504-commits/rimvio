@@ -141,9 +141,18 @@ export function startPcLocalBridge(input: {
           return;
         }
         const openUrl =
-          plan.kind === "purchase" ? resolvePcPurchaseOpenUrl(text) : plan.url;
+          plan.kind === "purchase"
+            ? resolvePcPurchaseOpenUrl(text)
+            : plan.url;
         const title =
           plan.kind === "purchase" ? extractPcPurchaseTitle(text) : plan.title;
+        const intent =
+          plan.kind === "purchase"
+            ? "purchase"
+            : plan.kind === "desktop"
+              ? "desktop"
+              : undefined;
+        const appId = plan.kind === "desktop" ? plan.appId : undefined;
         publishPcWork({
           running: true,
           title,
@@ -157,7 +166,8 @@ export function startPcLocalBridge(input: {
             url: openUrl,
             title,
             query: text,
-            intent: plan.kind === "purchase" ? "purchase" : undefined,
+            intent,
+            appId,
           });
           kickPairedWorkPoll();
           res.writeHead(200, { "Content-Type": "application/json" });

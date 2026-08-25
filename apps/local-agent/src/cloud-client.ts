@@ -105,7 +105,8 @@ export class CloudClient {
     url: string;
     title?: string;
     query?: string;
-    intent?: "purchase";
+    intent?: "purchase" | "desktop";
+    appId?: string;
   }): Promise<AgentTask> {
     const res = await fetch(`${this.config.apiBaseUrl}/api/pc-agent/agent/tasks`, {
       method: "POST",

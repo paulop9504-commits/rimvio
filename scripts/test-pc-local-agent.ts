@@ -34,7 +34,7 @@ import {
   isPcAgentNavigableUrl,
 } from "../lib/pc-local-agent/url-safety";
 import { pickBestValueCandidate } from "../apps/local-agent/src/execution/shop-pick.ts";
-import { resolvePcRemoteCommand } from "../lib/pc-local-agent/remote-command";
+import { resolvePcRemoteCommand, shouldDispatchPcWorkFromGlobe } from "../lib/pc-local-agent/remote-command";
 
 function selfTest(): void {
   assertTaskTransition("CREATED", "QUEUED");
@@ -173,9 +173,39 @@ function selfTest(): void {
   if (link.kind !== "open_url" || !link.url.startsWith("https://www.example.com")) {
     throw new Error("remote_url");
   }
+  const memo = resolvePcRemoteCommand("메모장 열어");
+  if (memo.kind !== "desktop" || memo.appId !== "notepad") {
+    throw new Error("remote_notepad");
+  }
+  const chromeOpen = resolvePcRemoteCommand("크롬 열어줘");
+  if (chromeOpen.kind !== "desktop" || chromeOpen.appId !== "chrome") {
+    throw new Error("remote_chrome_open");
+  }
+  const gmail = resolvePcRemoteCommand("지메일 열어");
+  if (gmail.kind !== "open_url" || !gmail.url.includes("mail.google.com") || gmail.via !== "site") {
+    throw new Error("remote_gmail");
+  }
+  const maps = resolvePcRemoteCommand("강남역 길찾기");
+  if (maps.kind !== "open_url" || !maps.url.includes("map.naver.com")) {
+    throw new Error("remote_maps");
+  }
+  const hotel = resolvePcRemoteCommand("오사카 호텔 찾아줘");
+  if (hotel.kind !== "open_url" || hotel.via !== "search") {
+    throw new Error("remote_not_pc_hotel");
+  }
   const search = resolvePcRemoteCommand("서울 날씨");
-  if (search.kind !== "open_url" || !search.url.includes("google.com/search")) {
+  if (search.kind !== "open_url" || !search.url.includes("google.com/search") || search.via !== "search") {
     throw new Error("remote_google");
+  }
+  const version = resolvePcRemoteCommand("버전 확인해바");
+  if (version.kind !== "install") {
+    throw new Error("remote_version_check");
+  }
+  if (!shouldDispatchPcWorkFromGlobe("메모장 열어")) {
+    throw new Error("globe_pc_notepad");
+  }
+  if (shouldDispatchPcWorkFromGlobe("오사카 호텔 찾아줘")) {
+    throw new Error("globe_not_pc_hotel");
   }
 
   console.log("pc-local-agent self-test ok (phase D)");

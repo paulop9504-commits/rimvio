@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       title: body.payload?.title,
       query: body.payload?.query,
       intent: body.payload?.intent,
+      appId: body.payload?.appId,
       requiredCapabilities: body.payload?.requiredCapabilities,
     },
     offline: device.status !== "ONLINE",

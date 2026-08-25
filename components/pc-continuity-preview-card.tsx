@@ -6,6 +6,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { subscribePcAgentTasksRealtime } from "@/lib/pc-local-agent/client-realtime";
 import { PcSetupUpdateCard } from "@/components/globe/pc-setup-update-card";
 import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
+import { deviceNeedsPcSetupUpdate } from "@/lib/pc-local-agent/pc-app-version";
 import { bindPcPurchaseLiveWork } from "@/lib/globe/live-work/bind-pc-purchase-work";
 import { patchLiveWork, readLiveWorkByContext } from "@/lib/globe/live-work/live-work-store";
 import {
@@ -16,7 +17,12 @@ import { cn } from "@/lib/utils";
 
 function stepState(task: PcAgentTask | null): readonly [boolean, boolean, boolean, boolean] {
   const phase = task ? readExecutionPhase(task) : "QUEUED";
-  const pc = phase !== "PC_OFFLINE";
+  const pc =
+    phase !== "PC_OFFLINE" &&
+    phase !== "QUEUED" &&
+    phase !== "DISPATCHED" &&
+    phase !== "CREATED" &&
+    phase !== "WAITING";
   const site =
     phase === "BROWSER_OPENED" ||
     phase === "PAGE_READY" ||
@@ -59,6 +65,29 @@ export function PcContinuityPreviewCard({
     appVersion: string | null;
     needsUpdate: boolean;
   } | null>(null);
+
+  const loadPcSetup = useCallback(async () => {
+    try {
+      const res = await fetch("/api/pc-agent/devices", { cache: "no-store" });
+      if (!res.ok) {
+        setPcSetup({ appVersion: null, needsUpdate: true });
+        return;
+      }
+      const data = (await res.json()) as { devices?: PcAgentDevice[] };
+      const list = data.devices ?? [];
+      const row = list.find((item) => item.status === "ONLINE") ?? list[0];
+      if (!row) {
+        setPcSetup({ appVersion: null, needsUpdate: true });
+        return;
+      }
+      setPcSetup({
+        appVersion: row.appVersion ?? null,
+        needsUpdate: deviceNeedsPcSetupUpdate(row),
+      });
+    } catch {
+      setPcSetup({ appVersion: null, needsUpdate: true });
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -119,27 +148,15 @@ export function PcContinuityPreviewCard({
       setStuck(false);
       return;
     }
-    const id = window.setTimeout(() => setStuck(true), 8_000);
+    const id = window.setTimeout(() => setStuck(true), 3_000);
     return () => window.clearTimeout(id);
   }, [phaseForPoll]);
 
   useEffect(() => {
-    void fetch("/api/pc-agent/devices", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { devices?: PcAgentDevice[] } | null) => {
-        const list = data?.devices ?? [];
-        const row = list.find((item) => item.status === "ONLINE") ?? list[0];
-        if (!row) {
-          setPcSetup({ appVersion: null, needsUpdate: true });
-          return;
-        }
-        setPcSetup({
-          appVersion: row.appVersion ?? null,
-          needsUpdate: Boolean(row.needsUpdate),
-        });
-      })
-      .catch(() => undefined);
-  }, [taskId]);
+    void loadPcSetup();
+    const id = window.setInterval(() => void loadPcSetup(), 4_000);
+    return () => window.clearInterval(id);
+  }, [taskId, loadPcSetup]);
 
   const phase = task ? readExecutionPhase(task) : "QUEUED";
   const result = readTaskResult(task?.result ?? null);
@@ -148,6 +165,8 @@ export function PcContinuityPreviewCard({
   const mark =
     phase === "PC_OFFLINE"
       ? copy.globe.liveWorkWaitingPc
+      : phase === "QUEUED" || phase === "DISPATCHED"
+        ? pc.agentQueued
       : phase === "WAITING_USER"
         ? copy.globe.liveWorkWaitingUser
         : phase === "HUMAN_REQUIRED" || phase === "AUTH_REQUIRED"
@@ -274,11 +293,13 @@ export function PcContinuityPreviewCard({
           />
         </div>
         <p className="mt-2 text-[13px] text-[#2c2c2e]">{mark}</p>
-        {stuck || pcSetup?.needsUpdate ? (
+        {stuck ||
+        pcSetup?.needsUpdate ||
+        ((phase === "FAILED" || phase === "CANCELLED") && !siteOk) ? (
           <div className="mt-3">
             <PcSetupUpdateCard
               reportedVersion={pcSetup?.appVersion}
-              needsUpdate={pcSetup?.needsUpdate}
+              needsUpdate={pcSetup?.needsUpdate ?? true}
               tone="chat"
             />
           </div>

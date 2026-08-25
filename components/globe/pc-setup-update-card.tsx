@@ -21,9 +21,11 @@ export function PcSetupUpdateCard({
   const need = RIMVIO_PC_SETUP_VERSION;
   const have = reportedVersion?.trim() || null;
   const body =
-    have && have !== need
-      ? pc.versionMismatch(have, need)
-      : pc.agentNeedLatest(need);
+    have && have === need
+      ? pc.versionCurrent(have)
+      : have
+        ? pc.versionMismatch(have, need)
+        : pc.versionUnknown(need);
 
   return (
     <div

@@ -28,6 +28,8 @@ import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-ag
 import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
 import { startPcPurchaseAgentRun } from "@/lib/pc-local-agent/run-purchase-agent";
 import { isPcProgramInstallUtterance } from "@/lib/pc-local-agent/program-install-catalog";
+import { runPcRemoteCommand } from "@/lib/pc-local-agent/run-remote-command";
+import { shouldDispatchPcWorkFromGlobe } from "@/lib/pc-local-agent/remote-command";
 import { appendContextAgentComposeTurn } from "@/lib/globe/assistant/context-agent-compose-thread-store";
 import {
   readAgentActivityTranscript,
@@ -620,6 +622,19 @@ export const GlobeContextIngestBar = forwardRef<
               text: line,
             });
           }
+          setClarifyPlaceholder(null);
+          setOperatorChoices(null);
+          setText("");
+          setMenuOpen(false);
+          return;
+        }
+
+        if (shouldDispatchPcWorkFromGlobe(value)) {
+          const result = await runPcRemoteCommand(value);
+          showComposerHint(result.messageKo, {
+            tone: result.kind === "login" ? "error" : "success",
+            durationMs: 5000,
+          });
           setClarifyPlaceholder(null);
           setOperatorChoices(null);
           setText("");

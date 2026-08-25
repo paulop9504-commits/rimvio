@@ -136,7 +136,7 @@ assert.ok(desktop.includes("runAfterFinish"));
 assert.ok(desktop.includes("src/ui/**"));
 assert.ok(desktop.includes("preload.cjs"));
 assert.ok(desktop.includes("build/icon.png"));
-assert.ok(desktop.includes("0.1.7"));
+assert.ok(desktop.includes("0.1.8"));
 assert.ok(existsSync(join(process.cwd(), "apps/pc-desktop/build/icon.png")));
 assert.ok(desktop.includes('"provider": "github"'));
 
@@ -174,6 +174,7 @@ const pairing = readFileSync(
 assert.ok(pairing.includes('pathname === "/work"'));
 assert.ok(pairing.includes('pathname === "/run"'));
 assert.ok(pairing.includes("createSelfTask"));
+assert.ok(pairing.includes("appId"));
 
 const remoteUi = readFileSync(
   join(process.cwd(), "components/globe/pc-remote-chat-overlay.tsx"),
@@ -181,6 +182,8 @@ const remoteUi = readFileSync(
 );
 assert.ok(remoteUi.includes("data-pc-remote-chat"));
 assert.ok(remoteUi.includes("PcContinuityPreviewCard"));
+assert.ok(remoteUi.includes("PcSetupUpdateCard"));
+assert.ok(remoteUi.includes("deviceNeedsPcSetupUpdate"));
 assert.ok(!remoteUi.includes("Local Agent"));
 
 const dock = readFileSync(
@@ -193,6 +196,6 @@ assert.ok(dock.includes("data-pc-remote-open"));
 const setupUrl = readFileSync(join(process.cwd(), "lib/pc-local-agent/setup-url.ts"), "utf8");
 assert.ok(setupUrl.includes("releases/download/rimvio-pc-"));
 assert.ok(setupUrl.includes("RIMVIO_PC_SETUP_VERSION"));
-assert.ok(setupUrl.includes("0.1.7"));
+assert.ok(setupUrl.includes("0.1.8"));
 
 console.log("pc-onboarding-phase ok");

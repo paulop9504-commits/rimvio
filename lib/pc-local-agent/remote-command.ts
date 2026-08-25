@@ -1,11 +1,14 @@
 import { isPcProgramInstallUtterance } from "@/lib/pc-local-agent/program-install-catalog";
 import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
+import {
+  isPcDirectedUtterance,
+  resolvePcDesktopWork,
+  shouldDispatchPcWorkFromGlobe,
+  type PcRemotePlan,
+} from "@/lib/pc-local-agent/pc-desktop-work";
 import { isPcAgentNavigableUrl } from "@/lib/pc-local-agent/url-safety";
 
-export type PcRemotePlan =
-  | { kind: "purchase" }
-  | { kind: "install"; query: string }
-  | { kind: "open_url"; url: string; title: string };
+export type { PcRemotePlan };
 
 const FILLER_RE =
   /^(?:좀|제발|바로|빨리)?\s*(?:열어(?:줘|주세요)?|켜(?:줘|주세요)?|실행(?:해(?:줘|주세요)?)?|검색(?:해(?:줘|주세요)?)?|찾아(?:줘|주세요)?|보여(?:줘|주세요)?)\s*$/iu;
@@ -22,7 +25,7 @@ function stripCommandFiller(text: string): string {
       " ",
     )
     .replace(
-      /열어줘|열어주세요|열어|켜줘|켜주세요|켜|실행해줘|실행해주세요|실행해|검색해줘|검색해주세요|검색해|찾아줘|찾아주세요|찾아|보여줘|보여주세요/giu,
+      /열어줘|열어주세요|열어|켜줘|켜주세요|켜|실행해줘|실행해주세요|실행해|검색해줘|검색해주세요|검색해|찾아줘|찾아주세요|찾아|보여줘|보여주세요|틀어줘|틀어/giu,
       " ",
     )
     .replace(/\s+/g, " ")
@@ -33,6 +36,8 @@ function firstHttpUrl(text: string): string | null {
   const match = text.match(/https?:\/\/[^\s<>"']+/iu);
   return match?.[0] ?? null;
 }
+
+export { shouldDispatchPcWorkFromGlobe };
 
 export function resolvePcRemoteCommand(utterance: string): PcRemotePlan {
   const text = utterance.trim();
@@ -45,7 +50,12 @@ export function resolvePcRemoteCommand(utterance: string): PcRemotePlan {
 
   const rawUrl = firstHttpUrl(text);
   if (rawUrl && isPcAgentNavigableUrl(rawUrl)) {
-    return { kind: "open_url", url: rawUrl, title: text.slice(0, 48) };
+    return { kind: "open_url", url: rawUrl, title: text.slice(0, 48), via: "link" };
+  }
+
+  const desktop = resolvePcDesktopWork(text);
+  if (desktop) {
+    return desktop;
   }
 
   const q = stripCommandFiller(text);
@@ -57,6 +67,7 @@ export function resolvePcRemoteCommand(utterance: string): PcRemotePlan {
       kind: "open_url",
       url: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
       title,
+      via: "site",
     };
   }
   if (/네이버|naver/iu.test(text)) {
@@ -64,6 +75,7 @@ export function resolvePcRemoteCommand(utterance: string): PcRemotePlan {
       kind: "open_url",
       url: `https://search.naver.com/search.naver?query=${encodeURIComponent(query)}`,
       title,
+      via: "site",
     };
   }
 
@@ -71,5 +83,6 @@ export function resolvePcRemoteCommand(utterance: string): PcRemotePlan {
     kind: "open_url",
     url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
     title,
+    via: isPcDirectedUtterance(text) ? "site" : "search",
   };
 }

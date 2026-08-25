@@ -10,6 +10,8 @@ import {
 } from "./shop-prepare.js";
 import { assertAllowedBrowserCapability } from "../../../lib/pc-local-agent/browser-capabilities.ts";
 import { isPcAgentNavigableUrl } from "../../../lib/pc-local-agent/url-safety.ts";
+import { captureDesktopJpegBase64 } from "./capture-desktop.js";
+import { openPcDesktopApp } from "./open-desktop-target.js";
 
 let session: ChromeSession | null = null;
 let sharedPage: Page | null = null;
@@ -64,6 +66,19 @@ async function readProduct(page: Page): Promise<ExecutionResult["product"]> {
 
 export class BrowserExecutionEngine implements ExecutionEngine {
   async execute(task: AgentTask, report?: ProgressReporter): Promise<ExecutionResult> {
+    if (task.payload.intent === "desktop" && task.payload.appId) {
+      await openPcDesktopApp(task.payload.appId);
+      await report?.({ phase: "BROWSER_OPENED", message: "desktop_opened" });
+      const shot = await captureDesktopJpegBase64();
+      await report?.({ phase: "PAGE_READY", screenshotJpeg: shot, message: "desktop_ready" });
+      return {
+        success: true,
+        url: task.payload.url,
+        message: "desktop_opened",
+        hold: "none",
+        screenshotJpeg: shot,
+      };
+    }
     assertAllowedBrowserCapability("browser.open");
     const url = task.payload.url?.trim();
     if (!url) {

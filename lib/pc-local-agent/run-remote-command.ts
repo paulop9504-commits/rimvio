@@ -71,6 +71,9 @@ export async function runPcRemoteCommand(
         url: plan.url,
         title: plan.title,
         query: utterance.trim(),
+        ...(plan.kind === "desktop"
+          ? { intent: "desktop" as const, appId: plan.appId }
+          : {}),
       },
     }),
   });

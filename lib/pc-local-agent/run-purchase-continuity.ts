@@ -7,7 +7,11 @@ import {
   isPcPurchaseContinuityUtterance,
   resolvePcPurchaseOpenUrl,
 } from "@/lib/pc-local-agent/purchase-intent";
-import { PC_PURCHASE_PROGRAM_QUERY } from "@/lib/pc-local-agent/program-install-catalog";
+import { deviceNeedsPcSetupUpdate } from "@/lib/pc-local-agent/pc-app-version";
+import {
+  PC_PURCHASE_PROGRAM_QUERY,
+  PC_SETUP_UPDATE_QUERY,
+} from "@/lib/pc-local-agent/program-install-catalog";
 
 export type PcPurchaseContinuityResult =
   | { kind: "skip" }
@@ -17,6 +21,8 @@ export type PcPurchaseContinuityResult =
       deviceName: string;
       messageKo: string;
       queuedOffline: boolean;
+      needsUpdate?: boolean;
+      appVersion?: string | null;
     }
   | { kind: "arming"; messageKo: string; query: string }
   | { kind: "login"; messageKo: string };
@@ -83,11 +89,14 @@ export async function runPcPurchaseContinuity(
     deviceName: device.name,
   });
   const queuedOffline = device.status !== "ONLINE";
+  const needsUpdate = deviceNeedsPcSetupUpdate(device);
   return {
     kind: "preview",
     task: data.task,
     deviceName: device.name,
     queuedOffline,
+    needsUpdate,
+    appVersion: device.appVersion ?? null,
     messageKo: queuedOffline
       ? copy.globe.pcContinuity.agentWaitingOnline
       : copy.globe.pcContinuity.started(

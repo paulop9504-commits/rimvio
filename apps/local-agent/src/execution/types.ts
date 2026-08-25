@@ -7,7 +7,8 @@ export type AgentTask = {
     url?: string;
     title?: string;
     query?: string;
-    intent?: "purchase";
+    intent?: "purchase" | "desktop";
+    appId?: string;
     requiredCapabilities?: string[];
     waitReason?: string;
     resumeAfterInstall?: boolean;

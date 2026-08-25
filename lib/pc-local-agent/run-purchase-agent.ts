@@ -88,6 +88,16 @@ function applyResultToChat(input: {
       userText: input.utterance,
       assistantText: input.result.messageKo,
     });
+    if (input.result.needsUpdate) {
+      syncPortalComposeProgramInstallToChat({
+        graphId,
+        userText: input.utterance,
+        assistantText: input.result.appVersion
+          ? pcCopy().versionMismatch(input.result.appVersion, RIMVIO_PC_SETUP_VERSION)
+          : pcCopy().versionUnknown(RIMVIO_PC_SETUP_VERSION),
+        query: PC_SETUP_UPDATE_QUERY,
+      });
+    }
     return;
   }
   syncPortalComposeTurnToChat({
@@ -131,7 +141,7 @@ function watchTask(
       if (
         !warnedStuck &&
         (phase === "QUEUED" || phase === "PC_OFFLINE") &&
-        Date.now() - startedAt > 20_000
+        Date.now() - startedAt > 4_000
       ) {
         warnedStuck = true;
         appendAgentActivityEvent({

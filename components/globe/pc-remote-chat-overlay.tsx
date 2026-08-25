@@ -9,10 +9,15 @@ import type { PcAgentDevice, PcAgentTask } from "@/lib/pc-local-agent";
 import { subscribePcAgentTasksRealtime } from "@/lib/pc-local-agent/client-realtime";
 import { readExecutionPhase } from "@/lib/pc-local-agent/execution-phase";
 import { runPcRemoteCommand } from "@/lib/pc-local-agent/run-remote-command";
+import { deviceNeedsPcSetupUpdate } from "@/lib/pc-local-agent/pc-app-version";
 import { PcContinuityPreviewCard } from "@/components/pc-continuity-preview-card";
 import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
 import { PcSetupUpdateCard } from "@/components/globe/pc-setup-update-card";
 import { cn } from "@/lib/utils";
+import {
+  isPcSetupVersionCheckUtterance,
+  PC_SETUP_UPDATE_QUERY,
+} from "@/lib/pc-local-agent/program-install-catalog";
 
 type RemoteTurn = {
   id: string;
@@ -158,6 +163,7 @@ export function PcRemoteChatOverlay({
   };
 
   const title = device?.name?.trim() || pc.remoteTitle;
+  const needsSetup = deviceNeedsPcSetupUpdate(device);
 
   return (
     <AnimatePresence>
@@ -202,10 +208,10 @@ export function PcRemoteChatOverlay({
                 <p className="max-w-[16rem] text-[15px] leading-relaxed text-[#636366]">
                   {pc.remoteEmpty}
                 </p>
-                {device?.needsUpdate ? (
+                {needsSetup ? (
                   <div className="mt-5 w-full max-w-sm">
                     <PcSetupUpdateCard
-                      reportedVersion={device.appVersion}
+                      reportedVersion={device?.appVersion}
                       needsUpdate
                       tone="chat"
                     />
@@ -241,7 +247,16 @@ export function PcRemoteChatOverlay({
                         />
                       ) : null}
                       {turn.installQuery ? (
-                        <PcProgramInstallList query={turn.installQuery} />
+                        turn.installQuery === PC_SETUP_UPDATE_QUERY ||
+                        isPcSetupVersionCheckUtterance(turn.installQuery) ? (
+                          <PcSetupUpdateCard
+                            reportedVersion={device?.appVersion}
+                            needsUpdate={needsSetup}
+                            tone="chat"
+                          />
+                        ) : (
+                          <PcProgramInstallList query={turn.installQuery} tone="chat" />
+                        )
                       ) : null}
                     </div>
                   ),
@@ -249,9 +264,9 @@ export function PcRemoteChatOverlay({
                 {busy ? (
                   <p className="text-[13px] text-[#8e8e93]">{pc.remoteRunning}</p>
                 ) : null}
-                {device?.needsUpdate ? (
+                {needsSetup ? (
                   <PcSetupUpdateCard
-                    reportedVersion={device.appVersion}
+                    reportedVersion={device?.appVersion}
                     needsUpdate
                     tone="chat"
                   />

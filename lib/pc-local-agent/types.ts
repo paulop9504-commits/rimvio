@@ -27,7 +27,8 @@ export type OpenUrlPayload = {
   url: string;
   title?: string;
   query?: string;
-  intent?: "purchase";
+  intent?: "purchase" | "desktop";
+  appId?: string;
   requiredCapabilities?: string[];
   waitReason?: "capability_required";
   resumeAfterInstall?: boolean;

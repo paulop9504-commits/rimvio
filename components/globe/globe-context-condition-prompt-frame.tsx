@@ -28,6 +28,8 @@ import { MAP_FOCUS_PIN_VIEWPORT_Y } from "@/lib/globe/map-anchored-overlay-layou
 import { isScoutMapRevealUtterance } from "@/lib/globe/context-condition-ai/is-scout-map-reveal-utterance";
 import { isPcPurchaseContinuityUtterance } from "@/lib/pc-local-agent/purchase-intent";
 import { startPcPurchaseAgentRun } from "@/lib/pc-local-agent/run-purchase-agent";
+import { runPcRemoteCommand } from "@/lib/pc-local-agent/run-remote-command";
+import { shouldDispatchPcWorkFromGlobe } from "@/lib/pc-local-agent/remote-command";
 import { revealContextConditionScout } from "@/lib/globe/context-condition-ai/reveal-context-condition-scout";
 import {
   readContextConditionLastBatch,
@@ -1120,6 +1122,21 @@ export const GlobeContextConditionPromptFrame = memo(function GlobeContextCondit
             text: result.messageKo,
           });
         }
+        setComposeThread(readContextAgentComposeThread(event.id));
+      });
+      return true;
+    }
+
+    if (shouldDispatchPcWorkFromGlobe(line)) {
+      void runPcRemoteCommand(line).then((result) => {
+        if (!event) {
+          return;
+        }
+        appendContextAgentComposeTurn(event.id, {
+          role: "assistant",
+          kind: "text",
+          text: result.messageKo,
+        });
         setComposeThread(readContextAgentComposeThread(event.id));
       });
       return true;

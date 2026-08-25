@@ -55,3 +55,19 @@ export function pcAppNeedsUpdate(
 ): boolean {
   return !isPcAppVersionCurrent(reported, expected);
 }
+
+/** Prefer API flag, but treat a missing/old reported version as outdated. */
+export function deviceNeedsPcSetupUpdate(device: {
+  appVersion?: string | null;
+  app_version?: string | null;
+  needsUpdate?: boolean;
+  permissions?: unknown;
+} | null | undefined): boolean {
+  if (!device) {
+    return true;
+  }
+  if (device.needsUpdate === true) {
+    return true;
+  }
+  return pcAppNeedsUpdate(readReportedPcAppVersion(device));
+}

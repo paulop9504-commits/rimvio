@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   isPcProgramInstallUtterance,
+  isPcSetupVersionCheckUtterance,
   listAllProgramInstallOffers,
   PC_SETUP_UPDATE_QUERY,
   resolveProgramInstallOffers,
 } from "../lib/pc-local-agent/program-install-catalog";
 import {
+  deviceNeedsPcSetupUpdate,
   isPcAppVersionCurrent,
   pcAppNeedsUpdate,
   readReportedPcAppVersion,
@@ -41,22 +43,39 @@ const all = resolveProgramInstallOffers("필요한 프로그램 설치해줘");
 assert.equal(all.length, 3);
 
 assert.equal(isPcProgramInstallUtterance("내 PC 연결"), true);
+assert.equal(isPcProgramInstallUtterance("크롬 열어"), false);
+assert.equal(isPcProgramInstallUtterance("메모장 열어"), false);
 assert.equal(listAllProgramInstallOffers().length, 3);
 
 const update = resolveProgramInstallOffers(PC_SETUP_UPDATE_QUERY);
 assert.equal(update.length, 1);
 assert.equal(update[0]?.id, "rimvio-pc");
+const versionAsk = resolveProgramInstallOffers("버전 확인해바");
+assert.equal(versionAsk.length, 1);
+assert.equal(versionAsk[0]?.id, "rimvio-pc");
+assert.equal(isPcSetupVersionCheckUtterance("버전 확인해바"), true);
+assert.equal(isPcProgramInstallUtterance("버전 확인해바"), true);
 assert.equal(isPcAppVersionCurrent("0.1.6", "0.1.6"), true);
 assert.equal(isPcAppVersionCurrent("0.1.5", "0.1.6"), false);
 assert.equal(pcAppNeedsUpdate(null, "0.1.6"), true);
 assert.equal(readReportedPcAppVersion({ permissions: { appVersion: "0.1.5" } }), "0.1.5");
+assert.equal(deviceNeedsPcSetupUpdate({ appVersion: null }), true);
+assert.equal(
+  deviceNeedsPcSetupUpdate({ appVersion: "0.0.1" }),
+  true,
+);
+assert.equal(
+  deviceNeedsPcSetupUpdate({ appVersion: "0.1.7", needsUpdate: true }),
+  true,
+);
 
 const ingest = readFileSync(
   join(process.cwd(), "components/globe/globe-context-ingest-bar.tsx"),
   "utf8",
 );
 assert.ok(ingest.includes("syncPortalComposeProgramInstallToChat"));
-assert.ok(ingest.includes("startPcPurchaseAgentRun"));
+assert.ok(ingest.includes("shouldDispatchPcWorkFromGlobe"));
+assert.ok(ingest.includes("runPcRemoteCommand"));
 assert.ok(!ingest.includes("startPcProgramInstallFlow"));
 
 const chat = readFileSync(

@@ -2,10 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useCopy } from "@/hooks/use-copy";
-import type { PcProgramInstallOffer } from "@/lib/pc-local-agent/program-install-catalog";
+import {
+  PC_SETUP_UPDATE_QUERY,
+  programClientDownloadPath,
+  programFilename,
+  type PcProgramInstallOffer,
+} from "@/lib/pc-local-agent/program-install-catalog";
 import { cn } from "@/lib/utils";
 
-function startDownload(url: string, filename: string) {
+function rimvioPcUpdateOffer(): PcProgramInstallOffer {
+  return {
+    id: "rimvio-pc",
+    nameKey: "programRimvioPc",
+    url: programClientDownloadPath("rimvio-pc"),
+    filename: programFilename("rimvio-pc"),
+  };
+}
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -41,10 +53,18 @@ export function PcProgramInstallList({
       { cache: "no-store" },
     );
     if (!res.ok) {
+      if (q === PC_SETUP_UPDATE_QUERY) {
+        setPrograms([rimvioPcUpdateOffer()]);
+      }
       return;
     }
     const data = (await res.json()) as { programs?: PcProgramInstallOffer[] };
-    setPrograms(data.programs ?? []);
+    const next = data.programs ?? [];
+    if (next.length === 0 && q === PC_SETUP_UPDATE_QUERY) {
+      setPrograms([rimvioPcUpdateOffer()]);
+      return;
+    }
+    setPrograms(next);
   }, [query]);
 
   useEffect(() => {

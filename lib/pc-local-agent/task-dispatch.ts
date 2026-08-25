@@ -206,6 +206,7 @@ export async function insertQueuedOpenUrlTask(input: {
     ...(input.payload.title?.trim() ? { title: input.payload.title.trim() } : {}),
     ...(input.payload.query?.trim() ? { query: input.payload.query.trim() } : {}),
     ...(input.payload.intent ? { intent: input.payload.intent } : {}),
+    ...(input.payload.appId?.trim() ? { appId: input.payload.appId.trim() } : {}),
     ...(input.payload.requiredCapabilities?.length
       ? { requiredCapabilities: input.payload.requiredCapabilities }
       : {}),

@@ -1,7 +1,7 @@
 {
   "name": "rimvio-pc",
   "productName": "Rimvio PC",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "Rimvio PC — connect this computer to Rimvio",
   "author": "Rimvio",
