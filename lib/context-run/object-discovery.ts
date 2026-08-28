@@ -23,6 +23,18 @@ import {
   gateNearScoutAnchor,
   resolveRealityAnchorFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
+import {
+  planCapabilityDiscovery,
+  type CapabilityDiscoveryPlan,
+} from "@/lib/platform-sdk/discover-capabilities";
+import type { UserMarketContext } from "@/lib/platform-sdk/user-market-context";
+import {
+  compileNlIntentFrame,
+  isCommerceCapabilityIntent,
+} from "@/lib/context-run/compile-nl-intent";
+import type { RimvioIntentFrame } from "@/lib/rimvio-protocol/intent";
+
+export type { CapabilityDiscoveryPlan };
 
 export type ObjectDiscoveryPlan = {
   readonly contextEventId: string;
@@ -39,6 +51,8 @@ export type ObjectDiscoveryPlan = {
   readonly planLabelKo: string;
   /** Slice A — near scout blocked until Anchor resolves */
   readonly nearScoutBlockedKo?: string | null;
+  /** Hub Capability Index hit — platform discovery before place search */
+  readonly hubCapability?: CapabilityDiscoveryPlan | null;
 };
 
 export type ObjectDiscoveryResult = {
@@ -114,6 +128,8 @@ export function planObjectDiscovery(input: {
   readonly contextEventId: string;
   readonly utterance: string;
   readonly mode: "replace" | "add";
+  readonly userMarket?: Partial<UserMarketContext>;
+  readonly intentFrame?: RimvioIntentFrame | null;
 }): ObjectDiscoveryPlan | null {
   const contextEventId = input.contextEventId.trim();
   const utterance = input.utterance.trim();
@@ -121,6 +137,38 @@ export function planObjectDiscovery(input: {
 
   const state = readContextWorkspace(contextEventId);
   if (!state) return null;
+
+  const intentFrame = input.intentFrame ?? compileNlIntentFrame(utterance);
+  const commerceIntent =
+    intentFrame && isCommerceCapabilityIntent(intentFrame, utterance);
+
+  const hubCapability = commerceIntent
+    ? planCapabilityDiscovery({
+        utterance,
+        userMarket: input.userMarket,
+        intentFrame,
+      })
+    : null;
+  if (hubCapability) {
+    const domain = resolveWorkspaceSearchDomain(utterance, state.domain);
+    const toolDomain = workspaceDomainToToolDomain(domain);
+    const toolId = resolveLookupToolId(toolDomain, utterance);
+    return {
+      contextEventId,
+      utterance,
+      domain,
+      toolDomain,
+      toolId,
+      query: utterance,
+      lat: null,
+      lng: null,
+      placeName: null,
+      mode: input.mode,
+      planLabelKo: hubCapability.planLabelKo,
+      nearScoutBlockedKo: null,
+      hubCapability,
+    };
+  }
 
   const domain = resolveWorkspaceSearchDomain(utterance, state.domain);
   const toolDomain = workspaceDomainToToolDomain(domain);
@@ -191,6 +239,17 @@ export function planObjectDiscovery(input: {
 export async function runObjectDiscovery(
   plan: ObjectDiscoveryPlan,
 ): Promise<ObjectDiscoveryResult> {
+  if (plan.hubCapability) {
+    const hub = plan.hubCapability;
+    return {
+      ok: true,
+      plan,
+      candidates: [],
+      summaryKo: `${hub.platformName} · ${hub.marketCountry} · ${hub.capabilityId} 준비`,
+      reasonKo: hub.matchReason,
+    };
+  }
+
   if (plan.nearScoutBlockedKo) {
     return {
       ok: false,

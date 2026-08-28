@@ -3422,6 +3422,65 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   max-width: 260px;
 }
 
+[data-agent-home-inspector] {
+  flex: 0 0 300px;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+@keyframes agent-home-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.agent-home-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 48px;
+}
+
+.agent-home-waveform span {
+  display: block;
+  width: 3px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a5b4fc 0%, #6366f1 100%);
+  transform-origin: center bottom;
+  animation: agent-home-wave 1.2s ease-in-out infinite;
+}
+
+.agent-home-waveform span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.agent-home-waveform span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.agent-home-waveform span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+.agent-home-waveform span:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+.agent-home-waveform--idle span {
+  animation: none;
+  transform: scaleY(0.35);
+  opacity: 0.35;
+}
+
 @media (min-width: 768px) {
   body:has([data-pin-open-sheet]) [data-rimvio-globe-3d] {
     transform: translateX(calc(min(92vw, 420px) * -0.5));

@@ -1,0 +1,34 @@
+# Rimvio OS Constitution (locked)
+
+**Canonical:** `docs/RIMVIO_OS_CONSTITUTION.md` · ADR-057 · `lib/rimvio-protocol/`
+
+> Rimvio = **Identity + Context + Object + Intent + Capability + Platform + Protocol + Runtime + Permission + Market + Commerce** — not an app IA.
+
+## Eleven pillars
+
+Do not ship new OS features without declaring which pillar they extend.
+
+## Locked separations
+
+| Never | Always |
+|-------|--------|
+| `user.country` only | account · residence · billing · shipping · current |
+| Platform = country | Core + Market Deployments (ADR-056) |
+| UI route = Agent SSOT | Capability contract + index |
+| Chat = Context SSOT | `RimvioContextEnvelope` paths |
+| Parallel manifests | RIR → `rimvio.platform.manifest.v1` |
+| Callout object = OS entity | `lib/rimvio-protocol/object-model.ts` |
+
+## Intent routing
+
+```text
+NL → compileIntentFromUtterance → planCapabilityDiscovery → Platform Runtime → Commit
+```
+
+## PR reject
+
+- New entity kinds without ADR + `RIMVIO_OS_ENTITY_KINDS`
+- Cross-tenant data
+- Auto Commit on payment / order / high-risk
+- Per-platform commerce DIY bypassing `rimvio-protocol/commerce` contract
+- Hub as file dump without discovery dimensions (country · trust · capability)

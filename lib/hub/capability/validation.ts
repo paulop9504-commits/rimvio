@@ -1,4 +1,4 @@
-import type { CapabilityDraft, StepValidationState } from "@/lib/hub/capability/types";
+import type { CapabilityDraft, StepValidationState } from "@/lib/hub/capability/types";import { canPublishAnyMarket, marketsBlockingPublishKo } from "@/lib/platform-sdk/markets";
 
 const CAPABILITY_ID_RE = /^[a-z][a-z0-9._-]*$/;
 
@@ -43,6 +43,12 @@ export function validatePackageStep(draft: CapabilityDraft): {
     hints.push("Description valid");
   }
   if (draft.iconDataUrl) hints.push("Icon uploaded");
+  if (draft.markets.deployments.filter((d) => d.country !== "GLOBAL").length === 0) {
+    errors.markets = "Select at least one operating country.";
+  }
+  if (draft.wantsGlobal) {
+    hints.push("Global requires country-specific configuration");
+  }
   return { valid: Object.keys(errors).length === 0, errors, hints };
 }
 
@@ -122,7 +128,12 @@ export function canPublish(
     draft.publishConsents.permissions &&
     draft.publishConsents.policy &&
     draft.publishConsents.tested;
-  return allSteps && consents;
+  const marketsReady = canPublishAnyMarket(draft.markets);
+  return allSteps && consents && marketsReady;
+}
+
+export function marketsPublishBlockReason(draft: CapabilityDraft): string | null {
+  return marketsBlockingPublishKo(draft.markets);
 }
 
 export function computeSecurityImpact(

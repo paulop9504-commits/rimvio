@@ -168,6 +168,7 @@ function AgentHomeMain() {
           activeEventId={contextEventId}
           onSelectEvent={handleSelectEvent}
           onNewTask={handleNewTask}
+          onGoHome={() => setView("dashboard")}
           onOpenSettings={() => setSettingsOpen(true)}
           view={view}
         />
@@ -221,6 +222,7 @@ function AgentHomeMain() {
                 onSubmit={handleDashboardSubmit}
                 onSelectEvent={handleSelectEvent}
                 activeEventId={contextEventId}
+                onOpenSettings={() => setSettingsOpen(true)}
               />
             ) : (
               <GlobeChatScreen
@@ -275,7 +277,7 @@ export function AgentHomeRoute() {
   return (
     <AgentHomeThemeProvider>
       <div
-        className="fixed inset-0 z-[1] flex flex-col overflow-hidden bg-[#f5f6f8]"
+        className="fixed inset-0 z-[1] flex flex-col overflow-hidden bg-[#f8fafc]"
         data-agent-home-root
       >
         <AgentHomeMain />

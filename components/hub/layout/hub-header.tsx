@@ -1,12 +1,21 @@
 "use client";
 
-import Link from "next/link";
 import { Bell, ChevronDown, HelpCircle } from "lucide-react";
+import { AutosaveStatusBar } from "@/components/hub/wizard/wizard-footer";
+import type { AutosaveStatus } from "@/lib/hub/capability/types";
 import { cn } from "@/lib/utils";
 
-const NAV = ["Discover", "My Capabilities", "Analytics", "Community", "Docs"] as const;
-
-export function HubHeader({ className }: { className?: string }) {
+export function HubHeader({
+  className,
+  autosaveStatus,
+  lastSavedAt,
+  onRetryAutosave,
+}: {
+  className?: string;
+  autosaveStatus?: AutosaveStatus;
+  lastSavedAt?: Date | null;
+  onRetryAutosave?: () => void;
+}) {
   return (
     <header
       className={cn(
@@ -14,40 +23,34 @@ export function HubHeader({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-6">
-        <Link href="/hub" className="text-[15px] font-bold tracking-tight text-[#6366F1]">
-          Rimvio Hub
-        </Link>
-        <nav className="hidden items-center gap-4 md:flex">
-          {NAV.map((item) => (
-            <Link
-              key={item}
-              href="/hub"
-              className="text-[13px] font-medium text-[#64748B] transition-colors hover:text-[#0F172A]"
-            >
-              {item}
-            </Link>
-          ))}
-        </nav>
+      <div className="flex min-w-0 items-center gap-4">
+        <h1 className="text-[15px] font-semibold text-[#0F172A]">Submit New Capability</h1>
+        {autosaveStatus ? (
+          <AutosaveStatusBar
+            status={autosaveStatus}
+            lastSavedAt={lastSavedAt ?? null}
+            onRetry={onRetryAutosave}
+          />
+        ) : null}
       </div>
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="flex size-9 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F8FAFC]"
+          className="flex size-9 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#F8FAFC]"
           aria-label="Notifications"
         >
           <Bell className="size-4" />
         </button>
         <button
           type="button"
-          className="hidden size-9 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F8FAFC] sm:flex"
+          className="hidden size-9 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#F8FAFC] sm:flex"
           aria-label="Help"
         >
           <HelpCircle className="size-4" />
         </button>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] px-2 py-1.5 text-left hover:bg-[#F8FAFC]"
+          className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] px-2 py-1.5 text-left transition-colors hover:bg-[#F8FAFC]"
         >
           <span className="flex size-7 items-center justify-center rounded-full bg-[#6366F1] text-[11px] font-bold text-white">
             D

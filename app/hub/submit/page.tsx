@@ -1,9 +1,9 @@
-import { HubCapabilityWizardClient } from "@/components/hub/hub-capability-wizard-client";
+import { HubSubmitChooser } from "@/components/hub/hub-submit-chooser";
 
 export const metadata = {
-  title: "Submit Capability",
+  title: "Hub Submissions",
 };
 
 export default function HubSubmitPage() {
-  return <HubCapabilityWizardClient />;
+  return <HubSubmitChooser />;
 }

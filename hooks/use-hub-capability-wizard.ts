@@ -17,6 +17,20 @@ import type {
   WizardStepId,
 } from "@/lib/hub/capability/types";
 import { DEFAULT_TEST_OUTPUT } from "@/lib/hub/capability/defaults";
+import {
+  capabilityDraftToPlatformManifest,
+  clearPendingManifest,
+  exportPlatformManifestJson,
+  importManifestIntoDraft,
+  platformManifestToCapabilityDraft,
+  readPendingManifest,
+} from "@/lib/hub/capability/manifest-bridge";
+import { registerCapabilityIndexFromManifest } from "@/lib/platform-sdk/capability-index";
+import { validateRimvioPlatformManifest } from "@/lib/platform-sdk/manifest";
+import {
+  mountPlatformHostApis,
+  registerPlatformManifest,
+} from "@/lib/platform-sdk/platform-host";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -42,11 +56,20 @@ export function useHubCapabilityWizard() {
   const [testOutput, setTestOutput] = useState("");
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("idle");
   const [dirty, setDirty] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [lastPublishedPlatformId, setLastPublishedPlatformId] = useState<string | null>(
+    null,
+  );
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const pending = readPendingManifest();
     const stored = readStoredDraft();
-    if (stored) {
+    if (pending) {
+      setDraft(platformManifestToCapabilityDraft(pending, stored ?? undefined));
+      clearPendingManifest();
+      setCurrentStep(6);
+    } else if (stored) {
       setDraft(stored);
     }
     setHydrated(true);
@@ -92,6 +115,11 @@ export function useHubCapabilityWizard() {
     [draft, stepValidation],
   );
 
+  const platformManifest = useMemo(
+    () => capabilityDraftToPlatformManifest(draft),
+    [draft],
+  );
+
   const goToStep = useCallback((step: WizardStepId) => {
     setCurrentStep(step);
   }, []);
@@ -108,7 +136,46 @@ export function useHubCapabilityWizard() {
     void persistDraft(draft);
   }, [draft, persistDraft]);
 
-  const runSandboxTest = useCallback(async () => {
+  const exportManifest = useCallback(() => {
+    const json = exportPlatformManifestJson(draft);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${draft.id || "platform"}-manifest.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return json;
+  }, [draft]);
+
+  const importManifest = useCallback(
+    (raw: string) => {
+      const { draft: next, error } = importManifestIntoDraft(raw, draft);
+      if (!next || error) {
+        setImportError(error ?? "Import failed");
+        return false;
+      }
+      setImportError(null);
+      setDraft(next);
+      setDirty(true);
+      void persistDraft(next);
+      return true;
+    },
+    [draft, persistDraft],
+  );
+
+  const importManifestFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        importManifest(String(reader.result));
+      };
+      reader.readAsText(file);
+    },
+    [importManifest],
+  );
+
+  const runSandboxTest = useCallback(async (): Promise<{ passed: boolean }> => {
     setTestStatus("running");
     setTestsPassed(false);
     await new Promise((r) => setTimeout(r, 1400));
@@ -118,19 +185,40 @@ export function useHubCapabilityWizard() {
     if (undeclared) {
       setTestStatus("failed");
       setTestOutput("");
-      return;
+      return { passed: false };
     }
     setTestOutput(DEFAULT_TEST_OUTPUT);
     setTestStatus("passed");
     setTestsPassed(true);
+    return { passed: true };
   }, [draft.permissions]);
 
   const publishCapability = useCallback(async () => {
     if (!publishReady) return;
     setPublishStatus("submitting");
-    await new Promise((r) => setTimeout(r, 2200));
+
+    const manifest = capabilityDraftToPlatformManifest(draft);
+    const validation = validateRimvioPlatformManifest(manifest);
+    if (!validation.valid) {
+      setPublishStatus("idle");
+      setImportError(validation.errors[0] ?? "Manifest validation failed");
+      return;
+    }
+
+    await new Promise((r) => setTimeout(r, 1200));
+
+    mountPlatformHostApis();
+    registerPlatformManifest(manifest);
+    registerCapabilityIndexFromManifest(manifest, "published");
+    setLastPublishedPlatformId(manifest.package.id);
+
     setPublishStatus("pending-review");
-  }, [publishReady]);
+  }, [draft, publishReady]);
+
+  const completeAgentPublish = useCallback((platformId: string) => {
+    setLastPublishedPlatformId(platformId);
+    setPublishStatus("pending-review");
+  }, []);
 
   const resetWizard = useCallback(() => {
     const fresh = createDefaultCapabilityDraft();
@@ -139,6 +227,8 @@ export function useHubCapabilityWizard() {
     setTestsPassed(false);
     setTestStatus("idle");
     setPublishStatus("idle");
+    setImportError(null);
+    setLastPublishedPlatformId(null);
     localStorage.setItem(HUB_CAPABILITY_DRAFT_STORAGE_KEY, JSON.stringify(fresh));
   }, []);
 
@@ -146,6 +236,7 @@ export function useHubCapabilityWizard() {
     hydrated,
     currentStep,
     draft,
+    platformManifest,
     updateDraft,
     stepValidation,
     autosaveStatus,
@@ -156,12 +247,18 @@ export function useHubCapabilityWizard() {
     testOutput,
     publishStatus,
     publishReady,
+    importError,
+    lastPublishedPlatformId,
     goToStep,
     goNext,
     goBack,
     saveDraftNow,
+    exportManifest,
+    importManifest,
+    importManifestFile,
     runSandboxTest,
     publishCapability,
+    completeAgentPublish,
     resetWizard,
   };
 }

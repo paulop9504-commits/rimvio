@@ -1,3 +1,11 @@
+import type {
+  PlatformMarketCode,
+  PlatformMarketsDeclaration,
+  PlatformOperatorDeclaration,
+} from "@/lib/platform-sdk/types";
+
+export type { PlatformMarketCode, PlatformMarketsDeclaration, PlatformOperatorDeclaration };
+
 export type WizardStepId = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type RuntimeType =
@@ -28,6 +36,8 @@ export type CapabilityAction = {
   inputSchema: string;
   outputSchema: string;
   approvalRequired: boolean;
+  /** Country markets where this action is available */
+  markets?: PlatformMarketCode[];
 };
 
 export type CapabilityPermission = {
@@ -67,6 +77,10 @@ export type CapabilityDraft = {
   tags: string[];
   iconDataUrl: string | null;
   pricing: PricingModel;
+  operator: PlatformOperatorDeclaration;
+  markets: PlatformMarketsDeclaration;
+  /** UI flag — Global requires per-country configuration */
+  wantsGlobal: boolean;
   manifestJson: string;
   runtime: {
     type: RuntimeType;
