@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { ComposeIntentSpectrumBar } from "@/components/globe/chat/compose-intent-spectrum-bar";
@@ -67,6 +67,10 @@ export type GlobeChatScreenProps = {
   onClose: () => void;
   /** overlay = fullscreen slide-over; page = embedded agent home column */
   variant?: "overlay" | "page";
+  /** page only — minimal chrome for agent dashboard handoff */
+  pageChrome?: "default" | "minimal";
+  /** Optional ref to the page ingest bar (dashboard → chat submit) */
+  ingestBarRef?: RefObject<GlobeContextIngestBarHandle | null>;
   ingest: GlobeContextIngestBarProps;
   onArtifactPrimaryAction?: () => void;
   onArtifactSecondaryAction?: () => void;
@@ -166,6 +170,8 @@ export function GlobeChatScreen({
   open,
   onClose,
   variant = "overlay",
+  pageChrome = "default",
+  ingestBarRef,
   ingest,
   onArtifactPrimaryAction,
   onArtifactSecondaryAction,
@@ -173,6 +179,7 @@ export function GlobeChatScreen({
   onViewOuterGlobe,
 }: GlobeChatScreenProps) {
   const isPage = variant === "page";
+  const isMinimalPage = isPage && pageChrome === "minimal";
   const { state: feedState } = useGlobeExecutionFeed();
   const graphId =
     feedState.run?.graphId?.trim() ||
@@ -212,6 +219,13 @@ export function GlobeChatScreen({
     (open || isPage) &&
     composeState?.intentStage != null &&
     composeState.intentStage.stage !== "chatting";
+
+  useEffect(() => {
+    if (!ingestBarRef) {
+      return;
+    }
+    ingestBarRef.current = ingestRef.current;
+  });
 
   const submitChipAnswer = (answer: string) => {
     void ingestRef.current?.submitComposerText(answer);
@@ -365,7 +379,7 @@ export function GlobeChatScreen({
             "pointer-events-auto flex shrink-0 items-center justify-between px-4 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]",
             !isPage && globeChatLight.headerBorder,
             "border-b bg-white/80 backdrop-blur-md",
-            isPage && "hidden md:flex",
+            isPage && pageChrome === "default" && "hidden md:flex",
           )}
         >
           <div className="min-w-0">
@@ -663,10 +677,14 @@ export function GlobeChatScreen({
   if (isPage) {
     return (
       <div
-        className={cn("flex min-h-0 flex-1 flex-col", globeChatLight.screen)}
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          isMinimalPage ? "bg-transparent" : globeChatLight.screen,
+        )}
         data-globe-chat-screen
         data-globe-chat-tone="light"
         data-globe-chat-variant="page"
+        data-globe-chat-page-chrome={pageChrome}
       >
         {screenBody}
       </div>

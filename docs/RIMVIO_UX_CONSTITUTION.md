@@ -1,7 +1,10 @@
 # Rimvio UX Constitution
 
 **Status:** locked · PR review + Cursor tasks  
+**Platform north star:** `docs/RIMVIO_AGENT_HUB_VISION.md`  
 **Related:** `.cursor/rules/rimvio-globe-field.mdc` · `docs/RIMVIO_CONSTITUTION.md`
+
+**Default ingress (2026-08):** **`/` Agent home** — Cursor-style 2D; Globe at `/?surface=globe` is Travel projection, not platform definition.
 
 ---
 

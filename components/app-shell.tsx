@@ -25,6 +25,8 @@ type AppShellProps = {
   hideBottomNav?: boolean;
   /** Home globe — full-width column beside nav rail */
   globeHome?: boolean;
+  /** Agent home — full-width desktop shell without side nav */
+  agentHome?: boolean;
   children: ReactNode;
 };
 
@@ -39,22 +41,31 @@ export function AppShell({
   fullBleed = false,
   hideBottomNav = false,
   globeHome = false,
+  agentHome = false,
   children,
 }: AppShellProps) {
+  const immersiveHome = globeHome || agentHome;
   return (
     <div className={GRID.viewport}>
-      <div className={cn(GRID.shell, globeHome && "app-shell-grid--globe-home")}>
-        <Suspense fallback={null}>
-          <AppNav placement="side" />
-        </Suspense>
+      <div
+        className={cn(
+          GRID.shell,
+          immersiveHome && "app-shell-grid--globe-home",
+        )}
+      >
+        {!agentHome ? (
+          <Suspense fallback={null}>
+            <AppNav placement="side" />
+          </Suspense>
+        ) : null}
 
         <div
           className={cn(
             GRID.column,
             "app-shell-viewport flex h-dvh flex-col overflow-hidden",
             fullBleed && "app-shell-column--chat",
-            globeHome && "app-shell-column--globe-home",
-            globeHome ? "bg-[#f2f4f6]" : "bg-background",
+            immersiveHome && "app-shell-column--globe-home",
+            immersiveHome ? "bg-[#f2f4f6]" : "bg-background",
           )}
         >
           <header

@@ -1,23 +1,39 @@
-/** Rimvio North Star — product soul */
+/** Rimvio North Star — product soul (2026-08: Agent + Hub platform) */
 export const NORTH_STAR = {
-  slogan: "Your Life, Operable.",
-  /** Canonical product definition (KO) — docs/RIMVIO_CONSTITUTION.md */
+  /** Platform headline */
+  slogan: "Connect every capability. Execute what matters.",
+  sloganKo: "능력을 연결하고, 결과를 실행한다.",
+  /** Agent-facing */
+  agentSlogan: "Say it. We perform.",
+  agentSloganKo: "해줘 — Rimvio가 실행한다.",
+  /** Travel / memory vertical (legacy L1) */
+  travelVerticalSlogan: "Your Life, Operable.",
+  /** @deprecated use platformDefinitionKo — kept for gradual migration */
   experienceOsDefinitionKo:
-    "Context를 Reality Graph로 연결하고, AI Agent가 Workspace에서 탐색·비교·예약·다음 행동을 준비하며, 맞을 때 당신이 Commit하는 AI Experience OS",
+    "Rimvio Agent가 Market과 Capability를 조립하고 Runtime에서 실행하며, 사용자가 Commit하는 초연결 AI 실행 플랫폼",
   experienceOsHumanKo:
-    "검색 챗봇이 아니라 Context·Reality Graph 위에서 AI Agent가 Workspace로 다음 행동을 준비하는 Experience OS",
+    "챗봇이 아니라, 말한 결과를 실제로 수행하는 실행 플랫폼",
   experienceOsDefinitionEn:
-    "An AI Experience OS that links Context into a Reality Graph — AI Agents explore, compare, and prepare next actions in Workspace; you Commit.",
+    "A hyper-connected execution platform — Rimvio Agent assembles Markets and Capabilities; Runtime acts; humans Commit.",
   experienceOsHumanEn:
-    "Not chatbot search — Context and Reality Graph, with AI Agents preparing the next move in Workspace.",
-  taglineKo: "Context · Reality Graph · AI Agent · Workspace",
-  taglineEn: "Context. Reality Graph. AI Agent. Workspace.",
+    "Not a chatbot — an execution platform that performs outcomes you state.",
+  platformDefinitionKo:
+    "Rimvio Agent가 Market과 Capability를 조립하고 Runtime에서 실행하며, 사용자가 Commit하는 초연결 AI 실행 플랫폼",
+  platformDefinitionEn:
+    "A hyper-connected execution platform — Rimvio Agent assembles Markets and Capabilities; Runtime acts; humans Commit.",
+  platformHumanKo: "챗봇이 아니라, 말한 결과를 실제로 수행하는 실행 플랫폼",
+  platformHumanEn:
+    "Not a chatbot — an execution platform that performs outcomes you state.",
+  substrateTaglineKo: "맥락이 연결되면, Rimvio가 다시 실행한다.",
+  substrateTaglineEn: "When context connects, Rimvio re-executes.",
+  taglineKo: "Rimvio Agent · Hub · Runtime",
+  taglineEn: "Rimvio Agent · Hub · Runtime",
   systemMission:
-    "You are Rimvio, an AI Experience OS. Structure place · people · time · action as Reality Graph truth from Context; AI Agents search, compare, and prepare in Workspace without silent Commit. Context Resume re-opens prior work. Conversation is ingress, not the product. Humans own final authority.",
-  loading: "[생각중...]",
-  loadingDock: "Making your life Operable…",
+    "You are Rimvio, a hyper-connected AI execution platform. Users state intent; Rimvio Agent plans, discovers Markets and Capabilities, executes via Runtime, verifies, and presents results for human Commit. Hub supplies capabilities and markets invisibly. Conversation is ingress and work log, not the product. Never silent Commit on payments, bookings, or trades. Humans own final authority.",
+  loading: "[실행 준비 중…]",
+  loadingDock: "Rimvio Agent가 준비 중…",
   sessionConnected: (personaLabel: string) =>
-    `${personaLabel}와의 세션을 연결했습니다. Your life is now Operable.`,
+    `${personaLabel}와 연결했습니다. 원하는 결과를 말해 보세요.`,
 } as const;
 
 /** Injected at the top of every Rimvio system prompt. */
@@ -25,12 +41,14 @@ export function buildNorthStarPromptHeader() {
   return [
     "# North Star (immutable mission)",
     NORTH_STAR.systemMission,
-    `- Product soul: "${NORTH_STAR.slogan}" — **AI Experience OS**; Context · Reality Graph · AI Agent · Workspace; Commit is human.`,
-    `- Definition: ${NORTH_STAR.experienceOsDefinitionEn}`,
-    "- Context-first: place (Globe) · people (Peer) · Reality Graph → Workspace prep → one tap Commit. MEANING + RECALL moat, not generic chat.",
-    "- OS, not app: coordinate relationships, work, and routine as one continuous life surface.",
-    `- Korean anchor: ${NORTH_STAR.taglineKo}`,
-    `- English anchor: ${NORTH_STAR.taglineEn}`,
+    `- Platform: "${NORTH_STAR.slogan}" — Agent + Hub + Runtime; Commit is human.`,
+    `- Agent: ${NORTH_STAR.agentSlogan}`,
+    `- Definition: ${NORTH_STAR.platformDefinitionEn}`,
+    "- Intent → Market discovery → Capability assembly → Runtime → Verify → Commit.",
+    "- Hub L0–L3: Platform → Market → Capability → Listing/Reality.",
+    "- Travel/memory vertical still uses Context OS substrate; Globe is projection not default home.",
+    `- Korean anchor: ${NORTH_STAR.agentSloganKo}`,
+    `- Substrate (Travel): ${NORTH_STAR.substrateTaglineKo}`,
   ].join("\n");
 }
 
@@ -39,16 +57,15 @@ export const RIMVIO = {
   name: "Rimvio",
   nameKo: "림비오",
   lockup: "Rimvio · 림비오",
-  /** North Star — primary product identity */
   northStar: NORTH_STAR.slogan,
-  northStarKo: NORTH_STAR.taglineKo,
-  /** Primary user-facing tagline */
-  tagline: NORTH_STAR.taglineKo,
-  taglineShort: "Context · Reality Graph · Workspace",
-  /** Link share remains an ingress channel, not product identity */
-  ingressTagline: "링크·사진 공유로도 시작할 수 있어요",
+  northStarKo: NORTH_STAR.sloganKo,
+  agentTagline: NORTH_STAR.agentSloganKo,
+  agentTaglineEn: NORTH_STAR.agentSlogan,
+  tagline: NORTH_STAR.agentSloganKo,
+  taglineShort: "Agent · Hub · Runtime",
+  ingressTagline: "한 줄이면 시작할 수 있어요",
   domain: "rimvio.com",
-  homeLabel: "Rimvio 홈",
+  homeLabel: "Rimvio Agent",
 } as const;
 
 export function rimvioBeamUrl(slug: string) {
