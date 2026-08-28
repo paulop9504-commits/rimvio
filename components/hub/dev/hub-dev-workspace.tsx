@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { HubDevAgentSimulation } from "@/components/hub/dev/hub-dev-agent-simulation";
 import { HubDevAiBuild } from "@/components/hub/dev/hub-dev-ai-build";
 import { HubDevCapabilityConfig } from "@/components/hub/dev/hub-dev-capability-config";
 import { HubDevCapabilityList } from "@/components/hub/dev/hub-dev-capability-view";
@@ -11,9 +12,8 @@ import { HubDevSidebar } from "@/components/hub/dev/hub-dev-sidebar";
 import { HubDevTopbar } from "@/components/hub/dev/hub-dev-topbar";
 import { DataStep } from "@/components/hub/platform/steps/data-step";
 import { PlatformReviewStep } from "@/components/hub/platform/steps/review-step";
-import { PlatformTestingStep } from "@/components/hub/platform/steps/testing-step";
 import { PlatformPermissionsStep } from "@/components/hub/platform/steps/permissions-step";
-import { WorkflowStep } from "@/components/hub/platform/steps/workflow-step";
+import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import { useHubPlatformWizard } from "@/hooks/use-hub-platform-wizard";
 import {
@@ -66,6 +66,7 @@ export function HubDevWorkspace() {
   const [agentSeed, setAgentSeed] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [previewOn, setPreviewOn] = useState(true);
+  const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | null>(null);
 
   const syncUrl = useCallback(
     (nav: HubDevNavId, capId?: string | null) => {
@@ -279,23 +280,29 @@ export function HubDevWorkspace() {
               selectedAction={selectedAction}
               scope={configScope}
               onScopeChange={setConfigScope}
+              onApplyDraft={(next) => wizard.updateDraft(next)}
             />
           ) : activeNav === "data" ? (
             <PanelShell>
               <DataStep wizard={wizard} />
             </PanelShell>
           ) : activeNav === "workflows" ? (
-            <PanelShell>
-              <WorkflowStep wizard={wizard} />
-            </PanelShell>
+            <HubDevWorkflowEditor
+              draft={wizard.draft}
+              selectedNodeId={selectedWorkflowNodeId}
+              onSelectNode={setSelectedWorkflowNodeId}
+            />
           ) : activeNav === "permissions" ? (
             <PanelShell>
               <PlatformPermissionsStep wizard={wizard} />
             </PanelShell>
           ) : activeNav === "tests" ? (
-            <PanelShell>
-              <PlatformTestingStep wizard={wizard} />
-            </PanelShell>
+            <HubDevAgentSimulation
+              draft={wizard.draft}
+              onComplete={(passed) => {
+                if (passed) void wizard.runSandboxTest();
+              }}
+            />
           ) : activeNav === "deployments" ? (
             <PanelShell>
               <PlatformReviewStep wizard={wizard} />
@@ -379,7 +386,7 @@ function ComingSoon({ nav }: { nav: HubDevNavId }) {
     <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
       <p className="text-[14px] font-semibold text-[#b0b8c1]">{nav}</p>
       <p className="mt-2 max-w-sm text-[12px] text-[#6b7684]">
-        Phase 6–9: Live Preview runtime · Agent Simulation · Workflow editor · Runtime logs.
+        Phase 8–9: Runtime logs · Commerce panel.
         <span className="mt-2 block text-[10px] text-amber-500/80">Planned — not fake production metrics</span>
       </p>
     </div>

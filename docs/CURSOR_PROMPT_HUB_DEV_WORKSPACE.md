@@ -47,11 +47,12 @@ RIGHT: AI Chat + Live Preview (Demo labeled) | Publish inspector
 
 1. ✅ Shell + routes (`/hub`, `/hub/workspace`, redirects from `/hub/submit/*`)
 2. ✅ AI Build + Blueprint (OsakaStay via `lib/hub/dev/blueprint.ts`)
-3. Wire Capability list + Configuration (manifest/permissions/context steps)
-4. Live Preview → sandbox runtime (real connection, not static-only)
-5. Agent Simulation test trace
-6. Workflow node UI
-7. Runtime / Logs (real APIs only)
+3. ✅ Wire Capability list + Configuration (manifest/permissions/context steps)
+4. ✅ Capability-scoped JSON Diff → Apply (`lib/hub/dev/capability-patch.ts`)
+5. ✅ Live Preview → Platform Host sandbox invoke (`lib/hub/dev/sandbox-preview.ts`)
+6. ✅ Agent Simulation test trace (`hub-dev-agent-simulation.tsx`)
+7. ✅ Workflow node UI (`hub-dev-workflow-editor.tsx`)
+8. Runtime / Logs (real APIs only)
 8. Deploy / Publish → registry (existing `publishPlatform`)
 
 ---

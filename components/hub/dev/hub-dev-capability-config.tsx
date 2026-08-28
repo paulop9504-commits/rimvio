@@ -4,11 +4,10 @@ import { useMemo, useState } from "react";
 import { ContextStep } from "@/components/hub/capability/steps/context-step";
 import { ManifestStep } from "@/components/hub/capability/steps/manifest-step";
 import { PermissionsStep } from "@/components/hub/capability/steps/permissions-step";
-import { HubCodeEditor } from "@/components/hub/wizard/hub-code-editor";
+import { HubDevCapabilityManifestEditor } from "@/components/hub/dev/hub-dev-capability-manifest-editor";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import type { CapabilityAction } from "@/lib/hub/capability/types";
 import {
-  buildCapabilityManifestSnippet,
   inferContextForAction,
   inferPermissionsForAction,
 } from "@/lib/hub/dev/capability-inspector";
@@ -23,6 +22,7 @@ type HubDevCapabilityConfigProps = {
   selectedAction: CapabilityAction | null;
   scope: "capability" | "platform";
   onScopeChange: (scope: "capability" | "platform") => void;
+  onApplyDraft: (draft: PlatformDraft) => void;
 };
 
 export function HubDevCapabilityConfig({
@@ -31,13 +31,9 @@ export function HubDevCapabilityConfig({
   selectedAction,
   scope,
   onScopeChange,
+  onApplyDraft,
 }: HubDevCapabilityConfigProps) {
   const [tab, setTab] = useState<ConfigTab>("manifest");
-
-  const capabilitySnippet = useMemo(() => {
-    if (!selectedAction) return null;
-    return buildCapabilityManifestSnippet(selectedAction, draft);
-  }, [draft, selectedAction]);
 
   const capabilityPermissions = useMemo(() => {
     if (!selectedAction) return [];
@@ -111,23 +107,13 @@ export function HubDevCapabilityConfig({
             <PermissionsStep wizard={wizard} />
             <ContextStep wizard={wizard} />
           </div>
-        ) : tab === "manifest" && capabilitySnippet ? (
-          <div className="mx-auto max-w-4xl">
-            <p className="mb-3 text-[12px] text-[#64748b]">
-              이 Capability에 대한 manifest 스니펫입니다. Platform-wide 편집은 Platform-wide
-              탭을 사용하세요.
-            </p>
-            <HubCodeEditor
-              value={capabilitySnippet}
-              onChange={() => {}}
-              readOnly
-              rows={18}
-            />
-            <p className="mt-3 text-[11px] text-amber-700">
-              Capability-scoped JSON 편집은 Phase 4에서 Diff → Apply로 연결됩니다. 지금은
-              Platform-wide Manifest에서 수정하세요.
-            </p>
-          </div>
+        ) : tab === "manifest" && selectedAction ? (
+          <HubDevCapabilityManifestEditor
+            key={`${selectedAction.id}-${draft.manifestJson?.length ?? 0}`}
+            action={selectedAction}
+            draft={draft}
+            onApply={onApplyDraft}
+          />
         ) : tab === "permissions" ? (
           <div className="mx-auto max-w-3xl space-y-3">
             {capabilityPermissions.map((p) => (
