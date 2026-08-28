@@ -1,9 +1,5 @@
-import { HubPlatformWizardClient } from "@/components/hub/hub-platform-wizard-client";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Submit Platform",
-};
-
-export default function HubSubmitPlatformPage() {
-  return <HubPlatformWizardClient />;
+export default function HubPlatformSubmitRedirect() {
+  redirect("/hub/workspace");
 }

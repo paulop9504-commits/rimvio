@@ -18,18 +18,18 @@ import { cn } from "@/lib/utils";
 
 const MAIN_NAV = [
   { label: "Discover", href: "/hub", icon: Search },
-  { label: "My Capabilities", href: "/hub", icon: FileText },
+  { label: "My Platforms", href: "/hub", icon: Layers },
   { label: "Analytics", href: "/hub", icon: BarChart3 },
   { label: "Community", href: "/hub", icon: MessageSquare },
   { label: "Docs", href: "/hub", icon: BookOpen },
 ] as const;
 
 const DEV_NAV = [
-  { label: "Dashboard", href: "/hub", icon: LayoutDashboard },
-  { label: "Builder", href: "/hub/build", icon: Hammer },
-  { label: "Submissions", href: "/hub/submit", icon: Upload },
-  { label: "Capability", href: "/hub/submit/capability", icon: FileText },
-  { label: "Platform", href: "/hub/submit/platform", icon: Layers },
+  { label: "Platforms Home", href: "/hub", icon: LayoutDashboard },
+  { label: "Dev Workspace", href: "/hub/workspace", icon: Hammer },
+  { label: "AI Build", href: "/hub/workspace?nav=ai-build", icon: Hammer },
+  { label: "Capabilities", href: "/hub/workspace?nav=capabilities", icon: FileText },
+  { label: "Publish", href: "/hub/workspace?nav=deployments", icon: Upload },
   { label: "Settings", href: "/hub", icon: Settings },
 ] as const;
 
@@ -37,6 +37,9 @@ export function HubSidebar() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
+    if (href.startsWith("/hub/workspace")) {
+      return pathname.startsWith("/hub/workspace");
+    }
     if (href === "/hub/submit/capability") {
       return pathname.startsWith("/hub/submit/capability");
     }
@@ -118,13 +121,13 @@ export function HubSidebar() {
       <div className="m-3 rounded-xl bg-[#1E293B] p-4">
         <p className="text-[12px] font-semibold text-white">Need Help?</p>
         <p className="mt-1 text-[11px] leading-relaxed text-[#94A3B8]">
-          Read the Submission Guide and Capability Contract docs.
+          Build Platforms with AI — manifest, permissions, and publish when you are ready.
         </p>
         <Link
-          href="/hub"
+          href="/hub/workspace?nav=ai-build"
           className="mt-2.5 inline-block text-[11px] font-semibold text-[#818CF8] hover:text-[#A5B4FC]"
         >
-          Submission Guide →
+          Open Dev Workspace →
         </Link>
         <Link
           href="/hub"

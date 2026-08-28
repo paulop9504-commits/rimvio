@@ -1,10 +1,5 @@
-import { RimvioBuilderClient } from "@/components/builder/rimvio-builder-client";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Rimvio Builder",
-  description: "Turn your idea into a platform — no code required",
-};
-
-export default function HubBuildPage() {
-  return <RimvioBuilderClient />;
+export default function HubBuildRedirect() {
+  redirect("/hub/workspace?nav=ai-build");
 }

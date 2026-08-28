@@ -1,18 +1,17 @@
 "use client";
 
-import { HubDeployWorkspace } from "@/components/hub/deploy/hub-deploy-workspace";
-import { useHubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
+/** @deprecated Use /hub/workspace — capability-only track merged into Platform Dev Workspace */
 export function HubCapabilityWizardClient() {
-  const wizard = useHubCapabilityWizard();
-
-  if (!wizard.hydrated) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-[#0c0e12] text-[#6b7684]">
-        Draft 불러오는 중…
-      </div>
-    );
-  }
-
-  return <HubDeployWorkspace mode="capability" wizard={wizard} />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/hub/workspace?nav=capabilities");
+  }, [router]);
+  return (
+    <div className="flex h-dvh items-center justify-center bg-[#0c0e12] text-[#6b7684]">
+      Redirecting to Dev Workspace…
+    </div>
+  );
 }

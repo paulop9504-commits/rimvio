@@ -1,9 +1,5 @@
-import { HubSubmitChooser } from "@/components/hub/hub-submit-chooser";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Hub Submissions",
-};
-
-export default function HubSubmitPage() {
-  return <HubSubmitChooser />;
+export default function HubSubmitRedirect() {
+  redirect("/hub");
 }

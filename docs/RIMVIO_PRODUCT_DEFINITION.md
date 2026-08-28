@@ -3,7 +3,7 @@
 **Status:** CANON (product SSOT — consolidated answer to “What is Rimvio?”)  
 **Audience:** Founders, PM, design, engineering, next AI agent  
 **Wire:** `lib/rimvio-protocol/` · `lib/platform-sdk/` · `lib/platform-builder/` · `lib/hub/`  
-**Related:** [RIMVIO_OS_CONSTITUTION.md](./RIMVIO_OS_CONSTITUTION.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [RIMVIO_PLATFORM_VISION.md](./RIMVIO_PLATFORM_VISION.md) · [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md)
+**Related:** [RIMVIO_OS_CONSTITUTION.md](./RIMVIO_OS_CONSTITUTION.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [RIMVIO_PLATFORM_VISION.md](./RIMVIO_PLATFORM_VISION.md) · [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md) · **[RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md)** (User Agent × Dev Creator — two Cursors, Hub loop)
 
 > This document is **the** product answer. Architecture law lives in the Constitutions; platform mechanics in the SDK spec; this doc binds them into one story.
 
@@ -33,6 +33,8 @@ Two economies share one protocol:
 | **Producer** | Developer · creator · business | Publishes Platform + Capabilities; deploys per Market; composes payment · shipping · booking | Hub · Builder · Runtime |
 
 Neither economy is “the product.” Both ride the same **Intent → Capability → Platform → Commit** spine.
+
+**Dual experience (full UX/mechanism):** [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) — Globe Agent loop vs Hub Dev Workspace, Registry bridge, OsakaStay reference flow, Platform OS layers for Dev.
 
 ---
 
@@ -270,7 +272,8 @@ Callout `RimvioObject` in UI is a **projection** — not OS ontology.
 | Hub wizard · validation | `lib/hub/capability/` · `hooks/use-hub-capability-wizard.ts` |
 | Platform submission (14-step) | `lib/hub/platform/` · `hooks/use-hub-platform-wizard.ts` · `/hub/submit/platform` |
 | NL intent stage | `lib/context-run/compile-nl-intent.ts` · `intent_compiler` in `natural-language-pipeline.ts` |
-| Hub UI | `app/hub/` · `components/hub/` |
+| Hub UI | `app/hub/` · `components/hub/` · `components/hub/deploy/` |
+| Hub deploy agent runtime | `lib/hub/deploy/hub-deploy-runtime.ts` |
 | Builder UI | `app/hub/build/` · `components/builder/` |
 | Platform host / runtime | `lib/platform-sdk/platform-host.ts` · `components/platform/` |
 | Agent spine | `lib/workstream/rimvio-agent-runtime.ts` · ADR-045 |
@@ -303,6 +306,8 @@ Callout `RimvioObject` in UI is a **projection** — not OS ontology.
 | ADR-055 | Rimvio Builder + RIR |
 | ADR-056 | Platform Market Deployment |
 | ADR-057 | Rimvio OS Constitution |
+| ADR-058 | Dual Experience · Hub Dev Workspace · Registry bridge |
+| [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) | User Agent × Dev Creator · two Cursors · OsakaStay reference |
 
 ---
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Rimvio product guidelines
 
-**What is Rimvio?** `docs/RIMVIO_PRODUCT_DEFINITION.md` (product SSOT — loop, 5 lines, consumer/producer).
+**What is Rimvio?** `docs/RIMVIO_PRODUCT_DEFINITION.md` (product SSOT — loop, 5 lines, consumer/producer). **Dual UX/mechanism:** `docs/RIMVIO_DUAL_EXPERIENCE.md` · ADR-058.
 
 **Canonical doctrine:** `docs/RIMVIO_CONSTITUTION.md` (Experience OS — truth/projection/surface law, PR review law).
 
