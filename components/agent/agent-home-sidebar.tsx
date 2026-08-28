@@ -103,7 +103,7 @@ export function AgentHomeSidebar({
       id: "hub",
       label: copy.globe.agentHomeSidebarHub,
       icon: Network,
-      onClick: () => openHubNav("hub", activeEventId),
+      href: "/hub/submit",
     },
     {
       id: "ontology",
