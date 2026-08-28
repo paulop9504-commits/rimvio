@@ -1,4 +1,5 @@
 import { capabilityDraftToPlatformManifest } from "@/lib/hub/capability/manifest-bridge";
+import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import {
   mountPlatformHostApis,
@@ -31,6 +32,7 @@ export async function runSandboxHotelSearch(
   draft: PlatformDraft,
   input: { destination: string; checkIn: string; checkOut: string; guests: number },
 ): Promise<SandboxPreviewState> {
+  const started = Date.now();
   const manifest = capabilityDraftToPlatformManifest(draft);
   const platformId = manifest.package.id;
 
@@ -52,7 +54,7 @@ export async function runSandboxHotelSearch(
     /osaka|오사카|난바|namba|hotel/i.test(draft.name + draft.description) ||
     draft.actions.some((a) => a.name === "hotel.search");
 
-  return {
+  const state: SandboxPreviewState = {
     mode: result.ok ? "sandbox" : "demo",
     platformId,
     invokeOk: result.ok,
@@ -61,4 +63,18 @@ export async function runSandboxHotelSearch(
       : result.errorKo ?? "Sandbox invoke failed — showing demo data",
     hotels: isOsaka ? OSAKA_DEMO_HOTELS : [],
   };
+
+  appendDevExecutionLog({
+    platformId,
+    platformName: draft.name,
+    capabilityId: searchCap,
+    source: "preview",
+    ok: result.ok,
+    detail: state.invokeDetail,
+    durationMs: Date.now() - started,
+    input: input as unknown as Record<string, unknown>,
+    output: result.output as Record<string, unknown> | undefined,
+  });
+
+  return state;
 }

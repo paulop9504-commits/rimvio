@@ -32,6 +32,7 @@ import {
   mountPlatformHostApis,
   registerPlatformManifest,
 } from "@/lib/platform-sdk/platform-host";
+import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 const TOTAL_STEPS = 14 as const;
@@ -206,6 +207,14 @@ export function useHubPlatformWizard() {
     setTestStatus("passed");
     setTestsPassed(true);
     setDraft((prev) => ({ ...prev, securityScanPassed: true }));
+    const manifest = capabilityDraftToPlatformManifest(draft);
+    appendDevExecutionLog({
+      platformId: manifest.package.id,
+      platformName: draft.name,
+      source: "sandbox-test",
+      ok: true,
+      detail: "Sandbox validation passed",
+    });
     return { passed: true };
   }, [draft.permissions]);
 
@@ -227,6 +236,14 @@ export function useHubPlatformWizard() {
     registerPlatformManifest(manifest);
     registerCapabilityIndexFromManifest(manifest, "published");
     setLastPublishedPlatformId(manifest.package.id);
+
+    appendDevExecutionLog({
+      platformId: manifest.package.id,
+      platformName: draft.name,
+      source: "publish",
+      ok: true,
+      detail: `Published ${manifest.capabilities.length} capabilities to Registry`,
+    });
 
     setPublishStatus("pending-review");
   }, [draft, publishReady]);

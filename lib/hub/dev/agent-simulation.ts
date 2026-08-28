@@ -6,6 +6,7 @@ import {
   readPlatformHostApis,
   registerPlatformManifest,
 } from "@/lib/platform-sdk/platform-host";
+import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
 
 export type SimulationStepKind =
   | "user-intent"
@@ -123,6 +124,7 @@ export async function runAgentSimulation(
     }
 
     if (step.kind === "capability" && step.capabilityId) {
+      const started = Date.now();
       const input =
         step.capabilityId === "hotel.search"
           ? { destination: "Namba Station", checkIn: "2026-06-15", checkOut: "2026-06-17", guests: 2 }
@@ -138,12 +140,34 @@ export async function runAgentSimulation(
       await delay(300);
 
       if (!result.ok) {
+        appendDevExecutionLog({
+          platformId,
+          platformName: draft.name,
+          capabilityId: step.capabilityId,
+          source: "simulation",
+          ok: false,
+          detail: result.errorKo ?? "Invoke failed",
+          durationMs: Date.now() - started,
+          input,
+        });
         onUpdate(step.id, {
           status: "failed",
           detail: result.errorKo ?? "Invoke failed",
         });
         return { passed: false };
       }
+
+      appendDevExecutionLog({
+        platformId,
+        platformName: draft.name,
+        capabilityId: step.capabilityId,
+        source: "simulation",
+        ok: true,
+        detail: result.prepareOnly ? "prepareOnly" : "committed",
+        durationMs: Date.now() - started,
+        input,
+        output: (result.output as Record<string, unknown>) ?? { ok: true },
+      });
 
       onUpdate(step.id, {
         status: "success",

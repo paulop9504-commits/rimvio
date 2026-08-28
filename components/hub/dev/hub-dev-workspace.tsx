@@ -13,17 +13,22 @@ import { HubDevTopbar } from "@/components/hub/dev/hub-dev-topbar";
 import { DataStep } from "@/components/hub/platform/steps/data-step";
 import { PlatformReviewStep } from "@/components/hub/platform/steps/review-step";
 import { PlatformPermissionsStep } from "@/components/hub/platform/steps/permissions-step";
-import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
+import { HubDevCommercePanel } from "@/components/hub/dev/hub-dev-commerce-panel";
+import { HubDevLogsPanel } from "@/components/hub/dev/hub-dev-logs-panel";
+import { HubDevRegistryE2e } from "@/components/hub/dev/hub-dev-registry-e2e";
+import { HubDevRuntimePanel } from "@/components/hub/dev/hub-dev-runtime-panel";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import { useHubPlatformWizard } from "@/hooks/use-hub-platform-wizard";
 import {
   blueprintFromDraft,
   resolvePlatformDraftFromBuildPrompt,
 } from "@/lib/hub/dev/blueprint";
-import { syncPlatformManifestJson } from "@/lib/hub/dev/capability-inspector";
 import type { HubDevNavId } from "@/lib/hub/dev/platform-nav";
 import type { PlatformBlueprintView } from "@/lib/hub/dev/platform-nav";
+import { syncPlatformManifestJson } from "@/lib/hub/dev/capability-inspector";
+
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
+import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
 
 function parseNav(value: string | null): HubDevNavId {
   const allowed: HubDevNavId[] = [
@@ -291,6 +296,7 @@ export function HubDevWorkspace() {
               draft={wizard.draft}
               selectedNodeId={selectedWorkflowNodeId}
               onSelectNode={setSelectedWorkflowNodeId}
+              onApplyDraft={(next) => wizard.updateDraft(next)}
             />
           ) : activeNav === "permissions" ? (
             <PanelShell>
@@ -303,10 +309,23 @@ export function HubDevWorkspace() {
                 if (passed) void wizard.runSandboxTest();
               }}
             />
+          ) : activeNav === "runtime" ? (
+            <HubDevRuntimePanel draft={wizard.draft} publishStatus={wizard.publishStatus} />
+          ) : activeNav === "commerce" ? (
+            <HubDevCommercePanel draft={wizard.draft} />
+          ) : activeNav === "logs" ? (
+            <HubDevLogsPanel draft={wizard.draft} />
           ) : activeNav === "deployments" ? (
-            <PanelShell>
-              <PlatformReviewStep wizard={wizard} />
-            </PanelShell>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
+              <div className="mx-auto max-w-3xl space-y-6">
+                <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
+                <PlatformReviewStep wizard={wizard} />
+              </div>
+            </div>
+          ) : activeNav === "hub-published" ? (
+            <div className="overflow-y-auto p-6 rimvio-scroll-touch">
+              <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
+            </div>
           ) : activeNav === "overview" ? (
             <PlatformOverview draft={wizard.draft} onOpenBuild={() => setNav("ai-build")} />
           ) : (
@@ -386,8 +405,8 @@ function ComingSoon({ nav }: { nav: HubDevNavId }) {
     <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
       <p className="text-[14px] font-semibold text-[#b0b8c1]">{nav}</p>
       <p className="mt-2 max-w-sm text-[12px] text-[#6b7684]">
-        Phase 8–9: Runtime logs · Commerce panel.
-        <span className="mt-2 block text-[10px] text-amber-500/80">Planned — not fake production metrics</span>
+        Integrations · Versions — planned next.
+        <span className="mt-2 block text-[10px] text-amber-500/80">Not fake production data</span>
       </p>
     </div>
   );

@@ -245,6 +245,20 @@ export function searchCapabilityIndex(
       score += 0.4;
       matchReason = matchReason || "search/buy intent";
     }
+    if (/호텔|hotel|예약|booking|난바|namba|osaka|오사카|숙박/.test(text)) {
+      if (entry.capabilityId.includes("hotel.search")) {
+        score += 0.55;
+        matchReason = matchReason || "hotel search intent";
+      }
+      if (entry.capabilityId.includes("booking")) {
+        score += 0.35;
+        matchReason = matchReason || "booking intent";
+      }
+      if (entry.capabilityId.includes("payment")) {
+        score += 0.25;
+        matchReason = matchReason || "payment intent";
+      }
+    }
     if (/자전거|bike|책|book|맥북|mac/.test(text) && entry.category === "e-commerce") {
       score += 0.2;
       matchReason = matchReason || "product noun";
