@@ -3365,6 +3365,63 @@ body:has(.app-nav-bottom-frame) [data-sonner-toaster][data-y-position="bottom"] 
   }
 }
 
+/* Agent home — full-width desktop shell (no side nav rail column, no chat max-width) */
+.app-shell-grid--agent-home {
+  max-width: 100%;
+}
+
+.app-shell-column.app-shell-column--agent-home {
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .app-shell-column.app-shell-column--agent-home {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-shell-column.app-shell-column--agent-home {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell-grid--agent-home {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .app-shell-column.app-shell-column--agent-home {
+    max-width: none;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}
+
+[data-agent-home-root] {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+}
+
+[data-surface="agent-home"] {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+[data-agent-home-sidebar] {
+  flex: 0 0 260px;
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+}
+
 @media (min-width: 768px) {
   body:has([data-pin-open-sheet]) [data-rimvio-globe-3d] {
     transform: translateX(calc(min(92vw, 420px) * -0.5));

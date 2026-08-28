@@ -42,6 +42,7 @@ function AgentHomeMain() {
   const [chatSessionKey, setChatSessionKey] = useState(0);
   const [view, setView] = useState<HomeView>(recallEventId ? "chat" : "dashboard");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pendingCompose, setPendingCompose] = useState<string | null>(null);
   const ingestRef = useRef<GlobeContextIngestBarHandle | null>(null);
 
   const contextEventId = recallEventId;
@@ -101,11 +102,20 @@ function AgentHomeMain() {
   );
 
   const handleDashboardSubmit = useCallback((text: string, _mode: AgentHomeModeId) => {
+    setPendingCompose(text);
     setView("chat");
-    window.setTimeout(() => {
-      void ingestRef.current?.submitComposerText(text);
-    }, 60);
   }, []);
+
+  useEffect(() => {
+    if (view !== "chat" || !pendingCompose?.trim()) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void ingestRef.current?.submitComposerText(pendingCompose);
+      setPendingCompose(null);
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [pendingCompose, view]);
 
   const handleTravelCompose = useCallback(
     (seedText: string) => {
@@ -150,7 +160,7 @@ function AgentHomeMain() {
   return (
     <>
       <div
-        className={cn("flex h-full min-h-0 flex-1", tokens.root)}
+        className={cn("flex h-full min-h-0 w-full min-w-0 flex-1", tokens.root)}
         data-surface="agent-home"
         data-agent-home-theme={theme}
       >
@@ -162,7 +172,7 @@ function AgentHomeMain() {
           view={view}
         />
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <div
             className={cn(
               "flex items-center justify-between border-b px-3 py-2 md:hidden",
@@ -205,22 +215,14 @@ function AgentHomeMain() {
             </button>
           </div>
 
-          <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             {view === "dashboard" ? (
               <AgentHomeDashboard
                 onSubmit={handleDashboardSubmit}
                 onSelectEvent={handleSelectEvent}
                 activeEventId={contextEventId}
               />
-            ) : null}
-
-            <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col",
-                view === "dashboard" && "pointer-events-none absolute inset-0 opacity-0",
-              )}
-              aria-hidden={view === "dashboard"}
-            >
+            ) : (
               <GlobeChatScreen
                 key={chatSessionKey}
                 variant="page"
@@ -237,7 +239,7 @@ function AgentHomeMain() {
                   onIngressConvergeAttachFocus: handleSelectEvent,
                 }}
               />
-            </div>
+            )}
           </div>
         </div>
 
@@ -271,19 +273,13 @@ export function AgentHomeRoute() {
   }
 
   return (
-    <AppShell
-      title={copy.globe.agentHomeTitle}
-      hideBranding
-      hideTitle
-      compact
-      fullBleed
-      agentHome
-      hideBottomNav
-      iosSurface
-    >
-      <AgentHomeThemeProvider>
+    <AgentHomeThemeProvider>
+      <div
+        className="fixed inset-0 z-[1] flex flex-col overflow-hidden bg-[#f5f6f8]"
+        data-agent-home-root
+      >
         <AgentHomeMain />
-      </AgentHomeThemeProvider>
-    </AppShell>
+      </div>
+    </AgentHomeThemeProvider>
   );
 }

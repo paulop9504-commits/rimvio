@@ -50,7 +50,8 @@ export function AppShell({
       <div
         className={cn(
           GRID.shell,
-          immersiveHome && "app-shell-grid--globe-home",
+          globeHome && !agentHome && "app-shell-grid--globe-home",
+          agentHome && "app-shell-grid--agent-home",
         )}
       >
         {!agentHome ? (
@@ -63,8 +64,9 @@ export function AppShell({
           className={cn(
             GRID.column,
             "app-shell-viewport flex h-dvh flex-col overflow-hidden",
-            fullBleed && "app-shell-column--chat",
-            immersiveHome && "app-shell-column--globe-home",
+            fullBleed && !agentHome && "app-shell-column--chat",
+            agentHome && "app-shell-column--agent-home",
+            globeHome && !agentHome && "app-shell-column--globe-home",
             immersiveHome ? "bg-[#f2f4f6]" : "bg-background",
           )}
         >

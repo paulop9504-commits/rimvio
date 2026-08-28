@@ -132,7 +132,7 @@ export function AgentHomeSidebar({
     const body = (
       <>
         <Icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{item.label}</span>
+        <span className="min-w-0 flex-1">{item.label}</span>
         {item.beta ? (
           <span className="rounded bg-[#7b61ff]/15 px-1 py-0.5 text-[9px] font-bold text-[#7b61ff]">
             {copy.globe.agentHomeSidebarMarketBeta}
@@ -163,7 +163,7 @@ export function AgentHomeSidebar({
   return (
     <aside
       className={cn(
-        "hidden w-[240px] shrink-0 flex-col border-r md:flex",
+        "hidden h-full w-[260px] min-w-[260px] shrink-0 flex-col border-r md:flex",
         tokens.sidebar,
         tokens.sidebarBorder,
         className,
