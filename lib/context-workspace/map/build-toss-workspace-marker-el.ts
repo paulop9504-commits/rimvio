@@ -108,6 +108,8 @@ export function tossWorkspaceMarkerChromeKey(
     pin.contextMedia?.kind ?? "",
     pin.contextMedia?.imageUrl ?? "",
     pin.contextMedia?.mediaContextId ?? "",
+    pin.thumbnailUrl ?? "",
+    pin.stopOrder ?? "",
     input.actionsHasPrepare ? 1 : 0,
     input.actionsHasOpenField ? 1 : 0,
   ].join("|");
@@ -346,6 +348,163 @@ function fillTossWorkspaceMarkerEl(
     });
     root.appendChild(chip);
     root.dataset.contextMediaPin = "1";
+    return;
+  }
+
+  const venueThumb = pin.thumbnailUrl?.trim() || "";
+  if (venueThumb) {
+    const order =
+      pin.stopOrder != null &&
+      Number.isFinite(pin.stopOrder) &&
+      pin.stopOrder > 0
+        ? Math.floor(pin.stopOrder)
+        : index + 1;
+    const size = selected ? 64 : 52;
+    const wrap = document.createElement("span");
+    wrap.style.cssText = [
+      "display:flex",
+      "flex-direction:column",
+      "align-items:center",
+      "gap:4px",
+      "max-width:112px",
+    ].join(";");
+
+    const thumb = document.createElement("span");
+    thumb.style.cssText = [
+      "display:block",
+      "position:relative",
+      `width:${size}px`,
+      `height:${size}px`,
+      "border-radius:14px",
+      "overflow:visible",
+      "background:#e8eef8",
+      "box-shadow:0 3px 10px rgba(25,31,40,0.22), 0 0 0 2px #fff",
+      selected ? "outline:2px solid #3182f6;outline-offset:2px" : "",
+    ]
+      .filter(Boolean)
+      .join(";");
+
+    const imgHost = document.createElement("span");
+    imgHost.style.cssText = [
+      "display:block",
+      "width:100%",
+      "height:100%",
+      "border-radius:14px",
+      "overflow:hidden",
+      "background:#e8eef8",
+    ].join(";");
+    const img = document.createElement("img");
+    img.src = venueThumb;
+    img.alt = "";
+    img.draggable = false;
+    img.style.cssText =
+      "width:100%;height:100%;object-fit:cover;display:block;pointer-events:none";
+    imgHost.appendChild(img);
+    thumb.appendChild(imgHost);
+
+    const badge = document.createElement("span");
+    badge.textContent = String(order);
+    badge.setAttribute("aria-hidden", "true");
+    badge.style.cssText = [
+      "position:absolute",
+      "left:50%",
+      "bottom:-9px",
+      "transform:translateX(-50%)",
+      "display:inline-flex",
+      "align-items:center",
+      "justify-content:center",
+      "min-width:22px",
+      "height:22px",
+      "padding:0 6px",
+      "border-radius:999px",
+      "background:#191f28",
+      "color:#fff",
+      "font-size:11px",
+      "font-weight:800",
+      "letter-spacing:-0.04em",
+      "line-height:1",
+      "box-shadow:0 1px 3px rgba(25,31,40,0.28), 0 0 0 2px #fff",
+      "pointer-events:none",
+    ].join(";");
+    thumb.appendChild(badge);
+
+    const name = document.createElement("span");
+    name.textContent = shortTitle(pin.title, selected ? 12 : 10);
+    name.style.cssText = [
+      "display:block",
+      "margin-top:6px",
+      "max-width:100%",
+      "padding:3px 8px",
+      "border-radius:999px",
+      "background:rgba(255,255,255,0.96)",
+      "color:#191f28",
+      "font-size:10px",
+      "font-weight:700",
+      "letter-spacing:-0.03em",
+      "line-height:1.2",
+      "text-align:center",
+      "white-space:nowrap",
+      "overflow:hidden",
+      "text-overflow:ellipsis",
+      "box-shadow:0 1px 3px rgba(25,31,40,0.12)",
+      "pointer-events:none",
+    ].join(";");
+
+    wrap.appendChild(thumb);
+    wrap.appendChild(name);
+    chip.appendChild(wrap);
+    chip.style.cssText = [
+      "display:inline-flex",
+      "padding:0 0 4px",
+      "border:0",
+      "background:transparent",
+      "cursor:pointer",
+      "touch-action:manipulation",
+      "-webkit-tap-highlight-color:transparent",
+    ].join(";");
+
+    let lastTapAt = 0;
+    let longFired = false;
+    let pressTimer: ReturnType<typeof setTimeout> | null = null;
+    chip.addEventListener("pointerdown", (event) => {
+      if (!actions.onLongPress) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      longFired = false;
+      pressTimer = setTimeout(() => {
+        longFired = true;
+        actions.onLongPress?.(pin.id);
+      }, 480);
+    });
+    const clearPress = () => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = null;
+    };
+    chip.addEventListener("pointerup", clearPress);
+    chip.addEventListener("pointerleave", clearPress);
+    chip.addEventListener("pointercancel", clearPress);
+    chip.addEventListener("contextmenu", (event) => {
+      if (!actions.onLongPress) return;
+      event.preventDefault();
+      event.stopPropagation();
+      actions.onLongPress(pin.id);
+    });
+    chip.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (longFired) {
+        longFired = false;
+        return;
+      }
+      const now = Date.now();
+      if (actions.onOpenWorkspace && now - lastTapAt < 280) {
+        lastTapAt = 0;
+        actions.onOpenWorkspace(pin.id);
+        return;
+      }
+      lastTapAt = now;
+      actions.onSelect(pin.id);
+    });
+    root.appendChild(chip);
+    root.dataset.itineraryThumbPin = "1";
     return;
   }
 

@@ -33,6 +33,7 @@ import {
   runPcPurchaseContinuity,
   type PcPurchaseContinuityResult,
 } from "@/lib/pc-local-agent/run-purchase-continuity";
+import { extractPcPurchaseTitle } from "@/lib/pc-local-agent/purchase-intent";
 
 const WATCH_MS = 3_000;
 const TASK_POLL_MS = 2_000;

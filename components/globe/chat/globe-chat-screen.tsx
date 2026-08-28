@@ -65,6 +65,8 @@ import { cn } from "@/lib/utils";
 export type GlobeChatScreenProps = {
   open: boolean;
   onClose: () => void;
+  /** overlay = fullscreen slide-over; page = embedded agent home column */
+  variant?: "overlay" | "page";
   ingest: GlobeContextIngestBarProps;
   onArtifactPrimaryAction?: () => void;
   onArtifactSecondaryAction?: () => void;
@@ -163,12 +165,14 @@ function readComposeSummaryItems(
 export function GlobeChatScreen({
   open,
   onClose,
+  variant = "overlay",
   ingest,
   onArtifactPrimaryAction,
   onArtifactSecondaryAction,
   onViewInnerGlobe,
   onViewOuterGlobe,
 }: GlobeChatScreenProps) {
+  const isPage = variant === "page";
   const { state: feedState } = useGlobeExecutionFeed();
   const graphId =
     feedState.run?.graphId?.trim() ||
@@ -194,18 +198,18 @@ export function GlobeChatScreen({
   const artifact = feedState.run?.artifact ?? null;
   const flowDraft = composeState?.composeDraft ?? {};
   const showDraftCard =
-    open &&
+    (open || isPage) &&
     composeState?.status === "ready" &&
     artifact?.kind === "compose_draft" &&
     draftCardHasValues(artifact) &&
     sellItemDraftCanPublish(flowDraft);
   const showFlowBar =
-    open &&
+    (open || isPage) &&
     composeState?.intentStage?.stage === "confirmed" &&
     composeState?.composeSchemaId === "sell_item" &&
     composeState.composeDraft != null;
   const showIntentSpectrum =
-    open &&
+    (open || isPage) &&
     composeState?.intentStage != null &&
     composeState.intentStage.stage !== "chatting";
 
@@ -221,14 +225,14 @@ export function GlobeChatScreen({
   };
 
   useEffect(() => {
-    if (!open) {
+    if (!open && !isPage) {
       return;
     }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length, open, showDraftCard, agentTrailView?.steps.length, agentTrailView?.running]);
+  }, [messages.length, open, isPage, showDraftCard, agentTrailView?.steps.length, agentTrailView?.running]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open && !isPage) {
       return;
     }
     const trySeed = () => {
@@ -245,7 +249,7 @@ export function GlobeChatScreen({
       window.clearTimeout(timer);
       unsub();
     };
-  }, [open]);
+  }, [open, isPage]);
 
   useEffect(() => {
     if (!composeState?.composeDraft?.status || composeState.composeDraft.status !== "submitted") {
@@ -333,49 +337,58 @@ export function GlobeChatScreen({
   const showEmptyState = messages.length === 0 && !showDraftCard;
   const summaryItems = useMemo(() => readComposeSummaryItems(composeState), [composeState]);
 
-  if (!open) {
+  const pageHeaderSubtitle = useMemo(() => {
+    if (!isPage) {
+      return headerSubtitle;
+    }
+    const pipeline = resolveGlobeChatPipelinePhase(composeState);
+    if (pipeline !== "idle") {
+      return resolveGlobeComposePipelineLabel(pipeline);
+    }
+    if (headerSubtitle !== copy.globe.chatScreenSubtitleChat) {
+      return headerSubtitle;
+    }
+    return copy.globe.agentHomeSubtitle;
+  }, [composeState, headerSubtitle, isPage]);
+
+  const contentMaxWidth = isPage ? "max-w-3xl" : "max-w-lg";
+  const composerMaxWidth = isPage ? "max-w-[min(100%,42rem)]" : "max-w-[min(100%,20rem)]";
+
+  if (!open && !isPage) {
     return null;
   }
 
-  return (
-    <AnimatePresence>
-      <motion.div
-        key="globe-chat-screen"
-        className={cn(
-          "pointer-events-none fixed inset-0 z-[60] flex flex-col",
-          globeChatLight.screen,
-        )}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 32, stiffness: 340 }}
-        data-globe-chat-screen
-        data-globe-chat-tone="light"
-      >
+  const screenBody = (
+    <>
         <header
           className={cn(
             "pointer-events-auto flex shrink-0 items-center justify-between px-4 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]",
-            globeChatLight.headerBorder,
+            !isPage && globeChatLight.headerBorder,
             "border-b bg-white/80 backdrop-blur-md",
+            isPage && "hidden md:flex",
           )}
         >
           <div className="min-w-0">
             <p className={cn("text-[15px] font-semibold tracking-[-0.01em]", globeChatLight.title)}>
-              {copy.globe.chatScreenTitle}
+              {isPage ? copy.globe.agentHomeTitle : copy.globe.chatScreenTitle}
             </p>
-            <p className={cn("mt-0.5 text-[12px]", globeChatLight.subtitle)}>{headerSubtitle}</p>
+            <p className={cn("mt-0.5 text-[12px]", globeChatLight.subtitle)}>
+              {pageHeaderSubtitle}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={cn(
-              "flex size-9 items-center justify-center rounded-full transition-colors",
-              globeChatLight.closeBtn,
-            )}
-            aria-label={copy.globe.chatScreenCloseAria}
-          >
-            <X className="size-4" aria-hidden />
-          </button>
+          {!isPage ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-full transition-colors",
+                globeChatLight.closeBtn,
+              )}
+              aria-label={copy.globe.chatScreenCloseAria}
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          ) : null}
         </header>
 
         {showIntentSpectrum && composeState?.intentStage ? (
@@ -401,7 +414,7 @@ export function GlobeChatScreen({
 
         {summaryItems.length > 0 ? (
           <div className="pointer-events-auto shrink-0 border-b border-black/[0.05] bg-[#fbfbfc] px-4 py-2.5">
-            <div className="mx-auto flex w-full max-w-lg flex-col gap-1">
+            <div className={cn("mx-auto flex w-full flex-col gap-1", contentMaxWidth)}>
               <p className="text-[11px] font-medium text-[#8b95a1]">
                 {copy.globe.chatSummaryTitle}
               </p>
@@ -424,9 +437,13 @@ export function GlobeChatScreen({
           className="pointer-events-auto min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 rimvio-scroll-touch"
           data-globe-chat-messages
         >
-          <div className="mx-auto flex w-full max-w-lg flex-col gap-3.5">
+          <div className={cn("mx-auto flex w-full flex-col gap-3.5", contentMaxWidth)}>
             {showEmptyState ? (
-              <GlobeChatEmptyState onPillSelect={submitChipAnswer} />
+              <GlobeChatEmptyState
+                onPillSelect={submitChipAnswer}
+                title={isPage ? copy.globe.agentEmptyTitle : undefined}
+                body={isPage ? copy.globe.agentEmptyBody : undefined}
+              />
             ) : null}
             {messages.map((message) => {
               if (message.kind === "resource_complete") {
@@ -614,12 +631,13 @@ export function GlobeChatScreen({
 
         <div
           className={cn(
-            "pointer-events-none relative z-[2] mb-[var(--rimvio-bottom-nav-offset)] shrink-0 px-3 pb-2 pt-2 lg:mb-0",
+            "pointer-events-none relative z-[2] shrink-0 px-3 pb-2 pt-2",
+            !isPage && "mb-[var(--rimvio-bottom-nav-offset)] lg:mb-0",
             globeChatLight.composerBar,
           )}
           data-globe-chat-composer
         >
-          <div className="pointer-events-auto mx-auto w-full max-w-[min(100%,20rem)] space-y-1.5">
+          <div className={cn("pointer-events-auto mx-auto w-full space-y-1.5", composerMaxWidth)}>
             {actionHint && !showEmptyState ? (
               <GlobeChatAnswerHint
                 bodyKo={actionHint.bodyKo}
@@ -639,6 +657,39 @@ export function GlobeChatScreen({
             />
           </div>
         </div>
+    </>
+  );
+
+  if (isPage) {
+    return (
+      <div
+        className={cn("flex min-h-0 flex-1 flex-col", globeChatLight.screen)}
+        data-globe-chat-screen
+        data-globe-chat-tone="light"
+        data-globe-chat-variant="page"
+      >
+        {screenBody}
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="globe-chat-screen"
+        className={cn(
+          "pointer-events-none fixed inset-0 z-[60] flex flex-col",
+          globeChatLight.screen,
+        )}
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 32, stiffness: 340 }}
+        data-globe-chat-screen
+        data-globe-chat-tone="light"
+        data-globe-chat-variant="overlay"
+      >
+        {screenBody}
       </motion.div>
     </AnimatePresence>
   );

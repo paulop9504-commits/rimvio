@@ -9,10 +9,16 @@ import { copy } from "@/lib/copy/human-ko";
 
 export type GlobeChatEmptyStateProps = {
   onPillSelect?: (text: string) => void;
+  title?: string;
+  body?: string;
 };
 
 /** First-open chat — one line intent + starter pills. */
-export function GlobeChatEmptyState({ onPillSelect }: GlobeChatEmptyStateProps) {
+export function GlobeChatEmptyState({
+  onPillSelect,
+  title,
+  body,
+}: GlobeChatEmptyStateProps) {
   return (
     <div
       className="flex flex-col items-center justify-center px-4 py-8 text-center"
@@ -22,10 +28,10 @@ export function GlobeChatEmptyState({ onPillSelect }: GlobeChatEmptyStateProps) 
         <MessageCircle className="size-[18px] text-[#4e5968]" aria-hidden />
       </span>
       <p className="text-[15px] font-semibold tracking-[-0.01em] text-[#191f28]">
-        {copy.globe.chatEmptyTitle}
+        {title ?? copy.globe.chatEmptyTitle}
       </p>
       <p className="mt-1 max-w-[16rem] text-[12px] leading-[1.4] text-[#8b95a1]">
-        {copy.globe.chatEmptyBody}
+        {body ?? copy.globe.chatEmptyBody}
       </p>
       {onPillSelect ? (
         <GlobeActionPillGuide

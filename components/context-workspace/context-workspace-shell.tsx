@@ -504,7 +504,7 @@ export function ContextWorkspaceShell({
 
   const mapPins = useMemo((): WorkspaceMapPin[] => {
     const ctx = contextEventId?.trim() ?? "";
-    const venuePins: WorkspaceMapPin[] = mapFocusNodes.map((n) => ({
+    const venuePins: WorkspaceMapPin[] = mapFocusNodes.map((n, stopIdx) => ({
       id: n.id,
       title: n.title,
       lat: n.lat,
@@ -527,6 +527,11 @@ export function ContextWorkspaceShell({
         /포토|사진|photo/i.test(`${n.title} ${n.summaryKo}`),
       legHintKo:
         n.id === venueSelectedId ? legHintForNode(mapFocusNodes, n.id) : null,
+      thumbnailUrl:
+        n.thumbnailUrl?.trim() ||
+        n.galleryUrls?.find((u) => u.trim())?.trim() ||
+        null,
+      stopOrder: stopIdx + 1,
     }));
 
     const event = ctx
@@ -1073,7 +1078,13 @@ export function ContextWorkspaceShell({
 
   const capabilityMapPins = useMemo(() => {
     if (!capabilityFocusNodeIds) return mapPins;
-    return mapPins.filter((p) => capabilityFocusNodeIds.has(p.id));
+    const focused = mapPins.filter((p) => capabilityFocusNodeIds.has(p.id));
+    let venueOrdinal = 0;
+    return focused.map((p) => {
+      if (p.contextMedia) return p;
+      venueOrdinal += 1;
+      return { ...p, stopOrder: venueOrdinal };
+    });
   }, [mapPins, capabilityFocusNodeIds]);
 
   const mapObjectCallout = useMemo(() => {

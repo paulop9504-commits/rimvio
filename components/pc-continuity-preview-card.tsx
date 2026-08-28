@@ -20,9 +20,7 @@ function stepState(task: PcAgentTask | null): readonly [boolean, boolean, boolea
   const pc =
     phase !== "PC_OFFLINE" &&
     phase !== "QUEUED" &&
-    phase !== "DISPATCHED" &&
-    phase !== "CREATED" &&
-    phase !== "WAITING";
+    phase !== "DISPATCHED";
   const site =
     phase === "BROWSER_OPENED" ||
     phase === "PAGE_READY" ||
