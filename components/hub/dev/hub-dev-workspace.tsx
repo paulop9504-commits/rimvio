@@ -36,6 +36,13 @@ import {
 } from "@/lib/hub/dev/dev-workspace-nav";
 import { buildOperatorDiffForIssue, type OperatorDiff } from "@/lib/hub/dev/operator-diff";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
+import {
+  clearPendingHubLoopResume,
+  isHubDevStripeConnected,
+  readHubDevConnections,
+  readPendingHubLoopResume,
+} from "@/lib/hub/dev/hub-connection-store";
+import { completeHubStripeConnect, connectHubStripe } from "@/lib/hub/dev/hub-stripe-connect";
 
 const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
 
@@ -68,6 +75,50 @@ export function HubDevWorkspace() {
     ReturnType<typeof activitiesFromAnalyze> | null
   >(null);
   const [demoLoaded, setDemoLoaded] = useState(false);
+  const [stripeConnected, setStripeConnected] = useState(false);
+  const [resumeLoopToken, setResumeLoopToken] = useState(0);
+  const [resumeUtterance, setResumeUtterance] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStripeConnected(isHubDevStripeConnected());
+  }, []);
+
+  useEffect(() => {
+    if (!wizard.hydrated) return;
+    if (searchParams.get("stripe_connected") !== "1") return;
+
+    completeHubStripeConnect();
+    setStripeConnected(true);
+
+    const pending = readPendingHubLoopResume();
+    setResumeUtterance(
+      pending?.utterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
+    );
+    clearPendingHubLoopResume();
+    setResumeLoopToken((t) => t + 1);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("stripe_connected");
+    router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
+  }, [wizard.hydrated, searchParams, router]);
+
+  const handleConnectStripe = useCallback(async () => {
+    const pid = platformIdParam ?? wizard.draft.id;
+    const returnPath = `/hub/workspace?platform=${encodeURIComponent(pid)}&stripe_connected=1`;
+    const result = await connectHubStripe({ returnPath, platformId: pid });
+
+    if (result.ok && result.mode === "mock") {
+      setStripeConnected(true);
+      const pending = readPendingHubLoopResume();
+      setResumeUtterance(
+        pending?.utterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
+      );
+      clearPendingHubLoopResume();
+      setResumeLoopToken((t) => t + 1);
+    }
+  }, [platformIdParam, wizard.draft.id]);
+
+  const hubConnections = useMemo(() => readHubDevConnections(), [stripeConnected]);
 
   const syncUrl = useCallback(
     (pane: DevWorkspacePane, capId?: string | null) => {
@@ -504,6 +555,10 @@ export function HubDevWorkspace() {
           onFocusAde={() => setPane("ade")}
           onAskOperator={(text) => setAgentSeed(text)}
           onReviewAllChanges={() => setPane("changes")}
+          stripeConnected={stripeConnected || hubConnections.stripe}
+          onConnectStripe={() => void handleConnectStripe()}
+          resumeLoopToken={resumeLoopToken}
+          resumeUtterance={resumeUtterance}
         />
       </div>
 

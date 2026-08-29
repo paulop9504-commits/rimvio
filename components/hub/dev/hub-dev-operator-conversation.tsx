@@ -14,6 +14,7 @@ type HubDevOperatorConversationProps = {
   readonly onApplyDiff: () => void;
   readonly onRunTests: () => void;
   readonly onDismissDiff: () => void;
+  readonly onAskUserAction?: (actionId: string) => void;
 };
 
 const GREETING =
@@ -27,6 +28,7 @@ export function HubDevOperatorConversation({
   onApplyDiff,
   onRunTests,
   onDismissDiff,
+  onAskUserAction,
 }: HubDevOperatorConversationProps) {
   const hasContent = entries.length > 0 || showGreeting;
 
@@ -59,6 +61,7 @@ export function HubDevOperatorConversation({
             onApplyDiff={onApplyDiff}
             onRunTests={onRunTests}
             onDismissDiff={onDismissDiff}
+            onAskUserAction={onAskUserAction}
           />
         ),
       )}
@@ -102,6 +105,7 @@ function AgentTurn({
   onApplyDiff,
   onRunTests,
   onDismissDiff,
+  onAskUserAction,
 }: {
   entry: Extract<OperatorConversationEntry, { kind: "agent" }>;
   onFixIssue: (issue: DevProjectIssue) => void;
@@ -109,6 +113,7 @@ function AgentTurn({
   onApplyDiff: () => void;
   onRunTests: () => void;
   onDismissDiff: () => void;
+  onAskUserAction?: (actionId: string) => void;
 }) {
   const { payload } = entry;
 
@@ -118,6 +123,9 @@ function AgentTurn({
       <div className="min-w-0 flex-1 space-y-2">
         {payload.type === "planning" ? (
           <PlanningBlock title={payload.title} items={payload.items} />
+        ) : null}
+        {payload.type === "observe" ? (
+          <ObserveBlock lines={payload.lines} />
         ) : null}
         {payload.type === "text" ? (
           <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
@@ -140,6 +148,20 @@ function AgentTurn({
         ) : null}
         {payload.type === "testResult" ? (
           <TestResultBlock passed={payload.passed} total={payload.total} running={payload.running} />
+        ) : null}
+        {payload.type === "verify" ? (
+          <VerifyBlock ok={payload.ok} detail={payload.detail} />
+        ) : null}
+        {payload.type === "askUser" ? (
+          <AskUserBlock
+            message={payload.message}
+            actionLabel={payload.actionLabel}
+            actionId={payload.actionId}
+            onAction={onAskUserAction}
+          />
+        ) : null}
+        {payload.type === "complete" ? (
+          <CompleteBlock summary={payload.summary} onPreview={onRunTests} />
         ) : null}
       </div>
     </div>
@@ -282,6 +304,78 @@ function IssueRow({ issue, onFix }: { issue: DevProjectIssue; onFix: () => void 
         Fix
       </button>
     </li>
+  );
+}
+
+function ObserveBlock({ lines }: { lines: readonly string[] }) {
+  return (
+    <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 shadow-sm">
+      <ul className="space-y-0.5">
+        {lines.map((line) => (
+          <li key={line} className="flex items-start gap-1.5 text-[9px] text-[#4b5563]">
+            <Check className="mt-0.5 size-3 shrink-0 text-emerald-500" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function VerifyBlock({ ok, detail }: { ok: boolean; detail: string }) {
+  return (
+    <p className={cn("flex items-center gap-1.5 text-[9px] font-medium", ok ? "text-emerald-600" : "text-amber-600")}>
+      {ok ? <Check className="size-3.5" /> : <AlertTriangle className="size-3.5" />}
+      Verify: {detail}
+    </p>
+  );
+}
+
+function AskUserBlock({
+  message,
+  actionLabel,
+  actionId,
+  onAction,
+}: {
+  message: string;
+  actionLabel: string;
+  actionId: string;
+  onAction?: (actionId: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2 shadow-sm">
+      <p className="text-[10px] font-medium text-[#92400e]">{message}</p>
+      <button
+        type="button"
+        onClick={() => onAction?.(actionId)}
+        className="mt-2 rounded-lg bg-violet-600 px-3 py-1 text-[9px] font-semibold text-white hover:bg-violet-700"
+      >
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
+function CompleteBlock({ summary, onPreview }: { summary: string; onPreview: () => void }) {
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-3 py-2 shadow-sm">
+      <p className="text-[10px] font-medium text-emerald-800">{summary}</p>
+      <div className="mt-2 flex gap-1.5">
+        <button
+          type="button"
+          onClick={onPreview}
+          className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[9px] font-semibold text-[#374151] hover:border-violet-200"
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          className="rounded-lg bg-violet-600 px-2.5 py-1 text-[9px] font-semibold text-white hover:bg-violet-700"
+        >
+          Publish
+        </button>
+      </div>
+    </div>
   );
 }
 

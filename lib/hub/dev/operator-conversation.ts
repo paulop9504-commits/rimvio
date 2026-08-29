@@ -21,6 +21,10 @@ export type OperatorAgentPayload =
   | { readonly type: "greeting"; readonly body: string }
   | { readonly type: "planning"; readonly title: string; readonly items: readonly OperatorPlanningItem[] }
   | {
+      readonly type: "observe";
+      readonly lines: readonly string[];
+    }
+  | {
       readonly type: "analysis";
       readonly headline: string;
       readonly bullets: readonly string[];
@@ -30,7 +34,19 @@ export type OperatorAgentPayload =
     }
   | { readonly type: "text"; readonly body: string }
   | { readonly type: "diff"; readonly diff: OperatorDiff }
-  | { readonly type: "testResult"; readonly passed: number; readonly total: number; readonly running?: boolean };
+  | { readonly type: "testResult"; readonly passed: number; readonly total: number; readonly running?: boolean }
+  | {
+      readonly type: "verify";
+      readonly ok: boolean;
+      readonly detail: string;
+    }
+  | {
+      readonly type: "askUser";
+      readonly message: string;
+      readonly actionId: string;
+      readonly actionLabel: string;
+    }
+  | { readonly type: "complete"; readonly summary: string };
 
 export type OperatorAgentEntry = {
   readonly kind: "agent";

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
+import { AgentHomeTopbar } from "@/components/agent/agent-home-topbar";
 import { AgentHomeDashboard } from "@/components/agent/agent-home-dashboard";
 import { AgentHomeInspector } from "@/components/agent/agent-home-inspector";
 import { AgentHomeSidebar } from "@/components/agent/agent-home-sidebar";
@@ -43,6 +44,8 @@ function AgentHomeMain() {
   const [view, setView] = useState<HomeView>(recallEventId ? "chat" : "dashboard");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingCompose, setPendingCompose] = useState<string | null>(null);
+  const [searchDraft, setSearchDraft] = useState("");
+  const [composerSeed, setComposerSeed] = useState("");
   const ingestRef = useRef<GlobeContextIngestBarHandle | null>(null);
 
   const contextEventId = recallEventId;
@@ -103,8 +106,18 @@ function AgentHomeMain() {
 
   const handleDashboardSubmit = useCallback((text: string, _mode: AgentHomeModeId) => {
     setPendingCompose(text);
+    setComposerSeed("");
+    setSearchDraft("");
     setView("chat");
   }, []);
+
+  const handleSearchSubmit = useCallback(() => {
+    const text = searchDraft.trim();
+    if (!text) {
+      return;
+    }
+    handleDashboardSubmit(text, "auto");
+  }, [handleDashboardSubmit, searchDraft]);
 
   useEffect(() => {
     if (view !== "chat" || !pendingCompose?.trim()) {
@@ -174,6 +187,13 @@ function AgentHomeMain() {
         />
 
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+          <AgentHomeTopbar
+            onOpenSettings={() => setSettingsOpen(true)}
+            searchValue={searchDraft}
+            onSearchChange={setSearchDraft}
+            onSearchSubmit={handleSearchSubmit}
+          />
+
           <div
             className={cn(
               "flex items-center justify-between border-b px-3 py-2 md:hidden",
@@ -219,6 +239,8 @@ function AgentHomeMain() {
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             {view === "dashboard" ? (
               <AgentHomeDashboard
+                key={composerSeed}
+                initialDraft={composerSeed}
                 onSubmit={handleDashboardSubmit}
                 onSelectEvent={handleSelectEvent}
                 activeEventId={contextEventId}

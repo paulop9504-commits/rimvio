@@ -19,6 +19,7 @@ import {
 } from "@/lib/hub/dev/operator-conversation";
 import { HubDevOperatorAgentBridge } from "@/components/hub/dev/hub-dev-operator-agent-bridge";
 import { HubDevOperatorConversation } from "@/components/hub/dev/hub-dev-operator-conversation";
+import type { HubAgentLoopEvent } from "@/lib/hub/dev/hub-agent-loop";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectIssue, DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
@@ -47,6 +48,10 @@ type HubDevAgentOperatorProps = {
   readonly onFocusAde: () => void;
   readonly onAskOperator: (text: string) => void;
   readonly onReviewAllChanges: () => void;
+  readonly stripeConnected?: boolean;
+  readonly onConnectStripe?: () => void;
+  readonly resumeLoopToken?: number;
+  readonly resumeUtterance?: string | null;
 };
 
 const MODELS = ["Claude 3.5 Sonnet", "GPT-4o", "Gemini 1.5 Pro"] as const;
@@ -76,6 +81,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   const prevAnalyzing = useRef(false);
   const lastDiffId = useRef<string | null>(null);
   const localSendRef = useRef<string | null>(null);
+  const loopActiveRef = useRef(false);
 
   const showGreeting = props.snapshot.capabilityCount > 0;
 
@@ -166,12 +172,124 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     [props.snapshot.testsPassed, props.snapshot.testsTotal, scrollToBottom],
   );
 
+  const handleAskUserAction = useCallback(
+    (actionId: string) => {
+      if (actionId === "connect_stripe") {
+        props.onConnectStripe?.();
+      }
+    },
+    [props.onConnectStripe],
+  );
+
+  const handleLoopEvent = useCallback(
+    (event: HubAgentLoopEvent) => {
+      loopActiveRef.current = true;
+      setEntries((prev) => {
+        const base = prev.filter((e) => !(e.kind === "agent" && e.payload.type === "planning"));
+
+        switch (event.type) {
+          case "text":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `txt-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "text" as const, body: event.body },
+              },
+            ];
+          case "observe":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `obs-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "observe" as const, lines: event.lines },
+              },
+            ];
+          case "plan":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `plan-${Date.now()}`,
+                at: Date.now(),
+                payload: {
+                  type: "planning" as const,
+                  title: "Planning and starting work",
+                  items: event.steps,
+                },
+              },
+            ];
+          case "verify":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `ver-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "verify" as const, ok: event.ok, detail: event.detail },
+              },
+            ];
+          case "ask_user":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `ask-${Date.now()}`,
+                at: Date.now(),
+                payload: {
+                  type: "askUser" as const,
+                  message: event.message,
+                  actionId: event.actionId,
+                  actionLabel: event.actionLabel,
+                },
+              },
+            ];
+          case "complete":
+            loopActiveRef.current = false;
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `done-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "complete" as const, summary: event.summary },
+              },
+            ];
+          case "test_result":
+            return [
+              ...base.filter((e) => !(e.kind === "agent" && e.payload.type === "testResult")),
+              {
+                kind: "agent" as const,
+                id: `t-${Date.now()}`,
+                at: Date.now(),
+                payload: {
+                  type: "testResult" as const,
+                  passed: event.passed,
+                  total: event.total,
+                  running: event.running,
+                },
+              },
+            ];
+          case "tool":
+            return base;
+          default:
+            return prev;
+        }
+      });
+      scrollToBottom();
+    },
+    [props.snapshot.testsPassed, props.snapshot.testsTotal, scrollToBottom],
+  );
+
   const sendChat = () => {
     const text = chatInput.trim();
     if (!text) return;
     localSendRef.current = text;
+    loopActiveRef.current = false;
     appendUserTurn(text);
-    ensurePlanningEntry(PLANNING_IDLE);
     props.onAskOperator(text);
     setChatInput("");
     setTab("chat");
@@ -185,8 +303,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       return;
     }
     appendUserTurn(text);
-    ensurePlanningEntry(props.fixing ? PLANNING_FIX : PLANNING_IDLE);
-  }, [appendUserTurn, ensurePlanningEntry, props.agentSeed, props.fixing]);
+  }, [appendUserTurn, props.agentSeed]);
 
   useEffect(() => {
     if (props.fixing) {
@@ -215,7 +332,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   }, [props.analyzing, entries, ensurePlanningEntry, replacePlanningWithAnalysis]);
 
   useEffect(() => {
-    if (props.fixing || props.analyzing) return;
+    if (props.fixing || props.analyzing || loopActiveRef.current) return;
     if (!entries.some(isWorkingEntry)) return;
 
     const timer = window.setTimeout(() => {
@@ -299,11 +416,16 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     <div className="relative flex w-[340px] shrink-0 flex-col border-l border-[#e5e7eb] bg-[#f9fafb] xl:w-[380px]">
       <HubDevOperatorAgentBridge
         draft={props.draft}
+        snapshot={props.snapshot}
         testsPassed={props.testsPassed}
         executor={props.executor}
         onApplyPatch={props.onApplyPatch}
         agentSeed={props.agentSeed}
         onSeedConsumed={props.onSeedConsumed}
+        onLoopEvent={handleLoopEvent}
+        stripeConnected={props.stripeConnected}
+        resumeLoopToken={props.resumeLoopToken}
+        resumeUtterance={props.resumeUtterance}
       />
 
       <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-3 py-2">
@@ -381,6 +503,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               onApplyDiff={props.onApplyDiff}
               onRunTests={props.onRunTests}
               onDismissDiff={props.onDismissDiff}
+              onAskUserAction={handleAskUserAction}
             />
             <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
