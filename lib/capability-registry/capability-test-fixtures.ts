@@ -8,6 +8,7 @@ export const FIXTURE_NAVIGATE_OSAKA: CapabilityDispatchRequest = {
 export const FIXTURE_BOOK_FLIGHT: CapabilityDispatchRequest = {
   capabilityId: "BOOK_FLIGHT",
   inputs: { title: "다음 주 오사카 여행" },
+  metadata: { commitApproved: "true" },
 };
 
 export const FIXTURE_ALARM: CapabilityDispatchRequest = {

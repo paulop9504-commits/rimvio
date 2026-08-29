@@ -51,6 +51,7 @@ const ALLOWLIST: readonly string[] = [
   "lib/globe/bridge-weather/",
   "lib/globe/trend-bridge/",
   "lib/peer-chat/ai-lens/",
+  "lib/workspace-kind/",
 ];
 
 function toPosixRel(absPath: string): string {
