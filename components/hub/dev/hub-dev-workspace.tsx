@@ -37,6 +37,8 @@ import {
 import { buildOperatorDiffForIssue, type OperatorDiff } from "@/lib/hub/dev/operator-diff";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 
+const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
+
 export function HubDevWorkspace() {
   const wizard = useHubPlatformWizard();
   const router = useRouter();
@@ -65,6 +67,7 @@ export function HubDevWorkspace() {
   const [extraActivities, setExtraActivities] = useState<
     ReturnType<typeof activitiesFromAnalyze> | null
   >(null);
+  const [demoLoaded, setDemoLoaded] = useState(false);
 
   const syncUrl = useCallback(
     (pane: DevWorkspacePane, capId?: string | null) => {
@@ -217,41 +220,80 @@ export function HubDevWorkspace() {
     });
   }, [wizard.draft.actions.length, wizard.draft.id]);
 
+  const runAnalyze = useCallback(
+    async (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      setAnalyzing(true);
+      setAgentSeed(`이 프로젝트를 Rimvio에 연결해줘: ${trimmed}`);
+
+      const kind = /github|gitlab|bitbucket/i.test(trimmed)
+        ? "github"
+        : /openapi|swagger|\.json/i.test(trimmed)
+          ? "openapi"
+          : "api";
+
+      const result = await analyzePlatformIngress({ kind, value: trimmed });
+      setAnalyzing(false);
+      if (!result) return;
+
+      setConnectedSource({
+        id: `src-${kind}`,
+        label: result.ingressLabel,
+        kind,
+        detail: trimmed,
+      });
+      setBlueprint(result);
+      setAnalyzedAtMs(Date.now());
+      setExtraActivities(activitiesFromAnalyze(result));
+      const withManifest = { ...result.draft, manifestJson: syncPlatformManifestJson(result.draft) };
+      wizard.updateDraft(withManifest);
+      setPlatformCreated(true);
+      setActivePlatformId(withManifest.id);
+      upsertPlatform({
+        meta: metaFromDraft(withManifest, result.ingressLabel, { status: "agent_ready" }),
+        draft: withManifest,
+      });
+      syncUrl("ade", null);
+    },
+    [syncUrl, wizard],
+  );
+
   const handleConnect = useCallback(async () => {
     const value = connectValue.trim();
     if (!value) return;
-    setAnalyzing(true);
-    setAgentSeed(`이 프로젝트를 Rimvio에 연결해줘: ${value}`);
+    await runAnalyze(value);
+  }, [connectValue, runAnalyze]);
 
-    const kind = /github|gitlab|bitbucket/i.test(value)
-      ? "github"
-      : /openapi|swagger|\.json/i.test(value)
-        ? "openapi"
-        : "api";
+  const handleConnectGithub = useCallback(async () => {
+    setConnectValue(OSAKA_DEMO_URL);
+    await runAnalyze(OSAKA_DEMO_URL);
+  }, [runAnalyze]);
 
-    const result = await analyzePlatformIngress({ kind, value });
-    setAnalyzing(false);
-    if (!result) return;
+  const handleLoadDemo = useCallback(async () => {
+    setConnectValue(OSAKA_DEMO_URL);
+    await runAnalyze(OSAKA_DEMO_URL);
+    setDemoLoaded(true);
+  }, [runAnalyze]);
 
-    setConnectedSource({
-      id: `src-${kind}`,
-      label: result.ingressLabel,
-      kind,
-      detail: value,
-    });
-    setBlueprint(result);
-    setAnalyzedAtMs(Date.now());
-    setExtraActivities(activitiesFromAnalyze(result));
-    const withManifest = { ...result.draft, manifestJson: syncPlatformManifestJson(result.draft) };
-    wizard.updateDraft(withManifest);
-    setPlatformCreated(true);
-    setActivePlatformId(withManifest.id);
-    upsertPlatform({
-      meta: metaFromDraft(withManifest, result.ingressLabel, { status: "agent_ready" }),
-      draft: withManifest,
-    });
-    syncUrl("ade", null);
-  }, [connectValue, syncUrl, wizard]);
+  const handleReAnalyze = useCallback(async () => {
+    const value =
+      connectValue.trim() ||
+      connectedSource?.detail ||
+      (wizard.draft.actions.length > 0 ? OSAKA_DEMO_URL : "");
+    if (!value) {
+      await handleLoadDemo();
+      return;
+    }
+    await runAnalyze(value);
+  }, [connectValue, connectedSource?.detail, wizard.draft.actions.length, runAnalyze, handleLoadDemo]);
+
+  useEffect(() => {
+    if (!wizard.hydrated || demoLoaded) return;
+    if (searchParams.get("demo") !== "osaka") return;
+    if (wizard.draft.actions.length > 0) return;
+    void handleLoadDemo();
+  }, [wizard.hydrated, wizard.draft.actions.length, demoLoaded, searchParams, handleLoadDemo]);
 
   const handleFilesDrop = useCallback((files: FileList) => {
     const names = [...files].map((f) => f.name);
@@ -367,14 +409,14 @@ export function HubDevWorkspace() {
 
   if (!wizard.hydrated) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#0c0e12] text-[#6b7684]">
+      <div className="flex h-dvh items-center justify-center bg-[#f4f5f7] text-[#9ca3af]">
         Workspace 로딩 중…
       </div>
     );
   }
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#0c0e12]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f4f5f7]">
       <HubDevTopbar
         platformName={wizard.draft.name}
         environment="Development"
@@ -388,6 +430,7 @@ export function HubDevWorkspace() {
       <div className="flex min-h-0 flex-1">
         <HubDevProjectSidebar
           platformName={wizard.draft.name}
+          draft={wizard.draft}
           activePane={activePane}
           snapshot={snapshot}
           onPaneChange={setPane}
@@ -408,6 +451,8 @@ export function HubDevWorkspace() {
             connectValue={connectValue}
             onConnectValueChange={setConnectValue}
             onConnect={() => void handleConnect()}
+            onConnectGithub={() => void handleConnectGithub()}
+            onLoadDemo={() => void handleLoadDemo()}
             onFilesDrop={handleFilesDrop}
             onSelectCapability={(id) => {
               setSelectedCapabilityId(id);
@@ -423,6 +468,13 @@ export function HubDevWorkspace() {
             onRejectChange={handleRejectChange}
             onReviewChanges={() => setPane("changes")}
             onTestInvoke={() => void wizard.runSandboxTest()}
+            onAnalyzePlatform={() => void handleReAnalyze()}
+            onFixAllIssues={() => void handleFixAllIssues()}
+            onRunTests={() => {
+              setPane("tests");
+              void wizard.runSandboxTest();
+            }}
+            onPreview={() => void wizard.runSandboxTest()}
           />
         </main>
 
@@ -447,6 +499,8 @@ export function HubDevWorkspace() {
             void wizard.runSandboxTest();
           }}
           onFocusAde={() => setPane("ade")}
+          onAskOperator={(text) => setAgentSeed(text)}
+          onReviewAllChanges={() => setPane("changes")}
         />
       </div>
 

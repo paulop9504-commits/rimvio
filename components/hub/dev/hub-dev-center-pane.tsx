@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type {
   DevProjectSnapshot,
@@ -10,7 +10,7 @@ import type {
   DevChangeReviewState,
 } from "@/lib/hub/dev/dev-project-state";
 import type { AnalyzedPlatformBlueprint } from "@/lib/hub/dev/platform-analyzer";
-import type { DevWorkspacePane } from "@/lib/hub/dev/dev-workspace-nav";
+import { isBlueprintSectionPane, type DevWorkspacePane } from "@/lib/hub/dev/dev-workspace-nav";
 import { cn } from "@/lib/utils";
 import { HubDevCapabilityList } from "@/components/hub/dev/hub-dev-capability-view";
 import { HubDevAgentSimulation } from "@/components/hub/dev/hub-dev-agent-simulation";
@@ -18,7 +18,7 @@ import { HubDevPublishPanel } from "@/components/hub/dev/hub-dev-publish-panel";
 import { HubDevVersionsPanel } from "@/components/hub/dev/hub-dev-versions-panel";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
-import { HubDevAdeWorkbench } from "@/components/hub/dev/hub-dev-ade-workbench";
+import { HubDevBlueprintDashboard } from "@/components/hub/dev/hub-dev-blueprint-dashboard";
 
 type HubDevCenterPaneProps = {
   readonly pane: DevWorkspacePane;
@@ -45,12 +45,46 @@ type HubDevCenterPaneProps = {
   readonly onRejectChange: (changeId: string) => void;
   readonly onReviewChanges: () => void;
   readonly onTestInvoke: (capabilityId: string) => void;
+  readonly onAnalyzePlatform: () => void;
+  readonly onFixAllIssues: () => void;
+  readonly onRunTests: () => void;
+  readonly onPreview: () => void;
+  readonly onConnectGithub: () => void;
+  readonly onLoadDemo: () => void;
 };
 
+function isBlueprintPane(pane: DevWorkspacePane): boolean {
+  return pane === "ade" || isBlueprintSectionPane(pane);
+}
+
 export function HubDevCenterPane(props: HubDevCenterPaneProps) {
+  if (isBlueprintPane(props.pane)) {
+    const sources = props.connectedSource ? [props.connectedSource, ...props.snapshot.sources] : props.snapshot.sources;
+    return (
+      <HubDevBlueprintDashboard
+        draft={props.draft}
+        snapshot={props.snapshot}
+        analyzedAtMs={props.analyzedAtMs}
+        connectedSources={sources}
+        connectValue={props.connectValue}
+        analyzing={props.analyzing}
+        onConnectValueChange={props.onConnectValueChange}
+        onConnect={props.onConnect}
+        onConnectGithub={props.onConnectGithub}
+        onLoadDemo={props.onLoadDemo}
+        onFilesDrop={props.onFilesDrop}
+        onAnalyze={props.onAnalyzePlatform}
+        onFixIssues={props.onFixAllIssues}
+        onRunTests={props.onRunTests}
+        onPreview={props.onPreview}
+        onPublish={() => props.onPublish()}
+        onTestInvoke={props.onTestInvoke}
+        highlightSection={props.pane === "ade" ? undefined : props.pane}
+      />
+    );
+  }
+
   switch (props.pane) {
-    case "ade":
-      return <HubDevAdeWorkbench {...props} />;
     case "sources":
       return (
         <SourcesPane
@@ -75,19 +109,21 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
       return <StatusPane snapshot={props.snapshot} onPublish={() => props.onPublish()} />;
     case "capabilities":
       return (
-        <HubDevCapabilityList
-          draft={props.draft}
-          actions={props.draft.actions}
-          selectedId={props.selectedCapabilityId}
-          testsPassed={props.testsPassed}
-          onSelect={props.onSelectCapability}
-          onViewConfiguration={props.onSelectCapability}
-          onTest={() => props.onTestComplete(false)}
-          onEditWithAi={() => {}}
-          onOpenCode={() => {
-            if (props.selectedCapabilityId) props.onSelectCapability(props.selectedCapabilityId);
-          }}
-        />
+        <div className="min-h-0 flex-1 bg-[#f4f5f7]">
+          <HubDevCapabilityList
+            draft={props.draft}
+            actions={props.draft.actions}
+            selectedId={props.selectedCapabilityId}
+            testsPassed={props.testsPassed}
+            onSelect={props.onSelectCapability}
+            onViewConfiguration={props.onSelectCapability}
+            onTest={() => props.onTestComplete(false)}
+            onEditWithAi={() => {}}
+            onOpenCode={() => {
+              if (props.selectedCapabilityId) props.onSelectCapability(props.selectedCapabilityId);
+            }}
+          />
+        </div>
       );
     case "tests":
       return (
@@ -109,7 +145,7 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         />
       );
     default:
-      return <HubDevAdeWorkbench {...props} />;
+      return null;
   }
 }
 
@@ -124,13 +160,13 @@ function SourcesPane({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="overflow-y-auto p-4 rimvio-scroll-touch">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f5f7] p-4 rimvio-scroll-touch">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-[#b0b8c1]">Sources</p>
+        <p className="text-[12px] font-semibold text-[#111827]">Sources</p>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="text-[11px] text-[#8ec0ff] hover:underline"
+          className="text-[11px] font-semibold text-violet-600 hover:underline"
         >
           Add file
         </button>
@@ -148,12 +184,12 @@ function SourcesPane({
           {sources.map((src) => (
             <li
               key={src.id}
-              className="rounded-lg border border-[#4593fc]/20 bg-[#4593fc]/5 px-3 py-2 text-[11px] text-[#b0b8c1]"
+              className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2.5 text-[11px] text-[#374151]"
             >
-              <span className="mr-2 text-[10px] uppercase text-[#8ec0ff]">{src.kind}</span>
+              <span className="mr-2 text-[10px] font-semibold uppercase text-violet-600">{src.kind}</span>
               {src.label}
               {src.detail ? (
-                <span className="mt-0.5 block truncate text-[10px] text-[#6b7684]">
+                <span className="mt-0.5 block truncate text-[10px] text-[#9ca3af]">
                   {src.detail}
                 </span>
               ) : null}
@@ -161,20 +197,20 @@ function SourcesPane({
           ))}
         </ul>
       ) : (
-        <p className="mb-4 text-[11px] text-[#6b7684]">연결된 source 없음 — ADE에서 Connect</p>
+        <p className="mb-4 text-[11px] text-[#9ca3af]">연결된 source 없음 — Blueprint에서 Connect</p>
       )}
 
       {files.length > 0 ? (
         <>
-          <p className="mb-2 text-[10px] font-semibold uppercase text-[#4b5563]">Derived files</p>
+          <p className="mb-2 text-[10px] font-semibold uppercase text-[#9ca3af]">Derived files</p>
           <ul className="space-y-1">
             {files.map((f) => (
               <li
                 key={f.id}
-                className="rounded-lg border border-white/[0.06] bg-[#151820] px-3 py-2 font-mono text-[11px] text-[#b0b8c1]"
+                className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 font-mono text-[11px] text-[#374151] shadow-sm"
               >
                 {f.path}
-                <span className="ml-2 text-[10px] text-[#6b7684]">{f.kind}</span>
+                <span className="ml-2 text-[10px] text-[#9ca3af]">{f.kind}</span>
               </li>
             ))}
           </ul>
@@ -193,14 +229,14 @@ function IssuesPane({
 }) {
   if (issues.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-[13px] text-emerald-400">
+      <div className="flex flex-1 items-center justify-center bg-[#f4f5f7] p-8 text-[13px] text-emerald-600">
         ✓ No issues
       </div>
     );
   }
   return (
-    <div className="overflow-y-auto p-4 rimvio-scroll-touch">
-      <p className="mb-3 text-[12px] text-[#6b7684]">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f5f7] p-4 rimvio-scroll-touch">
+      <p className="mb-3 text-[12px] text-[#6b7280]">
         {issues.filter((i) => i.severity === "error").length} errors ·{" "}
         {issues.filter((i) => i.severity === "warning").length} warnings
       </p>
@@ -208,16 +244,19 @@ function IssuesPane({
         {issues.map((issue) => (
           <li
             key={issue.id}
-            className="rounded-xl border border-white/[0.08] bg-[#151820] p-4"
+            className={cn(
+              "rounded-2xl border bg-white p-4 shadow-sm",
+              issue.severity === "error" ? "border-red-200" : "border-amber-200",
+            )}
           >
-            <p className="text-[12px] font-semibold text-[#f2f4f6]">
+            <p className="text-[12px] font-semibold text-[#111827]">
               {issue.severity === "error" ? "🔴" : "🟡"} {issue.title}
             </p>
-            <p className="mt-1 text-[11px] text-[#6b7684]">{issue.detail}</p>
+            <p className="mt-1 text-[11px] text-[#6b7280]">{issue.detail}</p>
             <button
               type="button"
               onClick={() => onFix(issue)}
-              className="mt-3 rounded-lg bg-[#4593fc]/15 px-3 py-1.5 text-[11px] font-semibold text-[#8ec0ff] hover:bg-[#4593fc]/25"
+              className="mt-3 rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-700"
             >
               Fix automatically
             </button>
@@ -247,16 +286,16 @@ function ChangesPane({
 
   if (changes.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-[13px] text-[#6b7684]">
+      <div className="flex flex-1 items-center justify-center bg-[#f4f5f7] p-8 text-[13px] text-[#9ca3af]">
         Agent changes appear here after analyze
       </div>
     );
   }
 
   return (
-    <div className="overflow-y-auto p-4 rimvio-scroll-touch">
-      <p className="mb-1 text-[12px] font-semibold text-[#b0b8c1]">Agent Changes</p>
-      <p className="mb-3 text-[11px] text-[#6b7684]">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f5f7] p-4 rimvio-scroll-touch">
+      <p className="mb-1 text-[12px] font-semibold text-[#111827]">Agent Changes</p>
+      <p className="mb-3 text-[11px] text-[#6b7280]">
         {pending.length} pending · {accepted.length} accepted
       </p>
       <ul className="space-y-1 font-mono text-[11px]">
@@ -267,24 +306,24 @@ function ChangesPane({
               <li
                 key={ch.id}
                 className={cn(
-                  "flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#151820] px-3 py-2 text-[#b0b8c1]",
+                  "flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[#374151] shadow-sm",
                   state === "accepted" && "opacity-60",
                 )}
               >
                 <span className="truncate">
-                  <span className={ch.kind === "add" ? "text-emerald-400" : "text-amber-400"}>
+                  <span className={ch.kind === "add" ? "text-emerald-600" : "text-amber-600"}>
                     {ch.kind === "add" ? "+" : "~"}
                   </span>{" "}
                   {ch.path}
                 </span>
-                <span className="ml-2 shrink-0 text-[10px] text-[#6b7684]">
+                <span className="ml-2 shrink-0 text-[10px] text-[#9ca3af]">
                   {state === "accepted" ? "accepted" : `+${ch.additions}`}
                 </span>
                 {reviewMode && state === "pending" ? (
                   <button
                     type="button"
                     onClick={() => onReject(ch.id)}
-                    className="ml-2 shrink-0 text-[10px] text-red-400 hover:underline"
+                    className="ml-2 shrink-0 text-[10px] text-red-600 hover:underline"
                   >
                     Reject
                   </button>
@@ -301,7 +340,7 @@ function ChangesPane({
             setReviewMode(true);
             onReview();
           }}
-          className="rounded-lg border border-white/[0.1] px-3 py-1.5 text-[11px] text-[#b0b8c1] hover:border-[#4593fc]/30"
+          className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[11px] text-[#374151] shadow-sm hover:border-violet-200"
         >
           Review
         </button>
@@ -309,7 +348,7 @@ function ChangesPane({
           <button
             type="button"
             onClick={onAcceptAll}
-            className="rounded-lg bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold text-emerald-400"
+            className="rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200"
           >
             Accept all
           </button>
@@ -355,22 +394,22 @@ function StatusPane({
   ];
 
   return (
-    <div className="overflow-y-auto p-6 rimvio-scroll-touch">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f5f7] p-6 rimvio-scroll-touch">
       <div className="mx-auto max-w-md">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7684]">Status</p>
-        <h2 className="mt-2 text-[18px] font-bold text-[#f2f4f6]">{snapshot.status.summaryKo}</h2>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9ca3af]">Status</p>
+        <h2 className="mt-2 text-[18px] font-bold text-[#111827]">{snapshot.status.summaryKo}</h2>
 
         <ul className="mt-6 space-y-2">
           {rows.map((row) => (
             <li
               key={row.label}
-              className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#151820] px-4 py-3"
+              className="flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-4 py-3 shadow-sm"
             >
-              <span className="text-[12px] text-[#b0b8c1]">{row.label}</span>
+              <span className="text-[12px] text-[#6b7280]">{row.label}</span>
               <span
                 className={cn(
                   "text-[12px] font-semibold",
-                  row.ok ? "text-emerald-400" : "text-[#6b7684]",
+                  row.ok ? "text-emerald-600" : "text-[#9ca3af]",
                 )}
               >
                 {row.ok ? "✓ " : ""}
@@ -384,7 +423,7 @@ function StatusPane({
           <button
             type="button"
             onClick={onPublish}
-            className="mt-6 w-full rounded-xl bg-[#4593fc] py-2.5 text-[13px] font-semibold text-white hover:bg-[#3a82e0]"
+            className="mt-6 w-full rounded-xl bg-violet-600 py-2.5 text-[13px] font-semibold text-white hover:bg-violet-700"
           >
             Publish to Capability Index
           </button>

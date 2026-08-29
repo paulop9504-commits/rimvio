@@ -28,33 +28,33 @@ export function HubDevAnalysisResultCard({ result }: HubDevAnalysisResultCardPro
   ];
 
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-[#151820] p-4">
+    <section className="rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6b7684]">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9ca3af]">
           Analysis Result
         </p>
-        <span className="text-[10px] text-[#6b7684]">Finished {result.finishedAgoKo}</span>
+        <span className="text-[10px] text-[#9ca3af]">Finished {result.finishedAgoKo}</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {metrics.map((m) => (
           <div
             key={m.label}
             className={cn(
-              "rounded-lg border border-white/[0.06] bg-[#0e1014] px-3 py-2.5",
-              m.highlight && "border-[#4593fc]/30 bg-[#4593fc]/5",
+              "rounded-xl border border-[#f3f4f6] bg-[#fafafa] px-3 py-2.5",
+              m.highlight && "border-violet-200 bg-violet-50",
             )}
           >
             <p
               className={cn(
                 "font-mono text-[20px] font-bold tabular-nums",
-                m.warn ? "text-amber-400" : m.highlight ? "text-[#8ec0ff]" : "text-[#f2f4f6]",
+                m.warn ? "text-amber-600" : m.highlight ? "text-violet-700" : "text-[#111827]",
               )}
             >
               {typeof m.value === "number"
                 ? String(m.value).padStart(m.pad, "0")
                 : m.value}
             </p>
-            <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-[#6b7684]">
+            <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-[#9ca3af]">
               {m.label}
             </p>
           </div>

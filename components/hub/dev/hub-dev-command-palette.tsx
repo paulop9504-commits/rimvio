@@ -46,14 +46,14 @@ export function HubDevCommandPalette({ open, onClose, onSelect }: HubDevCommandP
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh] p-4">
-      <div className="w-full max-w-md rounded-xl border border-white/[0.1] bg-[#151820] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[15vh] p-4">
+      <div className="w-full max-w-md rounded-2xl border border-[#e5e7eb] bg-white shadow-2xl">
         <input
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Create Capability · Ask AI · Deploy · Publish…"
-          className="w-full border-b border-white/[0.06] bg-transparent px-4 py-3 text-[13px] text-[#f2f4f6] placeholder:text-[#6b7684] focus:outline-none"
+          className="w-full border-b border-[#f3f4f6] bg-transparent px-4 py-3 text-[13px] text-[#111827] placeholder:text-[#9ca3af] focus:outline-none"
         />
         <ul className="max-h-64 overflow-y-auto p-2">
           {filtered.map((cmd) => (
@@ -66,11 +66,11 @@ export function HubDevCommandPalette({ open, onClose, onSelect }: HubDevCommandP
                 }}
                 className={cn(
                   "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[12px]",
-                  "text-[#b0b8c1] hover:bg-[#4593fc]/10 hover:text-[#8ec0ff]",
+                  "text-[#374151] hover:bg-violet-50 hover:text-violet-700",
                 )}
               >
                 <span>{cmd.label}</span>
-                <span className="text-[10px] text-[#6b7684]">{cmd.hint}</span>
+                <span className="text-[10px] text-[#9ca3af]">{cmd.hint}</span>
               </button>
             </li>
           ))}

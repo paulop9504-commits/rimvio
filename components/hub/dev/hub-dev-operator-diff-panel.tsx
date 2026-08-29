@@ -10,65 +10,31 @@ type HubDevOperatorDiffPanelProps = {
   readonly onDismiss: () => void;
 };
 
-export function HubDevOperatorDiffPanel({
-  diff,
-  onApply,
-  onRunTest,
-  onDismiss,
-}: HubDevOperatorDiffPanelProps) {
+export function HubDevOperatorDiffPanel({ diff, onApply, onRunTest, onDismiss }: HubDevOperatorDiffPanelProps) {
   return (
-    <div className="shrink-0 border-b border-white/[0.06] px-3 py-3">
+    <div className="border-t border-[#f3f4f6] px-4 py-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold text-[#f2f4f6]">Proposed fix</p>
-          <p className="font-mono text-[10px] text-[#6b7684]">{diff.filePath}</p>
+          <p className="text-[11px] font-semibold text-[#111827]">Proposed fix</p>
+          <p className="font-mono text-[10px] text-[#9ca3af]">{diff.filePath}</p>
         </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="text-[10px] text-[#6b7684] hover:text-[#b0b8c1]"
-        >
-          ✕
-        </button>
+        <button type="button" onClick={onDismiss} className="text-[10px] text-[#9ca3af]">✕</button>
       </div>
-
-      <ul className="mt-2 space-y-0.5 text-[10px] text-[#b0b8c1]">
+      <ul className="mt-2 space-y-0.5 text-[10px] text-[#6b7280]">
         {diff.summaryKo.map((line) => (
           <li key={line}>· {line}</li>
         ))}
       </ul>
-
-      <pre className="mt-2 max-h-[160px] overflow-auto rounded-lg border border-white/[0.06] bg-[#0a0c10] p-2 font-mono text-[10px] leading-relaxed">
+      <pre className="mt-2 max-h-[120px] overflow-auto rounded-xl border border-[#e5e7eb] bg-[#fafafa] p-2 font-mono text-[10px] leading-relaxed">
         {diff.lines.map((line, i) => (
-          <div
-            key={`${line.kind}-${i}`}
-            className={cn(
-              line.kind === "add" && "bg-emerald-500/10 text-emerald-300",
-              line.kind === "remove" && "bg-red-500/10 text-red-300",
-              line.kind === "context" && "text-[#6b7684]",
-            )}
-          >
-            {line.kind === "add" ? "+ " : line.kind === "remove" ? "- " : "  "}
-            {line.text}
+          <div key={`${line.kind}-${i}`} className={cn(line.kind === "add" && "bg-emerald-50 text-emerald-800", line.kind === "remove" && "bg-red-50 text-red-700 line-through", line.kind === "context" && "text-[#9ca3af]")}>
+            {line.kind === "add" ? "+ " : line.kind === "remove" ? "- " : "  "}{line.text}
           </div>
         ))}
       </pre>
-
       <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={onApply}
-          className="flex-1 rounded-lg bg-[#4593fc]/15 py-1.5 text-[11px] font-semibold text-[#8ec0ff]"
-        >
-          Apply
-        </button>
-        <button
-          type="button"
-          onClick={onRunTest}
-          className="flex-1 rounded-lg bg-emerald-500/15 py-1.5 text-[11px] font-semibold text-emerald-400"
-        >
-          Run Test
-        </button>
+        <button type="button" onClick={onApply} className="flex-1 rounded-lg bg-violet-100 py-1.5 text-[11px] font-semibold text-violet-700">Apply</button>
+        <button type="button" onClick={onRunTest} className="flex-1 rounded-lg bg-emerald-50 py-1.5 text-[11px] font-semibold text-emerald-700">Run Test</button>
       </div>
     </div>
   );
