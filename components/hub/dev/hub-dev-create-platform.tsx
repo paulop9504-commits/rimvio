@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { Github, Link2, Upload, Sparkles } from "lucide-react";
+import { GitBranch, Link2, Upload, Sparkles } from "lucide-react";
 import {
   analyzePlatformIngress,
   type PlatformIngressKind,
@@ -119,7 +119,7 @@ export function HubDevCreatePlatform() {
         <div className="mt-6 rounded-2xl border border-white/[0.08] bg-[#151820] p-1">
           {tab === "github" ? (
             <div className="flex items-center gap-2 px-3 py-2 text-[#6b7684]">
-              <Github className="size-4 shrink-0" />
+              <GitBranch className="size-4 shrink-0" />
               <input
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
