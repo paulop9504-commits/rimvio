@@ -126,7 +126,6 @@ function NavSection({
   activePane,
   badges,
   onPaneChange,
-  isActive,
   className,
 }: {
   title: string;
@@ -136,7 +135,7 @@ function NavSection({
   onPaneChange: (pane: DevWorkspacePane) => void;
   className?: string;
 }) {
-  const isActive = (id: DevWorkspacePane) => activePane === id;
+  const paneIsActive = (id: DevWorkspacePane) => activePane === id;
   return (
     <div className={className}>
       <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-wide text-[#9ca3af]">{title}</p>
@@ -144,7 +143,7 @@ function NavSection({
         {items.map((item) => {
           const Icon = ICONS[item.icon] ?? Puzzle;
           const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
-          const active = isActive(item.id) || activePane === item.id;
+          const active = paneIsActive(item.id);
           const warn = item.id === "issues" && Number(badge) > 0;
           return (
             <button
