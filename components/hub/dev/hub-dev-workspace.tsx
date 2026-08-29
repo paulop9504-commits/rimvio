@@ -482,6 +482,7 @@ export function HubDevWorkspace() {
           draft={wizard.draft}
           snapshot={snapshot}
           testsPassed={wizard.testsPassed}
+          analyzing={analyzing}
           executor={deployExecutor}
           onApplyPatch={(p) => wizard.updateDraft(p)}
           agentSeed={agentSeed}
