@@ -16,6 +16,7 @@ export type DiscoveryIntentDomain =
   | "marketplace_buy"
   | "booking"
   | "payment"
+  | "design"
   | "general";
 
 export type CapabilityDiscoveryScoreBreakdown = {
@@ -36,7 +37,7 @@ const LODGING_RE = /호텔|hotel|숙소|lodging|숙박|객실|room/i;
 const MARKET_PRODUCT_RE =
   /자전거|bike|책|book|맥북|macbook|노트북|laptop|중고|market|나눔|listing/i;
 const SELL_RE = /팔|등록|sell|listing|나눔/i;
-const BUY_SEARCH_RE = /사|구매|buy|찾|검색|search/i;
+const DESIGN_RE = /cad|설계|design|도면|부품|part|구멍|hole|mm|step|dwg|렌더|render|시뮬/i;
 
 export const DISCOVERY_MIN_COMPOSITE = 0.55;
 
@@ -52,6 +53,7 @@ export function inferDiscoveryIntentDomain(
   const frame = intent ?? compileIntentFromUtterance(text);
 
   if (LODGING_RE.test(text)) return "lodging";
+  if (DESIGN_RE.test(text)) return "design";
   if (/예약|book|reserve/i.test(text) && LODGING_RE.test(text)) return "booking";
   if (SELL_RE.test(text) && MARKET_PRODUCT_RE.test(text)) return "marketplace_sell";
   if (frame?.action === "sell") return "marketplace_sell";
@@ -67,6 +69,7 @@ export function inferDiscoveryIntentDomain(
 
 export function inferCapabilityDomain(entry: CapabilityIndexEntry): DiscoveryIntentDomain {
   const id = entry.capabilityId.toLowerCase();
+  if (id.startsWith("design.")) return "design";
   if (id.startsWith("hotel.")) return "lodging";
   if (id.startsWith("booking.")) return "booking";
   if (id.startsWith("payment.")) return "payment";
@@ -100,6 +103,9 @@ function domainAligned(
   }
   if (utteranceDomain === "marketplace_buy") {
     return capabilityDomain === "marketplace_buy";
+  }
+  if (utteranceDomain === "design") {
+    return capabilityDomain === "design";
   }
   if (utteranceDomain === "payment") {
     return capabilityDomain === "payment";
@@ -142,6 +148,14 @@ function scoreIntentMatch(
   if (utteranceDomain === "marketplace_buy" && entry.capabilityId.includes("search")) {
     score = Math.max(score, 0.9);
     reason = "buy/search intent";
+  }
+  if (utteranceDomain === "design" && entry.capabilityId.includes("design.edit")) {
+    score = Math.max(score, 0.93);
+    reason = "design edit intent";
+  }
+  if (utteranceDomain === "design" && entry.capabilityId.includes("design.inspect")) {
+    score = Math.max(score, 0.88);
+    reason = "design inspect intent";
   }
   if (utteranceDomain === "lodging" && entry.capabilityId.includes("hotel.search")) {
     score = Math.max(score, 0.94);

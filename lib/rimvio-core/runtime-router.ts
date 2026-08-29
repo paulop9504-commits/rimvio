@@ -27,6 +27,9 @@ export type RuntimeRouterInput = {
   readonly utterance?: string;
   readonly preferredRuntimeId?: string | null;
   readonly maxAttempts?: number;
+  /** Probe top-K runtimes in parallel; pick first success by rank order. */
+  readonly parallelProbe?: boolean;
+  readonly parallelProbeCount?: number;
 };
 
 export type RuntimeRouterResult = RimvioRuntimeObservation & {
@@ -158,6 +161,10 @@ export async function routeRuntimeExecute(
     };
   }
 
+  if (input.parallelProbe) {
+    return routeRuntimeParallelProbe(input, capabilityId, candidates, maxAttempts);
+  }
+
   let lastError = "실행 실패";
   let lastObservation: CapabilityInvokeObservation | null = null;
 
@@ -231,6 +238,60 @@ export function resolveRuntimeRouterSelection(input: {
 /** Lookup runtime entry after router selection (projection / logs). */
 export function readSelectedRuntimeEntry(runtimeId: string) {
   return readRuntimeIndex().find((r) => r.id === runtimeId) ?? null;
+}
+
+async function routeRuntimeParallelProbe(
+  input: RuntimeRouterInput,
+  capabilityId: string,
+  candidates: readonly RankedRuntimeCandidate[],
+  maxAttempts: number,
+): Promise<RuntimeRouterResult> {
+  const slice = candidates.slice(0, input.parallelProbeCount ?? maxAttempts);
+  const attemptedRuntimeIds = slice.map((c) => c.runtime.id);
+  const observations = await Promise.all(
+    slice.map((candidate) => executeOnRuntime(candidate, input, capabilityId)),
+  );
+
+  for (const candidate of slice) {
+    const observation = observations.find((o) => o.runtimeId === candidate.runtime.id);
+    if (observation?.ok) {
+      return {
+        ok: true,
+        output: observation.output,
+        requiresApproval: input.action.approvalPolicy !== "none",
+        failed: false,
+        runtimeId: observation.runtimeId,
+        runtimeName: observation.runtimeName,
+        routedVia: "router-ranked",
+        scores: observation.scores,
+        attemptedRuntimeIds,
+        rankedCandidates: candidates,
+        durationMs: observation.durationMs,
+      };
+    }
+  }
+
+  const fallback = observations[0] ?? {
+    ok: false,
+    runtimeId: slice[0]!.runtime.id,
+    runtimeName: slice[0]!.runtime.name,
+    scores: slice[0]!.scores,
+    durationMs: 0,
+  };
+
+  return {
+    ok: false,
+    failed: true,
+    errorKo: observations.find((o) => o.errorKo)?.errorKo ?? "실행 실패",
+    requiresApproval: input.action.approvalPolicy !== "none",
+    runtimeId: fallback.runtimeId,
+    runtimeName: fallback.runtimeName,
+    routedVia: "router-fallback",
+    scores: fallback.scores,
+    attemptedRuntimeIds,
+    rankedCandidates: candidates,
+    durationMs: fallback.durationMs,
+  };
 }
 
 function emptyScores(): RuntimeRouterScoreBreakdown {

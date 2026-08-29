@@ -50,9 +50,11 @@ export {
   HUB_CAPABILITY_INDEX_STORAGE_KEY,
   readCapabilityIndex,
   registerCapabilityIndexFromManifest,
+  registerCapabilityIndexFromManifestWithValidation,
   searchCapabilityIndex,
   subscribeCapabilityIndex,
   type CapabilityIndexEntry,
+  type CapabilityIndexPublishResult,
   type CapabilityIndexStatus,
   type CapabilitySearchHit,
 } from "@/lib/platform-sdk/capability-index";
@@ -117,3 +119,69 @@ export {
   resolveCapabilityRuntimeRequirements,
   type CapabilityRuntimeRequirements,
 } from "@/lib/platform-sdk/runtime-requirements";
+
+export {
+  parseSchemaRef,
+  validateSchemaPublishTransition,
+  isAgentCompatibleWithSchema,
+  schemaVersionFields,
+  RIMVIO_AGENT_SCHEMA_RUNTIME,
+  type ParsedSchemaRef,
+  type SchemaPublishValidation,
+} from "@/lib/platform-sdk/capability-schema-version";
+
+export {
+  DISCOVERY_CACHE_TTL_MS,
+  getCachedIntent,
+  getCachedIndexSearch,
+  getCachedRankingPlan,
+  clearDiscoveryCacheForTests,
+} from "@/lib/platform-sdk/discovery-cache";
+
+export {
+  CAPABILITY_APPROVAL_PENDING_STORAGE_KEY,
+  CAPABILITY_APPROVAL_PENDING_TTL_MS,
+  createCapabilityApprovalPending,
+  readCapabilityApprovalPending,
+  clearCapabilityApprovalPending,
+  commitCapabilityApprovalPending,
+  subscribeCapabilityApprovalPending,
+  clearCapabilityApprovalPendingForTests,
+  type CapabilityApprovalPending,
+} from "@/lib/platform-sdk/capability-approval-pending";
+
+export {
+  normalizeCapabilityOutput,
+  fuseCanonicalResults,
+  type RimvioCanonicalItem,
+  type RimvioCanonicalPrice,
+} from "@/lib/platform-sdk/canonical-capability-result";
+
+export {
+  classifyCapability,
+  capabilityClassLabelKo,
+  inferDomainFromCapabilityId,
+  type CapabilityClass,
+} from "@/lib/platform-sdk/capability-classification";
+
+export {
+  resolveCapabilityExposurePolicy,
+  planCapabilityExposure,
+  filterHitsForExposure,
+  type CapabilityExposurePolicy,
+  type CapabilityExposurePlan,
+  type CapabilityExposureStep,
+} from "@/lib/platform-sdk/capability-exposure-policy";
+
+export {
+  resolveExecutionStage,
+  isCapabilityDiscoverableAtStage,
+  isCapabilityExecutableAtStage,
+  type CapabilityExecutionStage,
+} from "@/lib/platform-sdk/capability-execution-lifecycle";
+
+export {
+  projectCapabilityExperience,
+  summarizeExposurePipeline,
+  type RimvioExperienceProjection,
+} from "@/lib/platform-sdk/capability-ui-projection";

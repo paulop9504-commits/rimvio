@@ -2,113 +2,128 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HubDevAgentSimulation } from "@/components/hub/dev/hub-dev-agent-simulation";
-import { HubDevAiBuild } from "@/components/hub/dev/hub-dev-ai-build";
-import { HubDevCapabilityConfig } from "@/components/hub/dev/hub-dev-capability-config";
-import { HubDevCapabilityList } from "@/components/hub/dev/hub-dev-capability-view";
 import { HubDevCommandPalette } from "@/components/hub/dev/hub-dev-command-palette";
-import { HubDevRightPanel } from "@/components/hub/dev/hub-dev-right-panel";
-import { HubDevSidebar } from "@/components/hub/dev/hub-dev-sidebar";
 import { HubDevTopbar } from "@/components/hub/dev/hub-dev-topbar";
-import { DataStep } from "@/components/hub/platform/steps/data-step";
-import { HubDevPublishPanel } from "@/components/hub/dev/hub-dev-publish-panel";
-import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
-import { PlatformPermissionsStep } from "@/components/hub/platform/steps/permissions-step";
-import { HubDevAdminConsole } from "@/components/hub/dev/hub-dev-admin-console";
-import { HubDevAnalyticsPanel } from "@/components/hub/dev/hub-dev-analytics-panel";
-import { HubDevIntegrationsPanel } from "@/components/hub/dev/hub-dev-integrations-panel";
-import { HubDevOperationsPanel } from "@/components/hub/dev/hub-dev-operations-panel";
-import { HubDevCommercePanel } from "@/components/hub/dev/hub-dev-commerce-panel";
-import { HubDevLogsPanel } from "@/components/hub/dev/hub-dev-logs-panel";
-import { HubDevRegistryE2e } from "@/components/hub/dev/hub-dev-registry-e2e";
-import { HubDevRuntimeWorkspace } from "@/components/hub/dev/hub-dev-runtime-workspace";
-import { HubDevHubStoresPanel } from "@/components/hub/dev/hub-dev-hub-stores-panel";
+import { HubDevProjectSidebar } from "@/components/hub/dev/hub-dev-project-sidebar";
+import { HubDevCenterPane } from "@/components/hub/dev/hub-dev-center-pane";
+import { HubDevAgentOperator } from "@/components/hub/dev/hub-dev-agent-operator";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import { useHubPlatformWizard } from "@/hooks/use-hub-platform-wizard";
-import {
-  blueprintFromDraft,
-  resolvePlatformDraftFromBuildPrompt,
-} from "@/lib/hub/dev/blueprint";
-import type { HubDevNavId } from "@/lib/hub/dev/platform-nav";
-import type { PlatformBlueprintView } from "@/lib/hub/dev/platform-nav";
 import { syncPlatformManifestJson } from "@/lib/hub/dev/capability-inspector";
-
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
-import { HubDevVersionsPanel } from "@/components/hub/dev/hub-dev-versions-panel";
-import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
-import { HubDevCompatibilityGraphPanel } from "@/components/hub/dev/hub-dev-compatibility-graph-panel";
-
-function parseNav(value: string | null): HubDevNavId {
-  const allowed: HubDevNavId[] = [
-    "overview",
-    "ai-build",
-    "capabilities",
-    "data",
-    "workflows",
-    "runtime",
-    "permissions",
-    "integrations",
-    "commerce",
-    "logs",
-    "tests",
-    "deployments",
-    "versions",
-    "configuration",
-    "hub-discover",
-    "hub-published",
-    "compatibility",
-    "admin",
-    "operations",
-    "analytics",
-  ];
-  if (value && allowed.includes(value as HubDevNavId)) return value as HubDevNavId;
-  return "ai-build";
-}
+import {
+  metaFromDraft,
+  readActivePlatformId,
+  readStoredPlatform,
+  setActivePlatformId,
+  upsertPlatform,
+} from "@/lib/hub/dev/platform-registry";
+import {
+  analyzePlatformIngress,
+  type AnalyzedPlatformBlueprint,
+} from "@/lib/hub/dev/platform-analyzer";
+import {
+  activitiesFromAnalyze,
+  buildProjectSnapshot,
+  deriveProjectChanges,
+  type DevProjectIssue,
+  type DevProjectSource,
+  type DevChangeReviewState,
+} from "@/lib/hub/dev/dev-project-state";
+import {
+  parseDevWorkspacePane,
+  type DevWorkspacePane,
+} from "@/lib/hub/dev/dev-workspace-nav";
+import { buildOperatorDiffForIssue, type OperatorDiff } from "@/lib/hub/dev/operator-diff";
+import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 
 export function HubDevWorkspace() {
   const wizard = useHubPlatformWizard();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeNav, setActiveNav] = useState<HubDevNavId>(() =>
-    parseNav(searchParams.get("nav")),
+  const platformIdParam = searchParams.get("platform");
+
+  const [activePane, setActivePane] = useState<DevWorkspacePane>(() =>
+    parseDevWorkspacePane(searchParams.get("pane"), searchParams.get("nav")),
   );
-  const [buildPrompt, setBuildPrompt] = useState("");
-  const [pendingBlueprint, setPendingBlueprint] = useState<PlatformBlueprintView | null>(null);
-  const [building, setBuilding] = useState(false);
   const [platformCreated, setPlatformCreated] = useState(false);
-  const [selectedCapabilityId, setSelectedCapabilityId] = useState<string | null>(() =>
-    searchParams.get("cap"),
+  const [selectedCapabilityId, setSelectedCapabilityId] = useState<string | null>(
+    () => searchParams.get("cap"),
   );
-  const [configScope, setConfigScope] = useState<"capability" | "platform">("platform");
   const [agentSeed, setAgentSeed] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [previewOn, setPreviewOn] = useState(true);
-  const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | null>(null);
+  const [connectValue, setConnectValue] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [blueprint, setBlueprint] = useState<AnalyzedPlatformBlueprint | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [connectedSource, setConnectedSource] = useState<DevProjectSource | null>(null);
+  const [analyzedAtMs, setAnalyzedAtMs] = useState<number | null>(null);
+  const [publishedAtMs, setPublishedAtMs] = useState<number | null>(null);
+  const [operatorDiff, setOperatorDiff] = useState<OperatorDiff | null>(null);
+  const [changeReview, setChangeReview] = useState<Record<string, DevChangeReviewState>>({});
+  const [fixing, setFixing] = useState(false);
+  const [extraActivities, setExtraActivities] = useState<
+    ReturnType<typeof activitiesFromAnalyze> | null
+  >(null);
 
   const syncUrl = useCallback(
-    (nav: HubDevNavId, capId?: string | null) => {
+    (pane: DevWorkspacePane, capId?: string | null) => {
       const params = new URLSearchParams();
-      params.set("nav", nav);
+      params.set("pane", pane);
+      const pid = platformIdParam ?? readActivePlatformId();
+      if (pid) params.set("platform", pid);
       if (capId) params.set("cap", capId);
       router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
     },
-    [router],
+    [platformIdParam, router],
   );
 
-  const setNav = useCallback(
-    (nav: HubDevNavId, capId?: string | null) => {
-      setActiveNav(nav);
-      syncUrl(nav, capId ?? selectedCapabilityId);
+  const setPane = useCallback(
+    (pane: DevWorkspacePane, capId?: string | null) => {
+      setActivePane(pane);
+      syncUrl(pane, capId ?? selectedCapabilityId);
     },
     [selectedCapabilityId, syncUrl],
   );
 
   useEffect(() => {
-    const nav = parseNav(searchParams.get("nav"));
-    setActiveNav(nav);
+    setActivePane(parseDevWorkspacePane(searchParams.get("pane"), searchParams.get("nav")));
     const cap = searchParams.get("cap");
     if (cap) setSelectedCapabilityId(cap);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!wizard.hydrated) return;
+    const pid = platformIdParam ?? readActivePlatformId();
+    if (pid) {
+      const stored = readStoredPlatform(pid);
+      if (stored && stored.draft.id !== wizard.draft.id) {
+        wizard.updateDraft(stored.draft);
+        setPlatformCreated(true);
+        setActivePlatformId(pid);
+      }
+    }
+  }, [wizard.hydrated, platformIdParam, wizard]);
+
+  useEffect(() => {
+    if (!wizard.hydrated || !platformCreated) return;
+    const pid = platformIdParam ?? wizard.draft.id;
+    if (!pid || wizard.draft.actions.length === 0) return;
+    const existing = readStoredPlatform(pid);
+    upsertPlatform({
+      meta: metaFromDraft(wizard.draft, existing?.meta.ingressLabel ?? "Workspace", {
+        createdAtIso: existing?.meta.createdAtIso,
+        agentUsage: existing?.meta.agentUsage ?? 0,
+        successRate: existing?.meta.successRate ?? 0,
+        rimvioCertified: existing?.meta.rimvioCertified ?? false,
+        status:
+          wizard.publishStatus === "published"
+            ? "published"
+            : existing?.meta.status ?? "agent_ready",
+      }),
+      draft: wizard.draft,
+    });
+  }, [wizard.draft, wizard.hydrated, platformCreated, platformIdParam, wizard.publishStatus]);
 
   useEffect(() => {
     if (!wizard.hydrated) return;
@@ -137,6 +152,12 @@ export function HubDevWorkspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (wizard.publishStatus === "published" && publishedAtMs === null) {
+      setPublishedAtMs(Date.now());
+    }
+  }, [wizard.publishStatus, publishedAtMs]);
+
   const capabilityWizard = wizard as unknown as HubCapabilityWizard;
 
   const deployExecutor = useMemo<DeployExecutorCallbacks>(
@@ -154,84 +175,194 @@ export function HubDevWorkspace() {
     [wizard],
   );
 
-  const handleBuild = useCallback(async () => {
-    setBuilding(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const draft = resolvePlatformDraftFromBuildPrompt(buildPrompt);
-    if (draft) {
-      const manifestJson = syncPlatformManifestJson(draft);
-      const withManifest = { ...draft, manifestJson };
-      setPendingBlueprint(blueprintFromDraft(withManifest));
-      wizard.updateDraft(withManifest);
-    }
-    setBuilding(false);
-  }, [buildPrompt, wizard]);
+  const snapshot = useMemo(() => {
+    const base = buildProjectSnapshot({
+      draft: wizard.draft,
+      uploadedFiles,
+      connectedSource,
+      testsPassed: wizard.testsPassed,
+      publishStatus: wizard.publishStatus,
+      publishedAtMs: publishedAtMs ?? undefined,
+      extraActivities: extraActivities ?? undefined,
+    });
+    const visibleChanges = base.changes.filter((ch) => changeReview[ch.id] !== "rejected");
+    const pendingCount = visibleChanges.filter(
+      (ch) => (changeReview[ch.id] ?? "pending") === "pending",
+    ).length;
+    return {
+      ...base,
+      changes: visibleChanges,
+      changesCount: pendingCount,
+    };
+  }, [
+    wizard.draft,
+    uploadedFiles,
+    connectedSource,
+    wizard.testsPassed,
+    wizard.publishStatus,
+    extraActivities,
+    changeReview,
+    publishedAtMs,
+  ]);
 
-  const handleCreatePlatform = useCallback(() => {
+  useEffect(() => {
+    const changes = deriveProjectChanges(wizard.draft);
+    if (changes.length === 0) return;
+    setChangeReview((prev) => {
+      const next = { ...prev };
+      for (const ch of changes) {
+        if (!next[ch.id]) next[ch.id] = "pending";
+      }
+      return next;
+    });
+  }, [wizard.draft.actions.length, wizard.draft.id]);
+
+  const handleConnect = useCallback(async () => {
+    const value = connectValue.trim();
+    if (!value) return;
+    setAnalyzing(true);
+    setAgentSeed(`이 프로젝트를 Rimvio에 연결해줘: ${value}`);
+
+    const kind = /github|gitlab|bitbucket/i.test(value)
+      ? "github"
+      : /openapi|swagger|\.json/i.test(value)
+        ? "openapi"
+        : "api";
+
+    const result = await analyzePlatformIngress({ kind, value });
+    setAnalyzing(false);
+    if (!result) return;
+
+    setConnectedSource({
+      id: `src-${kind}`,
+      label: result.ingressLabel,
+      kind,
+      detail: value,
+    });
+    setBlueprint(result);
+    setAnalyzedAtMs(Date.now());
+    setExtraActivities(activitiesFromAnalyze(result));
+    const withManifest = { ...result.draft, manifestJson: syncPlatformManifestJson(result.draft) };
+    wizard.updateDraft(withManifest);
     setPlatformCreated(true);
-    const firstId = wizard.draft.actions[0]?.id ?? null;
-    if (firstId) setSelectedCapabilityId(firstId);
-    setNav("capabilities", firstId);
-  }, [setNav, wizard.draft.actions]);
+    setActivePlatformId(withManifest.id);
+    upsertPlatform({
+      meta: metaFromDraft(withManifest, result.ingressLabel, { status: "agent_ready" }),
+      draft: withManifest,
+    });
+    syncUrl("ade", null);
+  }, [connectValue, syncUrl, wizard]);
 
-  const handleSelectCapability = useCallback(
-    (id: string) => {
-      setSelectedCapabilityId(id);
-      syncUrl(activeNav, id);
-    },
-    [activeNav, syncUrl],
-  );
-
-  const handleViewConfiguration = useCallback(
-    (actionId: string) => {
-      setSelectedCapabilityId(actionId);
-      setConfigScope("capability");
-      setNav("configuration", actionId);
-    },
-    [setNav],
-  );
-
-  const handleEditCapabilityWithAi = useCallback((name: string) => {
-    setAgentSeed(`${name} capability를 Agent가 사용할 수 있도록 검토하고 필요한 스키마·권한을 제안해줘.`);
+  const handleFilesDrop = useCallback((files: FileList) => {
+    const names = [...files].map((f) => f.name);
+    setUploadedFiles((prev) => [...new Set([...prev, ...names])]);
+    setAgentSeed(`이 파일들 연결해줘: ${names.join(", ")}`);
   }, []);
 
-  const selectedAction = useMemo(
-    () => wizard.draft.actions.find((a) => a.id === selectedCapabilityId) ?? null,
-    [wizard.draft.actions, selectedCapabilityId],
-  );
-
-  const handlePublish = useCallback(
-    (options?: HubPublishOptions) => {
-      void wizard.publishPlatform(options);
+  const handleFixIssue = useCallback(
+    async (issue: DevProjectIssue) => {
+      setFixing(true);
+      setOperatorDiff(buildOperatorDiffForIssue(issue, wizard.draft.actions));
+      setAgentSeed(issue.fixPrompt);
+      await new Promise((r) => setTimeout(r, 600));
+      if (issue.id.startsWith("issue-approval") || issue.id.startsWith("issue-auth")) {
+        wizard.updateDraft({
+          actions: wizard.draft.actions.map((a) =>
+            issue.capabilityId && a.name === issue.capabilityId
+              ? { ...a, approvalRequired: true }
+              : a,
+          ),
+        });
+      }
+      if (issue.id === "issue-manifest") {
+        wizard.updateDraft({ manifestJson: syncPlatformManifestJson(wizard.draft) });
+      }
+      if (issue.id.startsWith("issue-schema")) {
+        wizard.updateDraft({
+          actions: wizard.draft.actions.map((a) =>
+            issue.capabilityId && a.name === issue.capabilityId
+              ? { ...a, outputSchema: `${a.name}.response.v1` }
+              : a,
+          ),
+        });
+      }
+      setFixing(false);
     },
     [wizard],
   );
 
-  const openPublishPanel = useCallback(() => {
-    setNav("deployments");
-  }, [setNav]);
+  const handleFixAllIssues = useCallback(async () => {
+    setFixing(true);
+    const firstIssue = snapshot.issues[0];
+    if (firstIssue) {
+      setOperatorDiff(buildOperatorDiffForIssue(firstIssue, wizard.draft.actions));
+    }
+    setAgentSeed("발견된 issues를 모두 자동으로 수정하고 test까지 실행해줘.");
+    await new Promise((r) => setTimeout(r, 900));
+    wizard.updateDraft({
+      manifestJson: syncPlatformManifestJson(wizard.draft),
+      actions: wizard.draft.actions.map((a) => ({
+        ...a,
+        approvalRequired:
+          a.approvalRequired ||
+          a.name.includes("payment") ||
+          a.name.includes("commit") ||
+          a.name.includes("confirm"),
+        outputSchema: a.outputSchema.includes(".v")
+          ? a.outputSchema
+          : `${a.name}.response.v1`,
+      })),
+    });
+    await wizard.runSandboxTest();
+    setFixing(false);
+    setOperatorDiff(null);
+    setPane("status");
+  }, [setPane, snapshot.issues, wizard]);
+
+  const handleApplyDiff = useCallback(() => {
+    setOperatorDiff(null);
+    void wizard.runSandboxTest();
+  }, [wizard]);
+
+  const handleAcceptAllChanges = useCallback(() => {
+    setChangeReview((prev) => {
+      const next = { ...prev };
+      for (const ch of snapshot.changes) {
+        next[ch.id] = "accepted";
+      }
+      return next;
+    });
+  }, [snapshot.changes]);
+
+  const handleRejectChange = useCallback((changeId: string) => {
+    setChangeReview((prev) => ({ ...prev, [changeId]: "rejected" }));
+  }, []);
+
+  const handlePublish = useCallback(
+    (options?: HubPublishOptions) => {
+      void wizard.publishPlatform(options);
+      setPublishedAtMs(Date.now());
+    },
+    [wizard],
+  );
 
   const handleCommand = useCallback(
     (id: string) => {
-      const map: Record<string, HubDevNavId> = {
-        ai: "ai-build",
+      const map: Record<string, DevWorkspacePane> = {
+        ai: "ade",
         cap: "capabilities",
         test: "tests",
-        deploy: "deployments",
-        publish: "deployments",
-        logs: "logs",
-        runtime: "runtime",
+        deploy: "deploy",
+        publish: "deploy",
+        logs: "ade",
+        runtime: "deploy",
+        config: "capabilities",
       };
-      const nav = map[id];
-      if (nav) setNav(nav);
-      if (id === "config") {
-        setConfigScope("platform");
-        setNav("configuration");
-      }
+      const pane = map[id];
+      if (pane) setPane(pane);
       if (id === "test") void wizard.runSandboxTest();
-      if (id === "publish") setNav("deployments");
     },
-    [handlePublish, setNav, wizard],
+    [setPane, wizard],
   );
 
   if (!wizard.hydrated) {
@@ -242,157 +373,81 @@ export function HubDevWorkspace() {
     );
   }
 
-  const showAiBuildFirst = !platformCreated && activeNav === "ai-build";
-
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#0c0e12]">
       <HubDevTopbar
         platformName={wizard.draft.name}
         environment="Development"
-        previewActive={previewOn}
-        onTogglePreview={() => setPreviewOn((v) => !v)}
         onRun={() => void wizard.runSandboxTest()}
         onDeploy={() => setAgentSeed("배포해")}
-        onPublish={openPublishPanel}
+        onPublish={() => setPane("deploy")}
         publishDisabled={!wizard.publishReady}
         onOpenCommandPalette={() => setPaletteOpen(true)}
       />
 
       <div className="flex min-h-0 flex-1">
-        <HubDevSidebar
+        <HubDevProjectSidebar
           platformName={wizard.draft.name}
-          platformTagline={wizard.draft.description}
-          platformStatus={
-            wizard.publishStatus === "pending-review" ? "Production" : "Development"
-          }
-          activeNav={activeNav}
-          onNavChange={setNav}
-          capabilityCount={wizard.draft.actions.length}
-          testCount={wizard.testsPassed ? 1 : 0}
-          version={`v${wizard.draft.version}`}
+          activePane={activePane}
+          snapshot={snapshot}
+          onPaneChange={setPane}
+          onOpenAde={() => setPane("ade")}
         />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {activeNav === "ai-build" ? (
-            <HubDevAiBuild
-              prompt={buildPrompt}
-              onPromptChange={setBuildPrompt}
-              onBuild={() => void handleBuild()}
-              building={building}
-              blueprint={pendingBlueprint ?? (platformCreated ? blueprintFromDraft(wizard.draft) : null)}
-              onCreatePlatform={handleCreatePlatform}
-              onSeeDetails={() => {
-                setConfigScope("platform");
-                setNav("configuration");
-              }}
-            />
-          ) : activeNav === "capabilities" ? (
-            <HubDevCapabilityList
-              draft={wizard.draft}
-              actions={wizard.draft.actions}
-              selectedId={selectedCapabilityId}
-              testsPassed={wizard.testsPassed}
-              onSelect={handleSelectCapability}
-              onViewConfiguration={handleViewConfiguration}
-              onTest={() => void wizard.runSandboxTest()}
-              onEditWithAi={(action) => handleEditCapabilityWithAi(action.name)}
-              onOpenCode={() => setNav("configuration", selectedCapabilityId)}
-            />
-          ) : activeNav === "configuration" ? (
-            <HubDevCapabilityConfig
-              wizard={capabilityWizard}
-              draft={wizard.draft}
-              selectedAction={selectedAction}
-              scope={configScope}
-              onScopeChange={setConfigScope}
-              onApplyDraft={(next) => wizard.updateDraft(next)}
-            />
-          ) : activeNav === "data" ? (
-            <PanelShell>
-              <DataStep wizard={wizard} />
-            </PanelShell>
-          ) : activeNav === "workflows" ? (
-            <HubDevWorkflowEditor
-              draft={wizard.draft}
-              selectedNodeId={selectedWorkflowNodeId}
-              onSelectNode={setSelectedWorkflowNodeId}
-              onApplyDraft={(next) => wizard.updateDraft(next)}
-            />
-          ) : activeNav === "permissions" ? (
-            <PanelShell>
-              <PlatformPermissionsStep wizard={wizard} />
-            </PanelShell>
-          ) : activeNav === "tests" ? (
-            <HubDevAgentSimulation
-              draft={wizard.draft}
-              onComplete={(passed) => {
-                if (passed) void wizard.runSandboxTest();
-              }}
-            />
-          ) : activeNav === "runtime" ? (
-            <HubDevRuntimeWorkspace draft={wizard.draft} publishStatus={wizard.publishStatus} />
-          ) : activeNav === "hub-discover" ? (
-            <HubDevHubStoresPanel onNavigate={setNav} />
-          ) : activeNav === "compatibility" ? (
-            <HubDevCompatibilityGraphPanel
-              draft={wizard.draft}
-              actions={wizard.draft.actions}
-              initialCapabilityId={selectedCapabilityId}
-            />
-          ) : activeNav === "integrations" ? (
-            <HubDevIntegrationsPanel draft={wizard.draft} />
-          ) : activeNav === "admin" ? (
-            <HubDevAdminConsole draft={wizard.draft} />
-          ) : activeNav === "operations" ? (
-            <HubDevOperationsPanel draft={wizard.draft} />
-          ) : activeNav === "analytics" ? (
-            <HubDevAnalyticsPanel draft={wizard.draft} />
-          ) : activeNav === "commerce" ? (
-            <HubDevCommercePanel draft={wizard.draft} />
-          ) : activeNav === "logs" ? (
-            <HubDevLogsPanel draft={wizard.draft} />
-          ) : activeNav === "deployments" ? (
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-              <div className="mx-auto max-w-3xl space-y-6">
-                <HubDevPublishPanel wizard={wizard} onPublish={handlePublish} />
-                <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
-              </div>
-            </div>
-          ) : activeNav === "hub-published" ? (
-            <div className="overflow-y-auto p-6 rimvio-scroll-touch">
-              <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
-            </div>
-          ) : activeNav === "versions" ? (
-            <HubDevVersionsPanel draft={wizard.draft} publishStatus={wizard.publishStatus} />
-          ) : activeNav === "overview" ? (
-            <PlatformOverview draft={wizard.draft} onOpenBuild={() => setNav("ai-build")} />
-          ) : (
-            <ComingSoon nav={activeNav} />
-          )}
+          <HubDevCenterPane
+            pane={activePane}
+            draft={wizard.draft}
+            snapshot={snapshot}
+            selectedCapabilityId={selectedCapabilityId}
+            testsPassed={wizard.testsPassed}
+            analyzing={analyzing}
+            blueprint={blueprint}
+            connectedSource={connectedSource}
+            analyzedAtMs={analyzedAtMs}
+            connectValue={connectValue}
+            onConnectValueChange={setConnectValue}
+            onConnect={() => void handleConnect()}
+            onFilesDrop={handleFilesDrop}
+            onSelectCapability={(id) => {
+              setSelectedCapabilityId(id);
+              syncUrl(activePane, id);
+            }}
+            onFixIssue={(issue) => void handleFixIssue(issue)}
+            onPublish={handlePublish}
+            wizard={capabilityWizard}
+            publishStatus={wizard.publishStatus}
+            onTestComplete={() => void wizard.runSandboxTest()}
+            changeReview={changeReview}
+            onAcceptAllChanges={handleAcceptAllChanges}
+            onRejectChange={handleRejectChange}
+            onReviewChanges={() => setPane("changes")}
+            onTestInvoke={() => void wizard.runSandboxTest()}
+          />
         </main>
 
-        {(showAiBuildFirst || previewOn) && (
-          <HubDevRightPanel
-            activeNav={activeNav}
-            draft={wizard.draft}
-            testsPassed={wizard.testsPassed}
-            selectedCapabilityId={selectedCapabilityId}
-            executor={deployExecutor}
-            onApplyPatch={(p) => wizard.updateDraft(p)}
-            agentSeed={agentSeed}
-            onSeedConsumed={() => setAgentSeed(null)}
-            showPreview={previewOn}
-            publishReady={wizard.publishReady}
-            onPublish={openPublishPanel}
-            onViewConfiguration={() => {
-              if (selectedCapabilityId) handleViewConfiguration(selectedCapabilityId);
-            }}
-            onTest={() => void wizard.runSandboxTest()}
-            onEditWithAi={() => {
-              if (selectedAction) handleEditCapabilityWithAi(selectedAction.name);
-            }}
-          />
-        )}
+        <HubDevAgentOperator
+          draft={wizard.draft}
+          snapshot={snapshot}
+          testsPassed={wizard.testsPassed}
+          executor={deployExecutor}
+          onApplyPatch={(p) => wizard.updateDraft(p)}
+          agentSeed={agentSeed}
+          onSeedConsumed={() => setAgentSeed(null)}
+          fixing={fixing}
+          publishReady={wizard.publishReady}
+          operatorDiff={operatorDiff}
+          onApplyDiff={handleApplyDiff}
+          onDismissDiff={() => setOperatorDiff(null)}
+          onFixAll={() => void handleFixAllIssues()}
+          onFixIssue={(issue) => void handleFixIssue(issue)}
+          onPublish={() => setPane("deploy")}
+          onRunTests={() => {
+            setPane("tests");
+            void wizard.runSandboxTest();
+          }}
+          onFocusAde={() => setPane("ade")}
+        />
       </div>
 
       <HubDevCommandPalette
@@ -400,52 +455,6 @@ export function HubDevWorkspace() {
         onClose={() => setPaletteOpen(false)}
         onSelect={handleCommand}
       />
-    </div>
-  );
-}
-
-function PanelShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-      {children}
-    </div>
-  );
-}
-
-function PlatformOverview({
-  draft,
-  onOpenBuild,
-}: {
-  draft: ReturnType<typeof useHubPlatformWizard>["draft"];
-  onOpenBuild: () => void;
-}) {
-  const bp = blueprintFromDraft(draft);
-  return (
-    <div className="overflow-y-auto p-6 rimvio-scroll-touch">
-      <h2 className="text-[18px] font-bold text-[#f2f4f6]">{draft.name}</h2>
-      <p className="mt-1 text-[13px] text-[#6b7684]">{draft.description}</p>
-      <button
-        type="button"
-        onClick={onOpenBuild}
-        className="mt-4 text-[12px] font-medium text-[#8ec0ff] hover:underline"
-      >
-        ✦ Open AI Build
-      </button>
-      <pre className="mt-6 rounded-xl border border-white/[0.08] bg-[#151820] p-4 font-mono text-[11px] leading-relaxed text-[#b0b8c1]">
-        {`${draft.name}\n├── UI\n│   ├── Search\n│   ├── Hotel Detail\n│   └── Booking\n├── Capabilities\n${bp.capabilities.map((c) => `│   ├── ${c}`).join("\n")}\n├── Data\n${bp.dataModels.map((d) => `│   ├── ${d}`).join("\n")}\n└── Workflows\n    └── ${bp.workflows[0]}`}
-      </pre>
-    </div>
-  );
-}
-
-function ComingSoon({ nav }: { nav: HubDevNavId }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-      <p className="text-[14px] font-semibold text-[#b0b8c1]">{nav}</p>
-      <p className="mt-2 max-w-sm text-[12px] text-[#6b7684]">
-        Integrations · Versions — planned next.
-        <span className="mt-2 block text-[10px] text-amber-500/80">Not fake production data</span>
-      </p>
     </div>
   );
 }

@@ -83,15 +83,28 @@ export function HubDevSidebar({
         </p>
         <p className="mt-1 truncate text-[13px] font-semibold text-[#f2f4f6]">{platformName}</p>
         <p className={cn("mt-0.5 text-[10px] font-medium", statusColor)}>● {platformStatus}</p>
+        <Link
+          href="/hub"
+          className="mt-2 block text-[10px] text-[#6b7684] hover:text-[#8ec0ff]"
+        >
+          ← All Platforms
+        </Link>
         <p className="mt-1 text-[10px] text-[#6b7684]">
-          {platformTagline ?? "Creator-operated Platform"}
+          {platformTagline ?? "Agent-ready Platform"}
         </p>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2 rimvio-scroll-touch">
+        <NavButton
+          label="Manage"
+          icon="⌂"
+          active={activeNav === "overview"}
+          onClick={() => onNavChange("overview")}
+        />
+
         <NavSection
-          title="Build"
-          items={HUB_DEV_BUILD_NAV}
+          title="Advanced"
+          items={HUB_DEV_BUILD_NAV.filter((item) => item.id !== "overview" && item.id !== "ai-build")}
           activeNav={activeNav}
           onNavChange={onNavChange}
           badgeFor={(id) =>

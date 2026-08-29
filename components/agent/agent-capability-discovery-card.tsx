@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  buildPlatformCapabilityHref,
   readGlobeCapabilityDiscoveryProjection,
   subscribeGlobeCapabilityDiscovery,
   type GlobeCapabilityDiscoveryProjection,
@@ -13,11 +11,13 @@ import { cn } from "@/lib/utils";
 type AgentCapabilityDiscoveryCardProps = {
   className?: string;
   onDismiss?: () => void;
+  onApprove?: () => void;
 };
 
 export function AgentCapabilityDiscoveryCard({
   className,
   onDismiss,
+  onApprove,
 }: AgentCapabilityDiscoveryCardProps) {
   const [projection, setProjection] = useState<GlobeCapabilityDiscoveryProjection | null>(
     () => readGlobeCapabilityDiscoveryProjection(),
@@ -32,7 +32,10 @@ export function AgentCapabilityDiscoveryCard({
 
   if (!projection) return null;
 
-  const { plan, prepareOk, platformHref, alternateHits } = projection;
+  const { awaitingApproval, experience, exposure } = projection;
+  const exp = experience;
+
+  if (!exp) return null;
 
   return (
     <div
@@ -42,58 +45,64 @@ export function AgentCapabilityDiscoveryCard({
       )}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-[#64748b]">
-        Capability 발견
+        {exp.title}
       </p>
-      <p className="mt-1 text-[14px] font-semibold text-[#0f172a]">{plan.capabilityId}</p>
-      <p className="mt-0.5 text-[11px] text-[#64748b]">
-        {plan.platformName} · Capability Discovery (Platform 직접 실행 아님)
-      </p>
-      <p className="mt-1 text-[11px] text-[#64748b]">
-        {prepareOk ? "Prepare 완료 · Capability 실행 준비됨" : "매칭됨 · Platform 열기"}
-      </p>
+      {exp.artifactLabel ? (
+        <p className="mt-1 font-mono text-[13px] font-medium text-[#0f172a]">{exp.artifactLabel}</p>
+      ) : null}
 
-      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-2">
-        <p className="font-mono text-[12px] font-medium text-emerald-900">{plan.capabilityId}</p>
-        <p className="mt-0.5 text-[11px] text-emerald-700">
-          {plan.marketCountry} · composite {(plan.score * 100).toFixed(0)}%
+      {exp.domain === "design" ? (
+        <div className="mt-4 flex justify-center py-6">
+          <div className="flex size-24 items-center justify-center rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[#94a3b8]">
+            <span className="size-8 rounded-full border-2 border-dashed border-[#64748b]" />
+          </div>
+        </div>
+      ) : null}
+
+      <p className="mt-3 text-[13px] leading-relaxed text-[#334155]">{exp.workLogKo}</p>
+
+      {exp.fields.length > 0 ? (
+        <ul className="mt-3 space-y-1.5 rounded-xl bg-[#f8fafc] px-3 py-2">
+          {exp.fields.map((field) => (
+            <li
+              key={field.label}
+              className={cn(
+                "flex justify-between text-[12px]",
+                field.highlight ? "font-semibold text-[#0f172a]" : "text-[#64748b]",
+              )}
+            >
+              <span>{field.label}</span>
+              <span>
+                {field.value}
+                {field.unit ? ` ${field.unit}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {exposure && exposure.pipeline.length > 1 ? (
+        <p className="mt-2 text-[10px] text-[#94a3b8]">
+          {exposure.pipeline.map((s) => s.capabilityId.split(".").pop()).join(" → ")}
         </p>
-        <p className="mt-0.5 text-[10px] text-emerald-600">
-          Intent {(plan.scores.intentMatch * 100).toFixed(0)}% · Context{" "}
-          {(plan.scores.contextMatch * 100).toFixed(0)}% · Reliability{" "}
-          {(plan.scores.reliability * 100).toFixed(0)}%
-        </p>
-        {projection.compatibility.graphValid ? (
-          <p className="mt-1 text-[10px] text-emerald-600">
-            Compatibility · {projection.compatibility.summaryKo}
-          </p>
-        ) : null}
-        {projection.execution.runtime ? (
-          <p className="mt-1 text-[10px] text-[#475569]">
-            Router · {projection.router.runtimeName} · {projection.router.routedVia}
-            {projection.router.durationMs != null
-              ? ` · ${projection.router.durationMs}ms`
-              : ""}
-          </p>
-        ) : null}
-        {projection.rankedRuntimes.length > 1 ? (
-          <p className="mt-0.5 text-[9px] text-[#94a3b8]">
-            +{projection.rankedRuntimes.length - 1} fallback candidate(s) in registry
-          </p>
-        ) : null}
-        {plan.approvalRequired ? (
-          <p className="mt-1 text-[10px] font-medium text-amber-700">
-            승인 필요 — Commit 전 사용자 확인
-          </p>
-        ) : null}
-      </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          href={platformHref}
-          className="inline-flex items-center rounded-xl bg-[#4593fc] px-4 py-2 text-[12px] font-semibold text-white hover:bg-[#3a82e0]"
-        >
-          Platform 열기
-        </Link>
+        {exp.actions.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            onClick={action.kind === "primary" && awaitingApproval ? onApprove : undefined}
+            className={cn(
+              "rounded-xl px-4 py-2 text-[12px] font-semibold",
+              action.kind === "primary"
+                ? "bg-[#4593fc] text-white hover:bg-[#3a82e0]"
+                : "border border-[#e2e8f0] text-[#64748b]",
+            )}
+          >
+            {action.label}
+          </button>
+        ))}
         {onDismiss ? (
           <button
             type="button"
@@ -104,23 +113,6 @@ export function AgentCapabilityDiscoveryCard({
           </button>
         ) : null}
       </div>
-
-      {alternateHits.length > 0 ? (
-        <ul className="mt-3 space-y-1 border-t border-[#f1f5f9] pt-3 text-[11px] text-[#64748b]">
-          {alternateHits.slice(0, 2).map((hit) => (
-            <li key={hit.capabilityId}>
-              <Link
-                href={buildPlatformCapabilityHref(hit)}
-                className="font-mono text-[#6366f1] hover:underline"
-              >
-                {hit.capabilityId}
-              </Link>
-              {" · "}
-              {hit.platformName}
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }

@@ -16,6 +16,23 @@ import { routeRuntimeExecute } from "@/lib/rimvio-core/runtime-router";
 import type { RankedRuntimeCandidate } from "@/lib/rimvio-core/runtime-router-select";
 import type { RuntimeRouterResult } from "@/lib/rimvio-core/runtime-router";
 import { compileIntentFromUtterance } from "@/lib/rimvio-protocol/intent";
+import {
+  normalizeCapabilityOutput,
+  fuseCanonicalResults,
+  type RimvioCanonicalItem,
+} from "@/lib/platform-sdk/canonical-capability-result";
+import {
+  commitCapabilityApprovalPending,
+  createCapabilityApprovalPending,
+  readCapabilityApprovalPending,
+  type CapabilityApprovalPending,
+} from "@/lib/platform-sdk/capability-approval-pending";
+import type { CapabilityExposurePlan } from "@/lib/platform-sdk/capability-exposure-policy";
+import {
+  projectCapabilityExperience,
+  summarizeExposurePipeline,
+  type RimvioExperienceProjection,
+} from "@/lib/platform-sdk/capability-ui-projection";
 
 export type GlobeCapabilityDiscoveryProjection = {
   readonly utterance: string;
@@ -29,6 +46,11 @@ export type GlobeCapabilityDiscoveryProjection = {
   readonly compatibility: CapabilityCompatibilityGraph;
   readonly router: RuntimeRouterResult;
   readonly rankedRuntimes: readonly RankedRuntimeCandidate[];
+  readonly canonicalItems: readonly RimvioCanonicalItem[];
+  readonly approvalPending: CapabilityApprovalPending | null;
+  readonly awaitingApproval: boolean;
+  readonly exposure: CapabilityExposurePlan | null;
+  readonly experience: RimvioExperienceProjection | null;
 };
 
 const PROJECTION_KEY = "rimvio.globe.capability-discovery.v1";
@@ -101,14 +123,70 @@ export function clearGlobeCapabilityDiscoveryProjection(): void {
   emitProjection();
 }
 
+function buildAwaitingApprovalRouter(plan: CapabilityDiscoveryPlan): RuntimeRouterResult {
+  return {
+    ok: true,
+    failed: false,
+    requiresApproval: true,
+    runtimeId: "",
+    runtimeName: "",
+    routedVia: "router-ranked",
+    scores: {
+      capabilityMatch: plan.scores.intentMatch,
+      infrastructureMatch: 0,
+      permissionMatch: 0,
+      contextMatch: plan.scores.contextMatch,
+      health: 0,
+      reliability: plan.scores.reliability,
+      latency: 0,
+      cost: 0,
+      composite: plan.scores.composite,
+    },
+    attemptedRuntimeIds: [],
+    rankedCandidates: [],
+  };
+}
+
+async function executeCapabilityRouter(input: {
+  readonly plan: CapabilityDiscoveryPlan;
+  readonly utterance: string;
+}): Promise<RuntimeRouterResult> {
+  return routeRuntimeExecute({
+    platformId: input.plan.platformId,
+    platformName: input.plan.platformName,
+    marketCountry: input.plan.marketCountry,
+    utterance: input.utterance,
+    parallelProbe: true,
+    parallelProbeCount: 3,
+    action: {
+      toolId: input.plan.capabilityId,
+      capabilityId: input.plan.capabilityId,
+      input: { utterance: input.utterance },
+      approvalPolicy: input.plan.approvalRequired ? "user_required" : "none",
+    },
+  });
+}
+
 export async function executeGlobeCapabilityDiscovery(input: {
   readonly utterance: string;
+  readonly approvalGranted?: boolean;
+  readonly pendingId?: string;
 }): Promise<GlobeCapabilityDiscoveryProjection | null> {
   const utterance = input.utterance.trim();
   if (!utterance) return null;
 
-  const intentFrame = compileIntentFromUtterance(utterance);
-  const plan = planCapabilityDiscovery({ utterance, intentFrame });
+  let plan: CapabilityDiscoveryPlan | null = null;
+  let approvalPending: CapabilityApprovalPending | null = null;
+
+  if (input.approvalGranted && input.pendingId) {
+    approvalPending = readCapabilityApprovalPending(input.pendingId);
+    plan = approvalPending?.plan ?? null;
+  }
+
+  if (!plan) {
+    const intentFrame = compileIntentFromUtterance(utterance);
+    plan = planCapabilityDiscovery({ utterance, intentFrame });
+  }
   if (!plan) return null;
 
   const execution = resolveCapabilityExecution({ plan, utterance });
@@ -126,26 +204,77 @@ export async function executeGlobeCapabilityDiscovery(input: {
   }
 
   const alternateHits = planCapabilityDiscoveryFromHits(utterance).filter(
-    (h) => h.capabilityId !== plan.capabilityId,
+    (h) => h.capabilityId !== plan!.capabilityId,
   );
 
-  const router = await routeRuntimeExecute({
-    platformId: plan.platformId,
-    platformName: plan.platformName,
-    marketCountry: plan.marketCountry,
-    utterance,
-    action: {
-      toolId: plan.capabilityId,
+  const platformHref = buildPlatformCapabilityHref(plan);
+  const needsApprovalGate = plan.approvalRequired && !input.approvalGranted;
+
+  const exposure = plan.exposure ?? null;
+  const pipelineSummaryKo = exposure ? summarizeExposurePipeline(exposure.pipeline) : undefined;
+
+  if (needsApprovalGate) {
+    approvalPending = createCapabilityApprovalPending({ utterance, plan, platformHref });
+    const experience = projectCapabilityExperience({
+      utterance,
       capabilityId: plan.capabilityId,
-      input: { utterance },
-      approvalPolicy: plan.approvalRequired ? "user_required" : "none",
-    },
+      experienceLabelKo: plan.planLabelKo,
+      pipelineSummaryKo,
+      awaitingApproval: true,
+    });
+    const projection: GlobeCapabilityDiscoveryProjection = {
+      utterance,
+      plan,
+      alternateHits,
+      prepareOk: true,
+      platformHref,
+      statusKo: experience.workLogKo,
+      discoveredAtIso: new Date().toISOString(),
+      execution,
+      compatibility,
+      router: buildAwaitingApprovalRouter(plan),
+      rankedRuntimes: execution.rankedCandidates,
+      canonicalItems: [],
+      approvalPending,
+      awaitingApproval: true,
+      exposure,
+      experience,
+    };
+    persistGlobeCapabilityDiscoveryProjection(projection);
+    return projection;
+  }
+
+  const router = await executeCapabilityRouter({ plan, utterance });
+  if (input.approvalGranted && input.pendingId) {
+    commitCapabilityApprovalPending({ pendingId: input.pendingId, router });
+  }
+
+  const primaryItems = normalizeCapabilityOutput(router.output, {
+    platformId: plan.platformId,
+    capabilityId: plan.capabilityId,
+    platformName: plan.platformName,
   });
 
-  const platformHref = buildPlatformCapabilityHref(plan);
-  const statusKo = router.ok
-    ? `${plan.capabilityId} · ${router.runtimeName} · ${planLabelKo(plan)} 준비됨`
-    : `${plan.capabilityId} · Runtime 실행 실패 (${router.attemptedRuntimeIds.length}회 시도)`;
+  const alternateItemBatches = alternateHits.map((alt) => ({
+    items: normalizeCapabilityOutput(undefined, {
+      platformId: alt.platformId,
+      capabilityId: alt.capabilityId,
+      platformName: alt.platformName,
+    }),
+  }));
+
+  const canonicalItems = fuseCanonicalResults([{ items: primaryItems }, ...alternateItemBatches]);
+
+  const experience = projectCapabilityExperience({
+    utterance,
+    capabilityId: plan.capabilityId,
+    experienceLabelKo: plan.planLabelKo,
+    pipelineSummaryKo,
+    canonicalItems,
+    awaitingApproval: false,
+  });
+
+  const statusKo = router.ok ? experience.workLogKo : "실행에 실패했어요. 다시 시도해 주세요.";
 
   const projection: GlobeCapabilityDiscoveryProjection = {
     utterance,
@@ -159,15 +288,13 @@ export async function executeGlobeCapabilityDiscovery(input: {
     compatibility,
     router,
     rankedRuntimes: router.rankedCandidates,
+    canonicalItems,
+    approvalPending: null,
+    awaitingApproval: false,
+    exposure,
+    experience,
   };
 
   persistGlobeCapabilityDiscoveryProjection(projection);
   return projection;
-}
-
-function planLabelKo(plan: CapabilityDiscoveryPlan): string {
-  if (plan.capabilityId.startsWith("hotel.")) return "호텔 검색";
-  if (plan.capabilityId.startsWith("booking.")) return "예약";
-  if (plan.capabilityId.startsWith("market.")) return "마켓플레이스";
-  return plan.capabilityId.replace(/\./g, " ");
 }

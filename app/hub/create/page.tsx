@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function HubBuildRedirect() {
+export default function HubCreateRedirect() {
   redirect("/hub/workspace?pane=ade");
 }

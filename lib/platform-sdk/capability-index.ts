@@ -14,6 +14,12 @@ import {
   rankCapabilityDiscovery,
   type ScoredCapabilityHit,
 } from "@/lib/platform-sdk/score-capability-discovery";
+import {
+  schemaVersionFields,
+  validateSchemaPublishTransition,
+  isAgentCompatibleWithSchema,
+} from "@/lib/platform-sdk/capability-schema-version";
+import { clearDiscoveryCacheForTests, getCachedIndexSearch } from "@/lib/platform-sdk/discovery-cache";
 
 export const HUB_CAPABILITY_INDEX_STORAGE_KEY = "rimvio.hub.capability-index.v1";
 
@@ -37,6 +43,14 @@ export type CapabilityIndexEntry = {
   readonly ownerCreatorId?: string;
   readonly origin?: "platform-bundled" | "standalone";
   readonly rimvioCertified?: boolean;
+  readonly inputSchemaVersion?: number;
+  readonly outputSchemaVersion?: number;
+  readonly schemaFamily?: string;
+};
+
+export type CapabilityIndexPublishResult = {
+  readonly registered: readonly CapabilityIndexEntry[];
+  readonly rejected: readonly { readonly capabilityId: string; readonly errorKo: string }[];
 };
 
 export type CapabilitySearchHit = ScoredCapabilityHit & {
@@ -109,6 +123,96 @@ const SEED_ENTRIES: CapabilityIndexEntry[] = [
     routePath: "/product/:id",
     keywords: ["구매", "buy", "purchase", "사"],
   },
+  {
+    capabilityId: "design.open",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.open.v1",
+    outputSchema: "design.model.v1",
+    approvalRequired: false,
+    category: "developer-tools",
+    tags: ["cad", "design"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/",
+    keywords: ["cad", "open", "design", "파일", "step"],
+  },
+  {
+    capabilityId: "design.inspect",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.inspect.v1",
+    outputSchema: "design.analysis.v1",
+    approvalRequired: false,
+    category: "developer-tools",
+    tags: ["cad", "analyze"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/analyze",
+    keywords: ["분석", "analyze", "inspect", "설계", "cad"],
+  },
+  {
+    capabilityId: "design.measure",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.measure.v1",
+    outputSchema: "design.dimensions.v1",
+    approvalRequired: false,
+    category: "developer-tools",
+    tags: ["cad", "measure"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/measure",
+    keywords: ["치수", "measure", "mm", "구멍", "dimension"],
+  },
+  {
+    capabilityId: "design.edit",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.edit.v1",
+    outputSchema: "design.model.v1",
+    approvalRequired: true,
+    category: "developer-tools",
+    tags: ["cad", "edit"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/edit",
+    keywords: ["edit", "수정", "변경", "구멍", "hole", "mm", "design"],
+  },
+  {
+    capabilityId: "design.export",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.export.v1",
+    outputSchema: "design.file.v1",
+    approvalRequired: false,
+    category: "developer-tools",
+    tags: ["cad", "export"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/export",
+    keywords: ["export", "step", "dwg", "pdf", "출력"],
+  },
+  {
+    capabilityId: "design.delete",
+    platformId: "platform.design-studio",
+    platformName: "Design Studio",
+    marketCountry: "KR",
+    inputSchema: "design.delete.v1",
+    outputSchema: "design.void.v1",
+    approvalRequired: true,
+    category: "developer-tools",
+    tags: ["cad", "delete"],
+    status: "PUBLISHED",
+    publishedAtIso: new Date().toISOString(),
+    routePath: "/delete",
+    keywords: ["delete", "삭제"],
+  },
 ];
 
 function emitIndexChange(): void {
@@ -163,6 +267,7 @@ export function readCapabilityIndex(): readonly CapabilityIndexEntry[] {
 
 export function persistCapabilityIndex(entries: CapabilityIndexEntry[]): void {
   memoryIndex = entries;
+  clearDiscoveryCacheForTests();
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(HUB_CAPABILITY_INDEX_STORAGE_KEY, JSON.stringify(entries));
@@ -183,13 +288,49 @@ export function registerCapabilityIndexFromManifest(
     capabilityFilter?: readonly string[];
   },
 ): CapabilityIndexEntry[] {
+  return registerCapabilityIndexFromManifestWithValidation(manifest, status, meta).registered;
+}
+
+export function registerCapabilityIndexFromManifestWithValidation(
+  manifest: RimvioPlatformManifest,
+  status: CapabilityIndexStatus = "VALIDATING",
+  meta?: {
+    ownerCreatorId?: string;
+    origin?: "platform-bundled" | "standalone";
+    rimvioCertified?: boolean;
+    capabilityFilter?: readonly string[];
+  },
+): CapabilityIndexPublishResult {
   const publishedAtIso = new Date().toISOString();
   const capFilter = meta?.capabilityFilter;
-  const built = buildCapabilityIndexEntry(manifest)
-    .filter((entry) => !capFilter?.length || capFilter.includes(entry.capabilityId))
-    .map((entry) => {
+  const priorIndex = readCapabilityIndex();
+  const registered: CapabilityIndexEntry[] = [];
+  const rejected: Array<{ capabilityId: string; errorKo: string }> = [];
+
+  for (const entry of buildCapabilityIndexEntry(manifest)) {
+    if (capFilter?.length && !capFilter.includes(entry.capabilityId)) continue;
+
+    const existing = priorIndex.find(
+      (e) =>
+        e.platformId === entry.platformId &&
+        e.capabilityId === entry.capabilityId &&
+        e.marketCountry === entry.marketCountry,
+    );
+    const validation = validateSchemaPublishTransition(existing ?? null, {
+      inputSchema: entry.inputSchema,
+      outputSchema: entry.outputSchema,
+    });
+    if (!validation.ok) {
+      rejected.push({
+        capabilityId: entry.capabilityId,
+        errorKo: validation.errorKo ?? "스키마 검증 실패",
+      });
+      continue;
+    }
+
     const cap = manifest.capabilities.find((c) => c.id === entry.capabilityId);
-    return {
+    const versions = schemaVersionFields(entry.inputSchema, entry.outputSchema);
+    registered.push({
       ...entry,
       marketCountry: entry.marketCountry,
       status,
@@ -203,15 +344,22 @@ export function registerCapabilityIndexFromManifest(
       ownerCreatorId: meta?.ownerCreatorId,
       origin: meta?.origin ?? "platform-bundled",
       rimvioCertified: meta?.rimvioCertified ?? false,
-    } satisfies CapabilityIndexEntry;
-  });
+      inputSchemaVersion: versions.inputSchemaVersion,
+      outputSchemaVersion: versions.outputSchemaVersion,
+      schemaFamily: versions.schemaFamily,
+    });
+  }
 
-  const existing = [...readCapabilityIndex()].filter(
-    (e) => e.platformId !== manifest.package.id,
-  );
-  const next = [...existing, ...built];
+  const existing = priorIndex.filter((e) => e.platformId !== manifest.package.id);
+  const priorPlatform = priorIndex.filter((e) => e.platformId === manifest.package.id);
+  const next =
+    registered.length > 0
+      ? [...existing, ...registered]
+      : rejected.length > 0
+        ? [...existing, ...priorPlatform]
+        : [...existing, ...registered];
   persistCapabilityIndex(next);
-  return built;
+  return { registered, rejected };
 }
 
 export function searchCapabilityIndex(
@@ -227,18 +375,22 @@ export function searchCapabilityIndex(
   const index = readCapabilityIndex().filter((e) => {
     if (publishedOnly && !isAgentDiscoverableCapability(e.status)) return false;
     if (marketCountry && e.marketCountry !== marketCountry) return false;
+    if (!isAgentCompatibleWithSchema(e.inputSchema)) return false;
     return true;
   });
 
-  return rankCapabilityDiscovery({
-    utterance: text,
-    entries: index,
-    marketCountry,
-    limit,
-  }).map((hit) => ({
-    ...hit,
-    score: hit.composite,
-  }));
+  const { hits } = getCachedIndexSearch(text, marketCountry, limit, () =>
+    rankCapabilityDiscovery({
+      utterance: text,
+      entries: index,
+      marketCountry,
+      limit,
+    }).map((hit) => ({
+      ...hit,
+      score: hit.composite,
+    })),
+  );
+  return hits;
 }
 
 export function subscribeCapabilityIndex(listener: () => void): () => void {
@@ -252,6 +404,7 @@ export function subscribeCapabilityIndex(listener: () => void): () => void {
 
 export function clearCapabilityIndexForTests(): void {
   memoryIndex = null;
+  clearDiscoveryCacheForTests();
   if (typeof window !== "undefined") {
     localStorage.removeItem(HUB_CAPABILITY_INDEX_STORAGE_KEY);
   }

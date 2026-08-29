@@ -265,7 +265,7 @@
     "test:realtime": "npx tsx scripts/test-realtime.ts && npx tsx scripts/test-realtime-boundary.ts",
     "test:stability": "npx tsx scripts/test-stability.ts && npx tsx scripts/test-stability-boundary.ts",
     "test:platform": "npx tsx scripts/test-platform.ts && npx tsx scripts/test-platform-boundary.ts",
-    "test:hub-dual-experience": "npx tsx scripts/test-capability-discovery-priority.ts && npx tsx scripts/test-runtime-router.ts && npx tsx scripts/test-capability-specification.ts && npx tsx scripts/test-compatibility-validation-graph.ts && npx tsx scripts/test-reality-pipeline.ts",
+    "test:hub-dual-experience": "npx tsx scripts/test-capability-discovery-priority.ts && npx tsx scripts/test-runtime-router.ts && npx tsx scripts/test-capability-specification.ts && npx tsx scripts/test-compatibility-validation-graph.ts && npx tsx scripts/test-reality-pipeline.ts && npx tsx scripts/test-hub-agent-stability.ts && npx tsx scripts/test-hub-platform-analyzer.ts && npx tsx scripts/test-capability-exposure.ts",
     "test:marketplace": "npx tsx scripts/test-marketplace.ts && npx tsx scripts/test-marketplace-boundary.ts && npx tsx scripts/test-score-marketplace-opportunity.ts && npx tsx scripts/test-portal-market-suggestion.ts && npx tsx scripts/test-market-trade-pipeline.ts && npx tsx scripts/test-market-trade-session-view.ts && npx tsx scripts/test-provider-network.ts && npx tsx scripts/test-provider-member-registry.ts && npx tsx scripts/test-provider-member-supabase-row.ts",
     "test:command-router": "npx tsx scripts/test-command-router.ts",
     "test:timeline-read-only-boundary": "npx tsx scripts/test-timeline-read-only-boundary.ts",
