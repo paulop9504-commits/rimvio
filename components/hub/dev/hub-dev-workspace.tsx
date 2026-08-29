@@ -474,7 +474,9 @@ export function HubDevWorkspace() {
               setPane("tests");
               void wizard.runSandboxTest();
             }}
-            onPreview={() => void wizard.runSandboxTest()}
+            onPreview={() => {
+              document.getElementById("blueprint-section-quick-actions")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
           />
         </main>
 

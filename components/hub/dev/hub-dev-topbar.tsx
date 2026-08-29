@@ -87,7 +87,7 @@ export function HubDevTopbar({
           onClick={onRun}
           className="flex items-center gap-1.5 rounded-xl border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-medium text-[#374151] shadow-sm hover:bg-[#fafafa]"
         >
-          <Eye className="size-3.5" />
+          <Play className="size-3.5" />
           Run Preview
         </button>
         <button

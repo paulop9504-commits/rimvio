@@ -14,11 +14,11 @@ import type { OperatorDiff } from "@/lib/hub/dev/operator-diff";
 import {
   type OperatorAgentEntry,
   type OperatorConversationEntry,
+  type OperatorPlanningItem,
   isWorkingEntry,
 } from "@/lib/hub/dev/operator-conversation";
 import { HubDevOperatorAgentBridge } from "@/components/hub/dev/hub-dev-operator-agent-bridge";
 import { HubDevOperatorConversation } from "@/components/hub/dev/hub-dev-operator-conversation";
-import { HubDevSandboxPreview } from "@/components/hub/dev/hub-dev-sandbox-preview";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectIssue, DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
@@ -51,11 +51,17 @@ type HubDevAgentOperatorProps = {
 
 const MODELS = ["Claude 3.5 Sonnet", "GPT-4o", "Gemini 1.5 Pro"] as const;
 
-const WORKING_STEPS = [
-  "Plan",
-  "Execute",
-  "Verify",
-] as const;
+const PLANNING_IDLE: OperatorPlanningItem[] = [
+  { label: "Plan created", status: "done" },
+  { label: "Setup verified", status: "done" },
+  { label: "Analyzing platform", status: "running" },
+];
+
+const PLANNING_FIX: OperatorPlanningItem[] = [
+  { label: "Plan created", status: "done" },
+  { label: "Reading issues", status: "done" },
+  { label: "Applying fixes", status: "running" },
+];
 
 export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   const brief = buildPlatformOperatorBrief(props.snapshot, { fixing: props.fixing });
@@ -65,12 +71,13 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [entries, setEntries] = useState<OperatorConversationEntry[]>([]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevFixing = useRef(false);
   const prevAnalyzing = useRef(false);
   const lastDiffId = useRef<string | null>(null);
   const localSendRef = useRef<string | null>(null);
+
+  const showGreeting = props.snapshot.capabilityCount > 0;
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     requestAnimationFrame(() => {
@@ -95,36 +102,36 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     };
   }, [props.snapshot]);
 
-  const replaceWorkingWithAnalysis = useCallback(() => {
+  const buildPlanningEntry = useCallback(
+    (items: OperatorPlanningItem[], title = "Planning and starting work"): OperatorAgentEntry => ({
+      kind: "agent",
+      id: `p-${Date.now()}`,
+      at: Date.now(),
+      payload: { type: "planning", title, items },
+    }),
+    [],
+  );
+
+  const replacePlanningWithAnalysis = useCallback(() => {
     setEntries((prev) => {
-      const withoutWorking = prev.filter((e) => !isWorkingEntry(e));
-      const last = withoutWorking[withoutWorking.length - 1];
-      if (last?.kind === "agent" && last.payload.type === "analysis") {
-        return withoutWorking;
-      }
-      return [...withoutWorking, buildAnalysisEntry()];
+      const withoutPlanning = prev.filter((e) => !isWorkingEntry(e));
+      const last = withoutPlanning[withoutPlanning.length - 1];
+      if (last?.kind === "agent" && last.payload.type === "analysis") return withoutPlanning;
+      return [...withoutPlanning, buildAnalysisEntry()];
     });
     scrollToBottom();
   }, [buildAnalysisEntry, scrollToBottom]);
 
-  const ensureWorkingEntry = useCallback(() => {
-    setEntries((prev) => {
-      if (prev.some(isWorkingEntry)) return prev;
-      return [
-        ...prev,
-        {
-          kind: "agent" as const,
-          id: `w-${Date.now()}`,
-          at: Date.now(),
-          payload: {
-            type: "working" as const,
-            steps: props.fixing ? brief.bullets : [...WORKING_STEPS],
-          },
-        },
-      ];
-    });
-    scrollToBottom();
-  }, [brief.bullets, props.fixing, scrollToBottom]);
+  const ensurePlanningEntry = useCallback(
+    (items: OperatorPlanningItem[]) => {
+      setEntries((prev) => {
+        if (prev.some(isWorkingEntry)) return prev;
+        return [...prev, buildPlanningEntry(items)];
+      });
+      scrollToBottom();
+    },
+    [buildPlanningEntry, scrollToBottom],
+  );
 
   const appendUserTurn = useCallback(
     (text: string) => {
@@ -138,18 +145,38 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     [scrollToBottom],
   );
 
+  const appendTestResult = useCallback(
+    (running: boolean) => {
+      setEntries((prev) => [
+        ...prev.filter((e) => !(e.kind === "agent" && e.payload.type === "testResult")),
+        {
+          kind: "agent" as const,
+          id: `t-${Date.now()}`,
+          at: Date.now(),
+          payload: {
+            type: "testResult" as const,
+            passed: props.snapshot.testsPassed,
+            total: props.snapshot.testsTotal,
+            running,
+          },
+        },
+      ]);
+      scrollToBottom();
+    },
+    [props.snapshot.testsPassed, props.snapshot.testsTotal, scrollToBottom],
+  );
+
   const sendChat = () => {
     const text = chatInput.trim();
     if (!text) return;
     localSendRef.current = text;
     appendUserTurn(text);
-    ensureWorkingEntry();
+    ensurePlanningEntry(PLANNING_IDLE);
     props.onAskOperator(text);
     setChatInput("");
     setTab("chat");
   };
 
-  // External seeds (connect, fix, sidebar actions)
   useEffect(() => {
     if (!props.agentSeed?.trim()) return;
     const text = props.agentSeed.trim();
@@ -158,36 +185,35 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       return;
     }
     appendUserTurn(text);
-    ensureWorkingEntry();
-  }, [appendUserTurn, ensureWorkingEntry, props.agentSeed]);
+    ensurePlanningEntry(props.fixing ? PLANNING_FIX : PLANNING_IDLE);
+  }, [appendUserTurn, ensurePlanningEntry, props.agentSeed, props.fixing]);
 
-  // fixing: working → analysis
   useEffect(() => {
     if (props.fixing) {
-      ensureWorkingEntry();
+      ensurePlanningEntry(PLANNING_FIX);
       prevFixing.current = true;
       return;
     }
     if (prevFixing.current) {
-      replaceWorkingWithAnalysis();
+      replacePlanningWithAnalysis();
+      appendTestResult(true);
+      window.setTimeout(() => appendTestResult(false), 800);
       prevFixing.current = false;
     }
-  }, [props.fixing, ensureWorkingEntry, replaceWorkingWithAnalysis]);
+  }, [props.fixing, ensurePlanningEntry, replacePlanningWithAnalysis, appendTestResult]);
 
-  // analyzing: working → analysis
   useEffect(() => {
     if (props.analyzing) {
-      ensureWorkingEntry();
+      ensurePlanningEntry(PLANNING_IDLE);
       prevAnalyzing.current = true;
       return;
     }
     if (prevAnalyzing.current && entries.some((e) => e.kind === "user")) {
-      replaceWorkingWithAnalysis();
+      replacePlanningWithAnalysis();
       prevAnalyzing.current = false;
     }
-  }, [props.analyzing, entries, ensureWorkingEntry, replaceWorkingWithAnalysis]);
+  }, [props.analyzing, entries, ensurePlanningEntry, replacePlanningWithAnalysis]);
 
-  // Fallback: replace stuck working turn when idle
   useEffect(() => {
     if (props.fixing || props.analyzing) return;
     if (!entries.some(isWorkingEntry)) return;
@@ -195,22 +221,22 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     const timer = window.setTimeout(() => {
       setEntries((prev) => {
         if (!prev.some(isWorkingEntry)) return prev;
-        const withoutWorking = prev.filter((e) => !isWorkingEntry(e));
-        const last = withoutWorking[withoutWorking.length - 1];
-        if (last?.kind === "agent" && last.payload.type === "analysis") return withoutWorking;
+        const withoutPlanning = prev.filter((e) => !isWorkingEntry(e));
+        const last = withoutPlanning[withoutPlanning.length - 1];
+        if (last?.kind === "agent" && last.payload.type === "analysis") return withoutPlanning;
 
         if (props.snapshot.capabilityCount > 0) {
-          return [...withoutWorking, buildAnalysisEntry()];
+          return [...withoutPlanning, buildAnalysisEntry()];
         }
         return [
-          ...withoutWorking,
+          ...withoutPlanning,
           {
             kind: "agent" as const,
             id: `t-${Date.now()}`,
             at: Date.now(),
             payload: {
               type: "text" as const,
-              body: "요청을 받았습니다. Blueprint에서 source를 연결하거나 데모를 로드하면 분석 결과가 여기에 표시됩니다.",
+              body: "요청을 받았습니다. Workspace에서 source를 연결하거나 데모를 로드해 주세요.",
             },
           },
         ];
@@ -228,7 +254,6 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     scrollToBottom,
   ]);
 
-  // Diff as inline agent turn
   useEffect(() => {
     if (!props.operatorDiff) return;
     if (lastDiffId.current === props.operatorDiff.filePath) return;
@@ -240,6 +265,12 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
         id: `d-${Date.now()}`,
         at: Date.now(),
         payload: { type: "diff" as const, diff: props.operatorDiff! },
+      },
+      {
+        kind: "agent" as const,
+        id: `txt-${Date.now()}`,
+        at: Date.now(),
+        payload: { type: "text" as const, body: "Changes applied. Running tests…" },
       },
     ]);
     scrollToBottom();
@@ -265,7 +296,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   }
 
   return (
-    <div className="relative flex w-[320px] shrink-0 flex-col border-l border-[#e5e7eb] bg-[#f8f9fb] xl:w-[340px]">
+    <div className="relative flex w-[340px] shrink-0 flex-col border-l border-[#e5e7eb] bg-[#f9fafb] xl:w-[380px]">
       <HubDevOperatorAgentBridge
         draft={props.draft}
         testsPassed={props.testsPassed}
@@ -275,13 +306,12 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
         onSeedConsumed={props.onSeedConsumed}
       />
 
-      {/* Header */}
       <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-3 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-[11px] font-bold text-[#111827]">Platform Operator</p>
-              <span className="rounded bg-violet-100 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-violet-700">
+              <p className="text-[12px] font-bold text-[#111827]">Platform Operator</p>
+              <span className="rounded-full bg-violet-100 px-1.5 py-px text-[8px] font-bold uppercase text-violet-700">
                 AI
               </span>
             </div>
@@ -289,7 +319,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value as (typeof MODELS)[number])}
-                className="appearance-none bg-transparent pr-4 text-[9px] font-medium text-[#6b7280] focus:outline-none"
+                className="appearance-none bg-transparent pr-4 text-[10px] font-medium text-[#6b7280] focus:outline-none"
               >
                 {MODELS.map((m) => (
                   <option key={m} value={m}>
@@ -301,19 +331,10 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6] hover:text-[#6b7280]"
-              aria-label="Collapse panel"
-            >
+            <button type="button" onClick={() => setCollapsed(true)} className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6]">
               <PanelRightClose className="size-3.5" />
             </button>
-            <button
-              type="button"
-              className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6] hover:text-[#6b7280]"
-              aria-label="Close panel"
-            >
+            <button type="button" className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6]">
               <X className="size-3.5" />
             </button>
           </div>
@@ -333,7 +354,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               type="button"
               onClick={() => setTab(id)}
               className={cn(
-                "relative px-2 pb-1.5 pt-0.5 text-[9px] font-semibold transition-colors",
+                "relative px-2.5 pb-1.5 pt-0.5 text-[10px] font-semibold",
                 tab === id ? "text-violet-700" : "text-[#9ca3af] hover:text-[#6b7280]",
               )}
             >
@@ -343,23 +364,18 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                   {badge}
                 </span>
               ) : null}
-              {tab === id ? (
-                <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-violet-600" />
-              ) : null}
+              {tab === id ? <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-violet-600" /> : null}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Viewport — scrolls above composer */}
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto rimvio-scroll-touch"
-      >
+      <div className="min-h-0 flex-1 overflow-y-auto rimvio-scroll-touch">
         {tab === "chat" ? (
           <div className="flex min-h-full flex-col">
             <HubDevOperatorConversation
               entries={entries}
+              showGreeting={showGreeting}
               onFixIssue={props.onFixIssue}
               onReviewAll={props.onReviewAllChanges}
               onApplyDiff={props.onApplyDiff}
@@ -374,49 +390,46 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
         {tab === "activity" ? <ActivityTab snapshot={props.snapshot} /> : null}
       </div>
 
-      {/* Composer — bottom-anchored (Chat tab only) */}
       {tab === "chat" ? (
-        <>
-          <div className="shrink-0 border-t border-[#e5e7eb] bg-white px-3 py-2">
-            <div className="rounded-lg border border-[#e5e7eb] bg-[#fafafa] focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-100">
-              <textarea
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendChat();
-                  }
-                }}
-                rows={2}
-                placeholder="Ask Operator anything or describe what you want to change…"
-                className="w-full resize-none bg-transparent px-2.5 pt-2 text-[10px] leading-relaxed text-[#374151] placeholder:text-[#9ca3af] focus:outline-none"
-              />
-              <div className="flex items-center justify-between px-2 pb-1.5">
-                <span className="rounded bg-violet-50 px-1.5 py-px text-[8px] font-medium text-violet-600">
-                  @ Operator
-                </span>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="rounded p-1 text-[#9ca3af] hover:bg-white hover:text-[#6b7280]">
-                    <Paperclip className="size-3" />
-                  </button>
-                  <button type="button" className="rounded p-1 text-[#9ca3af] hover:bg-white hover:text-[#6b7280]">
-                    <Mic className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={sendChat}
-                    disabled={!chatInput.trim() || props.fixing || props.analyzing}
-                    className="flex size-6 items-center justify-center rounded-full bg-violet-600 text-white disabled:opacity-40"
-                  >
-                    <Send className="size-2.5" />
-                  </button>
-                </div>
+        <div className="shrink-0 border-t border-[#e5e7eb] bg-white px-3 py-2.5">
+          <div className="rounded-xl border border-[#e5e7eb] bg-[#fafafa] focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-100">
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendChat();
+                }
+              }}
+              rows={3}
+              placeholder="다음 작업을 알려주세요… (예: 호텔 예약 기능 테스트해줘)"
+              className="w-full resize-none bg-transparent px-3 pt-2.5 text-[11px] leading-relaxed text-[#374151] placeholder:text-[#9ca3af] focus:outline-none"
+            />
+            <div className="flex items-center justify-between px-2.5 pb-2">
+              <button type="button" className="flex items-center gap-0.5 rounded-full bg-violet-50 px-2 py-0.5 text-[9px] font-medium text-violet-600">
+                Operator
+                <ChevronDown className="size-2.5" />
+              </button>
+              <div className="flex items-center gap-1">
+                <button type="button" className="rounded p-1 text-[#9ca3af] hover:text-[#6b7280]">
+                  <Paperclip className="size-3.5" />
+                </button>
+                <button type="button" className="rounded p-1 text-[#9ca3af] hover:text-[#6b7280]">
+                  <Mic className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={sendChat}
+                  disabled={!chatInput.trim() || props.fixing || props.analyzing}
+                  className="flex size-7 items-center justify-center rounded-full bg-violet-600 text-white disabled:opacity-40"
+                >
+                  <Send className="size-3" />
+                </button>
               </div>
             </div>
           </div>
-          <HubDevSandboxPreview draft={props.draft} />
-        </>
+        </div>
       ) : null}
     </div>
   );
@@ -424,7 +437,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
 
 function ChangesTab({ snapshot }: { snapshot: DevProjectSnapshot }) {
   if (snapshot.changes.length === 0) {
-    return <p className="p-4 text-center text-[9px] text-[#9ca3af]">No pending changes</p>;
+    return <p className="p-4 text-center text-[10px] text-[#9ca3af]">No pending changes</p>;
   }
   return (
     <ul className="space-y-0.5 p-2 font-mono text-[9px]">

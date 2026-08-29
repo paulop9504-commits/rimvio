@@ -12,8 +12,14 @@ export type OperatorUserEntry = {
   readonly at: number;
 };
 
+export type OperatorPlanningItem = {
+  readonly label: string;
+  readonly status: "done" | "running" | "pending";
+};
+
 export type OperatorAgentPayload =
-  | { readonly type: "working"; readonly steps: readonly string[] }
+  | { readonly type: "greeting"; readonly body: string }
+  | { readonly type: "planning"; readonly title: string; readonly items: readonly OperatorPlanningItem[] }
   | {
       readonly type: "analysis";
       readonly headline: string;
@@ -23,7 +29,8 @@ export type OperatorAgentPayload =
       readonly changesCount: number;
     }
   | { readonly type: "text"; readonly body: string }
-  | { readonly type: "diff"; readonly diff: OperatorDiff };
+  | { readonly type: "diff"; readonly diff: OperatorDiff }
+  | { readonly type: "testResult"; readonly passed: number; readonly total: number; readonly running?: boolean };
 
 export type OperatorAgentEntry = {
   readonly kind: "agent";
@@ -34,6 +41,10 @@ export type OperatorAgentEntry = {
 
 export type OperatorConversationEntry = OperatorUserEntry | OperatorAgentEntry;
 
+export function isPlanningEntry(entry: OperatorConversationEntry): boolean {
+  return entry.kind === "agent" && entry.payload.type === "planning";
+}
+
 export function isWorkingEntry(entry: OperatorConversationEntry): boolean {
-  return entry.kind === "agent" && entry.payload.type === "working";
+  return isPlanningEntry(entry);
 }

@@ -16,7 +16,12 @@ export type DevBlueprintModel = {
   readonly commerceLabel: string;
   readonly healthScore: number;
   readonly healthChecks: readonly { readonly label: string; readonly ok: boolean }[];
-  readonly recentActivity: readonly { readonly id: string; readonly label: string; readonly tone: "ok" | "warn" | "neutral" }[];
+  readonly recentActivity: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly ago: string;
+    readonly tone: "ok" | "warn" | "neutral";
+  }[];
 };
 
 function inferDataEntities(draft: PlatformDraft): string[] {
@@ -36,11 +41,11 @@ function inferDataEntities(draft: PlatformDraft): string[] {
 function inferWorkflows(draft: PlatformDraft): string[] {
   const caps = draft.actions.map((a) => a.name);
   const flows: string[] = [];
-  if (caps.some((c) => c.includes("search"))) flows.push("search flow");
-  if (caps.some((c) => c.includes("booking"))) flows.push("booking flow");
+  if (caps.some((c) => c.includes("search"))) flows.push("hotel.search flow");
+  if (caps.some((c) => c.includes("booking"))) flows.push("booking.flow");
   if (caps.some((c) => c.includes("confirm"))) flows.push("confirmation");
   if (caps.some((c) => c.includes("cancel"))) flows.push("cancellation");
-  if (caps.some((c) => c.includes("payment"))) flows.push("payment flow");
+  if (caps.some((c) => c.includes("payment"))) flows.push("payment.flow");
   if (flows.length === 0) flows.push("capability pipeline", "agent invoke");
   return flows.slice(0, 6);
 }
@@ -63,7 +68,7 @@ export function buildDevBlueprintModel(input: {
   const contextFields =
     input.draft.selectedContext.length > 0
       ? input.draft.selectedContext.map((c) => c.path)
-      : ["destination", "checkIn", "checkOut", "guests"];
+      : ["destination", "dates.checkIn", "dates.checkOut", "guests"];
 
   const runtimes =
     input.draft.runtimeTier === "native"
@@ -75,24 +80,31 @@ export function buildDevBlueprintModel(input: {
     input.snapshot.testsTotal > 0 &&
     input.snapshot.testsPassed === input.snapshot.testsTotal;
 
+  const agoLabel = input.analyzedAtMs
+    ? formatAgo(Date.now() - input.analyzedAtMs)
+    : "1m ago";
+
   const recentActivity: DevBlueprintModel["recentActivity"] = [
-    { id: "a1", label: "Platform analyzed", tone: "ok" },
+    { id: "a1", label: "Platform analyzed", ago: agoLabel, tone: "ok" },
     {
       id: "a2",
       label:
         input.snapshot.issuesCount > 0
           ? `${input.snapshot.issuesCount} issues found`
           : "No issues",
+      ago: "2m ago",
       tone: input.snapshot.issuesCount > 0 ? "warn" : "ok",
     },
     {
       id: "a3",
       label: `Test ${input.snapshot.testsPassed}/${input.snapshot.testsTotal} passed`,
+      ago: "3m ago",
       tone: testsOk ? "ok" : "warn",
     },
     {
       id: "a4",
       label: input.snapshot.status.agentReady ? "Agent Ready" : "Building",
+      ago: "5m ago",
       tone: input.snapshot.status.agentReady ? "ok" : "neutral",
     },
   ];
@@ -115,4 +127,10 @@ export function buildDevBlueprintModel(input: {
     ],
     recentActivity,
   };
+}
+
+function formatAgo(ms: number): string {
+  if (ms < 60_000) return "just now";
+  if (ms < 3_600_000) return `${Math.max(1, Math.floor(ms / 60_000))}m ago`;
+  return "1h+ ago";
 }
