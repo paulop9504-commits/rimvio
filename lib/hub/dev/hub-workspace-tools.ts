@@ -8,6 +8,11 @@ import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
 import { buildProjectSnapshot, deriveProjectChanges, deriveProjectIssues } from "@/lib/hub/dev/dev-project-state";
 import { validateDraftManifest } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
+import {
+  observeHubWorkspace,
+  observationLinesFromWorkspace,
+  type HubWorkspaceFullState,
+} from "@/lib/hub/dev/hub-workspace-observe";
 
 export const HUB_WORKSPACE_TOOL_IDS = [
   "workspace.read",
@@ -36,14 +41,8 @@ export const HUB_WORKSPACE_TOOL_IDS = [
 
 export type HubWorkspaceToolId = (typeof HUB_WORKSPACE_TOOL_IDS)[number];
 
-export type HubWorkspaceInspectResult = {
-  readonly platformName: string;
-  readonly capabilities: readonly string[];
+export type HubWorkspaceInspectResult = HubWorkspaceFullState & {
   readonly commerce: string;
-  readonly permissions: readonly string[];
-  readonly issuesCount: number;
-  readonly testsPassed: number;
-  readonly testsTotal: number;
 };
 
 export type HubConnectionState = {
@@ -65,16 +64,12 @@ export type HubWorkspaceToolContext = {
 };
 
 function readInspect(ctx: HubWorkspaceToolContext): HubWorkspaceInspectResult {
-  const draft = ctx.getDraft();
-  return {
-    platformName: draft.name || "New Platform",
-    capabilities: draft.actions.map((a) => a.name),
-    commerce: draft.commerceNotes?.trim() || "None",
-    permissions: draft.permissions.filter((p) => p.enabled).map((p) => p.id),
-    issuesCount: ctx.snapshot.issuesCount,
-    testsPassed: ctx.snapshot.testsPassed,
-    testsTotal: ctx.snapshot.testsTotal,
-  };
+  const state = observeHubWorkspace({
+    draft: ctx.getDraft(),
+    snapshot: ctx.snapshot,
+    connections: ctx.connections,
+  });
+  return { ...state, commerce: state.commerce };
 }
 
 function listConnections(ctx: HubWorkspaceToolContext): HubConnectionState[] {
@@ -135,6 +130,64 @@ function ensurePaymentCapabilities(draft: PlatformDraft): Partial<PlatformDraft>
   return patch;
 }
 
+function ensureApprovalGate(draft: PlatformDraft): Partial<PlatformDraft> {
+  const actions = draft.actions.map((a) =>
+    a.name === "payment.commit" ? { ...a, approvalRequired: true } : a,
+  );
+  const permissions = [...draft.permissions];
+  if (!permissions.some((p) => p.id === "payment.commit" && p.enabled)) {
+    permissions.push({
+      id: "payment.commit",
+      label: "Payment commit",
+      scope: "payment.commit",
+      whyNeeded: "User must approve before payment commits",
+      risk: "high",
+      enabled: true,
+    });
+  }
+  return {
+    actions,
+    permissions,
+    workflowDescription:
+      draft.workflowDescription?.includes("approval")
+        ? draft.workflowDescription
+        : "payment.prepare → user approval → payment.commit",
+  };
+}
+
+function ensureJourneyCapability(
+  draft: PlatformDraft,
+  journey: string,
+): Partial<PlatformDraft> {
+  const actions = [...draft.actions];
+  const add = (name: string, description: string, approval: boolean) => {
+    if (actions.some((a) => a.name === name)) return;
+    actions.push({
+      id: `cap-${name}-${Date.now()}`,
+      name,
+      description,
+      inputSchema: "{}",
+      outputSchema: `${name}.response.v1`,
+      approvalRequired: approval,
+    });
+  };
+
+  switch (journey) {
+    case "auth":
+      add("auth.signup", "User signup", false);
+      break;
+    case "hotel_search":
+      add("hotel.search", "Search hotels", false);
+      break;
+    case "booking":
+      add("booking.confirm", "Confirm booking", true);
+      break;
+    default:
+      break;
+  }
+  return { actions };
+}
+
 export async function invokeHubWorkspaceTool(
   toolId: HubWorkspaceToolId,
   args: Record<string, unknown>,
@@ -155,9 +208,20 @@ export async function invokeHubWorkspaceTool(
       case "capability.list": {
         return { ok: true, toolId, data: ctx.getDraft().actions.map((a) => a.name) };
       }
-      case "capability.create":
+      case "capability.create": {
+        const patch = args.patch as Partial<PlatformDraft> | undefined;
+        if (!patch) {
+          return { ok: false, toolId, error: "patch required" };
+        }
+        ctx.updateDraft(patch);
+        return { ok: true, toolId, data: { applied: Object.keys(patch) } };
+      }
       case "capability.update": {
         const patch = args.patch as Partial<PlatformDraft> | undefined;
+        if (args.intent === "approval_gate") {
+          ctx.updateDraft(ensureApprovalGate(ctx.getDraft()));
+          return { ok: true, toolId, data: { applied: ["approval_gate"] } };
+        }
         if (!patch) {
           return { ok: false, toolId, error: "patch required" };
         }
@@ -318,6 +382,11 @@ export async function invokeHubWorkspaceTool(
         return { ok: true, toolId, data: { path: String(args.path ?? "draft"), written: true } };
       }
       case "file.patch": {
+        if (typeof args.journey === "string") {
+          const patch = ensureJourneyCapability(ctx.getDraft(), args.journey);
+          ctx.updateDraft(patch);
+          return { ok: true, toolId, data: { journey: args.journey } };
+        }
         if (args.payment === true || args.fixPaymentCommit === true) {
           const patch = ensurePaymentCapabilities(ctx.getDraft());
           ctx.updateDraft(patch);
@@ -350,15 +419,7 @@ export function refreshSnapshotAfterPatch(
 }
 
 export function observationFromInspect(inspect: HubWorkspaceInspectResult): string[] {
-  const lines = [
-    `Platform: ${inspect.platformName}`,
-    `Capabilities: ${inspect.capabilities.join(", ") || "none"}`,
-    `Commerce: ${inspect.commerce}`,
-    `Permissions: ${inspect.permissions.join(", ") || "none"}`,
-    `Issues: ${inspect.issuesCount}`,
-    `Tests: ${inspect.testsPassed}/${inspect.testsTotal}`,
-  ];
-  return lines;
+  return observationLinesFromWorkspace(inspect);
 }
 
 export function issuesAfterDraft(draft: PlatformDraft): ReturnType<typeof deriveProjectIssues> {

@@ -27,6 +27,8 @@ import {
 import { buildDevBlueprintModel } from "@/lib/hub/dev/dev-blueprint-model";
 import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
+import { HubDevFileTree } from "@/components/hub/dev/hub-dev-file-tree";
+import type { HubFileTreeNode } from "@/lib/hub/dev/hub-file-tree";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   link: Link2,
@@ -49,8 +51,10 @@ type HubDevProjectSidebarProps = {
   readonly draft: PlatformDraft;
   readonly activePane: DevWorkspacePane;
   readonly snapshot: DevProjectSnapshot;
+  readonly fileTree: readonly HubFileTreeNode[];
   readonly onPaneChange: (pane: DevWorkspacePane) => void;
   readonly onOpenAde: () => void;
+  readonly onSelectFile?: (path: string) => void;
 };
 
 export function HubDevProjectSidebar({
@@ -58,8 +62,10 @@ export function HubDevProjectSidebar({
   draft,
   activePane,
   snapshot,
+  fileTree,
   onPaneChange,
   onOpenAde,
+  onSelectFile,
 }: HubDevProjectSidebarProps) {
   const blueprint = buildDevBlueprintModel({ draft, snapshot });
 
@@ -111,6 +117,13 @@ export function HubDevProjectSidebar({
         <NavSection title="Build" items={DEV_SIDEBAR_BUILD_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="" />
         <NavSection title="Validate" items={DEV_SIDEBAR_VALIDATE_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="mt-3" />
         <NavSection title="Ship" items={DEV_SIDEBAR_SHIP_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="mt-3" />
+
+        {fileTree.length > 0 ? (
+          <div className="mt-3 border-t border-[#f3f4f6] pt-2">
+            <p className="mb-1 px-1.5 text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Files</p>
+            <HubDevFileTree nodes={fileTree} onSelectPath={onSelectFile} />
+          </div>
+        ) : null}
       </nav>
 
       <div className="border-t border-[#f3f4f6] p-2.5">

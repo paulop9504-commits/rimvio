@@ -8,6 +8,9 @@ import { runHubAgentLoop, resumeHubAgentLoop } from "@/lib/hub/dev/hub-agent-loo
 import { invokeHubWorkspaceTool } from "@/lib/hub/dev/hub-workspace-tools";
 import { planHubAgentTurnRegex } from "@/lib/hub/dev/hub-agent-planner";
 import { enterHubAgentRuntimeTurn } from "@/lib/hub/dev/hub-agent-runtime-ingress";
+import { compileHubCreatorIntent } from "@/lib/hub/dev/hub-intent-compiler";
+import { observeHubWorkspace } from "@/lib/hub/dev/hub-workspace-observe";
+import { buildHubFileTree } from "@/lib/hub/dev/hub-file-tree";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 
@@ -199,6 +202,49 @@ async function testStructuredPlanner() {
   assert(steps.some((s) => s.toolId === "workflow.create"), "workflow utterance adds workflow step");
 }
 
+async function testIntentCompilerApprovalGate() {
+  const draft = createDefaultPlatformDraft();
+  draft.actions = [
+    {
+      id: "1",
+      name: "payment.commit",
+      description: "Commit",
+      inputSchema: "{}",
+      outputSchema: "{}",
+      approvalRequired: false,
+    },
+  ];
+  const snapshot = buildProjectSnapshot({ draft });
+  const state = observeHubWorkspace({ draft, snapshot, connections: { stripe: true } });
+  const intent = compileHubCreatorIntent({
+    utterance: "결제할 때 사용자가 한 번 확인하게 해줘",
+    state,
+    stripeConnected: true,
+  });
+  assert(intent?.kind === "user_approval_gate", "should detect approval gate");
+  assert(intent!.steps.some((s) => s.toolId === "capability.update"), "should update capability");
+}
+
+async function testFileTreeTouches() {
+  const draft = createDefaultPlatformDraft();
+  draft.actions = [
+    {
+      id: "1",
+      name: "hotel.search",
+      description: "Search",
+      inputSchema: "{}",
+      outputSchema: "hotel.search.response.v1",
+      approvalRequired: false,
+    },
+  ];
+  const tree = buildHubFileTree({
+    draft,
+    touchedPaths: { "src/capabilities/hotel/search.ts": "modified" },
+  });
+  const src = tree.find((n) => n.name === "src");
+  assert(src?.children?.some((c) => c.name === "capabilities"), "has capabilities folder");
+}
+
 async function main() {
   await testWorkspaceInspect();
   await testStripeFlowPausesForConnect();
@@ -206,6 +252,8 @@ async function main() {
   await testExtendedTools();
   await testRuntimeIngress();
   await testStructuredPlanner();
+  await testIntentCompilerApprovalGate();
+  await testFileTreeTouches();
   console.log("test-hub-agent-loop: ok");
 }
 

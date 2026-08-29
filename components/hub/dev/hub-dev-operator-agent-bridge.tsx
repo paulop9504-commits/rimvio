@@ -2,24 +2,21 @@
 
 import { useEffect, useRef } from "react";
 import {
-  resumeHubAgentLoop,
-  runHubAgentLoop,
-  type HubAgentLoopEvent,
-} from "@/lib/hub/dev/hub-agent-loop";
-import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
-import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
-import type { PlatformDraft } from "@/lib/hub/platform/types";
+  resumeHubAgentController,
+  runHubAgentController,
+  type HubAgentControllerEvent,
+} from "@/lib/hub/dev/hub-agent-controller";
 
-/** Runs Hub Agent Loop on seed — drives Platform Operator UI via events. */
+/** Runs Hub Agent Controller on seed — Intent Gate → Loop → UI events. */
 export function HubDevOperatorAgentBridge(props: {
-  readonly draft: PlatformDraft;
-  readonly snapshot: DevProjectSnapshot;
+  readonly draft: import("@/lib/hub/platform/types").PlatformDraft;
+  readonly snapshot: import("@/lib/hub/dev/dev-project-state").DevProjectSnapshot;
   readonly testsPassed: boolean;
-  readonly executor: DeployExecutorCallbacks;
-  readonly onApplyPatch: (patch: Partial<PlatformDraft>) => void;
+  readonly executor: import("@/lib/hub/deploy/hub-deploy-runtime").DeployExecutorCallbacks;
+  readonly onApplyPatch: (patch: Partial<import("@/lib/hub/platform/types").PlatformDraft>) => void;
   readonly agentSeed: string | null;
   readonly onSeedConsumed: () => void;
-  readonly onLoopEvent: (event: HubAgentLoopEvent) => void;
+  readonly onLoopEvent: (event: HubAgentControllerEvent) => void;
   readonly stripeConnected?: boolean;
   readonly resumeLoopToken?: number;
   readonly resumeUtterance?: string | null;
@@ -34,13 +31,14 @@ export function HubDevOperatorAgentBridge(props: {
     runningRef.current = true;
     props.onSeedConsumed();
 
-    void runHubAgentLoop({
+    void runHubAgentController({
       utterance,
       draft: props.draft,
       snapshot: props.snapshot,
       executor: props.executor,
       stripeConnected: props.stripeConnected,
       platformId: props.draft.id,
+      staleGoal: null,
       onEvent: props.onLoopEvent,
     }).finally(() => {
       runningRef.current = false;
@@ -63,7 +61,7 @@ export function HubDevOperatorAgentBridge(props: {
     lastResumeToken.current = token;
     runningRef.current = true;
 
-    void resumeHubAgentLoop({
+    void resumeHubAgentController({
       utterance: props.resumeUtterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
       draft: props.draft,
       snapshot: props.snapshot,
@@ -71,6 +69,7 @@ export function HubDevOperatorAgentBridge(props: {
       stripeConnected: true,
       platformId: props.draft.id,
       connections: { stripe: true },
+      staleGoal: null,
       onEvent: props.onLoopEvent,
     }).finally(() => {
       runningRef.current = false;

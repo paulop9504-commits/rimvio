@@ -7,14 +7,16 @@ import type { HubWorkspaceInspectResult, HubWorkspaceToolId } from "@/lib/hub/de
 import type { HubAgentPlanStep } from "@/lib/hub/dev/hub-agent-loop";
 import type { AgentStrategyId } from "@/lib/workstream/agent-judgment-chain";
 import { enterHubAgentRuntimeTurn } from "@/lib/hub/dev/hub-agent-runtime-ingress";
+import { compileHubCreatorIntent } from "@/lib/hub/dev/hub-intent-compiler";
 
 export type HubAgentStructuredPlan = {
   readonly goal: string;
   readonly strategy: AgentStrategyId;
   readonly steps: readonly HubAgentPlanStep[];
-  readonly source: "structured" | "regex";
+  readonly source: "structured" | "regex" | "intent";
   readonly runtimeContextEventId: string;
   readonly goalKo: string | null;
+  readonly intentSummaryKo?: string;
 };
 
 function wantsPayment(utterance: string): boolean {
@@ -147,7 +149,7 @@ export function planHubAgentTurnRegex(
   return buildStructuredSteps(utterance, inspect, stripeConnected, "planning");
 }
 
-/** Structured planner — enters ADR-045 runtime then builds step graph. */
+/** Structured planner — intent compiler → ADR-045 runtime → step graph. */
 export async function planHubAgentTurn(input: {
   readonly utterance: string;
   readonly inspect: HubWorkspaceInspectResult;
@@ -155,19 +157,27 @@ export async function planHubAgentTurn(input: {
   readonly platformId?: string;
   readonly skipRuntime?: boolean;
 }): Promise<HubAgentStructuredPlan> {
+  const intent = compileHubCreatorIntent({
+    utterance: input.utterance,
+    state: input.inspect,
+    stripeConnected: input.stripeConnected,
+  });
+
   if (input.skipRuntime) {
+    const steps = intent?.steps ?? buildStructuredSteps(
+      input.utterance,
+      input.inspect,
+      input.stripeConnected,
+      "planning",
+    );
     return {
       goal: input.utterance.trim(),
       strategy: "planning",
-      steps: buildStructuredSteps(
-        input.utterance,
-        input.inspect,
-        input.stripeConnected,
-        "planning",
-      ),
-      source: "regex",
+      steps,
+      source: intent ? "intent" : "regex",
       runtimeContextEventId: `hub:workspace:${input.platformId ?? "dev"}`,
-      goalKo: null,
+      goalKo: intent?.summaryKo ?? null,
+      intentSummaryKo: intent?.summaryKo,
     };
   }
 
@@ -176,7 +186,7 @@ export async function planHubAgentTurn(input: {
     platformId: input.platformId ?? "dev",
   });
 
-  const steps = buildStructuredSteps(
+  const steps = intent?.steps ?? buildStructuredSteps(
     input.utterance,
     input.inspect,
     input.stripeConnected,
@@ -187,8 +197,9 @@ export async function planHubAgentTurn(input: {
     goal: input.utterance.trim(),
     strategy: runtime.strategy,
     steps,
-    source: "structured",
+    source: intent ? "intent" : "structured",
     runtimeContextEventId: runtime.contextEventId,
-    goalKo: runtime.goalKo,
+    goalKo: intent?.summaryKo ?? runtime.goalKo,
+    intentSummaryKo: intent?.summaryKo,
   };
 }

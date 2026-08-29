@@ -21,6 +21,9 @@ import {
 } from "@/lib/hub/dev/hub-workspace-tools";
 import { planHubAgentTurn } from "@/lib/hub/dev/hub-agent-planner";
 import { setPendingHubLoopResume } from "@/lib/hub/dev/hub-connection-store";
+import { resolveHubAgentToolPolicy } from "@/lib/hub/dev/hub-agent-approval-policy";
+import { pathsForHubTool } from "@/lib/hub/dev/hub-file-tree";
+import { AGENT_LOOP_LIMITS } from "@/lib/agent/loop/agent-state";
 
 export type HubAgentPlanStep = {
   readonly id: string;
@@ -49,6 +52,7 @@ export type HubAgentLoopEvent =
   | { readonly type: "text"; readonly body: string }
   | { readonly type: "deploy_steps"; readonly steps: readonly DeployWorkStep[] }
   | { readonly type: "test_result"; readonly passed: number; readonly total: number; readonly running?: boolean }
+  | { readonly type: "file_touch"; readonly paths: readonly string[]; readonly touch: "reading" | "modified" | "created" | "running" }
   | { readonly type: "complete"; readonly summary: string };
 
 export type HubAgentLoopInput = {
@@ -100,7 +104,7 @@ function toPlanningItems(
 
 export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgentLoopResult> {
   const emit = input.onEvent;
-  const maxReplan = input.maxReplan ?? 2;
+  const maxReplan = input.maxReplan ?? AGENT_LOOP_LIMITS.MAX_REPLANS;
   let replans = 0;
   let stripeConnected = input.stripeConnected ?? input.connections?.stripe ?? false;
   let testsPassed = input.snapshot.testsPassed === input.snapshot.testsTotal && input.snapshot.testsTotal > 0;
@@ -141,8 +145,8 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
   });
 
   let planSteps = [...structuredPlan.steps];
-  if (structuredPlan.goalKo) {
-    emit({ type: "text", body: structuredPlan.goalKo });
+  if (structuredPlan.intentSummaryKo) {
+    emit({ type: "text", body: structuredPlan.intentSummaryKo });
   }
   emit({ type: "phase", phase: "plan", detail: structuredPlan.strategy });
   emit({
@@ -181,6 +185,32 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       steps: toPlanningItems(planSteps, stepIndex),
     });
     emit({ type: "tool", toolId: step.toolId, label: step.label, status: "running" });
+
+    const policy = resolveHubAgentToolPolicy(step.toolId, step.args);
+    if (policy === "require_approval" && step.toolId === "deploy.prepare") {
+      emit({
+        type: "ask_user",
+        message: "Production Publish 전 최종 승인이 필요합니다.",
+        actionId: "approve_publish",
+        actionLabel: "Publish 승인",
+      });
+      return {
+        ok: false,
+        pausedForUser: true,
+        actionId: "approve_publish",
+        snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
+        draft: toolCtx.getDraft(),
+      };
+    }
+
+    const touchPaths = pathsForHubTool(step.toolId, step.args ?? {}, toolCtx.getDraft());
+    if (touchPaths.length) {
+      emit({
+        type: "file_touch",
+        paths: touchPaths,
+        touch: step.toolId === "file.read" ? "reading" : "running",
+      });
+    }
 
     if (step.toolId === "test.run") {
       emit({
@@ -257,6 +287,14 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       status: "done",
       detail: JSON.stringify(result.data).slice(0, 80),
     });
+
+    if (touchPaths.length) {
+      emit({
+        type: "file_touch",
+        paths: touchPaths,
+        touch: step.toolId === "capability.create" ? "created" : "modified",
+      });
+    }
 
     if (step.toolId === "test.run") {
       const data = result.data as { passed: number; total: number; ok: boolean };

@@ -43,6 +43,11 @@ import {
   readPendingHubLoopResume,
 } from "@/lib/hub/dev/hub-connection-store";
 import { completeHubStripeConnect, connectHubStripe } from "@/lib/hub/dev/hub-stripe-connect";
+import {
+  buildHubFileTree,
+  mergeFileTouches,
+  type HubFileTouchState,
+} from "@/lib/hub/dev/hub-file-tree";
 
 const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
 
@@ -78,6 +83,7 @@ export function HubDevWorkspace() {
   const [stripeConnected, setStripeConnected] = useState(false);
   const [resumeLoopToken, setResumeLoopToken] = useState(0);
   const [resumeUtterance, setResumeUtterance] = useState<string | null>(null);
+  const [fileTouches, setFileTouches] = useState<Record<string, HubFileTouchState>>({});
 
   useEffect(() => {
     setStripeConnected(isHubDevStripeConnected());
@@ -119,6 +125,18 @@ export function HubDevWorkspace() {
   }, [platformIdParam, wizard.draft.id]);
 
   const hubConnections = useMemo(() => readHubDevConnections(), [stripeConnected]);
+
+  const fileTree = useMemo(
+    () => buildHubFileTree({ draft: wizard.draft, touchedPaths: fileTouches }),
+    [wizard.draft, fileTouches],
+  );
+
+  const handleAgentFileTouch = useCallback(
+    (paths: readonly string[], touch: HubFileTouchState) => {
+      setFileTouches((prev) => mergeFileTouches(prev, paths, touch));
+    },
+    [],
+  );
 
   const syncUrl = useCallback(
     (pane: DevWorkspacePane, capId?: string | null) => {
@@ -484,8 +502,10 @@ export function HubDevWorkspace() {
           draft={wizard.draft}
           activePane={activePane}
           snapshot={snapshot}
+          fileTree={fileTree}
           onPaneChange={setPane}
           onOpenAde={() => setPane("ade")}
+          onSelectFile={() => setPane("ade")}
         />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -559,6 +579,7 @@ export function HubDevWorkspace() {
           onConnectStripe={() => void handleConnectStripe()}
           resumeLoopToken={resumeLoopToken}
           resumeUtterance={resumeUtterance}
+          onFileTouch={handleAgentFileTouch}
         />
       </div>
 

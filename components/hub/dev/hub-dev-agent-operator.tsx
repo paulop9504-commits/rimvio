@@ -19,7 +19,7 @@ import {
 } from "@/lib/hub/dev/operator-conversation";
 import { HubDevOperatorAgentBridge } from "@/components/hub/dev/hub-dev-operator-agent-bridge";
 import { HubDevOperatorConversation } from "@/components/hub/dev/hub-dev-operator-conversation";
-import type { HubAgentLoopEvent } from "@/lib/hub/dev/hub-agent-loop";
+import type { HubAgentControllerEvent } from "@/lib/hub/dev/hub-agent-controller";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectIssue, DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
@@ -52,6 +52,7 @@ type HubDevAgentOperatorProps = {
   readonly onConnectStripe?: () => void;
   readonly resumeLoopToken?: number;
   readonly resumeUtterance?: string | null;
+  readonly onFileTouch?: (paths: readonly string[], touch: "reading" | "modified" | "created" | "running") => void;
 };
 
 const MODELS = ["Claude 3.5 Sonnet", "GPT-4o", "Gemini 1.5 Pro"] as const;
@@ -182,8 +183,28 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   );
 
   const handleLoopEvent = useCallback(
-    (event: HubAgentLoopEvent) => {
-      loopActiveRef.current = true;
+    (event: HubAgentControllerEvent) => {
+      if (event.type === "conversational") {
+        loopActiveRef.current = false;
+        setEntries((prev) => [
+          ...prev.filter((e) => !isWorkingEntry(e)),
+          {
+            kind: "agent" as const,
+            id: `conv-${Date.now()}`,
+            at: Date.now(),
+            payload: { type: "text" as const, body: event.body },
+          },
+        ]);
+        scrollToBottom();
+        return;
+      }
+
+      if (event.type === "intent" && !event.executable) {
+        loopActiveRef.current = false;
+        return;
+      }
+
+      loopActiveRef.current = event.type !== "complete";
       setEntries((prev) => {
         const base = prev.filter((e) => !(e.kind === "agent" && e.payload.type === "planning"));
 
@@ -258,6 +279,9 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                 payload: { type: "complete" as const, summary: event.summary },
               },
             ];
+          case "file_touch":
+            props.onFileTouch?.(event.paths, event.touch);
+            return base;
           case "test_result":
             return [
               ...base.filter((e) => !(e.kind === "agent" && e.payload.type === "testResult")),
@@ -274,6 +298,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               },
             ];
           case "tool":
+          case "intent":
             return base;
           default:
             return prev;
@@ -281,7 +306,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       });
       scrollToBottom();
     },
-    [props.snapshot.testsPassed, props.snapshot.testsTotal, scrollToBottom],
+    [props.onFileTouch, scrollToBottom],
   );
 
   const sendChat = () => {
@@ -338,38 +363,13 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     const timer = window.setTimeout(() => {
       setEntries((prev) => {
         if (!prev.some(isWorkingEntry)) return prev;
-        const withoutPlanning = prev.filter((e) => !isWorkingEntry(e));
-        const last = withoutPlanning[withoutPlanning.length - 1];
-        if (last?.kind === "agent" && last.payload.type === "analysis") return withoutPlanning;
-
-        if (props.snapshot.capabilityCount > 0) {
-          return [...withoutPlanning, buildAnalysisEntry()];
-        }
-        return [
-          ...withoutPlanning,
-          {
-            kind: "agent" as const,
-            id: `t-${Date.now()}`,
-            at: Date.now(),
-            payload: {
-              type: "text" as const,
-              body: "요청을 받았습니다. Workspace에서 source를 연결하거나 데모를 로드해 주세요.",
-            },
-          },
-        ];
+        return prev.filter((e) => !isWorkingEntry(e));
       });
       scrollToBottom();
-    }, 1000);
+    }, 800);
 
     return () => window.clearTimeout(timer);
-  }, [
-    props.fixing,
-    props.analyzing,
-    entries,
-    props.snapshot.capabilityCount,
-    buildAnalysisEntry,
-    scrollToBottom,
-  ]);
+  }, [props.fixing, props.analyzing, entries, scrollToBottom]);
 
   useEffect(() => {
     if (!props.operatorDiff) return;
