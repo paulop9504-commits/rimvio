@@ -288,7 +288,7 @@ export function registerCapabilityIndexFromManifest(
     capabilityFilter?: readonly string[];
   },
 ): CapabilityIndexEntry[] {
-  return registerCapabilityIndexFromManifestWithValidation(manifest, status, meta).registered;
+  return [...registerCapabilityIndexFromManifestWithValidation(manifest, status, meta).registered];
 }
 
 export function registerCapabilityIndexFromManifestWithValidation(

@@ -37,6 +37,7 @@ const LODGING_RE = /호텔|hotel|숙소|lodging|숙박|객실|room/i;
 const MARKET_PRODUCT_RE =
   /자전거|bike|책|book|맥북|macbook|노트북|laptop|중고|market|나눔|listing/i;
 const SELL_RE = /팔|등록|sell|listing|나눔/i;
+const BUY_SEARCH_RE = /사|구매|buy|찾|검색|search/i;
 const DESIGN_RE = /cad|설계|design|도면|부품|part|구멍|hole|mm|step|dwg|렌더|render|시뮬/i;
 
 export const DISCOVERY_MIN_COMPOSITE = 0.55;
