@@ -33,6 +33,11 @@ import {
   registerPlatformManifest,
 } from "@/lib/platform-sdk/platform-host";
 import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
+import {
+  filterManifestCapabilities,
+  resolveIndexStatusFromPublishOptions,
+  type HubPublishOptions,
+} from "@/lib/hub/dev/hub-publish-model";
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 const TOTAL_STEPS = 14 as const;
@@ -218,35 +223,52 @@ export function useHubPlatformWizard() {
     return { passed: true };
   }, [draft.permissions]);
 
-  const publishPlatform = useCallback(async () => {
-    if (!publishReady) return;
-    setPublishStatus("submitting");
+  const publishPlatform = useCallback(
+    async (options?: HubPublishOptions) => {
+      if (!publishReady) return;
+      setPublishStatus("submitting");
 
-    const manifest = capabilityDraftToPlatformManifest(draft);
-    const validation = validateRimvioPlatformManifest(manifest);
-    if (!validation.valid) {
-      setPublishStatus("idle");
-      setImportError(validation.errors[0] ?? "Manifest validation failed");
-      return;
-    }
+      const fullManifest = capabilityDraftToPlatformManifest(draft);
+      const manifest = options
+        ? filterManifestCapabilities(fullManifest, draft.actions, options.capabilityIds)
+        : fullManifest;
 
-    await new Promise((r) => setTimeout(r, 1200));
+      const validation = validateRimvioPlatformManifest(manifest);
+      if (!validation.valid) {
+        setPublishStatus("idle");
+        setImportError(validation.errors[0] ?? "Manifest validation failed");
+        return;
+      }
 
-    mountPlatformHostApis();
-    registerPlatformManifest(manifest);
-    registerCapabilityIndexFromManifest(manifest, "published");
-    setLastPublishedPlatformId(manifest.package.id);
+      await new Promise((r) => setTimeout(r, 1200));
 
-    appendDevExecutionLog({
-      platformId: manifest.package.id,
-      platformName: draft.name,
-      source: "publish",
-      ok: true,
-      detail: `Published ${manifest.capabilities.length} capabilities to Registry`,
-    });
+      const ownerCreatorId = draft.operator?.name ?? draft.name;
+      const indexStatus = options
+        ? resolveIndexStatusFromPublishOptions(options)
+        : "published";
 
-    setPublishStatus("pending-review");
-  }, [draft, publishReady]);
+      mountPlatformHostApis();
+      registerPlatformManifest(manifest);
+      registerCapabilityIndexFromManifest(manifest, indexStatus, {
+        ownerCreatorId,
+        origin: "platform-bundled",
+        rimvioCertified: testsPassed,
+        capabilityFilter: manifest.capabilities.map((c) => c.id),
+      });
+      setLastPublishedPlatformId(manifest.package.id);
+
+      appendDevExecutionLog({
+        platformId: manifest.package.id,
+        platformName: draft.name,
+        source: "publish",
+        ok: true,
+        detail: `Published platform + ${manifest.capabilities.length} capabilities (${indexStatus})`,
+      });
+
+      setPublishStatus("pending-review");
+    },
+    [draft, publishReady, testsPassed],
+  );
 
   const completeAgentPublish = useCallback((platformId: string) => {
     setLastPublishedPlatformId(platformId);

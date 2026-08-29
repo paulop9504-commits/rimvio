@@ -20,6 +20,7 @@ import { copy } from "@/lib/copy/human-ko";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { formatRelativeKo } from "@/lib/time/format-relative-ko";
 import type { AgentHomeModeId } from "@/lib/agent/agent-home-tokens";
+import { AgentHubDiscoveryPanel } from "@/components/agent/agent-hub-discovery-panel";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -341,6 +342,11 @@ export function AgentHomeDashboard({
             })}
           </div>
         </section>
+
+        <AgentHubDiscoveryPanel
+          className="mt-10"
+          onTryUtterance={(text) => onSubmit(text, "auto")}
+        />
 
         <section className="mt-10">
           <div className="mb-3 flex items-center justify-between gap-2">

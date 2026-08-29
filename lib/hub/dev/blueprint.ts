@@ -12,6 +12,7 @@ const OSAKA_STAY_CAPABILITIES = [
   "booking.cancel",
   "payment.prepare",
   "payment.commit",
+  "payment.refund",
 ] as const;
 
 const OSAKA_UI_ROUTES = `[
@@ -41,8 +42,8 @@ export function createOsakaStayPlatformDraft(): PlatformDraft {
     dataCollectionsJson: OSAKA_DATA_COLLECTIONS,
     uiRoutesJson: OSAKA_UI_ROUTES,
     workflowDescription:
-      "hotel.search → hotel.detail → room.availability → booking.prepare → payment.prepare → USER APPROVAL → payment.commit → booking.confirm",
-    commerceNotes: "Stripe Integration · payment.prepare → user approval → payment.commit",
+      "hotel.search → hotel.detail → room.availability → booking.prepare → payment.prepare → USER APPROVAL → payment.commit → booking.confirm → payment.refund (cancel path)",
+    commerceNotes: "Stripe Integration · payment.prepare → user approval → payment.commit · payment.refund on cancel",
     actions: OSAKA_STAY_CAPABILITIES.map((name, i) => ({
       id: `a${i + 1}`,
       name,

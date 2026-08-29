@@ -5,10 +5,19 @@
 
 import { buildCapabilityIndexEntry } from "@/lib/platform-sdk/manifest";
 import type { RimvioPlatformManifest } from "@/lib/platform-sdk/types";
+import {
+  isAgentDiscoverableCapability,
+  type CapabilityIndexStatus,
+  type CapabilityLifecycleStatus,
+} from "@/lib/platform-sdk/capability-lifecycle";
+import {
+  rankCapabilityDiscovery,
+  type ScoredCapabilityHit,
+} from "@/lib/platform-sdk/score-capability-discovery";
 
 export const HUB_CAPABILITY_INDEX_STORAGE_KEY = "rimvio.hub.capability-index.v1";
 
-export type CapabilityIndexStatus = "pending-review" | "published";
+export type { CapabilityIndexStatus, CapabilityLifecycleStatus };
 
 export type CapabilityIndexEntry = {
   readonly capabilityId: string;
@@ -24,11 +33,15 @@ export type CapabilityIndexEntry = {
   readonly publishedAtIso: string;
   readonly routePath: string;
   readonly keywords: readonly string[];
+  /** Creator who owns this capability (may differ from platform owner for attached caps). */
+  readonly ownerCreatorId?: string;
+  readonly origin?: "platform-bundled" | "standalone";
+  readonly rimvioCertified?: boolean;
 };
 
-export type CapabilitySearchHit = CapabilityIndexEntry & {
+export type CapabilitySearchHit = ScoredCapabilityHit & {
+  /** @deprecated use composite */
   readonly score: number;
-  readonly matchReason: string;
 };
 
 const INDEX_EVENT = "rimvio:hub-capability-index";
@@ -46,7 +59,7 @@ const SEED_ENTRIES: CapabilityIndexEntry[] = [
     approvalRequired: false,
     category: "e-commerce",
     tags: ["marketplace", "resale"],
-    status: "published",
+    status: "PUBLISHED",
     publishedAtIso: new Date().toISOString(),
     routePath: "/",
     keywords: ["검색", "찾", "search", "중고", "market"],
@@ -61,7 +74,7 @@ const SEED_ENTRIES: CapabilityIndexEntry[] = [
     approvalRequired: true,
     category: "e-commerce",
     tags: ["sell", "listing"],
-    status: "published",
+    status: "PUBLISHED",
     publishedAtIso: new Date().toISOString(),
     routePath: "/sell",
     keywords: ["팔", "등록", "sell", "listing", "자전거", "중고", "나눔"],
@@ -76,7 +89,7 @@ const SEED_ENTRIES: CapabilityIndexEntry[] = [
     approvalRequired: true,
     category: "e-commerce",
     tags: ["offer", "price"],
-    status: "published",
+    status: "PUBLISHED",
     publishedAtIso: new Date().toISOString(),
     routePath: "/product/:id",
     keywords: ["제안", "offer", "가격"],
@@ -91,7 +104,7 @@ const SEED_ENTRIES: CapabilityIndexEntry[] = [
     approvalRequired: true,
     category: "e-commerce",
     tags: ["buy", "purchase"],
-    status: "published",
+    status: "PUBLISHED",
     publishedAtIso: new Date().toISOString(),
     routePath: "/product/:id",
     keywords: ["구매", "buy", "purchase", "사"],
@@ -162,10 +175,19 @@ export function persistCapabilityIndex(entries: CapabilityIndexEntry[]): void {
 
 export function registerCapabilityIndexFromManifest(
   manifest: RimvioPlatformManifest,
-  status: CapabilityIndexStatus = "pending-review",
+  status: CapabilityIndexStatus = "VALIDATING",
+  meta?: {
+    ownerCreatorId?: string;
+    origin?: "platform-bundled" | "standalone";
+    rimvioCertified?: boolean;
+    capabilityFilter?: readonly string[];
+  },
 ): CapabilityIndexEntry[] {
   const publishedAtIso = new Date().toISOString();
-  const built = buildCapabilityIndexEntry(manifest).map((entry) => {
+  const capFilter = meta?.capabilityFilter;
+  const built = buildCapabilityIndexEntry(manifest)
+    .filter((entry) => !capFilter?.length || capFilter.includes(entry.capabilityId))
+    .map((entry) => {
     const cap = manifest.capabilities.find((c) => c.id === entry.capabilityId);
     return {
       ...entry,
@@ -178,6 +200,9 @@ export function registerCapabilityIndexFromManifest(
         cap?.name ?? entry.capabilityId,
         entry.tags,
       ),
+      ownerCreatorId: meta?.ownerCreatorId,
+      origin: meta?.origin ?? "platform-bundled",
+      rimvioCertified: meta?.rimvioCertified ?? false,
     } satisfies CapabilityIndexEntry;
   });
 
@@ -193,83 +218,27 @@ export function searchCapabilityIndex(
   utterance: string,
   opts?: { limit?: number; publishedOnly?: boolean; marketCountry?: string },
 ): CapabilitySearchHit[] {
-  const text = utterance.trim().toLowerCase();
+  const text = utterance.trim();
   if (!text) return [];
 
   const limit = opts?.limit ?? 5;
   const publishedOnly = opts?.publishedOnly ?? true;
   const marketCountry = opts?.marketCountry?.toUpperCase();
   const index = readCapabilityIndex().filter((e) => {
-    if (publishedOnly && e.status !== "published") return false;
+    if (publishedOnly && !isAgentDiscoverableCapability(e.status)) return false;
     if (marketCountry && e.marketCountry !== marketCountry) return false;
     return true;
   });
 
-  const scored: CapabilitySearchHit[] = [];
-
-  for (const entry of index) {
-    let score = 0;
-    let matchReason = "";
-
-    if (text.includes(entry.capabilityId.toLowerCase())) {
-      score += 1;
-      matchReason = "capability id";
-    }
-
-    for (const kw of entry.keywords) {
-      if (kw.length < 2) continue;
-      if (text.includes(kw)) {
-        score += kw.length >= 4 ? 0.35 : 0.2;
-        matchReason = matchReason || `keyword:${kw}`;
-      }
-    }
-
-    if (text.includes(entry.platformName.toLowerCase())) {
-      score += 0.25;
-      matchReason = matchReason || "platform name";
-    }
-
-    for (const tag of entry.tags) {
-      if (text.includes(tag.toLowerCase())) {
-        score += 0.15;
-        matchReason = matchReason || `tag:${tag}`;
-      }
-    }
-
-    // Intent patterns
-    if (/팔|등록|sell|listing/.test(text) && entry.capabilityId.includes("create_listing")) {
-      score += 0.5;
-      matchReason = "sell intent";
-    }
-    if (/찾|검색|search|살|구매|buy/.test(text) && entry.capabilityId.includes("search")) {
-      score += 0.4;
-      matchReason = matchReason || "search/buy intent";
-    }
-    if (/호텔|hotel|예약|booking|난바|namba|osaka|오사카|숙박/.test(text)) {
-      if (entry.capabilityId.includes("hotel.search")) {
-        score += 0.55;
-        matchReason = matchReason || "hotel search intent";
-      }
-      if (entry.capabilityId.includes("booking")) {
-        score += 0.35;
-        matchReason = matchReason || "booking intent";
-      }
-      if (entry.capabilityId.includes("payment")) {
-        score += 0.25;
-        matchReason = matchReason || "payment intent";
-      }
-    }
-    if (/자전거|bike|책|book|맥북|mac/.test(text) && entry.category === "e-commerce") {
-      score += 0.2;
-      matchReason = matchReason || "product noun";
-    }
-
-    if (score > 0.15) {
-      scored.push({ ...entry, score, matchReason });
-    }
-  }
-
-  return scored.sort((a, b) => b.score - a.score).slice(0, limit);
+  return rankCapabilityDiscovery({
+    utterance: text,
+    entries: index,
+    marketCountry,
+    limit,
+  }).map((hit) => ({
+    ...hit,
+    score: hit.composite,
+  }));
 }
 
 export function subscribeCapabilityIndex(listener: () => void): () => void {

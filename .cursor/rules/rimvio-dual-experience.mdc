@@ -1,40 +1,46 @@
 # Rimvio Dual Experience (locked)
 
-**Canonical:** `docs/RIMVIO_DUAL_EXPERIENCE.md` · ADR-058
+**Canonical:** `docs/RIMVIO_DUAL_EXPERIENCE.md` · ADR-058 · ADR-064
 
-> **두 개의 Cursor** — User는 Globe에서 *무엇을 하고 싶은지*, Dev는 Hub Dev Workspace에서 *Agent가 쓸 Platform·Capability*를 만든다. 연결점: **Hub Publish → Capability Registry → Agent Discovery**.
+> **One Agent, Two Experiences** — **Rimvio Agent 하나**가 User Context(Execute)와 Developer Context(Build)를 제공한다. UI **AI Build** = Rimvio Agent Developer Build Mode (**별도 Agent 아님**).  
+> Agent discovers **Published Capabilities** only — not Platforms. Hub = **Infrastructure · Capability · Runtime · Adapter** + Compatibility Graph.
 
 ## Stack
 
 ```text
-USER:  Utterance → Intent → Task Graph → Capability Registry → Execute → Prepare → Commit
-DEV:   Utterance → AI Plan → Platform Graph Patch → Sandbox → Preview → Hub Publish → Registry
+USER:  Utterance → Intent → Capability Discovery → Execution Binding → Runtime → Prepare → Commit
+DEV:   Utterance → Rimvio Agent (Build) → Platform Graph → Sandbox → Publish → Hub Registry
 ```
 
 ## Do
 
-- Agent discovers **capabilities** (`discover-capabilities`, `capability-index`) — not platform home URLs
-- Dev work in `components/hub/deploy/` — NL-first; **배포해** runs `hub-deploy-runtime` loop
-- Publish registers manifest → registry — only then Agent may invoke
+- **One Agent** — extend ADR-045 spine; Dev Build Mode is a context switch, not a second runtime package
+- Agent discovers **capabilities** (`discover-capabilities`, `capability-index`) — **not** platform home URLs or Platform Discovery
+- Dev work in `components/hub/dev/` + `components/hub/deploy/` — NL-first
+- Publish registers **Published Capabilities** → registry — only then Agent may invoke
+- Show Compatibility: Capability ↔ Runtime ↔ Infrastructure in Dev Test UI
 - User UI: work log (“호텔 검색 ✓”) — hide Capability/Platform/Manifest nouns (L1)
-- Side effects: Prepare until human Commit (booking · payment)
+- Side effects: `payment.prepare` until human `payment.commit` (booking · payment)
 - Extend Platform OS via `lib/platform-sdk/` — do not reinvent permission/registry/runtime
 
 ## Don't
 
+- User Agent + Dev Agent as two products or two runtime packages
+- “AI Builder Agent” as separate from Rimvio Agent
+- Agent Platform Discovery (`OsakaStay` as discovery target)
 - Direct vendor API from Globe chat bypassing registry
-- Hub as form-only admin dashboard without AI execute loop
+- Hub as Capability-Registry-only in docs/diagrams (omit Runtime/Infra/Adapter)
+- `payment.process` in capability contracts
 - Auto Commit on booking/payment from agent
 - Parallel discovery stores beside capability-index + workspace
-- Teach Dev with folder-tree IA as primary — Platform **graph** is SSOT
 
 ## Reference vertical
 
-OsakaStay (hotel.search → booking.prepare → payment.commit) is the **e2e acceptance story** for both experiences — implement as published platform, not Globe-only hacks.
+OsakaStay (`hotel.search` → `booking.prepare` → `payment.prepare` → user approval → `payment.commit` → `booking.confirm`) — published **capabilities**, not Globe-only hacks.
 
 ## PR reject
 
 - User-facing “Capability”“Manifest” in hero/empty states
-- Agent tool invoke before `planObjectDiscovery` / capability discovery on search flows
+- Agent tool invoke before capability discovery on search flows
 - Publish path that skips registry registration
-- Dev feature that bypasses manifest validation or sandbox test gate
+- Docs/copy implying two Agents or Platform Discovery

@@ -3,7 +3,7 @@
 **Status:** CANON (product SSOT — consolidated answer to “What is Rimvio?”)  
 **Audience:** Founders, PM, design, engineering, next AI agent  
 **Wire:** `lib/rimvio-protocol/` · `lib/platform-sdk/` · `lib/platform-builder/` · `lib/hub/`  
-**Related:** [RIMVIO_OS_CONSTITUTION.md](./RIMVIO_OS_CONSTITUTION.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [RIMVIO_PLATFORM_VISION.md](./RIMVIO_PLATFORM_VISION.md) · [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md) · **[RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md)** (User Agent × Dev Creator — two Cursors, Hub loop)
+**Related:** [RIMVIO_OS_CONSTITUTION.md](./RIMVIO_OS_CONSTITUTION.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [RIMVIO_PLATFORM_VISION.md](./RIMVIO_PLATFORM_VISION.md) · [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md) · **[RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md)** (One Agent, Two Experiences — User + Developer Context)
 
 > This document is **the** product answer. Architecture law lives in the Constitutions; platform mechanics in the SDK spec; this doc binds them into one story.
 
@@ -17,7 +17,11 @@
 
 **Tagline (L1):** 맥락이 연결되면, Rimvio가 다시 실행한다. · *When context connects, Rimvio re-executes.*
 
-**Rimvio is not:** a chatbot, a super-app, an app store, a search engine, or a passive memory dump. It is an **Experience OS** — a Context Operating System.
+**Creator / Hub one-liner (KO):** Rimvio는 Creator가 AI와 자연어로 Platform을 개발하고, **Publish된 Capability**를 Hub에 올리면 **같은 Rimvio Agent**가 User Context에서 그 능력을 발견·실행하는 **Experience OS**다. (Platform 이름이 Agent 능력이 아님.)
+
+**External product label:** AI-native Platform Creation & Execution OS · (metaphor) execution-ready software Lego
+
+**Rimvio is not:** a chatbot, a super-app, an app store, a search engine, a passive memory dump, or the **operator** of Creator businesses (hotels, bookings, settlements). It is an **Experience OS** — Create OS · Runtime · Hub for Creators; Agent for consumers.
 
 ---
 
@@ -25,16 +29,16 @@
 
 Rimvio wires scattered life resources — people, place, calendar, links, notifications — into **one operable situation**, then **re-executes** the next meaningful action when context matches. Users think in **situations**, not apps. Tools arrive when useful. Humans **Commit**; AI **Prepares**.
 
-Two economies share one protocol:
+Two experiences share one **Rimvio Agent** and one protocol:
 
-| Economy | Who | What they do | Surface |
-|---------|-----|--------------|---------|
-| **Consumer** | End user | Creates Intent inside Context; discovers Capabilities; Prepares → Approves → Commits | Globe · Workspace · Field |
-| **Producer** | Developer · creator · business | Publishes Platform + Capabilities; deploys per Market; composes payment · shipping · booking | Hub · Builder · Runtime |
+| Experience | Who | What they do | Surface |
+|------------|-----|--------------|---------|
+| **User** | End user | Intent → **Capability** discovery → Execute → Commit | Globe · Workspace · Field |
+| **Developer** | Creator · business | Platform development → Publish **Capabilities** to Hub | Dev Workspace · AI Build |
 
-Neither economy is “the product.” Both ride the same **Intent → Capability → Platform → Commit** spine.
+Neither experience is a separate Agent. Both ride **Intent → Published Capability → Runtime → Commit** (User) or **Build → Platform → Publish** (Dev).
 
-**Dual experience (full UX/mechanism):** [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) — Globe Agent loop vs Hub Dev Workspace, Registry bridge, OsakaStay reference flow, Platform OS layers for Dev.
+**Dual experience (full UX/mechanism):** [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) · **Core OS (Agent Loop · State · Runtime Protocol):** [RIMVIO_CORE_OS.md](./RIMVIO_CORE_OS.md) · ADR-062
 
 ---
 
@@ -307,7 +311,7 @@ Callout `RimvioObject` in UI is a **projection** — not OS ontology.
 | ADR-056 | Platform Market Deployment |
 | ADR-057 | Rimvio OS Constitution |
 | ADR-058 | Dual Experience · Hub Dev Workspace · Registry bridge |
-| [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) | User Agent × Dev Creator · two Cursors · OsakaStay reference |
+| [RIMVIO_DUAL_EXPERIENCE.md](./RIMVIO_DUAL_EXPERIENCE.md) | One Agent, Two Experiences · Hub 4 Stores · OsakaStay reference |
 
 ---
 

@@ -27,6 +27,10 @@ import {
   planCapabilityDiscovery,
   type CapabilityDiscoveryPlan,
 } from "@/lib/platform-sdk/discover-capabilities";
+import {
+  mountPlatformHostApis,
+  readPlatformHostApis,
+} from "@/lib/platform-sdk/platform-host";
 import type { UserMarketContext } from "@/lib/platform-sdk/user-market-context";
 import {
   compileNlIntentFrame,
@@ -241,11 +245,21 @@ export async function runObjectDiscovery(
 ): Promise<ObjectDiscoveryResult> {
   if (plan.hubCapability) {
     const hub = plan.hubCapability;
+    mountPlatformHostApis();
+    const apis = readPlatformHostApis();
+    const invoke = await apis.capabilities.invoke({
+      platformId: hub.platformId,
+      capabilityId: hub.capabilityId,
+      input: { utterance: plan.utterance },
+      approvalPolicy: hub.approvalRequired ? "user_required" : "none",
+    });
     return {
-      ok: true,
+      ok: invoke.ok,
       plan,
       candidates: [],
-      summaryKo: `${hub.platformName} · ${hub.marketCountry} · ${hub.capabilityId} 준비`,
+      summaryKo: invoke.ok
+        ? `${hub.platformName} · ${hub.capabilityId} 준비`
+        : `${hub.platformName} · 준비 실패`,
       reasonKo: hub.matchReason,
     };
   }

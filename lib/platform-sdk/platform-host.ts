@@ -39,12 +39,38 @@ export function mountPlatformHostApis(): RimvioPlatformHostApis {
     },
     capabilities: {
       async invoke(input) {
+        const runtimeId = input.runtimeId ?? (input.input?.runtimeId as string | undefined);
+        const forceFail =
+          input.input?.forceFailRuntime === true &&
+          runtimeId === "rimvio.browser-runtime";
+
+        if (forceFail) {
+          return {
+            ok: false,
+            capabilityId: input.capabilityId,
+            platformId: input.platformId,
+            errorKo: "Runtime execution failed (simulated)",
+            prepareOnly: true as const,
+            runtimeId,
+          };
+        }
+
+        const latencyMs =
+          typeof input.input?.expectedLatencyMs === "number"
+            ? input.input.expectedLatencyMs
+            : undefined;
+
         return {
           ok: true,
           capabilityId: input.capabilityId,
           platformId: input.platformId,
-          output: { prepare: true },
-          prepareOnly: true,
+          output: {
+            prepare: true,
+            runtimeId: runtimeId ?? "rimvio.cloud-runtime",
+          },
+          prepareOnly: true as const,
+          runtimeId,
+          durationMs: latencyMs,
         };
       },
       async listForPlatform(platformId) {

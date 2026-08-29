@@ -21,6 +21,7 @@ export type CommercePanelView = {
   readonly collections: readonly CommerceProductRow[];
   readonly paymentFlow: readonly CommerceFlowStep[];
   readonly hasPaymentCommit: boolean;
+  readonly creatorOwned: true;
 };
 
 export function buildCommercePanelView(draft: PlatformDraft): CommercePanelView {
@@ -60,5 +61,6 @@ export function buildCommercePanelView(draft: PlatformDraft): CommercePanelView 
     collections: collections.filter((c) => /payment|order|booking/i.test(c.name)),
     paymentFlow,
     hasPaymentCommit: draft.actions.some((a) => a.name === "payment.commit"),
+    creatorOwned: true,
   };
 }

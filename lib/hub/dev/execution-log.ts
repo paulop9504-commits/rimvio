@@ -9,7 +9,11 @@ export type DevExecutionSource =
   | "simulation"
   | "sandbox-test"
   | "publish"
-  | "registry-discovery";
+  | "registry-discovery"
+  | "runtime-upload"
+  | "runtime-compat-test"
+  | "runtime-router"
+  | "compatibility-graph-test";
 
 export type DevExecutionLogEntry = {
   readonly id: string;

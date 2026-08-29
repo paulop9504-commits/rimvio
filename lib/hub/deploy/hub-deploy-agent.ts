@@ -1,6 +1,6 @@
 /**
- * Hub 배포 개발 전문 AI 에이전트 — deterministic MVP planner.
- * Rimvio Agent spine와 동일 Intent vocabulary (`lib/rimvio-protocol/intent.ts`).
+ * Rimvio Agent — Developer Build Mode planner (deterministic MVP).
+ * Same Agent as User Context; Developer Context for Platform graph (ADR-058).
  */
 
 import type { CapabilityDraft } from "@/lib/hub/capability/types";

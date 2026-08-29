@@ -158,6 +158,8 @@ export type CapabilityInvokeRequest = {
   readonly input: Record<string, unknown>;
   readonly approvalPolicy: "none" | "user_required" | "field_commit";
   readonly contextEventId?: string | null;
+  /** Selected by Runtime Router from Hub Registry */
+  readonly runtimeId?: string;
 };
 
 export type CapabilityInvokeResult = {
@@ -167,6 +169,8 @@ export type CapabilityInvokeResult = {
   readonly output?: Record<string, unknown>;
   readonly errorKo?: string;
   readonly prepareOnly: true;
+  readonly runtimeId?: string;
+  readonly durationMs?: number;
 };
 
 export type DataCreateRequest = {

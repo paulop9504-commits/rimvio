@@ -5,6 +5,9 @@ import {
   buildCapabilityInspectorView,
   type CapabilityInspectorView,
 } from "@/lib/hub/dev/capability-inspector";
+import { HubDevStandaloneCapabilityPublish } from "@/components/hub/dev/hub-dev-standalone-capability-publish";
+import { HubDevCapabilityCompatibilityPanel } from "@/components/hub/dev/hub-dev-capability-compatibility-panel";
+import { HubDevCapabilitySpecPanel } from "@/components/hub/dev/hub-dev-capability-spec-panel";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +73,9 @@ export function HubDevCapabilityList({
       {inspector ? (
         <HubDevCapabilityDetail
           view={inspector}
+          draft={draft}
+          ownerCreatorId={draft.operator?.name ?? draft.name}
+          action={selected!}
           onViewConfiguration={() => onViewConfiguration(selected!.id)}
           onTest={onTest}
           onEditWithAi={() => onEditWithAi(selected!)}
@@ -91,12 +97,18 @@ export function HubDevCapabilityList({
 
 function HubDevCapabilityDetail({
   view,
+  draft,
+  ownerCreatorId,
+  action,
   onViewConfiguration,
   onTest,
   onEditWithAi,
   onOpenCode,
 }: {
   view: CapabilityInspectorView;
+  draft: PlatformDraft;
+  ownerCreatorId: string;
+  action: CapabilityAction;
   onViewConfiguration: () => void;
   onTest: () => void;
   onEditWithAi: () => void;
@@ -144,7 +156,16 @@ function HubDevCapabilityDetail({
         />
       </dl>
 
-      <div className="mt-8 flex flex-wrap gap-2">
+      <div className="mt-8 max-w-md space-y-4">
+        <HubDevCapabilitySpecPanel draft={draft} action={action} />
+        <HubDevCapabilityCompatibilityPanel draft={draft} action={action} />
+        <HubDevStandaloneCapabilityPublish
+          action={action}
+          ownerCreatorId={ownerCreatorId}
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onOpenCode}

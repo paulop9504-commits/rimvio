@@ -10,6 +10,7 @@ import { GlobeChatCompletionCard } from "@/components/globe/chat/globe-chat-comp
 import { GlobeChatEmptyState } from "@/components/globe/chat/globe-chat-empty-state";
 import { GlobeChatSlotChips } from "@/components/globe/chat/globe-chat-slot-chips";
 import { PcProgramInstallList } from "@/components/globe/pc-program-install-list";
+import { AgentCapabilityDiscoveryCard } from "@/components/agent/agent-capability-discovery-card";
 import { GlobeComposeDraftCard } from "@/components/globe/execution-feed/globe-compose-draft-card";
 import { AgentProgressList } from "@/components/ui/agent-progress-list";
 import { CursorAgentActivityTrail } from "@/components/globe/chat/cursor-agent-activity-trail";
@@ -615,6 +616,8 @@ export function GlobeChatScreen({
                 </div>
               </div>
             ) : null}
+
+            <AgentCapabilityDiscoveryCard className="max-w-[96%]" />
 
             {chatMatchTasks ? (
               <div className="flex justify-start">

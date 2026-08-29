@@ -49,7 +49,8 @@ export function compileIntentFromUtterance(utterance: string): RimvioIntentFrame
   else if (BOOK_RE.test(text)) action = "book";
 
   let object: string | null = null;
-  if (/자전거|bike/i.test(text)) object = "bicycle";
+  if (/호텔|hotel|숙소|lodging|숙박/i.test(text)) object = "hotel";
+  else if (/자전거|bike/i.test(text)) object = "bicycle";
   else if (/책|book/i.test(text)) object = "book";
   else if (/맥북|macbook|노트북/i.test(text)) object = "laptop";
 

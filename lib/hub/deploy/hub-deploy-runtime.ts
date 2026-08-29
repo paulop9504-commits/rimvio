@@ -1,6 +1,6 @@
 /**
- * Hub Deploy Agent Runtime — Cursor-style Plan → Execute → Verify → Publish.
- * One Agent Runtime spine; Hub is a specialized Workspace Operator for software deploy.
+ * Rimvio Agent — Developer Build Mode (Hub deploy workspace).
+ * Same Agent spine as User Context (ADR-058); NOT a separate Dev Agent package.
  */
 
 import type { CapabilityDraft } from "@/lib/hub/capability/types";

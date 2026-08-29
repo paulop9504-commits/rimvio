@@ -47,6 +47,8 @@ import {
 import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
 import { resolveRecentTravelDestinationHint } from "@/lib/context-run/resolve-recent-travel-destination-hint";
 import { utteranceConflictsActiveDestination } from "@/lib/context-run/destination-context-conflict";
+import { executeGlobeCapabilityDiscovery } from "@/lib/context-run/globe-capability-discovery-turn";
+import type { GlobeCapabilityDiscoveryProjection } from "@/lib/context-run/globe-capability-discovery-turn";
 
 export type GlobeWorkspaceAgentTurnResult = {
   readonly handled: boolean;
@@ -64,7 +66,8 @@ export type GlobeWorkspaceAgentTurnResult = {
     | "continuum_mint"
     | "free_talk"
     | "map_overlay"
-    | "network_absorb";
+    | "network_absorb"
+    | "capability_discovery";
   readonly patchKind?: string | null;
   readonly commitPending?: boolean;
   /** Alias — Article 0: never auto Commit. */
@@ -83,6 +86,8 @@ export type GlobeWorkspaceAgentTurnResult = {
     readonly kind: string;
     readonly ctaKo: string;
   }[];
+  /** Hub Registry discovery — Platform handoff for consumer Agent. */
+  readonly capabilityDiscovery?: GlobeCapabilityDiscoveryProjection | null;
 };
 
 const STATUS_MAX = 72;
@@ -313,6 +318,31 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     })
       ? null
       : resolvedActive;
+
+  // Hub Capability Registry — discovery before Workspace / free-talk (ADR-058).
+  const capDiscovery = await executeGlobeCapabilityDiscovery({ utterance });
+  if (capDiscovery) {
+    beginAgentActivityTrail({
+      goalKo: utterance,
+      contextEventId: safeContextEventId,
+    });
+    finishAgentActivityTrail({
+      goalKo: utterance,
+      summaryKo: capDiscovery.statusKo,
+      contextEventId: safeContextEventId,
+      offerExpand: false,
+    });
+    return {
+      handled: true,
+      statusKo: shortenWorkspaceAgentStatus(capDiscovery.statusKo),
+      contextEventId: safeContextEventId,
+      workspaceMutated: false,
+      openedWorkspace: false,
+      committed: false,
+      via: "capability_discovery",
+      capabilityDiscovery: capDiscovery,
+    };
+  }
 
   // Catalog Workspace routes (finance / document / coding) — stub prepare + open.
   {

@@ -11,12 +11,18 @@ import { HubDevRightPanel } from "@/components/hub/dev/hub-dev-right-panel";
 import { HubDevSidebar } from "@/components/hub/dev/hub-dev-sidebar";
 import { HubDevTopbar } from "@/components/hub/dev/hub-dev-topbar";
 import { DataStep } from "@/components/hub/platform/steps/data-step";
-import { PlatformReviewStep } from "@/components/hub/platform/steps/review-step";
+import { HubDevPublishPanel } from "@/components/hub/dev/hub-dev-publish-panel";
+import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 import { PlatformPermissionsStep } from "@/components/hub/platform/steps/permissions-step";
+import { HubDevAdminConsole } from "@/components/hub/dev/hub-dev-admin-console";
+import { HubDevAnalyticsPanel } from "@/components/hub/dev/hub-dev-analytics-panel";
+import { HubDevIntegrationsPanel } from "@/components/hub/dev/hub-dev-integrations-panel";
+import { HubDevOperationsPanel } from "@/components/hub/dev/hub-dev-operations-panel";
 import { HubDevCommercePanel } from "@/components/hub/dev/hub-dev-commerce-panel";
 import { HubDevLogsPanel } from "@/components/hub/dev/hub-dev-logs-panel";
 import { HubDevRegistryE2e } from "@/components/hub/dev/hub-dev-registry-e2e";
-import { HubDevRuntimePanel } from "@/components/hub/dev/hub-dev-runtime-panel";
+import { HubDevRuntimeWorkspace } from "@/components/hub/dev/hub-dev-runtime-workspace";
+import { HubDevHubStoresPanel } from "@/components/hub/dev/hub-dev-hub-stores-panel";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import { useHubPlatformWizard } from "@/hooks/use-hub-platform-wizard";
 import {
@@ -28,7 +34,9 @@ import type { PlatformBlueprintView } from "@/lib/hub/dev/platform-nav";
 import { syncPlatformManifestJson } from "@/lib/hub/dev/capability-inspector";
 
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
+import { HubDevVersionsPanel } from "@/components/hub/dev/hub-dev-versions-panel";
 import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
+import { HubDevCompatibilityGraphPanel } from "@/components/hub/dev/hub-dev-compatibility-graph-panel";
 
 function parseNav(value: string | null): HubDevNavId {
   const allowed: HubDevNavId[] = [
@@ -48,6 +56,10 @@ function parseNav(value: string | null): HubDevNavId {
     "configuration",
     "hub-discover",
     "hub-published",
+    "compatibility",
+    "admin",
+    "operations",
+    "analytics",
   ];
   if (value && allowed.includes(value as HubDevNavId)) return value as HubDevNavId;
   return "ai-build";
@@ -188,9 +200,16 @@ export function HubDevWorkspace() {
     [wizard.draft.actions, selectedCapabilityId],
   );
 
-  const handlePublish = useCallback(() => {
-    void wizard.publishPlatform();
-  }, [wizard]);
+  const handlePublish = useCallback(
+    (options?: HubPublishOptions) => {
+      void wizard.publishPlatform(options);
+    },
+    [wizard],
+  );
+
+  const openPublishPanel = useCallback(() => {
+    setNav("deployments");
+  }, [setNav]);
 
   const handleCommand = useCallback(
     (id: string) => {
@@ -210,7 +229,7 @@ export function HubDevWorkspace() {
         setNav("configuration");
       }
       if (id === "test") void wizard.runSandboxTest();
-      if (id === "publish") handlePublish();
+      if (id === "publish") setNav("deployments");
     },
     [handlePublish, setNav, wizard],
   );
@@ -234,7 +253,7 @@ export function HubDevWorkspace() {
         onTogglePreview={() => setPreviewOn((v) => !v)}
         onRun={() => void wizard.runSandboxTest()}
         onDeploy={() => setAgentSeed("배포해")}
-        onPublish={handlePublish}
+        onPublish={openPublishPanel}
         publishDisabled={!wizard.publishReady}
         onOpenCommandPalette={() => setPaletteOpen(true)}
       />
@@ -242,6 +261,7 @@ export function HubDevWorkspace() {
       <div className="flex min-h-0 flex-1">
         <HubDevSidebar
           platformName={wizard.draft.name}
+          platformTagline={wizard.draft.description}
           platformStatus={
             wizard.publishStatus === "pending-review" ? "Production" : "Development"
           }
@@ -310,7 +330,23 @@ export function HubDevWorkspace() {
               }}
             />
           ) : activeNav === "runtime" ? (
-            <HubDevRuntimePanel draft={wizard.draft} publishStatus={wizard.publishStatus} />
+            <HubDevRuntimeWorkspace draft={wizard.draft} publishStatus={wizard.publishStatus} />
+          ) : activeNav === "hub-discover" ? (
+            <HubDevHubStoresPanel onNavigate={setNav} />
+          ) : activeNav === "compatibility" ? (
+            <HubDevCompatibilityGraphPanel
+              draft={wizard.draft}
+              actions={wizard.draft.actions}
+              initialCapabilityId={selectedCapabilityId}
+            />
+          ) : activeNav === "integrations" ? (
+            <HubDevIntegrationsPanel draft={wizard.draft} />
+          ) : activeNav === "admin" ? (
+            <HubDevAdminConsole draft={wizard.draft} />
+          ) : activeNav === "operations" ? (
+            <HubDevOperationsPanel draft={wizard.draft} />
+          ) : activeNav === "analytics" ? (
+            <HubDevAnalyticsPanel draft={wizard.draft} />
           ) : activeNav === "commerce" ? (
             <HubDevCommercePanel draft={wizard.draft} />
           ) : activeNav === "logs" ? (
@@ -318,14 +354,16 @@ export function HubDevWorkspace() {
           ) : activeNav === "deployments" ? (
             <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
               <div className="mx-auto max-w-3xl space-y-6">
+                <HubDevPublishPanel wizard={wizard} onPublish={handlePublish} />
                 <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
-                <PlatformReviewStep wizard={wizard} />
               </div>
             </div>
           ) : activeNav === "hub-published" ? (
             <div className="overflow-y-auto p-6 rimvio-scroll-touch">
               <HubDevRegistryE2e draft={wizard.draft} publishStatus={wizard.publishStatus} />
             </div>
+          ) : activeNav === "versions" ? (
+            <HubDevVersionsPanel draft={wizard.draft} publishStatus={wizard.publishStatus} />
           ) : activeNav === "overview" ? (
             <PlatformOverview draft={wizard.draft} onOpenBuild={() => setNav("ai-build")} />
           ) : (
@@ -345,7 +383,7 @@ export function HubDevWorkspace() {
             onSeedConsumed={() => setAgentSeed(null)}
             showPreview={previewOn}
             publishReady={wizard.publishReady}
-            onPublish={handlePublish}
+            onPublish={openPublishPanel}
             onViewConfiguration={() => {
               if (selectedCapabilityId) handleViewConfiguration(selectedCapabilityId);
             }}

@@ -15,9 +15,13 @@ export function HubDevCommercePanel({ draft }: HubDevCommercePanelProps) {
   return (
     <div className="overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
       <p className="text-[10px] font-semibold uppercase text-[#64748b]">Commerce</p>
-      <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">Payment Infrastructure</h2>
+      <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">Payment connection</h2>
       <p className="mt-1 text-[12px] text-[#64748b]">
-        Platform configuration — not live transaction data.
+        Creator가 자기 Platform에 결제 서비스를 연결합니다. Rimvio는 결제 사업자가 아닙니다.
+      </p>
+      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+        결제·환불·정산은 Creator가 연결한 Payment Provider를 통해 처리됩니다. Rimvio는 Capability
+        실행·권한·상태 인프라만 제공합니다.
       </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">

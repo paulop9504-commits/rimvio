@@ -53,9 +53,9 @@ export function HubDevAiBuild({
     <div className="flex h-full min-h-0 flex-col overflow-y-auto p-6 rimvio-scroll-touch">
       {!blueprint ? (
         <div className="mx-auto w-full max-w-2xl pt-8">
-          <h1 className="text-center text-[22px] font-bold text-[#f2f4f6]">Build your Platform</h1>
+          <h1 className="text-center text-[22px] font-bold text-[#f2f4f6]">AI Build</h1>
           <p className="mt-2 text-center text-[13px] text-[#6b7684]">
-            Describe what you want to create. AI will design the Platform Blueprint first.
+            Rimvio Agent · Developer Context — Platform Blueprint를 설계합니다. (별도 Agent 아님)
           </p>
 
           <div className="mt-8 rounded-2xl border border-[#4593fc]/30 bg-[#151820] p-1 shadow-[0_0_40px_rgba(69,147,252,0.08)]">

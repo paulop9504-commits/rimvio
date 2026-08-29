@@ -91,3 +91,29 @@ export {
   mergeUserMarketContext,
   type UserMarketContext,
 } from "@/lib/platform-sdk/user-market-context";
+
+export {
+  CAPABILITY_LIFECYCLE_STATUSES,
+  isAgentDiscoverableCapability,
+  normalizeCapabilityLifecycleStatus,
+  resolveIndexStatusFromPublishOptions,
+  lifecycleLabelKo,
+  type CapabilityLifecycleStatus,
+} from "@/lib/platform-sdk/capability-lifecycle";
+
+export {
+  scoreCapabilityForDiscovery,
+  rankCapabilityDiscovery,
+  inferDiscoveryIntentDomain,
+  type CapabilityDiscoveryScoreBreakdown,
+} from "@/lib/platform-sdk/score-capability-discovery";
+
+export {
+  resolveCapabilityExecution,
+  type CapabilityExecutionResolution,
+} from "@/lib/platform-sdk/resolve-capability-execution";
+
+export {
+  resolveCapabilityRuntimeRequirements,
+  type CapabilityRuntimeRequirements,
+} from "@/lib/platform-sdk/runtime-requirements";

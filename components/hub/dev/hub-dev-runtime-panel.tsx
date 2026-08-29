@@ -8,6 +8,7 @@ import {
   type DevRuntimeSnapshot,
 } from "@/lib/hub/dev/execution-log";
 import { readCapabilityIndex } from "@/lib/platform-sdk/capability-index";
+import { isAgentDiscoverableCapability } from "@/lib/platform-sdk/capability-lifecycle";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,7 @@ export function HubDevRuntimePanel({ draft, publishStatus }: HubDevRuntimePanelP
   useEffect(() => subscribeDevExecutionLog(() => bump((n) => n + 1)), []);
 
   const publishedInRegistry = readCapabilityIndex().some(
-    (e) => e.platformId === platformId && e.status === "published",
+    (e) => e.platformId === platformId && isAgentDiscoverableCapability(e.status),
   );
 
   const snapshot: DevRuntimeSnapshot = buildDevRuntimeSnapshot({

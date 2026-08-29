@@ -16,7 +16,7 @@ registerAgentDelegation({
   agentId: "lodging",
   domain: "travel",
   can: ["lodging.search", "lodging.compare", "lodging.reserve"],
-  cannot: ["payment.process"],
+  cannot: ["payment.commit"],
   maxConcurrent: 3,
 });
 

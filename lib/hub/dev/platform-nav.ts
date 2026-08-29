@@ -14,34 +14,66 @@ export type HubDevNavId =
   | "versions"
   | "hub-discover"
   | "hub-published"
-  | "configuration";
+  | "compatibility"
+  | "configuration"
+  | "admin"
+  | "operations"
+  | "analytics";
 
 export type HubDevNavItem = {
   readonly id: HubDevNavId;
   readonly label: string;
   readonly icon: string;
   readonly badge?: string;
-  readonly section?: "platform" | "hub";
+  readonly section?: "build" | "ship" | "operate" | "connect" | "observe" | "hub";
 };
 
+/** Build → Preview → Deploy → Admin → Operations → Analytics (ADR-060) */
+export const HUB_DEV_BUILD_NAV: readonly HubDevNavItem[] = [
+  { id: "overview", label: "Overview", icon: "⌂", section: "build" },
+  { id: "ai-build", label: "AI Build", icon: "✦", section: "build" },
+  { id: "capabilities", label: "Capabilities", icon: "◇", section: "build" },
+  { id: "data", label: "Data", icon: "▣", section: "build" },
+  { id: "workflows", label: "Workflows", icon: "↗", section: "build" },
+  { id: "configuration", label: "Configuration", icon: "⚙", section: "build" },
+];
+
+export const HUB_DEV_SHIP_NAV: readonly HubDevNavItem[] = [
+  { id: "tests", label: "Tests", icon: "🧪", section: "ship" },
+  { id: "deployments", label: "Deployments", icon: "🚀", section: "ship" },
+  { id: "runtime", label: "Runtime", icon: "⚡", section: "ship" },
+  { id: "versions", label: "Versions", icon: "v", section: "ship" },
+];
+
+/** Creator-operated business — NOT Rimvio Hub */
+export const HUB_DEV_OPERATE_NAV: readonly HubDevNavItem[] = [
+  { id: "admin", label: "Admin Console", icon: "▤", section: "operate" },
+  { id: "operations", label: "Operations", icon: "☰", section: "operate" },
+  { id: "analytics", label: "Analytics", icon: "↗", section: "operate" },
+];
+
+export const HUB_DEV_CONNECT_NAV: readonly HubDevNavItem[] = [
+  { id: "integrations", label: "Integrations", icon: "🔌", section: "connect" },
+  { id: "commerce", label: "Commerce", icon: "💳", section: "connect" },
+  { id: "permissions", label: "Permissions", icon: "🔐", section: "connect" },
+];
+
+export const HUB_DEV_OBSERVE_NAV: readonly HubDevNavItem[] = [
+  { id: "logs", label: "Logs", icon: "◉", section: "observe" },
+];
+
+/** @deprecated use section arrays — kept for imports */
 export const HUB_DEV_PLATFORM_NAV: readonly HubDevNavItem[] = [
-  { id: "overview", label: "Overview", icon: "⌂", section: "platform" },
-  { id: "ai-build", label: "AI Build", icon: "✦", section: "platform" },
-  { id: "capabilities", label: "Capabilities", icon: "◇", section: "platform" },
-  { id: "data", label: "Data", icon: "▣", section: "platform" },
-  { id: "workflows", label: "Workflows", icon: "↗", section: "platform" },
-  { id: "runtime", label: "Runtime", icon: "⚡", section: "platform" },
-  { id: "permissions", label: "Permissions", icon: "🔐", section: "platform" },
-  { id: "integrations", label: "Integrations", icon: "🔌", section: "platform" },
-  { id: "commerce", label: "Commerce", icon: "💳", section: "platform" },
-  { id: "logs", label: "Logs", icon: "◉", section: "platform" },
-  { id: "tests", label: "Tests", icon: "🧪", section: "platform" },
-  { id: "deployments", label: "Deployments", icon: "🚀", section: "platform" },
-  { id: "versions", label: "Versions", icon: "v", section: "platform" },
+  ...HUB_DEV_BUILD_NAV,
+  ...HUB_DEV_SHIP_NAV,
+  ...HUB_DEV_OPERATE_NAV,
+  ...HUB_DEV_CONNECT_NAV,
+  ...HUB_DEV_OBSERVE_NAV,
 ];
 
 export const HUB_DEV_HUB_NAV: readonly HubDevNavItem[] = [
   { id: "hub-discover", label: "Discover", icon: "◎", section: "hub" },
+  { id: "compatibility", label: "Compatibility", icon: "⬡", section: "hub" },
   { id: "hub-published", label: "Published", icon: "✓", section: "hub" },
 ];
 

@@ -8,6 +8,7 @@ import {
   planCapabilityDiscoveryFromHits,
 } from "@/lib/platform-sdk/discover-capabilities";
 import { readCapabilityIndex } from "@/lib/platform-sdk/capability-index";
+import { isAgentDiscoverableCapability } from "@/lib/platform-sdk/capability-lifecycle";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ export function HubDevRegistryE2e({ draft, publishStatus }: HubDevRegistryE2ePro
     });
   }, [draft.name, platformId, utterance]);
 
-  const published = registryEntries.some((e) => e.status === "published");
+  const published = registryEntries.some((e) => isAgentDiscoverableCapability(e.status));
 
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white p-5">

@@ -55,6 +55,17 @@ export {
 } from "@/lib/rimvio-protocol/capability-contract";
 
 export {
+  CAPABILITY_SPEC_PILLARS,
+  compileCapabilityPackage,
+  compileCapabilitySpecificationFromId,
+  type RimvioCapabilitySpecification,
+  type RimvioCapabilityPackage,
+  type RimvioCapabilityImplementation,
+  type RimvioCapabilityImplementationKind,
+  type CapabilitySpecPillar,
+} from "@/lib/rimvio-protocol/capability-specification";
+
+export {
   buildPlatformContract,
   type RimvioPlatformContract,
 } from "@/lib/rimvio-protocol/platform-contract";

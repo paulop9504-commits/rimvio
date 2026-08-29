@@ -1,48 +1,52 @@
-# ADR-058: Dual Experience — User Agent × Dev Creator Workspace
+# ADR-058: Dual Experience — One Agent, Two Experiences
 
-**Status:** Accepted  
+**Status:** Accepted (amended 2026-08-29)  
 **Date:** 2026-03-28  
 **Supersedes:** —  
 **Canonical:** [RIMVIO_DUAL_EXPERIENCE.md](../RIMVIO_DUAL_EXPERIENCE.md)
 
 ## Context
 
-Rimvio has two economies on one protocol:
+Rimvio has two **experiences** on one protocol — not two agents:
 
-1. **Consumer** — Globe / Agent — natural language → Intent → Capability discovery → Execute → Commit  
-2. **Producer** — Hub Dev Workspace — natural language → Platform graph → Test → Hub Publish → Registry
+1. **User Experience** — Globe / Agent — Intent → **Capability** discovery → Execute → Commit  
+2. **Developer Experience** — Hub Dev Workspace — Intent → Platform development → Test → Publish → Hub
 
-Treating Hub as a “capability registration form” or Agent as “chat + direct API calls” breaks the closed loop that makes Publish meaningful.
+Treating Hub as a “capability registration form,” spinning up a separate “AI Builder Agent,” or having Agent discover **Platforms** breaks the closed loop.
 
 ## Decision
 
-1. **Two Cursors, one Registry** — User and Dev both speak natural language; outcomes differ (Experience vs Platform artifact). Connection is **Hub Publish → Capability Registry → Agent discovery**.
+1. **One Rimvio Agent, Two Experiences** — User Context (Execute) and Developer Context (Build). UI may say **AI Build**; implementation is **Rimvio Agent — Developer Build Mode**. **No** parallel User Agent / Dev Agent.
 
-2. **Agent discovers Capabilities, not Platforms** — Discovery SSOT is `lib/platform-sdk/capability-index.ts` (+ `discover-capabilities.ts`). Platform is metadata on the capability record (`providerId` / `platformId`).
+2. **Agent discovers Published Capabilities, not Platforms** — Discovery SSOT: `lib/platform-sdk/capability-index.ts`. `platformId` is metadata on the capability record. Example: `hotel.search`, not “OsakaStay home.”
 
-3. **Dev Workspace is AI-native, not admin-first** — Primary surface: `components/hub/deploy/` (3-column Cursor layout). Legacy wizard steps remain as **advanced panels**, not separate product IA.
+3. **Hub = four stores + Compatibility Graph** — Infrastructure · Capability · Runtime · Adapter ([ADR-064](./064-hub-compatibility-validation-graph.md)). Only **Published Capabilities** are directly exposed to Agent discovery.
 
-4. **Rimvio provides Platform OS infrastructure** — SDK, runtime, permissions, context, markets, sandbox, manifest, prepare/commit commerce boundaries. Dev implements business logic inside contracts — not auth/registry/protocol from scratch.
+4. **Execution path** — Discovery → Published Capability → Execution Binding → Runtime / Adapter / Infrastructure → Execute → Prepare / Commit.
 
-5. **Prepare / Commit for side effects** — `booking.prepare` · `payment.prepare` until human approval; Article 0 unchanged.
+5. **Dev Workspace is AI-native** — Primary surface: `components/hub/deploy/` + `components/hub/dev/`. Legacy wizard steps = advanced panels.
 
-6. **User vocabulary firewall** — Intent, Capability, Platform, Runtime, Manifest are L3 engineering terms — not default Globe copy.
+6. **Rimvio provides Platform OS** — SDK, runtime router, permissions, context, markets, sandbox, manifest, prepare/commit commerce boundaries.
+
+7. **Payment capabilities** — `payment.prepare` · `payment.commit` · `payment.refund` — not ambiguous `payment.process`.
+
+8. **User vocabulary firewall** — Intent, Capability, Platform, Runtime, Manifest = L3 — not default Globe copy.
 
 ## Consequences
 
-- New Hub UI must extend `HubDeployWorkspace`, not parallel wizards.  
-- New Agent features must route through capability discovery before vendor/runtime invoke.  
-- Reference vertical (e.g. OsakaStay hotel) ships as **published platform + capabilities**, not hard-coded Globe routes.  
-- Observability, workflow UI, agent simulation, secrets — explicit backlog; do not fake in chat essay.
+- New Agent features: capability discovery before vendor/runtime invoke; no Platform discovery API.  
+- New Hub UI: extend Dev Workspace; show Compatibility Graph (cap ↔ runtime ↔ infra).  
+- Do not add `lib/dev-agent-runtime` or `lib/user-agent-runtime` packages (ADR-045).  
+- Reference vertical (OsakaStay): published **capabilities** (`hotel.search`, …), not Globe-only hacks.
 
 ## Implementation map
 
 | Layer | Path |
 |-------|------|
-| Dev deploy runtime | `lib/hub/deploy/hub-deploy-runtime.ts` |
-| Dev workspace UI | `components/hub/deploy/` |
+| Agent spine | `lib/workstream/rimvio-agent-spine.ts` · ADR-045 |
+| Dev build mode | `lib/hub/deploy/hub-deploy-runtime.ts` · `lib/platform-builder/` |
 | Registry | `lib/platform-sdk/capability-index.ts` |
 | Discovery | `lib/platform-sdk/discover-capabilities.ts` |
-| Agent NL | `lib/context-run/compile-nl-intent.ts` · ADR-045 spine |
-| Builder | `lib/platform-builder/` · `/hub/build` |
-| Protocol | `lib/rimvio-protocol/` |
+| Runtime Router | `lib/rimvio-core/runtime-router.ts` |
+| Hub stores | `lib/hub/dev/*-registry.ts` |
+| Capability spec | `lib/rimvio-protocol/capability-specification.ts` · ADR-063 |
