@@ -44,6 +44,13 @@ export function HubDevPlatformsHome() {
         </p>
 
         <Link
+          href="/hub/data"
+          className="mt-3 block text-center text-[12px] font-medium text-emerald-600 hover:underline"
+        >
+          Reality Data Network — 공급자 · 검수 →
+        </Link>
+
+        <Link
           href="/hub/workspace?pane=ade&demo=osaka"
           className="mt-3 block text-center text-[12px] font-medium text-violet-600 hover:underline"
         >

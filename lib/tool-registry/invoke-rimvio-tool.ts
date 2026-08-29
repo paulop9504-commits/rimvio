@@ -26,6 +26,7 @@ import {
   travelModeFromUtterance,
 } from "@/lib/tool-registry/maps-navigate";
 import { enqueueCalendarPrepOperation } from "@/lib/reality-queue/enqueue-calendar-prep-operation";
+import { recordCapabilityExecution } from "@/lib/capability-ledger/record-capability-execution";
 
 export const RIMVIO_TOOL_IDS = [
   "maps.search",
@@ -89,6 +90,8 @@ export type ToolInvokeInput = {
   readonly checkInIso?: string | null;
   readonly checkOutIso?: string | null;
   readonly guestCount?: number | null;
+  /** Capability Execution Ledger correlation (P1). */
+  readonly ledgerContext?: import("@/lib/capability-ledger/types").CapabilityLedgerContext | null;
 };
 
 export type ToolInvokeResult = {
@@ -536,8 +539,34 @@ export function invokeRimvioTool(
   };
 }
 
+function attachLedgerMeta(
+  result: ToolInvokeResult,
+  toolId: RimvioToolId,
+  input: ToolInvokeInput,
+): ToolInvokeResult {
+  if (!input.ledgerContext) {
+    return result;
+  }
+  const entry = recordCapabilityExecution({
+    toolId,
+    toolOk: result.ok,
+    candidateCount: result.candidates?.length ?? 0,
+    waitingCommit: result.waitingCommit,
+    summaryKo: result.summaryKo,
+    ledgerContext: input.ledgerContext,
+  });
+  return {
+    ...result,
+    meta: {
+      ...result.meta,
+      ledgerExecutionId: entry.executionId,
+    },
+  };
+}
+
 /**
  * Live tool invoke — LiteAPI lodging + Google/Naver eatery when keys exist.
+ * Records Capability Execution Ledger entry when ledgerContext is set (P1).
  */
 export async function invokeRimvioToolAsync(
   toolId: RimvioToolId,
@@ -545,11 +574,15 @@ export async function invokeRimvioToolAsync(
 ): Promise<ToolInvokeResult> {
   const def = getRimvioTool(toolId);
   if (!def) {
-    return {
-      ok: true,
+    return attachLedgerMeta(
+      {
+        ok: true,
+        toolId,
+        summaryKo: "도구를 찾지 못했어요",
+      },
       toolId,
-      summaryKo: "도구를 찾지 못했어요",
-    };
+      input,
+    );
   }
 
   if (toolId === "maps.search") {
@@ -559,20 +592,24 @@ export async function invokeRimvioToolAsync(
       isEmpty: (rows) => rows.length === 0,
     });
     const candidates = budgeted.value ?? [];
-    return {
-      ok: true,
+    return attachLedgerMeta(
+      {
+        ok: true,
+        toolId,
+        summaryKo: formatLookupCountSummaryKo("지도", candidates.length),
+        candidates,
+        ...(budgeted.timedOut || budgeted.retried
+          ? {
+              meta: {
+                timedOut: budgeted.timedOut,
+                softRetry: budgeted.retried,
+              },
+            }
+          : {}),
+      },
       toolId,
-      summaryKo: formatLookupCountSummaryKo("지도", candidates.length),
-      candidates,
-      ...(budgeted.timedOut || budgeted.retried
-        ? {
-            meta: {
-              timedOut: budgeted.timedOut,
-              softRetry: budgeted.retried,
-            },
-          }
-        : {}),
-    };
+      input,
+    );
   }
 
   if (toolId === "hotel.lookup") {
@@ -581,20 +618,24 @@ export async function invokeRimvioToolAsync(
       isEmpty: (rows) => rows.length === 0,
     });
     const candidates = budgeted.value ?? [];
-    return {
-      ok: true,
+    return attachLedgerMeta(
+      {
+        ok: true,
+        toolId,
+        summaryKo: formatLookupCountSummaryKo("숙소", candidates.length),
+        candidates,
+        ...(budgeted.timedOut || budgeted.retried
+          ? {
+              meta: {
+                timedOut: budgeted.timedOut,
+                softRetry: budgeted.retried,
+              },
+            }
+          : {}),
+      },
       toolId,
-      summaryKo: formatLookupCountSummaryKo("숙소", candidates.length),
-      candidates,
-      ...(budgeted.timedOut || budgeted.retried
-        ? {
-            meta: {
-              timedOut: budgeted.timedOut,
-              softRetry: budgeted.retried,
-            },
-          }
-        : {}),
-    };
+      input,
+    );
   }
 
   if (toolId === "restaurant.lookup") {
@@ -603,20 +644,24 @@ export async function invokeRimvioToolAsync(
       isEmpty: (rows) => rows.length === 0,
     });
     const candidates = budgeted.value ?? [];
-    return {
-      ok: true,
+    return attachLedgerMeta(
+      {
+        ok: true,
+        toolId,
+        summaryKo: formatLookupCountSummaryKo("맛집", candidates.length),
+        candidates,
+        ...(budgeted.timedOut || budgeted.retried
+          ? {
+              meta: {
+                timedOut: budgeted.timedOut,
+                softRetry: budgeted.retried,
+              },
+            }
+          : {}),
+      },
       toolId,
-      summaryKo: formatLookupCountSummaryKo("맛집", candidates.length),
-      candidates,
-      ...(budgeted.timedOut || budgeted.retried
-        ? {
-            meta: {
-              timedOut: budgeted.timedOut,
-              softRetry: budgeted.retried,
-            },
-          }
-        : {}),
-    };
+      input,
+    );
   }
 
   if (toolId === "pharmacy.lookup") {
@@ -632,25 +677,29 @@ export async function invokeRimvioToolAsync(
       isEmpty: (rows) => rows.length === 0,
     });
     const candidates = budgeted.value ?? [];
-    return {
-      ok: true,
+    return attachLedgerMeta(
+      {
+        ok: true,
+        toolId,
+        summaryKo: formatLookupCountSummaryKo("약국·편의", candidates.length),
+        candidates,
+        ...(budgeted.timedOut || budgeted.retried
+          ? {
+              meta: {
+                timedOut: budgeted.timedOut,
+                softRetry: budgeted.retried,
+              },
+            }
+          : {}),
+      },
       toolId,
-      summaryKo: formatLookupCountSummaryKo("약국·편의", candidates.length),
-      candidates,
-      ...(budgeted.timedOut || budgeted.retried
-        ? {
-            meta: {
-              timedOut: budgeted.timedOut,
-              softRetry: budgeted.retried,
-            },
-          }
-        : {}),
-    };
+      input,
+    );
   }
 
   if (toolId === "ranking.pick") {
-    return rankingPickResult(toolId, input);
+    return attachLedgerMeta(rankingPickResult(toolId, input), toolId, input);
   }
 
-  return invokeRimvioTool(toolId, input);
+  return attachLedgerMeta(invokeRimvioTool(toolId, input), toolId, input);
 }
