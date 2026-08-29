@@ -7,16 +7,25 @@ import type { HubWorkspaceInspectResult, HubWorkspaceToolId } from "@/lib/hub/de
 import type { HubAgentPlanStep } from "@/lib/hub/dev/hub-agent-loop";
 import type { AgentStrategyId } from "@/lib/workstream/agent-judgment-chain";
 import { enterHubAgentRuntimeTurn } from "@/lib/hub/dev/hub-agent-runtime-ingress";
+import { compilePlatformGoal, executionModeFromGoal } from "@/lib/hub/dev/platform-agent/platform-goal";
+import { extractStructuredGoal } from "@/lib/hub/dev/platform-agent/goal-extraction";
+import { discoverPlatformContext } from "@/lib/hub/dev/platform-agent/context-discovery";
+import { decomposePlatformGoal } from "@/lib/hub/dev/platform-agent/task-decomposition";
+import { planPlatformChanges } from "@/lib/hub/dev/platform-agent/platform-planner";
 import { compileHubCreatorIntent } from "@/lib/hub/dev/hub-intent-compiler";
 
 export type HubAgentStructuredPlan = {
   readonly goal: string;
   readonly strategy: AgentStrategyId;
   readonly steps: readonly HubAgentPlanStep[];
-  readonly source: "structured" | "regex" | "intent";
+  readonly source: "structured" | "regex" | "intent" | "platform";
   readonly runtimeContextEventId: string;
   readonly goalKo: string | null;
   readonly intentSummaryKo?: string;
+  readonly executionMode?: "platform" | "code_direct";
+  readonly platformPlanSummary?: string;
+  readonly extractedConstraints?: readonly string[];
+  readonly relevantContextIds?: readonly string[];
 };
 
 function wantsPayment(utterance: string): boolean {
@@ -90,6 +99,7 @@ function buildStructuredSteps(
     steps.push(step("test", "테스트 실행", "test.run"));
     if (strategy !== "quick") {
       steps.push(step("verify_deploy", "Publish 준비 확인", "deploy.prepare"));
+      steps.push(step("publish_request", "Publish 요청", "publish.request"));
     }
     return steps;
   }
@@ -109,6 +119,7 @@ function buildStructuredSteps(
   if (wantsDeploy(utterance)) {
     steps.push(step("deploy_prepare", "배포 준비", "deploy.prepare"));
     steps.push(step("test", "테스트 실행", "test.run"));
+    steps.push(step("publish_request", "Publish 요청", "publish.request"));
     return steps;
   }
 
@@ -149,35 +160,76 @@ export function planHubAgentTurnRegex(
   return buildStructuredSteps(utterance, inspect, stripeConnected, "planning");
 }
 
-/** Structured planner — intent compiler → ADR-045 runtime → step graph. */
+/** Structured planner — Platform Planner → intent compiler → ADR-045 runtime → step graph. */
 export async function planHubAgentTurn(input: {
   readonly utterance: string;
   readonly inspect: HubWorkspaceInspectResult;
   readonly stripeConnected: boolean;
   readonly platformId?: string;
   readonly skipRuntime?: boolean;
+  readonly userIntent?: import("@/lib/agent/conversation/intent-types").UserIntent;
+  readonly draft?: import("@/lib/hub/platform/types").PlatformDraft;
 }): Promise<HubAgentStructuredPlan> {
+  const extracted = extractStructuredGoal({
+    utterance: input.utterance,
+    intent: input.userIntent ?? "modify",
+    platformName: input.inspect.platformName,
+  });
+  const platformGoal = extracted.platformGoal;
+
+  const discovery = input.draft
+    ? discoverPlatformContext({
+        goal: platformGoal,
+        utterance: input.utterance,
+        draft: input.draft,
+      })
+    : null;
+
+  const taskGraph =
+    discovery && input.draft
+      ? decomposePlatformGoal({
+          goal: platformGoal,
+          discovery,
+          stripeConnected: input.stripeConnected,
+        })
+      : null;
+
+  const platformPlan =
+    discovery && input.draft
+      ? planPlatformChanges({
+          goal: platformGoal,
+          discovery,
+          draft: input.draft,
+          stripeConnected: input.stripeConnected,
+        })
+      : null;
+
   const intent = compileHubCreatorIntent({
     utterance: input.utterance,
     state: input.inspect,
     stripeConnected: input.stripeConnected,
   });
 
+  const executionMode = executionModeFromGoal(platformGoal);
+
   if (input.skipRuntime) {
-    const steps = intent?.steps ?? buildStructuredSteps(
-      input.utterance,
-      input.inspect,
-      input.stripeConnected,
-      "planning",
-    );
+    const steps =
+      intent?.steps ??
+      platformPlan?.platformSteps ??
+      taskGraph?.steps ??
+      buildStructuredSteps(input.utterance, input.inspect, input.stripeConnected, "planning");
     return {
-      goal: input.utterance.trim(),
+      goal: platformGoal.summary,
       strategy: "planning",
       steps,
-      source: intent ? "intent" : "regex",
+      source: intent ? "intent" : platformPlan ? "platform" : taskGraph ? "structured" : "regex",
       runtimeContextEventId: `hub:workspace:${input.platformId ?? "dev"}`,
-      goalKo: intent?.summaryKo ?? null,
-      intentSummaryKo: intent?.summaryKo,
+      goalKo: platformPlan?.summaryKo ?? intent?.summaryKo ?? platformGoal.summaryKo,
+      intentSummaryKo: platformPlan?.summaryKo ?? intent?.summaryKo,
+      executionMode,
+      platformPlanSummary: platformPlan?.summaryKo,
+      extractedConstraints: extracted.constraints.map((c) => c.label),
+      relevantContextIds: discovery?.relevantContext.map((r) => r.id),
     };
   }
 
@@ -186,20 +238,23 @@ export async function planHubAgentTurn(input: {
     platformId: input.platformId ?? "dev",
   });
 
-  const steps = intent?.steps ?? buildStructuredSteps(
-    input.utterance,
-    input.inspect,
-    input.stripeConnected,
-    runtime.strategy,
-  );
+  const steps =
+    intent?.steps ??
+    platformPlan?.platformSteps ??
+    taskGraph?.steps ??
+    buildStructuredSteps(input.utterance, input.inspect, input.stripeConnected, runtime.strategy);
 
   return {
-    goal: input.utterance.trim(),
+    goal: platformGoal.summary,
     strategy: runtime.strategy,
     steps,
-    source: intent ? "intent" : "structured",
+    source: intent ? "intent" : platformPlan ? "platform" : taskGraph ? "structured" : "structured",
     runtimeContextEventId: runtime.contextEventId,
-    goalKo: intent?.summaryKo ?? runtime.goalKo,
-    intentSummaryKo: intent?.summaryKo,
+    goalKo: platformPlan?.summaryKo ?? intent?.summaryKo ?? runtime.goalKo,
+    intentSummaryKo: platformPlan?.summaryKo ?? intent?.summaryKo,
+    executionMode,
+    platformPlanSummary: platformPlan?.summaryKo,
+    extractedConstraints: extracted.constraints.map((c) => c.label),
+    relevantContextIds: discovery?.relevantContext.map((r) => r.id),
   };
 }

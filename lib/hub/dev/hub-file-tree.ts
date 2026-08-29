@@ -167,6 +167,15 @@ export function pathsForHubTool(
       const cap = String(args.capability ?? "");
       return cap ? [capPath(cap), schemaPath(cap)] : draft.actions.flatMap((a) => [capPath(a.name), schemaPath(a.name)]);
     }
+    case "code.readFile":
+    case "code.modifyFile":
+    case "code.searchSymbol":
+    case "code.findReferences": {
+      const cap = String(args.capability ?? "");
+      const path = String(args.path ?? "");
+      if (path) return [path];
+      return cap ? [capPath(cap), schemaPath(cap)] : [];
+    }
     case "test.run":
       return draft.actions.flatMap((a) => [capPath(a.name), "src/tests/sandbox.test.ts"]);
     case "workflow.create":

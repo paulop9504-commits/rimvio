@@ -22,6 +22,8 @@ import {
 import { clearDiscoveryCacheForTests, getCachedIndexSearch } from "@/lib/platform-sdk/discovery-cache";
 
 export const HUB_CAPABILITY_INDEX_STORAGE_KEY = "rimvio.hub.capability-index.v1";
+/** v2 — schema version fields + publish gate enforced on write. */
+export const HUB_CAPABILITY_INDEX_STORAGE_KEY_V2 = "rimvio.hub.capability-index.v2";
 
 export type { CapabilityIndexStatus, CapabilityLifecycleStatus };
 
@@ -247,18 +249,25 @@ function keywordsForCapability(
   return [...new Set(parts.map((p) => p.toLowerCase()).filter(Boolean))];
 }
 
+function readStoredCapabilityIndex(): CapabilityIndexEntry[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v2 = localStorage.getItem(HUB_CAPABILITY_INDEX_STORAGE_KEY_V2);
+    if (v2) return JSON.parse(v2) as CapabilityIndexEntry[];
+    const v1 = localStorage.getItem(HUB_CAPABILITY_INDEX_STORAGE_KEY);
+    if (v1) return JSON.parse(v1) as CapabilityIndexEntry[];
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
 export function readCapabilityIndex(): readonly CapabilityIndexEntry[] {
   if (memoryIndex) return memoryIndex;
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(HUB_CAPABILITY_INDEX_STORAGE_KEY);
-      if (raw) {
-        memoryIndex = JSON.parse(raw) as CapabilityIndexEntry[];
-        return memoryIndex;
-      }
-    } catch {
-      // fall through
-    }
+  const stored = readStoredCapabilityIndex();
+  if (stored) {
+    memoryIndex = stored;
+    return memoryIndex;
   }
   memoryIndex = [...SEED_ENTRIES];
   persistCapabilityIndex(memoryIndex);
@@ -270,7 +279,8 @@ export function persistCapabilityIndex(entries: CapabilityIndexEntry[]): void {
   clearDiscoveryCacheForTests();
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem(HUB_CAPABILITY_INDEX_STORAGE_KEY, JSON.stringify(entries));
+      localStorage.setItem(HUB_CAPABILITY_INDEX_STORAGE_KEY_V2, JSON.stringify(entries));
+      localStorage.removeItem(HUB_CAPABILITY_INDEX_STORAGE_KEY);
     } catch {
       // ignore
     }
@@ -291,9 +301,47 @@ export function registerCapabilityIndexFromManifest(
   return [...registerCapabilityIndexFromManifestWithValidation(manifest, status, meta).registered];
 }
 
+/** Dry-run v2 schema gate — no index persistence. */
+export function evaluateCapabilityIndexPublish(
+  manifest: RimvioPlatformManifest,
+  status: CapabilityIndexStatus = "VALIDATING",
+  meta?: {
+    ownerCreatorId?: string;
+    origin?: "platform-bundled" | "standalone";
+    rimvioCertified?: boolean;
+    capabilityFilter?: readonly string[];
+  },
+): CapabilityIndexPublishResult {
+  return computeCapabilityIndexPublish(manifest, status, meta);
+}
+
 export function registerCapabilityIndexFromManifestWithValidation(
   manifest: RimvioPlatformManifest,
   status: CapabilityIndexStatus = "VALIDATING",
+  meta?: {
+    ownerCreatorId?: string;
+    origin?: "platform-bundled" | "standalone";
+    rimvioCertified?: boolean;
+    capabilityFilter?: readonly string[];
+  },
+): CapabilityIndexPublishResult {
+  const result = computeCapabilityIndexPublish(manifest, status, meta);
+  const priorIndex = readCapabilityIndex();
+  const existing = priorIndex.filter((e) => e.platformId !== manifest.package.id);
+  const priorPlatform = priorIndex.filter((e) => e.platformId === manifest.package.id);
+  const next =
+    result.registered.length > 0
+      ? [...existing, ...result.registered]
+      : result.rejected.length > 0
+        ? [...existing, ...priorPlatform]
+        : [...existing, ...result.registered];
+  persistCapabilityIndex(next);
+  return result;
+}
+
+function computeCapabilityIndexPublish(
+  manifest: RimvioPlatformManifest,
+  status: CapabilityIndexStatus,
   meta?: {
     ownerCreatorId?: string;
     origin?: "platform-bundled" | "standalone";
@@ -350,15 +398,6 @@ export function registerCapabilityIndexFromManifestWithValidation(
     });
   }
 
-  const existing = priorIndex.filter((e) => e.platformId !== manifest.package.id);
-  const priorPlatform = priorIndex.filter((e) => e.platformId === manifest.package.id);
-  const next =
-    registered.length > 0
-      ? [...existing, ...registered]
-      : rejected.length > 0
-        ? [...existing, ...priorPlatform]
-        : [...existing, ...registered];
-  persistCapabilityIndex(next);
   return { registered, rejected };
 }
 
@@ -407,5 +446,6 @@ export function clearCapabilityIndexForTests(): void {
   clearDiscoveryCacheForTests();
   if (typeof window !== "undefined") {
     localStorage.removeItem(HUB_CAPABILITY_INDEX_STORAGE_KEY);
+    localStorage.removeItem(HUB_CAPABILITY_INDEX_STORAGE_KEY_V2);
   }
 }

@@ -8,7 +8,11 @@ export type IntegrationProviderId =
   | "google_calendar"
   | "naver_search"
   | "openweather"
-  | "openai";
+  | "openai"
+  | "hub_github"
+  | "hub_vercel"
+  | "hub_supabase"
+  | "hub_stripe";
 
 export type IntegrationStatus = "connected" | "error" | "revoked";
 

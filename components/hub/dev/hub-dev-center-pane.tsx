@@ -9,6 +9,7 @@ import type {
   DevProjectSource,
   DevChangeReviewState,
 } from "@/lib/hub/dev/dev-project-state";
+import type { ChangeExplanation } from "@/lib/hub/dev/hub-change-explanation";
 import type { AnalyzedPlatformBlueprint } from "@/lib/hub/dev/platform-analyzer";
 import { isBlueprintSectionPane, type DevWorkspacePane } from "@/lib/hub/dev/dev-workspace-nav";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,9 @@ import { HubDevVersionsPanel } from "@/components/hub/dev/hub-dev-versions-panel
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 import { HubDevBlueprintDashboard } from "@/components/hub/dev/hub-dev-blueprint-dashboard";
+import { HubConnectedHubsPanel } from "@/components/hub/dev/hub-connected-hubs-panel";
+import { HubDevConnectionsPanel } from "@/components/hub/dev/hub-dev-connections-panel";
+import type { HubDevConnections } from "@/lib/hub/dev/hub-connection-store";
 
 type HubDevCenterPaneProps = {
   readonly pane: DevWorkspacePane;
@@ -41,6 +45,7 @@ type HubDevCenterPaneProps = {
   readonly publishStatus: string;
   readonly onTestComplete: (passed: boolean) => void;
   readonly changeReview: Readonly<Record<string, DevChangeReviewState>>;
+  readonly changeExplanations?: readonly ChangeExplanation[];
   readonly onAcceptAllChanges: () => void;
   readonly onRejectChange: (changeId: string) => void;
   readonly onReviewChanges: () => void;
@@ -51,6 +56,8 @@ type HubDevCenterPaneProps = {
   readonly onPreview: () => void;
   readonly onConnectGithub: () => void;
   readonly onLoadDemo: () => void;
+  readonly platformId?: string;
+  readonly connections?: HubDevConnections;
 };
 
 function isBlueprintPane(pane: DevWorkspacePane): boolean {
@@ -72,6 +79,7 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         onConnect={props.onConnect}
         onConnectGithub={props.onConnectGithub}
         onLoadDemo={props.onLoadDemo}
+        connections={props.connections}
         onFilesDrop={props.onFilesDrop}
         onAnalyze={props.onAnalyzePlatform}
         onFixIssues={props.onFixAllIssues}
@@ -90,6 +98,7 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         <SourcesPane
           sources={props.snapshot.sources}
           files={props.snapshot.files}
+          platformId={props.platformId}
           onDrop={props.onFilesDrop}
         />
       );
@@ -100,6 +109,7 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         <ChangesPane
           changes={props.snapshot.changes}
           changeReview={props.changeReview}
+          changeExplanations={props.changeExplanations}
           onAcceptAll={props.onAcceptAllChanges}
           onReject={props.onRejectChange}
           onReview={props.onReviewChanges}
@@ -152,10 +162,12 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
 function SourcesPane({
   sources,
   files,
+  platformId,
   onDrop,
 }: {
   sources: readonly DevProjectSource[];
   files: DevProjectSnapshot["files"];
+  platformId?: string;
   onDrop: (files: FileList) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -216,6 +228,14 @@ function SourcesPane({
           </ul>
         </>
       ) : null}
+
+      <div className="mb-4">
+        <HubDevConnectionsPanel platformId={platformId} />
+      </div>
+
+      <div className="mt-6 border-t border-[#e5e7eb] pt-4">
+        <HubConnectedHubsPanel />
+      </div>
     </div>
   );
 }
@@ -270,12 +290,14 @@ function IssuesPane({
 function ChangesPane({
   changes,
   changeReview,
+  changeExplanations,
   onAcceptAll,
   onReject,
   onReview,
 }: {
   changes: readonly DevProjectChange[];
   changeReview: Readonly<Record<string, DevChangeReviewState>>;
+  changeExplanations?: readonly ChangeExplanation[];
   onAcceptAll: () => void;
   onReject: (changeId: string) => void;
   onReview: () => void;
@@ -302,31 +324,37 @@ function ChangesPane({
         {(reviewMode ? pending : changes.filter((ch) => changeReview[ch.id] !== "rejected")).map(
           (ch) => {
             const state = changeReview[ch.id] ?? "pending";
+            const explanation = changeExplanations?.find((e) => e.changeId === ch.id);
             return (
               <li
                 key={ch.id}
                 className={cn(
-                  "flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[#374151] shadow-sm",
+                  "rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[#374151] shadow-sm",
                   state === "accepted" && "opacity-60",
                 )}
               >
-                <span className="truncate">
-                  <span className={ch.kind === "add" ? "text-emerald-600" : "text-amber-600"}>
-                    {ch.kind === "add" ? "+" : "~"}
-                  </span>{" "}
-                  {ch.path}
-                </span>
-                <span className="ml-2 shrink-0 text-[10px] text-[#9ca3af]">
-                  {state === "accepted" ? "accepted" : `+${ch.additions}`}
-                </span>
-                {reviewMode && state === "pending" ? (
-                  <button
-                    type="button"
-                    onClick={() => onReject(ch.id)}
-                    className="ml-2 shrink-0 text-[10px] text-red-600 hover:underline"
-                  >
-                    Reject
-                  </button>
+                <div className="flex items-center justify-between font-mono text-[11px]">
+                  <span className="truncate">
+                    <span className={ch.kind === "add" ? "text-emerald-600" : "text-amber-600"}>
+                      {ch.kind === "add" ? "+" : "~"}
+                    </span>{" "}
+                    {ch.path}
+                  </span>
+                  <span className="ml-2 shrink-0 text-[10px] text-[#9ca3af]">
+                    {state === "accepted" ? "accepted" : `+${ch.additions}`}
+                  </span>
+                  {reviewMode && state === "pending" ? (
+                    <button
+                      type="button"
+                      onClick={() => onReject(ch.id)}
+                      className="ml-2 shrink-0 text-[10px] text-red-600 hover:underline"
+                    >
+                      Reject
+                    </button>
+                  ) : null}
+                </div>
+                {explanation ? (
+                  <p className="mt-1 text-[10px] leading-snug text-[#6b7280]">{explanation.whyKo}</p>
                 ) : null}
               </li>
             );

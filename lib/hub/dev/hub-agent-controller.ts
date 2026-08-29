@@ -4,17 +4,28 @@
  * WorkspacePrompt → IntentGate → (chat | Agent Loop → Plan Executor → Tool Gateway)
  */
 
-import { runIntentGate, type AgentIntent } from "@/lib/agent/intent/intent-gate";
+import { runConversationGate, type UserIntent } from "@/lib/agent/conversation";
 import { runHubAgentLoop, type HubAgentLoopEvent, type HubAgentLoopInput, type HubAgentLoopResult } from "@/lib/hub/dev/hub-agent-loop";
-import { invokeHubWorkspaceTool, observationFromInspect, type HubWorkspaceInspectResult, type HubWorkspaceToolContext } from "@/lib/hub/dev/hub-workspace-tools";
+import { observeFullWorkspace } from "@/lib/agent/hub-observation";
+import { invokeHubWorkspaceTool, type HubWorkspaceInspectResult, type HubWorkspaceToolContext } from "@/lib/hub/dev/hub-workspace-tools";
 import { createInitialAgentState, shouldStopLoop, type AgentState } from "@/lib/agent/loop/agent-state";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
-import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 import { buildProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
+import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
+import { resumeUtteranceForProvider } from "@/lib/hub/dev/hub-oauth-connect";
+import {
+  connectActionIdForProvider,
+  connectActionLabelKo,
+  providerLabel,
+  resolveConnectProviderFromUtterance,
+} from "@/lib/hub/dev/hub-connect-provider";
+import type { HubPlatformProviderId } from "@/lib/integrations/hub-platform/connection-types";
+import type { HubDevConnectionId } from "@/lib/hub/dev/hub-connection-store";
+import { setPendingHubLoopResume } from "@/lib/hub/dev/hub-connection-store";
 
 export type HubAgentControllerEvent =
-  | { readonly type: "intent"; readonly intent: AgentIntent; readonly executable: boolean }
+  | { readonly type: "intent"; readonly intent: UserIntent; readonly executable: boolean }
   | { readonly type: "conversational"; readonly body: string }
   | HubAgentLoopEvent;
 
@@ -27,24 +38,49 @@ export type HubAgentControllerInput = Omit<HubAgentLoopInput, "onEvent"> & {
 export type HubAgentControllerResult = HubAgentLoopResult & {
   readonly executionStarted: boolean;
   readonly toolCalls: number;
-  readonly intent: AgentIntent;
+  readonly intent: UserIntent;
   readonly conversational: boolean;
 };
 
 function buildToolCtx(input: HubAgentControllerInput, stripeConnected: boolean): HubWorkspaceToolContext {
+  const conn = input.connections ?? {};
   return {
     getDraft: () => input.executor.getDraft() as PlatformDraft,
     updateDraft: (patch) => input.executor.updateDraft(patch),
     snapshot: input.snapshot,
     executor: input.executor,
     connections: {
-      github: true,
-      openai: true,
+      github: conn.github ?? false,
+      openai: conn.openai ?? false,
       stripe: stripeConnected,
-      mcp: false,
-      ...input.connections,
+      vercel: conn.vercel ?? false,
+      supabase: conn.supabase ?? false,
+      mcp: conn.mcp ?? false,
     },
   };
+}
+
+function isProviderConnected(
+  provider: HubPlatformProviderId,
+  input: HubAgentControllerInput,
+): boolean {
+  const conn = input.connections ?? {};
+  switch (provider) {
+    case "stripe":
+      return input.stripeConnected ?? conn.stripe ?? false;
+    case "github":
+      return conn.github ?? false;
+    case "vercel":
+      return conn.vercel ?? false;
+    case "supabase":
+      return conn.supabase ?? false;
+    case "openai":
+      return conn.openai ?? false;
+    case "mcp":
+      return conn.mcp ?? false;
+    default:
+      return false;
+  }
 }
 
 async function runTestOnly(input: HubAgentControllerInput): Promise<HubAgentControllerResult> {
@@ -92,20 +128,23 @@ async function runConnectOnly(input: HubAgentControllerInput): Promise<HubAgentC
   const emit = input.onEvent;
   const stripeConnected = input.stripeConnected ?? input.connections?.stripe ?? false;
   const toolCtx = buildToolCtx(input, stripeConnected);
+  const provider = resolveConnectProviderFromUtterance(input.utterance);
+  const label = providerLabel(provider);
+  const actionId = connectActionIdForProvider(provider);
 
   emit({ type: "intent", intent: "connect", executable: true });
-  emit({ type: "text", body: "연결 상태를 확인합니다." });
+  emit({ type: "text", body: `${label}에 연결할게요.` });
 
   await invokeHubWorkspaceTool("connection.list", {}, toolCtx);
-  const toolCalls = 2;
+  const toolCalls = 1;
 
-  if (stripeConnected) {
-    emit({ type: "text", body: "Stripe가 이미 연결되어 있습니다." });
-    emit({ type: "complete", summary: "Stripe 연결됨" });
+  if (isProviderConnected(provider, input)) {
+    emit({ type: "text", body: `${label}는 이미 연결되어 있어요.` });
+    emit({ type: "complete", summary: `${label} 연결됨` });
     return {
       ok: true,
       executionStarted: true,
-      toolCalls: 1,
+      toolCalls,
       intent: "connect",
       conversational: false,
       snapshot: input.snapshot,
@@ -113,20 +152,27 @@ async function runConnectOnly(input: HubAgentControllerInput): Promise<HubAgentC
     };
   }
 
-  await invokeHubWorkspaceTool("connection.connect", { provider: "stripe" }, toolCtx);
+  await invokeHubWorkspaceTool("connection.connect", { provider }, toolCtx);
   emit({
     type: "ask_user",
-    message: "Stripe 연결이 필요합니다.",
-    actionId: "connect_stripe",
-    actionLabel: "Connect Stripe",
+    message: `${label} OAuth 로그인이 필요해요.`,
+    actionId,
+    actionLabel: connectActionLabelKo(provider),
+  });
+
+  setPendingHubLoopResume({
+    utterance: input.utterance,
+    platformId: input.platformId ?? input.draft.id ?? null,
+    actionId,
+    provider: provider as HubDevConnectionId,
   });
 
   return {
     ok: false,
     pausedForUser: true,
-    actionId: "connect_stripe",
+    actionId,
     executionStarted: true,
-    toolCalls,
+    toolCalls: toolCalls + 1,
     intent: "connect",
     conversational: false,
     snapshot: input.snapshot,
@@ -160,7 +206,12 @@ async function runInspectOnly(input: HubAgentControllerInput, _state: AgentState
   }
 
   const inspect = inspectResult.data as HubWorkspaceInspectResult;
-  emit({ type: "observe", lines: observationFromInspect(inspect) });
+  const fullObs = observeFullWorkspace({
+    draft: toolCtx.getDraft(),
+    snapshot: input.snapshot,
+    connections: toolCtx.connections,
+  });
+  emit({ type: "observe", lines: fullObs.lines });
   emit({ type: "complete", summary: "현재 Workspace 상태입니다." });
   emit({ type: "text", body: "추가 작업이 필요하면 말씀해 주세요." });
 
@@ -185,17 +236,19 @@ export async function runHubAgentController(
   const emit = input.onEvent;
   const utterance = input.utterance.trim();
 
-  const gate = runIntentGate({
+  const gate = runConversationGate({
     utterance,
     context: {
-      staleGoal: input.staleGoal ?? null,
+      currentPlatform: input.draft.name,
       platformName: input.draft.name,
+      staleGoal: input.staleGoal ?? null,
+      currentGoal: null,
     },
   });
 
   emit({ type: "intent", intent: gate.intent, executable: gate.executable });
 
-  if (gate.conversational) {
+  if (gate.conversational || gate.needsClarification) {
     emit({ type: "conversational", body: gate.responseKo ?? "" });
     return {
       ok: true,
@@ -208,7 +261,7 @@ export async function runHubAgentController(
     };
   }
 
-  const agentState = createInitialAgentState({ goal: utterance, intent: gate.intent });
+  const agentState = createInitialAgentState({ goal: gate.currentGoal ?? utterance, intent: gate.intent });
 
   if (shouldStopLoop(agentState)) {
     emit({ type: "text", body: "실행 한도에 도달했습니다. 새 요청으로 다시 시작해 주세요." });
@@ -239,6 +292,8 @@ export async function runHubAgentController(
   const loopResult = await runHubAgentLoop({
     ...input,
     utterance,
+    userIntent: gate.intent,
+    platformGoal: gate.platformGoal ?? undefined,
     onEvent: (event) => {
       if (event.type === "tool" && event.status === "running") {
         toolCalls += 1;
@@ -258,12 +313,28 @@ export async function runHubAgentController(
 
 /** Resume after external action — requires explicit resume utterance (not stale goal). */
 export async function resumeHubAgentController(
-  input: HubAgentControllerInput & { readonly resumeUtterance?: string },
+  input: HubAgentControllerInput & {
+    readonly resumeUtterance?: string;
+    readonly resumeProvider?: HubPlatformProviderId;
+  },
 ): Promise<HubAgentControllerResult> {
+  const provider = input.resumeProvider ?? "stripe";
+  const storeId = provider as HubDevConnectionId;
+  const conn = input.connections ?? {};
+  const connections = {
+    github: conn.github ?? false,
+    openai: conn.openai ?? false,
+    stripe: conn.stripe ?? false,
+    vercel: conn.vercel ?? false,
+    supabase: conn.supabase ?? false,
+    mcp: conn.mcp ?? false,
+    [storeId]: true,
+  };
+
   return runHubAgentController({
     ...input,
-    utterance: input.resumeUtterance ?? "Stripe 연결 완료 — 이어서 진행",
-    stripeConnected: true,
-    connections: { ...input.connections, stripe: true },
+    utterance: input.resumeUtterance ?? resumeUtteranceForProvider(provider),
+    stripeConnected: provider === "stripe" ? true : input.stripeConnected,
+    connections,
   });
 }

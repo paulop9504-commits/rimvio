@@ -25,7 +25,7 @@ import {
   canPublishPlatform,
   computePlatformStepValidation,
 } from "@/lib/hub/platform/validation";
-import { registerCapabilityIndexFromManifest } from "@/lib/platform-sdk/capability-index";
+import { registerCapabilityIndexFromManifestWithValidation } from "@/lib/platform-sdk/capability-index";
 import { validateRimvioPlatformManifest } from "@/lib/platform-sdk/manifest";
 import type { RimvioPlatformManifest } from "@/lib/platform-sdk/types";
 import {
@@ -249,12 +249,17 @@ export function useHubPlatformWizard() {
 
       mountPlatformHostApis();
       registerPlatformManifest(manifest);
-      registerCapabilityIndexFromManifest(manifest, indexStatus, {
+      const indexResult = registerCapabilityIndexFromManifestWithValidation(manifest, indexStatus, {
         ownerCreatorId,
         origin: "platform-bundled",
         rimvioCertified: testsPassed,
         capabilityFilter: manifest.capabilities.map((c) => c.id),
       });
+      if (indexResult.rejected.length > 0) {
+        setPublishStatus("idle");
+        setImportError(indexResult.rejected.map((r) => r.errorKo).join(" · "));
+        return;
+      }
       setLastPublishedPlatformId(manifest.package.id);
 
       appendDevExecutionLog({
@@ -262,7 +267,7 @@ export function useHubPlatformWizard() {
         platformName: draft.name,
         source: "publish",
         ok: true,
-        detail: `Published platform + ${manifest.capabilities.length} capabilities (${indexStatus})`,
+        detail: `Published platform + ${indexResult.registered.length} capabilities (${indexStatus})`,
       });
 
       setPublishStatus("pending-review");

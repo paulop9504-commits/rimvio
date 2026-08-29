@@ -51,9 +51,11 @@ export function observeHubWorkspace(input: {
     .map((a) => a.name);
 
   const conn = {
-    github: input.connections?.github ?? true,
-    openai: input.connections?.openai ?? true,
+    github: input.connections?.github ?? false,
+    openai: input.connections?.openai ?? false,
     stripe: input.connections?.stripe ?? false,
+    vercel: input.connections?.vercel ?? false,
+    supabase: input.connections?.supabase ?? false,
     mcp: input.connections?.mcp ?? false,
   };
 

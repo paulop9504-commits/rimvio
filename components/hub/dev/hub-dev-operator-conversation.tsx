@@ -157,6 +157,7 @@ function AgentTurn({
             message={payload.message}
             actionLabel={payload.actionLabel}
             actionId={payload.actionId}
+            publishGate={payload.publishGate}
             onAction={onAskUserAction}
           />
         ) : null}
@@ -335,16 +336,31 @@ function AskUserBlock({
   message,
   actionLabel,
   actionId,
+  publishGate,
   onAction,
 }: {
   message: string;
   actionLabel: string;
   actionId: string;
+  publishGate?: import("@/lib/hub/dev/hub-publish-flow").PublishGateResult;
   onAction?: (actionId: string) => void;
 }) {
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2 shadow-sm">
       <p className="text-[10px] font-medium text-[#92400e]">{message}</p>
+      {publishGate ? (
+        <ul className="mt-2 space-y-0.5 text-[9px] text-[#78350f]">
+          <li>
+            Platform: {publishGate.platformName} · {publishGate.registeredCount} capabilities
+          </li>
+          <li>Index v2 gate: {publishGate.ok ? "pass" : "blocked"}</li>
+          {publishGate.rejected.map((r) => (
+            <li key={r.capabilityId} className="text-red-700">
+              {r.capabilityId}: {r.errorKo}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <button
         type="button"
         onClick={() => onAction?.(actionId)}

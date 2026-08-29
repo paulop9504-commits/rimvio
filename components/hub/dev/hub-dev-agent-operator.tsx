@@ -20,6 +20,15 @@ import {
 import { HubDevOperatorAgentBridge } from "@/components/hub/dev/hub-dev-operator-agent-bridge";
 import { HubDevOperatorConversation } from "@/components/hub/dev/hub-dev-operator-conversation";
 import type { HubAgentControllerEvent } from "@/lib/hub/dev/hub-agent-controller";
+import {
+  changesFromLog,
+  terminalLinesFromLog,
+  mergeControllerEventToSharedLog,
+  readSharedAgentEventLog,
+  type AgentEventLog,
+} from "@/lib/agent/events";
+import { listHubCheckpoints } from "@/lib/hub/dev/hub-checkpoint-store";
+import { AgentActivityPanel } from "@/components/agent/agent-activity-panel";
 import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectIssue, DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
@@ -50,9 +59,17 @@ type HubDevAgentOperatorProps = {
   readonly onReviewAllChanges: () => void;
   readonly stripeConnected?: boolean;
   readonly onConnectStripe?: () => void;
+  readonly onConnectGithub?: () => void;
+  readonly onConnectVercel?: () => void;
+  readonly onConnectSupabase?: () => void;
+  readonly onApprovePublish?: () => void;
+  readonly onUndoCheckpoint?: () => void;
   readonly resumeLoopToken?: number;
   readonly resumeUtterance?: string | null;
+  readonly resumeProvider?: import("@/lib/integrations/hub-platform/connection-types").HubPlatformProviderId | null;
   readonly onFileTouch?: (paths: readonly string[], touch: "reading" | "modified" | "created" | "running") => void;
+  readonly onAgentRunningChange?: (running: boolean) => void;
+  readonly autoFocusTab?: OperatorTab | null;
 };
 
 const MODELS = ["Claude 3.5 Sonnet", "GPT-4o", "Gemini 1.5 Pro"] as const;
@@ -76,15 +93,17 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   const [model, setModel] = useState<(typeof MODELS)[number]>(MODELS[0]);
   const [collapsed, setCollapsed] = useState(false);
   const [entries, setEntries] = useState<OperatorConversationEntry[]>([]);
+  const [agentEventLog, setAgentEventLog] = useState<AgentEventLog>(() => readSharedAgentEventLog());
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevFixing = useRef(false);
   const prevAnalyzing = useRef(false);
+  const platformAnalyzeActive = useRef(false);
   const lastDiffId = useRef<string | null>(null);
   const localSendRef = useRef<string | null>(null);
   const loopActiveRef = useRef(false);
 
-  const showGreeting = props.snapshot.capabilityCount > 0;
+  const showGreeting = props.snapshot.capabilityCount > 0 && !entries.some((e) => e.kind === "user");
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     requestAnimationFrame(() => {
@@ -177,15 +196,35 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     (actionId: string) => {
       if (actionId === "connect_stripe") {
         props.onConnectStripe?.();
+        return;
+      }
+      if (actionId === "connect_github") {
+        props.onConnectGithub?.();
+        return;
+      }
+      if (actionId === "connect_vercel") {
+        props.onConnectVercel?.();
+        return;
+      }
+      if (actionId === "connect_supabase") {
+        props.onConnectSupabase?.();
+        return;
+      }
+      if (actionId === "approve_publish") {
+        props.onApprovePublish?.();
       }
     },
-    [props.onConnectStripe],
+    [props.onConnectStripe, props.onConnectGithub, props.onConnectVercel, props.onConnectSupabase, props.onApprovePublish],
   );
 
   const handleLoopEvent = useCallback(
     (event: HubAgentControllerEvent) => {
+      const next = mergeControllerEventToSharedLog(event);
+      setAgentEventLog(next);
+
       if (event.type === "conversational") {
         loopActiveRef.current = false;
+        props.onAgentRunningChange?.(false);
         setEntries((prev) => [
           ...prev.filter((e) => !isWorkingEntry(e)),
           {
@@ -201,10 +240,18 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
 
       if (event.type === "intent" && !event.executable) {
         loopActiveRef.current = false;
+        props.onAgentRunningChange?.(false);
         return;
       }
 
+      if (event.type === "intent" && event.executable) {
+        props.onAgentRunningChange?.(true);
+      }
+
       loopActiveRef.current = event.type !== "complete";
+      if (event.type === "complete") {
+        props.onAgentRunningChange?.(false);
+      }
       setEntries((prev) => {
         const base = prev.filter((e) => !(e.kind === "agent" && e.payload.type === "planning"));
 
@@ -265,6 +312,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                   message: event.message,
                   actionId: event.actionId,
                   actionLabel: event.actionLabel,
+                  publishGate: event.publishGate,
                 },
               },
             ];
@@ -306,8 +354,13 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       });
       scrollToBottom();
     },
-    [props.onFileTouch, scrollToBottom],
+    [props.onFileTouch, props.onAgentRunningChange, scrollToBottom],
   );
+
+  useEffect(() => {
+    if (!props.autoFocusTab) return;
+    setTab(props.autoFocusTab);
+  }, [props.autoFocusTab]);
 
   const sendChat = () => {
     const text = chatInput.trim();
@@ -346,15 +399,17 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
 
   useEffect(() => {
     if (props.analyzing) {
+      platformAnalyzeActive.current = true;
       ensurePlanningEntry(PLANNING_IDLE);
       prevAnalyzing.current = true;
       return;
     }
-    if (prevAnalyzing.current && entries.some((e) => e.kind === "user")) {
+    if (prevAnalyzing.current && platformAnalyzeActive.current) {
       replacePlanningWithAnalysis();
+      platformAnalyzeActive.current = false;
       prevAnalyzing.current = false;
     }
-  }, [props.analyzing, entries, ensurePlanningEntry, replacePlanningWithAnalysis]);
+  }, [props.analyzing, ensurePlanningEntry, replacePlanningWithAnalysis]);
 
   useEffect(() => {
     if (props.fixing || props.analyzing || loopActiveRef.current) return;
@@ -426,6 +481,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
         stripeConnected={props.stripeConnected}
         resumeLoopToken={props.resumeLoopToken}
         resumeUtterance={props.resumeUtterance}
+        resumeProvider={props.resumeProvider}
       />
 
       <div className="shrink-0 border-b border-[#e5e7eb] bg-white px-3 py-2">
@@ -508,9 +564,16 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
             <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
         ) : null}
-        {tab === "changes" ? <ChangesTab snapshot={props.snapshot} /> : null}
-        {tab === "terminal" ? <TerminalTab /> : null}
-        {tab === "activity" ? <ActivityTab snapshot={props.snapshot} /> : null}
+        {tab === "changes" ? (
+          <ChangesTab
+            log={agentEventLog}
+            snapshot={props.snapshot}
+            checkpointCount={listHubCheckpoints(props.draft.id).length}
+            onUndo={props.onUndoCheckpoint}
+          />
+        ) : null}
+        {tab === "terminal" ? <TerminalTab log={agentEventLog} /> : null}
+        {tab === "activity" ? <AgentActivityPanel log={agentEventLog} /> : null}
       </div>
 
       {tab === "chat" ? (
@@ -526,7 +589,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                 }
               }}
               rows={3}
-              placeholder="다음 작업을 알려주세요… (예: 호텔 예약 기능 테스트해줘)"
+              placeholder="무엇을 할까요? (예: 깃허브 연결, 테스트 돌려줘, 상태 확인)"
               className="w-full resize-none bg-transparent px-3 pt-2.5 text-[11px] leading-relaxed text-[#374151] placeholder:text-[#9ca3af] focus:outline-none"
             />
             <div className="flex items-center justify-between px-2.5 pb-2">
@@ -558,13 +621,45 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   );
 }
 
-function ChangesTab({ snapshot }: { snapshot: DevProjectSnapshot }) {
-  if (snapshot.changes.length === 0) {
+function ChangesTab({
+  log,
+  snapshot,
+  checkpointCount = 0,
+  onUndo,
+}: {
+  log: AgentEventLog;
+  snapshot: DevProjectSnapshot;
+  checkpointCount?: number;
+  onUndo?: () => void;
+}) {
+  const fromEvents = changesFromLog(log);
+  const rows =
+    fromEvents.length > 0
+      ? fromEvents
+      : snapshot.changes.map((ch) => ({
+          id: ch.id,
+          path: ch.path,
+          kind: ch.kind === "add" ? ("add" as const) : ("modify" as const),
+        }));
+  if (rows.length === 0) {
     return <p className="p-4 text-center text-[10px] text-[#9ca3af]">No pending changes</p>;
   }
   return (
-    <ul className="space-y-0.5 p-2 font-mono text-[9px]">
-      {snapshot.changes.map((ch) => (
+    <div>
+      {checkpointCount > 0 && onUndo ? (
+        <div className="flex items-center justify-between border-b border-[#eef0f3] px-2 py-1.5">
+          <span className="text-[9px] text-[#6b7280]">{checkpointCount} checkpoint(s)</span>
+          <button
+            type="button"
+            onClick={onUndo}
+            className="rounded-md bg-[#eef0f3] px-2 py-0.5 text-[9px] font-semibold text-[#374151] hover:bg-violet-50 hover:text-violet-700"
+          >
+            Undo
+          </button>
+        </div>
+      ) : null}
+      <ul className="space-y-0.5 p-2 font-mono text-[9px]">
+      {rows.map((ch) => (
         <li key={ch.id} className="rounded-md border border-[#e5e7eb] bg-white px-2 py-1 text-[#4b5563]">
           <span className={ch.kind === "add" ? "text-emerald-600" : "text-cyan-600"}>
             {ch.kind === "add" ? "+" : "~"}
@@ -573,35 +668,26 @@ function ChangesTab({ snapshot }: { snapshot: DevProjectSnapshot }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function TerminalTab() {
-  return (
-    <div className="bg-[#1a1d24] p-2.5 font-mono text-[9px] leading-relaxed">
-      <p className="text-[#9ca3af]">$ rimvio test --platform osaka-stay</p>
-      <p className="text-[#6b7280]">Running capability sandbox…</p>
-      <p className="text-emerald-400">✓ hotel.search</p>
-      <p className="text-emerald-400">✓ booking.confirm</p>
-      <p className="text-amber-400">⚠ payment.commit — approval policy</p>
     </div>
   );
 }
 
-function ActivityTab({ snapshot }: { snapshot: DevProjectSnapshot }) {
+function TerminalTab({ log }: { log: AgentEventLog }) {
+  const lines = terminalLinesFromLog(log);
+  if (lines.length === 0) {
+    return (
+      <div className="bg-[#1a1d24] p-2.5 font-mono text-[9px] leading-relaxed text-[#6b7280]">
+        Agent 실행 로그가 여기 표시됩니다.
+      </div>
+    );
+  }
   return (
-    <ul className="space-y-1.5 p-2.5">
-      {snapshot.activities.map((a) => (
-        <li key={a.id} className="flex items-center gap-1.5 text-[9px] text-[#4b5563]">
-          <span
-            className={cn(
-              "size-1.5 rounded-full",
-              a.status === "done" ? "bg-emerald-500" : a.status === "warning" ? "bg-amber-500" : "bg-[#d1d5db]",
-            )}
-          />
-          {a.label}
-        </li>
+    <div className="bg-[#1a1d24] p-2.5 font-mono text-[9px] leading-relaxed">
+      {lines.map((line, i) => (
+        <p key={i} className="text-[#9ca3af]">
+          {line}
+        </p>
       ))}
-    </ul>
+    </div>
   );
 }

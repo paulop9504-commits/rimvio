@@ -45,6 +45,7 @@ export type OperatorAgentPayload =
       readonly message: string;
       readonly actionId: string;
       readonly actionLabel: string;
+      readonly publishGate?: import("@/lib/hub/dev/hub-publish-flow").PublishGateResult;
     }
   | { readonly type: "complete"; readonly summary: string };
 

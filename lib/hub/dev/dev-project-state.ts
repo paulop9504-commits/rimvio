@@ -24,6 +24,8 @@ export type DevProjectIssue = {
   readonly detail: string;
   readonly capabilityId?: string;
   readonly fixPrompt: string;
+  /** Error category for RCA (#69/#70). */
+  readonly category?: "schema" | "approval" | "auth" | "manifest";
 };
 
 export type DevProjectChangeKind = "add" | "modify";
@@ -116,6 +118,7 @@ export function deriveProjectIssues(draft: PlatformDraft): DevProjectIssue[] {
         detail: "response schema 없음",
         capabilityId: action.name,
         fixPrompt: `${action.name}의 output schema를 API response에서 생성하고 adapter를 수정해줘.`,
+        category: "schema",
       });
     }
     if (policy.risk === "critical" && !action.approvalRequired) {
@@ -126,6 +129,7 @@ export function deriveProjectIssues(draft: PlatformDraft): DevProjectIssue[] {
         detail: "approvalRequired 권장",
         capabilityId: action.name,
         fixPrompt: `${action.name}에 approvalRequired를 켜줘.`,
+        category: "approval",
       });
     }
     if (action.name.includes("payment")) {
@@ -136,6 +140,7 @@ export function deriveProjectIssues(draft: PlatformDraft): DevProjectIssue[] {
         detail: "API key 확인 필요",
         capabilityId: action.name,
         fixPrompt: "Payment API authentication을 설정하고 .env.example을 업데이트해줘.",
+        category: "auth",
       });
     }
   }
@@ -147,6 +152,7 @@ export function deriveProjectIssues(draft: PlatformDraft): DevProjectIssue[] {
       title: "Manifest",
       detail: "manifest sync 필요",
       fixPrompt: "Platform manifest를 생성하고 sync해줘.",
+      category: "manifest",
     });
   }
 

@@ -11,6 +11,7 @@ import {
   Search,
   Upload,
 } from "lucide-react";
+import { HubDevUserMenu } from "@/components/hub/dev/hub-dev-user-menu";
 import { cn } from "@/lib/utils";
 
 type HubDevTopbarProps = {
@@ -23,6 +24,12 @@ type HubDevTopbarProps = {
   onPublish?: () => void;
   publishDisabled?: boolean;
   onOpenCommandPalette?: () => void;
+  liveUser?: {
+    readonly id?: string;
+    readonly name: string;
+    readonly email: string | null;
+    readonly avatarUrl: string | null;
+  } | null;
 };
 
 export function HubDevTopbar({
@@ -35,6 +42,7 @@ export function HubDevTopbar({
   onPublish,
   publishDisabled,
   onOpenCommandPalette,
+  liveUser,
 }: HubDevTopbarProps) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-4">
@@ -113,7 +121,7 @@ export function HubDevTopbar({
         <button type="button" className="p-2 text-[#9ca3af] hover:text-[#6b7280]" aria-label="Notifications">
           <Bell className="size-4" />
         </button>
-        <div className="ml-1 size-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 ring-2 ring-white" />
+        <HubDevUserMenu liveUser={liveUser ?? null} />
       </div>
     </header>
   );

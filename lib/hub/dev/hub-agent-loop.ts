@@ -14,16 +14,48 @@ import {
 } from "@/lib/hub/deploy/hub-deploy-runtime";
 import {
   invokeHubWorkspaceTool,
-  observationFromInspect,
   type HubWorkspaceInspectResult,
   type HubWorkspaceToolContext,
   type HubWorkspaceToolId,
 } from "@/lib/hub/dev/hub-workspace-tools";
 import { planHubAgentTurn } from "@/lib/hub/dev/hub-agent-planner";
-import { setPendingHubLoopResume } from "@/lib/hub/dev/hub-connection-store";
-import { resolveHubAgentToolPolicy } from "@/lib/hub/dev/hub-agent-approval-policy";
+import { setPendingHubLoopResume, type HubDevConnectionId } from "@/lib/hub/dev/hub-connection-store";
+import { evaluateToolApproval, approvalToLegacyPolicy } from "@/lib/agent/approval/approval-engine";
+import { setPendingPublishApproval } from "@/lib/hub/dev/hub-publish-pending-store";
+import type { PublishGateResult } from "@/lib/hub/dev/hub-publish-flow";
+import {
+  connectActionIdForProvider,
+  connectActionLabelKo,
+  providerLabel,
+} from "@/lib/hub/dev/hub-connect-provider";
+import { resumeUtteranceForProvider } from "@/lib/hub/dev/hub-oauth-connect";
+import type { HubPlatformProviderId } from "@/lib/integrations/hub-platform/connection-types";
+import { planVerifyRepair } from "@/lib/hub/dev/hub-verify-repair";
+import {
+  CHECKPOINT_MUTATING_TOOLS,
+  createHubCheckpoint,
+} from "@/lib/hub/dev/hub-checkpoint-store";
+import { observeFullWorkspace } from "@/lib/agent/hub-observation";
 import { pathsForHubTool } from "@/lib/hub/dev/hub-file-tree";
 import { AGENT_LOOP_LIMITS } from "@/lib/agent/loop/agent-state";
+import { executionModeFromGoal, compilePlatformGoal, summarizePlatformGoal, type PlatformGoal } from "@/lib/hub/dev/platform-agent/platform-goal";
+import { observeHubWorkspace } from "@/lib/hub/dev/hub-workspace-observe";
+import { discoverPlatformContext } from "@/lib/hub/dev/platform-agent/context-discovery";
+import { planPlatformChanges } from "@/lib/hub/dev/platform-agent/platform-planner";
+import { buildCodingPlan } from "@/lib/hub/dev/platform-agent/coding-plan";
+import { runCodingAgentLoop } from "@/lib/hub/dev/coding-agent/coding-agent-loop";
+import { detectRegression } from "@/lib/hub/dev/hub-verify-repair";
+import { inspectPreviewWithBrowser } from "@/lib/hub/dev/preview-agent-verify";
+import {
+  initPlatformOrchestrator,
+  advanceOrchestratorPhase,
+  recordOrchestratorStepStart,
+  recordOrchestratorStepResult,
+  evaluateOrchestratorVerification,
+  orchestratorPartialReplan,
+  orchestratorWorkLog,
+  type PlatformOrchestratorContext,
+} from "@/lib/hub/dev/platform-agent/agent-orchestrator";
 
 export type HubAgentPlanStep = {
   readonly id: string;
@@ -48,12 +80,13 @@ export type HubAgentLoopEvent =
   | { readonly type: "tool"; readonly toolId: string; readonly label: string; readonly status: "running" | "done" | "failed"; readonly detail?: string }
   | { readonly type: "verify"; readonly ok: boolean; readonly detail: string }
   | { readonly type: "replan"; readonly reason: string }
-  | { readonly type: "ask_user"; readonly message: string; readonly actionId: string; readonly actionLabel: string }
+  | { readonly type: "ask_user"; readonly message: string; readonly actionId: string; readonly actionLabel: string; readonly publishGate?: import("@/lib/hub/dev/hub-publish-flow").PublishGateResult }
   | { readonly type: "text"; readonly body: string }
   | { readonly type: "deploy_steps"; readonly steps: readonly DeployWorkStep[] }
   | { readonly type: "test_result"; readonly passed: number; readonly total: number; readonly running?: boolean }
   | { readonly type: "file_touch"; readonly paths: readonly string[]; readonly touch: "reading" | "modified" | "created" | "running" }
-  | { readonly type: "complete"; readonly summary: string };
+  | { readonly type: "complete"; readonly summary: string }
+  | { readonly type: "orchestrator"; readonly workLog: string; readonly progressPct: number };
 
 export type HubAgentLoopInput = {
   readonly utterance: string;
@@ -64,6 +97,8 @@ export type HubAgentLoopInput = {
   readonly stripeConnected?: boolean;
   readonly platformId?: string;
   readonly skipRuntimeIngress?: boolean;
+  readonly userIntent?: import("@/lib/agent/conversation/intent-types").UserIntent;
+  readonly platformGoal?: PlatformGoal;
   readonly onEvent: (event: HubAgentLoopEvent) => void;
   readonly maxReplan?: number;
 };
@@ -102,10 +137,38 @@ function toPlanningItems(
   }));
 }
 
+function buildCompletionSummary(platformGoal: PlatformGoal, testsPassed: boolean): string {
+  if (!testsPassed) return "작업을 마쳤습니다. 남은 이슈를 확인해 주세요.";
+  switch (platformGoal.goalKind) {
+    case "create":
+      return `${platformGoal.summaryKo} — Platform 생성 및 테스트 완료.`;
+    case "modify":
+      return `${platformGoal.summaryKo} — 수정 및 테스트 완료.`;
+    case "connect":
+      return "연결 준비가 완료되었습니다.";
+    case "publish":
+      return "Publish 준비가 완료되었습니다.";
+    case "inspect":
+      return `${platformGoal.summaryKo} — 분석 완료.`;
+    default:
+      return `${summarizePlatformGoal(platformGoal)} — 완료.`;
+  }
+}
+
+function readInspectFromCtx(toolCtx: HubWorkspaceToolContext): HubWorkspaceInspectResult {
+  const state = observeHubWorkspace({
+    draft: toolCtx.getDraft(),
+    snapshot: toolCtx.snapshot,
+    connections: toolCtx.connections,
+  });
+  return { ...state, commerce: state.commerce };
+}
+
 export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgentLoopResult> {
   const emit = input.onEvent;
   const maxReplan = input.maxReplan ?? AGENT_LOOP_LIMITS.MAX_REPLANS;
   let replans = 0;
+  let repairBaselineDraft: PlatformDraft | null = null;
   let stripeConnected = input.stripeConnected ?? input.connections?.stripe ?? false;
   let testsPassed = input.snapshot.testsPassed === input.snapshot.testsTotal && input.snapshot.testsTotal > 0;
 
@@ -115,26 +178,69 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
     snapshot: input.snapshot,
     executor: input.executor,
     connections: {
-      github: true,
-      openai: true,
+      github: input.connections?.github ?? false,
+      openai: input.connections?.openai ?? false,
       stripe: stripeConnected,
-      mcp: false,
-      ...input.connections,
+      vercel: input.connections?.vercel ?? false,
+      supabase: input.connections?.supabase ?? false,
+      mcp: input.connections?.mcp ?? false,
     },
   };
 
   emit({ type: "phase", phase: "observe", detail: input.utterance });
-  emit({ type: "text", body: "프로젝트를 확인하고 있습니다." });
 
-  const inspectResult = await invokeHubWorkspaceTool("workspace.inspect", {}, toolCtx);
-  if (!inspectResult.ok) {
-    emit({ type: "text", body: inspectResult.error });
-    return { ok: false, snapshot: input.snapshot, draft: toolCtx.getDraft() };
+  const platformGoal =
+    input.platformGoal ??
+    compilePlatformGoal({
+      utterance: input.utterance,
+      intent: input.userIntent ?? "modify",
+      platformName: input.draft.name,
+    });
+  const executionMode = executionModeFromGoal(platformGoal);
+  const skipFullInspect = executionMode === "code_direct";
+
+  let orchestrator = initPlatformOrchestrator({ goal: platformGoal, maxReplans: maxReplan });
+  orchestrator = advanceOrchestratorPhase(orchestrator, "observe", platformGoal.summaryKo);
+  emit({
+    type: "orchestrator",
+    workLog: orchestratorWorkLog(orchestrator),
+    progressPct: orchestrator.goalState.progressPct,
+  });
+
+  if (skipFullInspect) {
+    emit({ type: "text", body: "코드 레벨 작업을 시작합니다." });
+  } else {
+    emit({ type: "text", body: "프로젝트를 확인하고 있습니다." });
   }
 
-  const inspect = inspectResult.data as HubWorkspaceInspectResult;
-  const observeLines = observationFromInspect(inspect);
-  emit({ type: "observe", lines: observeLines });
+  let inspect: HubWorkspaceInspectResult & { observation?: ReturnType<typeof observeFullWorkspace> };
+
+  if (skipFullInspect) {
+    const discovery = discoverPlatformContext({
+      goal: platformGoal,
+      utterance: input.utterance,
+      draft: toolCtx.getDraft(),
+    });
+    inspect = readInspectFromCtx(toolCtx);
+    emit({ type: "observe", lines: discovery.lines });
+  } else {
+    const inspectResult = await invokeHubWorkspaceTool("workspace.inspect", {}, toolCtx);
+    if (!inspectResult.ok) {
+      emit({ type: "text", body: inspectResult.error });
+      return { ok: false, snapshot: input.snapshot, draft: toolCtx.getDraft() };
+    }
+    inspect = inspectResult.data as HubWorkspaceInspectResult & {
+      observation?: ReturnType<typeof observeFullWorkspace>;
+    };
+    const fullObs =
+      inspect.observation ??
+      observeFullWorkspace({
+        draft: toolCtx.getDraft(),
+        snapshot: input.snapshot,
+        connections: toolCtx.connections,
+      });
+    emit({ type: "observe", lines: fullObs.lines });
+  }
 
   const structuredPlan = await planHubAgentTurn({
     utterance: input.utterance,
@@ -142,18 +248,81 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
     stripeConnected,
     platformId: input.platformId ?? input.draft.id,
     skipRuntime: input.skipRuntimeIngress,
+    userIntent: input.userIntent,
+    draft: toolCtx.getDraft(),
   });
 
   let planSteps = [...structuredPlan.steps];
+  orchestrator = initPlatformOrchestrator({ goal: platformGoal, planSteps, maxReplans: maxReplan });
+  orchestrator = advanceOrchestratorPhase(orchestrator, "plan", structuredPlan.strategy);
+  emit({
+    type: "orchestrator",
+    workLog: orchestratorWorkLog(orchestrator),
+    progressPct: orchestrator.goalState.progressPct,
+  });
   if (structuredPlan.intentSummaryKo) {
     emit({ type: "text", body: structuredPlan.intentSummaryKo });
   }
   emit({ type: "phase", phase: "plan", detail: structuredPlan.strategy });
   emit({
     type: "plan",
-    goal: input.utterance.trim(),
+    goal: summarizePlatformGoal(platformGoal),
     steps: toPlanningItems(planSteps, 0),
   });
+
+  if (executionMode === "code_direct") {
+    const discovery = discoverPlatformContext({
+      goal: platformGoal,
+      utterance: input.utterance,
+      draft: toolCtx.getDraft(),
+    });
+    const platformPlan = planPlatformChanges({
+      goal: platformGoal,
+      discovery,
+      draft: toolCtx.getDraft(),
+      stripeConnected,
+    });
+    const codingPlan = buildCodingPlan({
+      platformPlan,
+      discovery,
+    });
+
+    emit({ type: "text", body: codingPlan.summaryKo });
+    const codingResult = await runCodingAgentLoop({
+      plan: codingPlan,
+      ctx: toolCtx,
+      onEvent: (event) => {
+        if (event.type === "phase") {
+          emit({ type: "phase", phase: "execute", detail: event.detail });
+        }
+        if (event.type === "file") {
+          emit({
+            type: "file_touch",
+            paths: event.path ? [event.path] : [],
+            touch: event.action === "read" ? "reading" : "modified",
+          });
+        }
+        if (event.type === "test") {
+          testsPassed = event.ok;
+          emit({ type: "test_result", passed: event.passed, total: event.total, running: false });
+          emit({ type: "verify", ok: event.ok, detail: `${event.passed}/${event.total} passed` });
+        }
+        if (event.type === "repair") {
+          emit({ type: "replan", reason: event.reason });
+        }
+        if (event.type === "complete") {
+          emit({ type: "text", body: event.summary });
+        }
+      },
+    });
+
+    const finalDraft = toolCtx.getDraft();
+    const finalSnapshot = buildProjectSnapshot({ draft: finalDraft, testsPassed });
+    const summary = buildCompletionSummary(platformGoal, codingResult.ok);
+    emit({ type: "phase", phase: "complete" });
+    emit({ type: "complete", summary });
+    return { ok: codingResult.ok, snapshot: finalSnapshot, draft: finalDraft };
+  }
 
   // Delegate pure build/deploy utterances to existing deploy runtime when appropriate
   if (!wantsPayment(input.utterance) && (wantsBuild(input.utterance) || wantsDeploy(input.utterance))) {
@@ -185,8 +354,74 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       steps: toPlanningItems(planSteps, stepIndex),
     });
     emit({ type: "tool", toolId: step.toolId, label: step.label, status: "running" });
+    orchestrator = recordOrchestratorStepStart(orchestrator, step);
+    emit({
+      type: "orchestrator",
+      workLog: orchestratorWorkLog(orchestrator),
+      progressPct: orchestrator.goalState.progressPct,
+    });
 
-    const policy = resolveHubAgentToolPolicy(step.toolId, step.args);
+    const approval = evaluateToolApproval({
+      toolId: step.toolId,
+      publish: step.args?.publish === true || step.toolId === "publish.request",
+    });
+    const policy = approvalToLegacyPolicy(approval.decision);
+
+    if (policy === "require_approval" && step.toolId === "publish.request") {
+      await sleep(80);
+      const gateResult = await invokeHubWorkspaceTool(step.toolId, step.args ?? {}, toolCtx);
+      const gate = (gateResult.ok ? gateResult.data : null) as PublishGateResult | null;
+      if (gate && !gate.ok) {
+        emit({
+          type: "tool",
+          toolId: step.toolId,
+          label: step.label,
+          status: "failed",
+          detail: gate.errorKo,
+        });
+        emit({ type: "verify", ok: false, detail: gate.errorKo ?? "Publish gate blocked" });
+        return {
+          ok: false,
+          snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
+          draft: toolCtx.getDraft(),
+        };
+      }
+      emit({
+        type: "tool",
+        toolId: step.toolId,
+        label: step.label,
+        status: "done",
+        detail: gate ? `${gate.registeredCount} caps · v2 gate pass` : undefined,
+      });
+      emit({
+        type: "ask_user",
+        message: "Capability Index v2 검증 완료 — Production Publish 승인이 필요합니다.",
+        actionId: "approve_publish",
+        actionLabel: "Publish 승인",
+        publishGate: gate ?? undefined,
+      });
+      setPendingPublishApproval({
+        platformId: input.platformId ?? toolCtx.getDraft().id,
+        utterance: input.utterance,
+        gate: gate ?? {
+          ok: true,
+          manifestValid: true,
+          testsPassed,
+          registeredCount: 0,
+          rejected: [],
+          platformId: toolCtx.getDraft().id,
+          platformName: toolCtx.getDraft().name,
+        },
+      });
+      return {
+        ok: false,
+        pausedForUser: true,
+        actionId: "approve_publish",
+        snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
+        draft: toolCtx.getDraft(),
+      };
+    }
+
     if (policy === "require_approval" && step.toolId === "deploy.prepare") {
       emit({
         type: "ask_user",
@@ -223,37 +458,55 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
 
     await sleep(120);
 
+    if (CHECKPOINT_MUTATING_TOOLS.has(step.toolId)) {
+      createHubCheckpoint({
+        platformId: input.platformId ?? toolCtx.getDraft().id,
+        label: step.label,
+        draft: toolCtx.getDraft(),
+      });
+    }
+
     const result = await invokeHubWorkspaceTool(step.toolId, step.args ?? {}, toolCtx);
 
-    if (step.id === "ask_stripe" && result.ok) {
+    if (step.toolId === "connection.connect" && result.ok) {
+      const provider = String(step.args?.provider ?? "stripe") as HubPlatformProviderId;
+      const actionId = connectActionIdForProvider(provider);
+      const label = providerLabel(provider);
       emit({
         type: "tool",
         toolId: step.toolId,
         label: step.label,
         status: "done",
-        detail: "Stripe OAuth required",
+        detail: `${label} OAuth required`,
       });
       emit({
         type: "ask_user",
-        message: "Stripe 연결이 필요합니다.",
-        actionId: "connect_stripe",
-        actionLabel: "Connect Stripe",
+        message: `${label} OAuth 로그인이 필요해요.`,
+        actionId,
+        actionLabel: connectActionLabelKo(provider),
       });
       setPendingHubLoopResume({
         utterance: input.utterance,
         platformId: input.platformId ?? input.draft.id ?? null,
-        actionId: "connect_stripe",
+        actionId,
+        provider: provider as HubDevConnectionId,
       });
       return {
         ok: false,
         pausedForUser: true,
-        actionId: "connect_stripe",
+        actionId,
         snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
         draft: toolCtx.getDraft(),
       };
     }
 
     if (!result.ok) {
+      orchestrator = recordOrchestratorStepResult(orchestrator, step, false, result.error);
+      emit({
+        type: "orchestrator",
+        workLog: orchestratorWorkLog(orchestrator),
+        progressPct: orchestrator.goalState.progressPct,
+      });
       emit({
         type: "tool",
         toolId: step.toolId,
@@ -264,13 +517,30 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       emit({ type: "verify", ok: false, detail: result.error });
       if (replans < maxReplan) {
         replans += 1;
-        emit({ type: "replan", reason: result.error });
+        repairBaselineDraft = toolCtx.getDraft();
+        const repairPlan = planVerifyRepair({
+          draft: repairBaselineDraft,
+          toolError: result.error,
+        });
+        orchestrator = orchestratorPartialReplan(orchestrator, {
+          failedStepId: step.id,
+          repairSteps: repairPlan.repairSteps,
+          reasonKo: repairPlan.summaryKo,
+        });
+        emit({
+          type: "orchestrator",
+          workLog: orchestratorWorkLog(orchestrator),
+          progressPct: orchestrator.goalState.progressPct,
+        });
+        emit({ type: "replan", reason: repairPlan.summaryKo });
         planSteps = [
           ...planSteps.slice(0, stepIndex),
-          { id: "fix", label: "실패 수정", toolId: "schema.update", args: { capability: "payment.commit", fixApprovalToken: true } },
-          { id: "retest", label: "테스트 재실행", toolId: "test.run" },
+          ...repairPlan.repairSteps,
         ];
-        stepIndex = planSteps.findIndex((s) => s.id === "fix");
+        stepIndex = planSteps.findIndex((s) => s.id.startsWith("repair_"));
+        if (stepIndex < 0) {
+          stepIndex = Math.max(0, planSteps.length - repairPlan.repairSteps.length);
+        }
         continue;
       }
       return {
@@ -287,6 +557,17 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       status: "done",
       detail: JSON.stringify(result.data).slice(0, 80),
     });
+    orchestrator = recordOrchestratorStepResult(
+      orchestrator,
+      step,
+      true,
+      step.label,
+    );
+    emit({
+      type: "orchestrator",
+      workLog: orchestratorWorkLog(orchestrator),
+      progressPct: orchestrator.goalState.progressPct,
+    });
 
     if (touchPaths.length) {
       emit({
@@ -294,6 +575,31 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
         paths: touchPaths,
         touch: step.toolId === "capability.create" ? "created" : "modified",
       });
+    }
+
+    if (step.toolId === "preview.run") {
+      const { verify: previewVerify } = await inspectPreviewWithBrowser(toolCtx.getDraft());
+      emit({ type: "phase", phase: "verify", detail: "Preview agent verification" });
+      emit({
+        type: "verify",
+        ok: previewVerify.ok,
+        detail: previewVerify.summaryKo,
+      });
+      if (!previewVerify.ok && replans < maxReplan) {
+        replans += 1;
+        repairBaselineDraft = toolCtx.getDraft();
+        const repairPlan = planVerifyRepair({
+          draft: repairBaselineDraft,
+          previewFailed: true,
+        });
+        emit({ type: "replan", reason: repairPlan.summaryKo });
+        planSteps = [
+          ...planSteps.slice(0, stepIndex + 1),
+          ...repairPlan.repairSteps.filter((s) => s.toolId !== "test.run"),
+        ];
+        stepIndex += 1;
+        continue;
+      }
     }
 
     if (step.toolId === "test.run") {
@@ -306,18 +612,47 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
         ok: data.ok,
         detail: `${data.passed}/${data.total} passed`,
       });
+      const verdict = evaluateOrchestratorVerification(
+        orchestrator,
+        data.ok,
+        `${data.passed}/${data.total} passed`,
+      );
+      orchestrator = verdict.ctx;
+      emit({
+        type: "orchestrator",
+        workLog: orchestratorWorkLog(orchestrator),
+        progressPct: orchestrator.goalState.progressPct,
+      });
 
       if (!data.ok && replans < maxReplan) {
         replans += 1;
-        emit({ type: "replan", reason: "payment.commit 테스트 실패 — approvalToken 누락" });
-        emit({ type: "text", body: "테스트 실패를 확인했습니다. 수정 후 다시 실행합니다." });
+        repairBaselineDraft = toolCtx.getDraft();
+        const repairPlan = planVerifyRepair({
+          draft: repairBaselineDraft,
+          testFailed: true,
+          testDetail: `${data.passed}/${data.total} passed`,
+        });
+        emit({ type: "replan", reason: repairPlan.summaryKo });
+        orchestrator = orchestratorPartialReplan(orchestrator, {
+          failedStepId: step.id,
+          repairSteps: repairPlan.repairSteps,
+          reasonKo: repairPlan.summaryKo,
+        });
+        emit({ type: "text", body: "테스트 실패를 확인했습니다. Issue graph 기반으로 수정합니다." });
         planSteps = [
           ...planSteps.slice(0, stepIndex + 1),
-          { id: "fix_commit", label: "payment.commit 스키마 수정", toolId: "schema.update", args: { capability: "payment.commit", fixApprovalToken: true } },
-          { id: "retest", label: "테스트 재실행", toolId: "test.run" },
+          ...repairPlan.repairSteps,
         ];
         stepIndex += 1;
         continue;
+      }
+
+      if (data.ok && repairBaselineDraft) {
+        const regression = detectRegression(repairBaselineDraft, toolCtx.getDraft());
+        if (regression.detected) {
+          emit({ type: "text", body: regression.summaryKo });
+        }
+        repairBaselineDraft = null;
       }
     }
 
@@ -327,23 +662,31 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
   emit({ type: "phase", phase: "complete" });
   const finalDraft = toolCtx.getDraft();
   const finalSnapshot = buildProjectSnapshot({ draft: finalDraft, testsPassed });
-  const summary = testsPassed
-    ? "Stripe 결제 기능 구현 및 테스트가 완료되었습니다. Publish 준비가 되었습니다."
-    : "작업을 마쳤습니다. 남은 이슈를 확인해 주세요.";
+  const summary = buildCompletionSummary(platformGoal, testsPassed);
   emit({ type: "complete", summary });
   emit({ type: "text", body: summary });
 
   return { ok: testsPassed, snapshot: finalSnapshot, draft: finalDraft };
 }
 
-/** Resume loop after user completes an external action (e.g. Stripe OAuth). */
+/** Resume loop after user completes an external action (OAuth / publish approval). */
 export async function resumeHubAgentLoop(
-  input: HubAgentLoopInput & { readonly resumeUtterance?: string },
+  input: HubAgentLoopInput & {
+    readonly resumeUtterance?: string;
+    readonly resumeProvider?: HubPlatformProviderId;
+  },
 ): Promise<HubAgentLoopResult> {
+  const provider = input.resumeProvider ?? "stripe";
+  const connections = {
+    ...input.connections,
+    [provider]: true,
+  };
   return runHubAgentLoop({
     ...input,
-    utterance: input.resumeUtterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
-    stripeConnected: true,
-    connections: { ...input.connections, stripe: true },
+    utterance:
+      input.resumeUtterance ??
+      resumeUtteranceForProvider(provider),
+    stripeConnected: provider === "stripe" ? true : input.stripeConnected,
+    connections,
   });
 }

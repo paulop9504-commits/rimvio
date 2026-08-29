@@ -16,6 +16,12 @@ import { listLifeEventCandidates } from "@/lib/life-read-model";
 import { formatRelativeKo } from "@/lib/time/format-relative-ko";
 import { usePcLocalAgent } from "@/hooks/use-pc-local-agent";
 import {
+  readSharedAgentEventLog,
+  subscribeSharedAgentEventLog,
+  activityEventsFromLog,
+} from "@/lib/agent/events";
+import { AgentActivityPanel } from "@/components/agent/agent-activity-panel";
+import {
   readAgentExecutionSession,
   subscribeAgentExecutionSession,
   type AgentExecutionSession,
@@ -78,6 +84,12 @@ export function AgentHomeInspector({
   const { activeTask } = usePcLocalAgent();
   const [session, setSession] = useState<AgentExecutionSession | null>(null);
   const [recentTick, setRecentTick] = useState(0);
+  const [agentEventLog, setAgentEventLog] = useState(() => readSharedAgentEventLog());
+
+  useEffect(() => {
+    const sync = () => setAgentEventLog(readSharedAgentEventLog());
+    return subscribeSharedAgentEventLog(sync);
+  }, []);
 
   useEffect(() => {
     const sync = () => setSession(readAgentExecutionSession());
@@ -120,6 +132,19 @@ export function AgentHomeInspector({
   const progress = sessionProgress(session);
 
   const planningSteps: PlanningStep[] = useMemo(() => {
+    const activity = activityEventsFromLog(agentEventLog);
+    if (activity.length >= 2) {
+      return activity.slice(-4).map((event, index) => ({
+        id: event.id,
+        label: event.label,
+        status:
+          event.kind === "completed" || event.kind === "verification"
+            ? "done"
+            : index === activity.length - 1
+              ? "running"
+              : "pending",
+      }));
+    }
     if (session?.steps.length) {
       return session.steps.slice(0, 4).map((step, index) => ({
         id: step.id,
@@ -135,7 +160,7 @@ export function AgentHomeInspector({
       }));
     }
     return [...DEFAULT_PLANNING];
-  }, [session?.steps]);
+  }, [session?.steps, agentEventLog]);
 
   return (
     <aside
@@ -193,6 +218,21 @@ export function AgentHomeInspector({
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="mt-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className={cn("text-[11px] font-semibold", tokens.text)}>
+              Activity
+            </h2>
+          </div>
+          <div className={cn("rounded-xl border", tokens.card)}>
+            <AgentActivityPanel
+              log={agentEventLog}
+              emptyLabel="Hub Operator · Globe Agent 이벤트가 여기 동기화됩니다"
+              className="max-h-[140px] overflow-y-auto rimvio-scroll-touch"
+            />
+          </div>
         </section>
 
         <section className="mt-4">

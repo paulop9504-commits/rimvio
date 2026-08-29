@@ -30,6 +30,7 @@ import {
   type DevProjectSource,
   type DevChangeReviewState,
 } from "@/lib/hub/dev/dev-project-state";
+import { explainChanges } from "@/lib/hub/dev/hub-change-explanation";
 import {
   parseDevWorkspacePane,
   type DevWorkspacePane,
@@ -38,16 +39,35 @@ import { buildOperatorDiffForIssue, type OperatorDiff } from "@/lib/hub/dev/oper
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 import {
   clearPendingHubLoopResume,
-  isHubDevStripeConnected,
   readHubDevConnections,
   readPendingHubLoopResume,
 } from "@/lib/hub/dev/hub-connection-store";
-import { completeHubStripeConnect, connectHubStripe } from "@/lib/hub/dev/hub-stripe-connect";
+import {
+  completeHubOAuthConnect,
+  connectHubOAuthProvider,
+  connectedParamForProvider,
+  resumeUtteranceForProvider,
+  parseOAuthProfileFromSearchParams,
+} from "@/lib/hub/dev/hub-oauth-connect";
+import { HubDevOAuthConnectSheet } from "@/components/hub/dev/hub-dev-oauth-connect-sheet";
+import { HUB_CONNECTIONS_UPDATED_EVENT } from "@/lib/hub/dev/hub-connection-store";
+import {
+  syncHubConnectionsFromServer,
+  type HubConnectionsApiResponse,
+} from "@/lib/hub/dev/hub-connection-client-sync";
+import {
+  clearPendingPublishApproval,
+  readPendingPublishApproval,
+} from "@/lib/hub/dev/hub-publish-pending-store";
+import { undoHubCheckpoint } from "@/lib/hub/dev/hub-checkpoint-store";
+import { executeApprovedPublish } from "@/lib/hub/dev/hub-publish-flow";
+import type { HubPlatformProviderId } from "@/lib/integrations/hub-platform/connection-types";
 import {
   buildHubFileTree,
   mergeFileTouches,
   type HubFileTouchState,
 } from "@/lib/hub/dev/hub-file-tree";
+import { resolveDevModeLayout } from "@/lib/hub/dev/developer-mode";
 
 const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
 
@@ -81,50 +101,196 @@ export function HubDevWorkspace() {
   >(null);
   const [demoLoaded, setDemoLoaded] = useState(false);
   const [stripeConnected, setStripeConnected] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(false);
+  const [vercelConnected, setVercelConnected] = useState(false);
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
+  const [oauthSheetProvider, setOauthSheetProvider] = useState<HubPlatformProviderId | null>(null);
+  const [liveUser, setLiveUser] = useState<HubConnectionsApiResponse["user"]>(null);
   const [resumeLoopToken, setResumeLoopToken] = useState(0);
   const [resumeUtterance, setResumeUtterance] = useState<string | null>(null);
+  const [resumeProvider, setResumeProvider] = useState<HubPlatformProviderId | null>(null);
   const [fileTouches, setFileTouches] = useState<Record<string, HubFileTouchState>>({});
+  const [agentRunning, setAgentRunning] = useState(false);
+
+  const syncConnectionState = useCallback(() => {
+    const connections = readHubDevConnections();
+    setStripeConnected(connections.stripe);
+    setGithubConnected(connections.github);
+    setVercelConnected(connections.vercel);
+    setSupabaseConnected(connections.supabase);
+  }, []);
+
+  const refreshLiveConnections = useCallback(async () => {
+    try {
+      const data = await syncHubConnectionsFromServer();
+      setLiveUser(data.user);
+      syncConnectionState();
+      return data;
+    } catch {
+      syncConnectionState();
+      return null;
+    }
+  }, [syncConnectionState]);
 
   useEffect(() => {
-    setStripeConnected(isHubDevStripeConnected());
-  }, []);
+    void refreshLiveConnections();
+    const onUpdate = () => void refreshLiveConnections();
+    window.addEventListener(HUB_CONNECTIONS_UPDATED_EVENT, onUpdate);
+    return () => window.removeEventListener(HUB_CONNECTIONS_UPDATED_EVENT, onUpdate);
+  }, [refreshLiveConnections]);
+
+  const finishOAuthReturn = useCallback(
+    async (provider: HubPlatformProviderId, profile?: Parameters<typeof completeHubOAuthConnect>[1]) => {
+      await refreshLiveConnections();
+      completeHubOAuthConnect(provider, profile);
+
+      const pending = readPendingHubLoopResume();
+      if (!pending || (pending.provider && pending.provider !== provider)) {
+        return;
+      }
+
+      setResumeProvider(provider);
+      setResumeUtterance(pending.utterance);
+      clearPendingHubLoopResume();
+      setResumeLoopToken((t) => t + 1);
+    },
+    [refreshLiveConnections],
+  );
 
   useEffect(() => {
     if (!wizard.hydrated) return;
-    if (searchParams.get("stripe_connected") !== "1") return;
 
-    completeHubStripeConnect();
-    setStripeConnected(true);
+    const providers: HubPlatformProviderId[] = ["stripe", "github", "vercel", "supabase"];
+    let matched: HubPlatformProviderId | null = null;
+    for (const provider of providers) {
+      const param = connectedParamForProvider(provider);
+      if (param && searchParams.get(param) === "1") {
+        matched = provider;
+        break;
+      }
+    }
+    if (!matched) return;
 
-    const pending = readPendingHubLoopResume();
-    setResumeUtterance(
-      pending?.utterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
-    );
-    clearPendingHubLoopResume();
-    setResumeLoopToken((t) => t + 1);
+    const profile = parseOAuthProfileFromSearchParams(matched, searchParams);
+    void finishOAuthReturn(matched, profile);
 
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("stripe_connected");
-    router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
-  }, [wizard.hydrated, searchParams, router]);
-
-  const handleConnectStripe = useCallback(async () => {
-    const pid = platformIdParam ?? wizard.draft.id;
-    const returnPath = `/hub/workspace?platform=${encodeURIComponent(pid)}&stripe_connected=1`;
-    const result = await connectHubStripe({ returnPath, platformId: pid });
-
-    if (result.ok && result.mode === "mock") {
-      setStripeConnected(true);
-      const pending = readPendingHubLoopResume();
-      setResumeUtterance(
-        pending?.utterance ?? "Stripe 연결 완료 — 결제 capability 이어서 진행",
-      );
-      clearPendingHubLoopResume();
-      setResumeLoopToken((t) => t + 1);
+    for (const provider of providers) {
+      const param = connectedParamForProvider(provider);
+      if (param) params.delete(param);
     }
-  }, [platformIdParam, wizard.draft.id]);
+    params.delete("github_account");
+    params.delete("github_avatar");
+    params.delete("supabase_account");
+    router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
+  }, [wizard.hydrated, searchParams, router, finishOAuthReturn]);
 
-  const hubConnections = useMemo(() => readHubDevConnections(), [stripeConnected]);
+  useEffect(() => {
+    if (!wizard.hydrated) return;
+    const pendingConnect = searchParams.get("connect") as HubPlatformProviderId | null;
+    if (!pendingConnect || !["github", "vercel", "supabase", "stripe"].includes(pendingConnect)) {
+      return;
+    }
+
+    void refreshLiveConnections().then((data) => {
+      if (!data?.signedIn) return;
+      const pid = platformIdParam ?? wizard.draft.id;
+      const connectedParam = connectedParamForProvider(pendingConnect) ?? `${pendingConnect}_connected`;
+      const returnPath = `/hub/workspace?platform=${encodeURIComponent(pid)}&${connectedParam}=1`;
+      void connectHubOAuthProvider({
+        provider: pendingConnect,
+        returnPath,
+        platformId: pid,
+      });
+    });
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("connect");
+    params.delete("login_required");
+    params.delete("next");
+    router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
+  }, [wizard.hydrated, searchParams, router, platformIdParam, wizard.draft.id, refreshLiveConnections]);
+
+  const handleConnectProvider = useCallback(
+    async (provider: HubPlatformProviderId) => {
+      const pid = platformIdParam ?? wizard.draft.id;
+      const connectedParam = connectedParamForProvider(provider) ?? `${provider}_connected`;
+      const returnPath = `/hub/workspace?platform=${encodeURIComponent(pid)}&${connectedParam}=1`;
+      const result = await connectHubOAuthProvider({ provider, returnPath, platformId: pid });
+
+      if (result.ok && result.mode === "login") {
+        setOauthSheetProvider(provider);
+      }
+    },
+    [platformIdParam, wizard.draft.id],
+  );
+
+  const handleConnectStripe = useCallback(
+    () => void handleConnectProvider("stripe"),
+    [handleConnectProvider],
+  );
+
+  const handleConnectGithub = useCallback(
+    () => void handleConnectProvider("github"),
+    [handleConnectProvider],
+  );
+
+  const handleConnectVercel = useCallback(
+    () => void handleConnectProvider("vercel"),
+    [handleConnectProvider],
+  );
+
+  const handleConnectSupabase = useCallback(
+    () => void handleConnectProvider("supabase"),
+    [handleConnectProvider],
+  );
+
+  const handleUndoCheckpoint = useCallback(() => {
+    const pid = platformIdParam ?? wizard.draft.id;
+    const restored = undoHubCheckpoint(pid);
+    if (restored) {
+      wizard.updateDraft(restored);
+    }
+  }, [platformIdParam, wizard]);
+
+  const handleApprovePublish = useCallback(() => {
+    const pending = readPendingPublishApproval();
+    const result = executeApprovedPublish({
+      draft: wizard.draft,
+      testsPassed: wizard.testsPassed,
+    });
+    clearPendingPublishApproval();
+
+    if (result.published) {
+      wizard.completeAgentPublish(result.platformId);
+    }
+
+    setResumeProvider(null);
+    setResumeUtterance(
+      pending?.utterance
+        ? `${pending.utterance} — Publish 승인 완료`
+        : "Publish 승인 완료 — capability index 등록됨",
+    );
+    setResumeLoopToken((t) => t + 1);
+  }, [wizard]);
+
+  const hubConnections = useMemo(
+    () => readHubDevConnections(),
+    [stripeConnected, githubConnected, vercelConnected, supabaseConnected],
+  );
+
+  const devLayout = useMemo(
+    () =>
+      resolveDevModeLayout({
+        hasPlatform: platformCreated || wizard.draft.actions.length > 0,
+        agentRunning,
+        previewActive: activePane === "ade" || activePane === "tests",
+      }),
+    [platformCreated, wizard.draft.actions.length, agentRunning, activePane],
+  );
+
+  const autoFocusOperatorTab =
+    agentRunning && devLayout.showTerminal ? ("activity" as const) : null;
 
   const fileTree = useMemo(
     () => buildHubFileTree({ draft: wizard.draft, touchedPaths: fileTouches }),
@@ -247,6 +413,11 @@ export function HubDevWorkspace() {
     [wizard],
   );
 
+  const changeExplanations = useMemo(
+    () => explainChanges(deriveProjectChanges(wizard.draft)),
+    [wizard.draft],
+  );
+
   const snapshot = useMemo(() => {
     const base = buildProjectSnapshot({
       draft: wizard.draft,
@@ -334,7 +505,7 @@ export function HubDevWorkspace() {
     await runAnalyze(value);
   }, [connectValue, runAnalyze]);
 
-  const handleConnectGithub = useCallback(async () => {
+  const handleGithubSourceConnect = useCallback(async () => {
     setConnectValue(OSAKA_DEMO_URL);
     await runAnalyze(OSAKA_DEMO_URL);
   }, [runAnalyze]);
@@ -494,6 +665,7 @@ export function HubDevWorkspace() {
         onPublish={() => setPane("deploy")}
         publishDisabled={!wizard.publishReady}
         onOpenCommandPalette={() => setPaletteOpen(true)}
+        liveUser={liveUser}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -524,6 +696,8 @@ export function HubDevWorkspace() {
             onConnect={() => void handleConnect()}
             onConnectGithub={() => void handleConnectGithub()}
             onLoadDemo={() => void handleLoadDemo()}
+            platformId={platformIdParam ?? wizard.draft.id}
+            connections={hubConnections}
             onFilesDrop={handleFilesDrop}
             onSelectCapability={(id) => {
               setSelectedCapabilityId(id);
@@ -535,6 +709,7 @@ export function HubDevWorkspace() {
             publishStatus={wizard.publishStatus}
             onTestComplete={() => void wizard.runSandboxTest()}
             changeReview={changeReview}
+            changeExplanations={changeExplanations}
             onAcceptAllChanges={handleAcceptAllChanges}
             onRejectChange={handleRejectChange}
             onReviewChanges={() => setPane("changes")}
@@ -577,9 +752,17 @@ export function HubDevWorkspace() {
           onReviewAllChanges={() => setPane("changes")}
           stripeConnected={stripeConnected || hubConnections.stripe}
           onConnectStripe={() => void handleConnectStripe()}
+          onConnectGithub={() => void handleConnectGithub()}
+          onConnectVercel={() => void handleConnectVercel()}
+          onConnectSupabase={() => void handleConnectSupabase()}
+          onApprovePublish={handleApprovePublish}
+          onUndoCheckpoint={handleUndoCheckpoint}
           resumeLoopToken={resumeLoopToken}
           resumeUtterance={resumeUtterance}
+          resumeProvider={resumeProvider}
           onFileTouch={handleAgentFileTouch}
+          onAgentRunningChange={setAgentRunning}
+          autoFocusTab={autoFocusOperatorTab}
         />
       </div>
 
@@ -588,6 +771,16 @@ export function HubDevWorkspace() {
         onClose={() => setPaletteOpen(false)}
         onSelect={handleCommand}
       />
+
+      {oauthSheetProvider ? (
+        <HubDevOAuthConnectSheet
+          provider={oauthSheetProvider}
+          open={Boolean(oauthSheetProvider)}
+          onClose={() => setOauthSheetProvider(null)}
+          onConnected={() => setOauthSheetProvider(null)}
+          returnPath={`/hub/workspace?connect=${oauthSheetProvider}${platformIdParam ? `&platform=${encodeURIComponent(platformIdParam)}` : ""}`}
+        />
+      ) : null}
     </div>
   );
 }

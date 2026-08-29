@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectSnapshot, DevProjectSource } from "@/lib/hub/dev/dev-project-state";
+import type { HubDevConnections } from "@/lib/hub/dev/hub-connection-store";
+import { readHubConnectionProfile } from "@/lib/hub/dev/hub-connection-store";
 import { buildDevBlueprintModel } from "@/lib/hub/dev/dev-blueprint-model";
 import { buildDevCapabilityRows } from "@/lib/hub/dev/dev-capability-exposure-ui";
 import { HubDevSchemaPreviewPanel } from "@/components/hub/dev/hub-dev-schema-preview-panel";
@@ -43,6 +45,7 @@ type HubDevBlueprintDashboardProps = {
   readonly onPublish: () => void;
   readonly onTestInvoke: (capabilityId: string) => void;
   readonly highlightSection?: string;
+  readonly connections?: HubDevConnections;
 };
 
 export function HubDevBlueprintDashboard(props: HubDevBlueprintDashboardProps) {
@@ -51,6 +54,15 @@ export function HubDevBlueprintDashboard(props: HubDevBlueprintDashboardProps) {
   const displaySources = connectedSources.length ? connectedSources : snapshot.sources;
   const capabilityRows = buildDevCapabilityRows(draft.actions);
   const previewAction = draft.actions[0] ?? null;
+  const conn = props.connections ?? {
+    github: false,
+    vercel: false,
+    supabase: false,
+    stripe: false,
+    openai: false,
+    mcp: false,
+  };
+  const githubProfile = conn.github ? readHubConnectionProfile("github") : null;
 
   useEffect(() => {
     if (!props.highlightSection) return;
@@ -256,9 +268,15 @@ export function HubDevBlueprintDashboard(props: HubDevBlueprintDashboardProps) {
             <section className="rounded-xl border border-[#e5e7eb] bg-white p-2.5 shadow-sm">
               <p className="text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Connected Services</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <ServiceChip label="GitHub" connected />
-                <ServiceChip label="OpenAI" connected={draft.actions.length > 0} />
-                <ServiceChip label="MCP Server" connected={displaySources.length > 1} />
+                <ServiceChip
+                  label={githubProfile?.accountLabel ? `GitHub ${githubProfile.accountLabel}` : "GitHub"}
+                  connected={conn.github}
+                />
+                <ServiceChip label="Vercel" connected={conn.vercel} />
+                <ServiceChip label="Supabase" connected={conn.supabase} />
+                <ServiceChip label="Stripe" connected={conn.stripe} />
+                <ServiceChip label="OpenAI" connected={conn.openai || draft.actions.length > 0} />
+                <ServiceChip label="MCP Server" connected={conn.mcp || displaySources.length > 1} />
               </div>
               <ul className="mt-2 space-y-1">
                 {displaySources.length ? (

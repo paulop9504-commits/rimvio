@@ -6,6 +6,7 @@
 import type { HubAgentPlanStep } from "@/lib/hub/dev/hub-agent-loop";
 import type { HubWorkspaceToolId } from "@/lib/hub/dev/hub-workspace-tools";
 import type { HubWorkspaceFullState } from "@/lib/hub/dev/hub-workspace-observe";
+import { isConnectUtterance } from "@/lib/hub/dev/hub-connect-provider";
 
 export type HubIntentKind =
   | "user_approval_gate"
@@ -67,6 +68,10 @@ export function compileHubCreatorIntent(input: {
 }): HubCreatorIntent | null {
   const text = input.utterance.trim();
   if (!text) return null;
+
+  if (isConnectUtterance(text)) {
+    return null;
+  }
 
   const caps = input.state.capabilities;
   const hasPaymentCommit = caps.includes("payment.commit");

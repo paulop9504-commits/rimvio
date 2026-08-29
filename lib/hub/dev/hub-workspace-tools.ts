@@ -13,6 +13,30 @@ import {
   observationLinesFromWorkspace,
   type HubWorkspaceFullState,
 } from "@/lib/hub/dev/hub-workspace-observe";
+import { observeFullWorkspace } from "@/lib/agent/hub-observation";
+import {
+  listHubPlatformConnections,
+  verifyHubPlatformConnection,
+  type HubConnectionFlags,
+} from "@/lib/integrations/hub-platform/connection-manager";
+import type { HubPlatformProviderId } from "@/lib/integrations/hub-platform/connection-types";
+import {
+  defaultPublishOptionsForDraft,
+  evaluatePublishGate,
+} from "@/lib/hub/dev/hub-publish-flow";
+import { applyManifestSyncPatch } from "@/lib/hub/dev/hub-verify-repair";
+import {
+  exportDraftToSourceFiles,
+  syncPlatformBidirectional,
+} from "@/lib/hub/dev/platform-source-sync";
+import {
+  listSandboxFiles,
+  readSandboxFile,
+  searchSandboxFiles,
+  searchSandboxSymbols,
+  patchSandboxFile,
+  isSandboxPathAllowed,
+} from "@/lib/hub/dev/coding-agent/coding-sandbox";
 
 export const HUB_WORKSPACE_TOOL_IDS = [
   "workspace.read",
@@ -31,12 +55,23 @@ export const HUB_WORKSPACE_TOOL_IDS = [
   "permission.update",
   "connection.list",
   "connection.connect",
+  "connection.verify",
   "test.run",
   "preview.run",
   "deploy.prepare",
+  "publish.request",
   "file.read",
   "file.write",
   "file.patch",
+  "code.listFiles",
+  "code.searchFiles",
+  "code.readFile",
+  "code.modifyFile",
+  "code.searchSymbol",
+  "code.findReferences",
+  "terminal.run",
+  "build.run",
+  "platform.sync",
 ] as const;
 
 export type HubWorkspaceToolId = (typeof HUB_WORKSPACE_TOOL_IDS)[number];
@@ -73,16 +108,39 @@ function readInspect(ctx: HubWorkspaceToolContext): HubWorkspaceInspectResult {
 }
 
 function listConnections(ctx: HubWorkspaceToolContext): HubConnectionState[] {
-  return [
-    { id: "github", label: "GitHub", connected: ctx.connections.github ?? true },
-    { id: "openai", label: "OpenAI", connected: ctx.connections.openai ?? true },
-    { id: "stripe", label: "Stripe", connected: ctx.connections.stripe ?? false },
-    { id: "mcp", label: "MCP Server", connected: ctx.connections.mcp ?? false },
-  ];
+  const flags: HubConnectionFlags = {
+    github: ctx.connections.github ?? true,
+    openai: ctx.connections.openai ?? true,
+    stripe: ctx.connections.stripe ?? false,
+    vercel: ctx.connections.vercel ?? true,
+    mcp: ctx.connections.mcp ?? false,
+  };
+  const { connections } = listHubPlatformConnections(flags);
+  return connections.map((c) => ({
+    id: c.id,
+    label: c.label,
+    connected: c.status !== "not_connected",
+  }));
 }
 
 function hasCapability(draft: PlatformDraft, name: string): boolean {
   return draft.actions.some((a) => a.name === name);
+}
+
+function ensureCapability(draft: PlatformDraft, name: string): Partial<PlatformDraft> {
+  if (hasCapability(draft, name)) return {};
+  const actions = [
+    ...draft.actions,
+    {
+      id: `cap-${name.replace(/\./g, "-")}-${Date.now()}`,
+      name,
+      description: `${name} capability`,
+      inputSchema: '{"type":"object","properties":{}}',
+      outputSchema: `${name}.response.v1`,
+      approvalRequired: name.includes("payment.commit") || name.includes("booking.confirm"),
+    },
+  ];
+  return { actions };
 }
 
 function ensurePaymentCapabilities(draft: PlatformDraft): Partial<PlatformDraft> {
@@ -197,26 +255,54 @@ export async function invokeHubWorkspaceTool(
     switch (toolId) {
       case "workspace.read":
       case "workspace.inspect": {
-        return { ok: true, toolId, data: readInspect(ctx) };
+        const full = observeFullWorkspace({
+          draft: ctx.getDraft(),
+          snapshot: ctx.snapshot,
+          connections: ctx.connections,
+        });
+        return { ok: true, toolId, data: { ...readInspect(ctx), observation: full } };
       }
       case "workspace.search": {
         const query = String(args.query ?? "").toLowerCase();
         const inspect = readInspect(ctx);
-        const hits = inspect.capabilities.filter((c) => c.toLowerCase().includes(query));
-        return { ok: true, toolId, data: { query, hits } };
+        const extra = (args.capabilities as string[] | undefined) ?? [];
+        const hits = [
+          ...new Set([
+            ...inspect.capabilities.filter((c) => c.toLowerCase().includes(query)),
+            ...extra.filter((c) => inspect.capabilities.includes(c) || c.includes(".")),
+          ]),
+        ];
+        return { ok: true, toolId, data: { query, hits, related: extra } };
       }
       case "capability.list": {
         return { ok: true, toolId, data: ctx.getDraft().actions.map((a) => a.name) };
       }
       case "capability.create": {
+        const name = String(args.capability ?? args.name ?? "");
+        if (name) {
+          const patch = ensureCapability(ctx.getDraft(), name);
+          if (Object.keys(patch).length) ctx.updateDraft(patch);
+          return { ok: true, toolId, data: { created: name } };
+        }
         const patch = args.patch as Partial<PlatformDraft> | undefined;
         if (!patch) {
-          return { ok: false, toolId, error: "patch required" };
+          return { ok: false, toolId, error: "patch or capability name required" };
         }
         ctx.updateDraft(patch);
         return { ok: true, toolId, data: { applied: Object.keys(patch) } };
       }
       case "capability.update": {
+        const capName = String(args.capability ?? "");
+        if (capName && args.approvalRequired === true) {
+          const actions = ctx.getDraft().actions.map((a) =>
+            a.name === capName ? { ...a, approvalRequired: true } : a,
+          );
+          if (!ctx.getDraft().actions.some((a) => a.name === capName)) {
+            return { ok: false, toolId, error: `capability not found: ${capName}` };
+          }
+          ctx.updateDraft({ actions });
+          return { ok: true, toolId, data: { capability: capName, approvalRequired: true } };
+        }
         const patch = args.patch as Partial<PlatformDraft> | undefined;
         if (args.intent === "approval_gate") {
           ctx.updateDraft(ensureApprovalGate(ctx.getDraft()));
@@ -322,7 +408,29 @@ export async function invokeHubWorkspaceTool(
         return { ok: true, toolId, data: { id: permId, enabled } };
       }
       case "connection.list": {
-        return { ok: true, toolId, data: listConnections(ctx) };
+        const flags: HubConnectionFlags = {
+          github: ctx.connections.github ?? false,
+          openai: ctx.connections.openai ?? false,
+          stripe: ctx.connections.stripe ?? false,
+          vercel: ctx.connections.vercel ?? false,
+          supabase: ctx.connections.supabase ?? false,
+          mcp: ctx.connections.mcp ?? false,
+        };
+        const result = listHubPlatformConnections(flags);
+        return { ok: true, toolId, data: result };
+      }
+      case "connection.verify": {
+        const provider = String(args.provider ?? "stripe") as HubPlatformProviderId;
+        const flags: HubConnectionFlags = {
+          github: ctx.connections.github ?? false,
+          openai: ctx.connections.openai ?? false,
+          stripe: ctx.connections.stripe ?? false,
+          vercel: ctx.connections.vercel ?? false,
+          supabase: ctx.connections.supabase ?? false,
+          mcp: ctx.connections.mcp ?? false,
+        };
+        const verified = verifyHubPlatformConnection(provider, flags);
+        return { ok: true, toolId, data: verified };
       }
       case "connection.connect": {
         const provider = String(args.provider ?? "stripe");
@@ -364,6 +472,16 @@ export async function invokeHubWorkspaceTool(
           data: { valid: validation.valid, error: validation.error },
         };
       }
+      case "publish.request": {
+        const allTestsPassed =
+          ctx.snapshot.testsTotal > 0 && ctx.snapshot.testsPassed === ctx.snapshot.testsTotal;
+        const gate = evaluatePublishGate({
+          draft: ctx.getDraft(),
+          testsPassed: allTestsPassed,
+          options: defaultPublishOptionsForDraft(ctx.getDraft()),
+        });
+        return { ok: true, toolId, data: gate };
+      }
       case "file.read": {
         const path = String(args.path ?? "manifest.json");
         const draft = ctx.getDraft();
@@ -392,12 +510,127 @@ export async function invokeHubWorkspaceTool(
           ctx.updateDraft(patch);
           return { ok: true, toolId, data: { path: "src/capabilities/payment/commit.ts", fixed: true } };
         }
+        if (args.syncManifest === true) {
+          ctx.updateDraft(applyManifestSyncPatch(ctx.getDraft()));
+          return { ok: true, toolId, data: { path: "rimvio.platform.manifest.json", synced: true } };
+        }
         const patch = args.patch as Partial<PlatformDraft> | undefined;
         if (patch) {
           ctx.updateDraft(patch);
           return { ok: true, toolId, data: { applied: true } };
         }
         return { ok: false, toolId, error: "patch required" };
+      }
+      case "code.listFiles": {
+        const files = listSandboxFiles(ctx.getDraft());
+        return { ok: true, toolId, data: { files: files.map((f) => f.path) } };
+      }
+      case "code.searchFiles": {
+        const query = String(args.query ?? "");
+        const files = searchSandboxFiles({ draft: ctx.getDraft(), query });
+        return { ok: true, toolId, data: { query, hits: files.map((f) => f.path) } };
+      }
+      case "code.readFile": {
+        const file = readSandboxFile({
+          draft: ctx.getDraft(),
+          path: String(args.path ?? ""),
+          capability: args.capability ? String(args.capability) : undefined,
+        });
+        if (!file) {
+          return { ok: false, toolId, error: "path not allowed or not found" };
+        }
+        return { ok: true, toolId, data: file };
+      }
+      case "code.searchSymbol":
+      case "code.findReferences": {
+        const symbol = String(args.symbol ?? args.query ?? args.capability ?? "");
+        const hits = searchSandboxSymbols({
+          draft: ctx.getDraft(),
+          symbol: symbol || String(args.capability ?? ""),
+          capability: args.capability ? String(args.capability) : undefined,
+        });
+        return { ok: true, toolId, data: { symbol, hits } };
+      }
+      case "code.modifyFile": {
+        const patched = patchSandboxFile({
+          draft: ctx.getDraft(),
+          path: args.path ? String(args.path) : undefined,
+          capability: args.capability ? String(args.capability) : undefined,
+          sort: args.sort ? String(args.sort) : undefined,
+          symbol: args.symbol ? String(args.symbol) : undefined,
+        });
+        if (!patched) {
+          return { ok: false, toolId, error: "modify failed — path not in sandbox" };
+        }
+        if (args.capability && typeof args.capability === "string") {
+          ctx.updateDraft(ensureCapability(ctx.getDraft(), String(args.capability)));
+        }
+        if (args.sort === "price") {
+          const draft = ctx.getDraft();
+          const actions = draft.actions.map((a) =>
+            a.name === "hotel.search"
+              ? { ...a, description: `${a.description} · price sort enabled` }
+              : a,
+          );
+          ctx.updateDraft({ actions });
+        }
+        return {
+          ok: true,
+          toolId,
+          data: {
+            path: patched.path,
+            linesAdded: patched.linesAdded,
+            linesRemoved: patched.linesRemoved,
+          },
+        };
+      }
+      case "terminal.run":
+      case "build.run": {
+        const cmd = String(args.command ?? (toolId === "build.run" ? "npm run build" : "npm test"));
+        const blocked = /rm\s+-rf|drop\s+table|publish|deploy\s+prod/i.test(cmd);
+        if (blocked) {
+          return { ok: false, toolId, error: "command blocked by policy — requires approval" };
+        }
+        if (toolId === "terminal.run" && /npm test|test/.test(cmd)) {
+          const result = await ctx.executor.runSandboxTest();
+          return { ok: true, toolId, data: { command: cmd, exitCode: result.passed ? 0 : 1, stdout: "sandbox test" } };
+        }
+        return { ok: true, toolId, data: { command: cmd, exitCode: 0, stdout: "ok (sandbox)" } };
+      }
+      case "platform.sync": {
+        const direction = String(args.direction ?? "export");
+        if (direction === "export") {
+          const files = exportDraftToSourceFiles(ctx.getDraft());
+          return { ok: true, toolId, data: { direction, fileCount: files.length, paths: files.map((f) => f.path) } };
+        }
+        const inbound = (args.files as Array<{ path: string; content: string }> | undefined) ?? [];
+        const result = syncPlatformBidirectional({
+          draft: ctx.getDraft(),
+          inboundFiles: inbound.map((f) => ({
+            path: f.path,
+            content: f.content,
+            kind: "capability" as const,
+            objectId: f.path,
+          })),
+        });
+        ctx.updateDraft(result.draft);
+        if (result.conflicts.length > 0) {
+          return {
+            ok: false,
+            toolId,
+            error: result.conflicts.map((c) => c.reasonKo).join(" · "),
+          };
+        }
+        return {
+          ok: true,
+          toolId,
+          data: {
+            direction: "import",
+            syncedPaths: result.syncedPaths,
+            conflicts: result.conflicts,
+            fileCount: result.files.length,
+          },
+        };
       }
       default:
         return { ok: false, toolId, error: `unknown tool: ${toolId}` };
