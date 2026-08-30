@@ -22,7 +22,15 @@ export type AgentEventKind =
   | "error"
   | "change_explained"
   | "checkpoint_created"
-  | "checkpoint_restored";
+  | "checkpoint_restored"
+  | "agent_started"
+  | "inspection_started"
+  | "verification_started"
+  | "verification_passed"
+  | "verification_failed"
+  | "agent_paused"
+  | "agent_failed"
+  | "final_report_created";
 
 export type AgentEvent = {
   readonly id: string;
@@ -81,6 +89,14 @@ export function activityEventsFromLog(log: AgentEventLog): readonly AgentEvent[]
     "approval_required",
     "completed",
     "error",
+    "agent_started",
+    "inspection_started",
+    "verification_started",
+    "verification_passed",
+    "verification_failed",
+    "agent_paused",
+    "agent_failed",
+    "final_report_created",
     "change_explained",
     "checkpoint_created",
     "checkpoint_restored",

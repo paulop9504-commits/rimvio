@@ -14,6 +14,8 @@ import {
 import { syncAgentActivityEventToFeed } from "@/lib/context-run/sync-agent-activity-trail";
 import { runNlIntentCompilerStage } from "@/lib/context-run/compile-nl-intent";
 import type { RimvioIntentFrame } from "@/lib/rimvio-protocol/intent";
+import type { CapabilityIntentResolution } from "@/lib/rimvio-index/types";
+import { resolveCapabilityIntent } from "@/lib/rimvio-index/resolve-capability-intent";
 
 export const AGENT_PRODUCT_PIPELINE_STAGES = [
   "intent",
@@ -60,6 +62,7 @@ export type AgentProductTurn = {
   readonly failedStage: AgentProductPipelineStage | null;
   readonly intentFrame?: RimvioIntentFrame | null;
   readonly intentWorkLogKo?: string | null;
+  readonly capabilityIntent?: CapabilityIntentResolution | null;
 };
 
 let lastProductTurn: AgentProductTurn | null = null;
@@ -113,10 +116,17 @@ export function beginAgentProductTurn(input: {
   });
 
   const intentCompiled = utterance ? runNlIntentCompilerStage(utterance) : null;
+  const capabilityIntent = utterance
+    ? resolveCapabilityIntent({
+        utterance,
+        contextEventId: contextEventId || null,
+      })
+    : null;
   const intentStatus =
-    intentCompiled?.workLogKo && intentCompiled.commerceCapability
+    capabilityIntent?.workLogKo ??
+    (intentCompiled?.workLogKo && intentCompiled.commerceCapability
       ? intentCompiled.workLogKo
-      : null;
+      : null);
 
   const turn: AgentProductTurn = {
     contextEventId,
@@ -131,6 +141,7 @@ export function beginAgentProductTurn(input: {
     failedStage: contextEventId ? null : "context_resolution",
     intentFrame: intentCompiled?.intentFrame ?? null,
     intentWorkLogKo: intentCompiled?.workLogKo ?? null,
+    capabilityIntent,
   };
   lastProductTurn = turn;
   emitProductTurnChange();

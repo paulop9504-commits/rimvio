@@ -96,8 +96,22 @@ export function applyControllerEventToLog(
     case "complete":
       agentEvent = createAgentEvent("completed", event.summary, undefined);
       break;
+    case "final_report":
+      agentEvent = createAgentEvent(
+        "final_report_created",
+        event.report.headlineKo,
+        event.report.verified ? "verified" : event.report.status,
+        { report: event.report },
+      );
+      break;
     case "phase":
       agentEvent = createAgentEvent("thinking", event.phase, event.detail);
+      break;
+    case "thought":
+      agentEvent = createAgentEvent("thinking", event.title, event.body);
+      break;
+    case "terminal":
+      agentEvent = createAgentEvent("message", event.title, event.lines.slice(-3).join(" · "));
       break;
     default:
       break;

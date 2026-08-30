@@ -8,6 +8,8 @@ import {
   type RealityTask,
 } from "@/lib/reality-data-network";
 import { cn } from "@/lib/utils";
+import { HubContributorWalletPanel } from "@/components/hub/wallet/hub-contributor-wallet-panel";
+import type { ContributorWalletSnapshot } from "@/lib/hub/wallet/fetch-contributor-wallet";
 import type { DataSupplierPane } from "@/lib/hub/data/data-workspace-nav";
 import { HubDataDemoBadge } from "@/components/hub/data/hub-data-shell";
 
@@ -18,6 +20,8 @@ type HubDataSupplierPanelProps = {
   readonly profile: ContributorProfile | null;
   readonly tasks: readonly RealityTask[];
   readonly submissions: readonly DataSubmission[];
+  readonly wallet: ContributorWalletSnapshot | null;
+  readonly walletLoading?: boolean;
   readonly onSubmit: (input: {
     titleKo: string;
     targetLabelKo: string;
@@ -40,6 +44,8 @@ export function HubDataSupplierPanel({
   profile,
   tasks,
   submissions,
+  wallet,
+  walletLoading,
   onSubmit,
 }: HubDataSupplierPanelProps) {
   const mySubs = useMemo(
@@ -75,8 +81,8 @@ export function HubDataSupplierPanel({
           />
           <StatCard
             label="누적 수익"
-            value={`₩${(profile?.totalEarnedKrw ?? 0).toLocaleString()}`}
-            sub="제출 보상 + 승격 보너스"
+            value={`₩${(wallet?.totalCombinedKrw ?? profile?.totalEarnedKrw ?? 0).toLocaleString()}`}
+            sub="Contributor Ledger"
           />
         </div>
 
@@ -202,19 +208,17 @@ export function HubDataSupplierPanel({
     );
   }
 
-  return (
-    <div className="overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-      <p className="text-[10px] font-semibold uppercase text-[#64748b]">Earnings</p>
-      <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">공급자 수익</h2>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <StatCard label="누적" value={`₩${(profile?.totalEarnedKrw ?? 0).toLocaleString()}`} />
-        <StatCard label="제출 건수" value={String(profile?.tasksCompleted ?? 0)} />
-      </div>
-      <p className="mt-4 rounded-lg border border-[#E2E8F0] bg-white px-4 py-3 text-[11px] text-[#64748b]">
-        Base Reward × Quality × Difficulty · Verified 승격 시 추가 보너스 (Payout Engine Phase 2).
-      </p>
-    </div>
-  );
+  if (pane === "earnings") {
+    return (
+      <HubContributorWalletPanel
+        roleLabel="공급자"
+        wallet={wallet}
+        loading={walletLoading}
+      />
+    );
+  }
+
+  return null;
 }
 
 function StatusChip({

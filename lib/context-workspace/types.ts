@@ -78,6 +78,20 @@ export type ContextWorkspaceStatus =
   | "committed"
   | "closed";
 
+/** Workspace → Platform lifecycle (P9). Distinct from edit/commit status. */
+export const CONTEXT_WORKSPACE_LIFECYCLE = [
+  "draft",
+  "private",
+  "persistent",
+  "team",
+  "public",
+  "published",
+  "archived",
+] as const;
+
+export type ContextWorkspaceLifecycle =
+  (typeof CONTEXT_WORKSPACE_LIFECYCLE)[number];
+
 export type ContextWorkspaceTransitionOp =
   | "replace_candidates"
   | "add_nodes"
@@ -134,6 +148,8 @@ export type ContextWorkspaceState = {
   readonly contextEventId: string;
   readonly domain: ContextWorkspaceDomain;
   readonly status: ContextWorkspaceStatus;
+  /** Platform publish lifecycle — optional until publish bridge (P9). */
+  readonly lifecycle?: ContextWorkspaceLifecycle | null;
   readonly query: string;
   readonly summaryKo: string;
   readonly nodes: readonly ContextWorkspaceNode[];

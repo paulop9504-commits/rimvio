@@ -37,6 +37,13 @@ import {
   patchSandboxFile,
   isSandboxPathAllowed,
 } from "@/lib/hub/dev/coding-agent/coding-sandbox";
+import { isCodingToolId } from "@/lib/hub/dev/coding-agent/coding-tool-ids";
+import { invokeCodingToolBrowser } from "@/lib/hub/dev/coding-agent/invoke-coding-tools-browser";
+import {
+  invokeExperienceResource,
+  parseResourceOpFromUtterance,
+  type ExperienceResourceOp,
+} from "@/lib/hub/dev/experience-os";
 
 export const HUB_WORKSPACE_TOOL_IDS = [
   "workspace.read",
@@ -69,9 +76,31 @@ export const HUB_WORKSPACE_TOOL_IDS = [
   "code.modifyFile",
   "code.searchSymbol",
   "code.findReferences",
+  "code.createFile",
+  "code.deleteFile",
+  "code.transform",
+  "code.findDefinition",
+  "code.analyzeImports",
+  "code.callGraph",
+  "repo.clone",
+  "repo.status",
+  "test.discover",
+  "test.generate",
+  "test.e2e",
+  "lint.run",
+  "typecheck.run",
+  "server.start",
+  "server.stop",
+  "server.status",
+  "resource.apply",
+  "verification.run",
   "terminal.run",
   "build.run",
   "platform.sync",
+  "loop.create",
+  "loop.test",
+  "loop.read",
+  "loop.lint",
 ] as const;
 
 export type HubWorkspaceToolId = (typeof HUB_WORKSPACE_TOOL_IDS)[number];
@@ -96,6 +125,7 @@ export type HubWorkspaceToolContext = {
   readonly snapshot: DevProjectSnapshot;
   readonly executor: DeployExecutorCallbacks;
   readonly connections: Readonly<Record<string, boolean>>;
+  readonly repoRoot?: string;
 };
 
 function readInspect(ctx: HubWorkspaceToolContext): HubWorkspaceInspectResult {
@@ -252,6 +282,12 @@ export async function invokeHubWorkspaceTool(
   ctx: HubWorkspaceToolContext,
 ): Promise<HubWorkspaceToolResult> {
   try {
+    if (
+      isCodingToolId(toolId) ||
+      (ctx.repoRoot && (toolId.startsWith("code.") || toolId === "test.run" || toolId === "build.run"))
+    ) {
+      return invokeCodingToolBrowser(toolId, args, ctx);
+    }
     switch (toolId) {
       case "workspace.read":
       case "workspace.inspect": {
@@ -451,6 +487,8 @@ export async function invokeHubWorkspaceTool(
           draft,
           testsPassed: result.passed,
         });
+        const { dispatchHubWorkspaceCommand } = await import("@/lib/hub/dev/hub-workspace-commands");
+        dispatchHubWorkspaceCommand({ kind: "open_pane", pane: "tests" });
         return {
           ok: true,
           toolId,
@@ -462,6 +500,8 @@ export async function invokeHubWorkspaceTool(
         };
       }
       case "preview.run": {
+        const { dispatchHubWorkspaceCommand } = await import("@/lib/hub/dev/hub-workspace-commands");
+        dispatchHubWorkspaceCommand({ kind: "open_preview" });
         return { ok: true, toolId, data: { status: "ready", url: "/hub/workspace?pane=ade" } };
       }
       case "deploy.prepare": {
@@ -473,6 +513,8 @@ export async function invokeHubWorkspaceTool(
         };
       }
       case "publish.request": {
+        const { dispatchHubWorkspaceCommand } = await import("@/lib/hub/dev/hub-workspace-commands");
+        dispatchHubWorkspaceCommand({ kind: "open_pane", pane: "deploy" });
         const allTestsPassed =
           ctx.snapshot.testsTotal > 0 && ctx.snapshot.testsPassed === ctx.snapshot.testsTotal;
         const gate = evaluatePublishGate({
@@ -597,6 +639,31 @@ export async function invokeHubWorkspaceTool(
         }
         return { ok: true, toolId, data: { command: cmd, exitCode: 0, stdout: "ok (sandbox)" } };
       }
+      case "resource.apply": {
+        const parsed =
+          typeof args.op === "string"
+            ? { op: args.op as ExperienceResourceOp, args }
+            : parseResourceOpFromUtterance(String(args.utterance ?? ""));
+        if (!parsed) {
+          return { ok: false, toolId, error: "resource op required" };
+        }
+        const result = await invokeExperienceResource(parsed.op, parsed.args, {
+          draft: ctx.getDraft(),
+          updateDraft: ctx.updateDraft,
+        });
+        return result.ok
+          ? { ok: true, toolId, data: result.data }
+          : { ok: false, toolId, error: result.errorKo ?? "resource failed" };
+      }
+      case "verification.run": {
+        const result = await invokeExperienceResource("verification.run", args, {
+          draft: ctx.getDraft(),
+          updateDraft: ctx.updateDraft,
+        });
+        return result.ok
+          ? { ok: true, toolId, data: result.data }
+          : { ok: false, toolId, error: result.errorKo ?? "verification failed" };
+      }
       case "platform.sync": {
         const direction = String(args.direction ?? "export");
         if (direction === "export") {
@@ -631,6 +698,28 @@ export async function invokeHubWorkspaceTool(
             fileCount: result.files.length,
           },
         };
+      }
+      case "loop.create": {
+        const { invokeLoopCreateTool } = await import("@/lib/hub/dev/hub-loop-agent");
+        const created = invokeLoopCreateTool(args, ctx);
+        return created.ok
+          ? { ok: true, toolId, data: created.data }
+          : { ok: false, toolId, error: created.error };
+      }
+      case "loop.test": {
+        const { invokeLoopTestTool } = await import("@/lib/hub/dev/hub-loop-agent");
+        const tested = await invokeLoopTestTool(args, ctx);
+        return tested.ok
+          ? { ok: true, toolId, data: tested.data }
+          : { ok: false, toolId, error: tested.error };
+      }
+      case "loop.read": {
+        const { invokeLoopReadTool } = await import("@/lib/hub/dev/hub-loop-agent");
+        return { ok: true, toolId, data: invokeLoopReadTool(ctx).data };
+      }
+      case "loop.lint": {
+        const { invokeLoopLintTool } = await import("@/lib/hub/dev/hub-loop-agent");
+        return { ok: true, toolId, data: invokeLoopLintTool(ctx).data };
       }
       default:
         return { ok: false, toolId, error: `unknown tool: ${toolId}` };

@@ -19,6 +19,9 @@ import {
   mountPlatformHostApis,
   registerPlatformManifest,
 } from "@/lib/platform-sdk/platform-host";
+import { recordCapabilityVersionPublish } from "@/lib/capability-ledger/record-capability-version-publish";
+import { bridgeWorkspaceToPublishedPlatform } from "@/lib/context-workspace/workspace-lifecycle";
+import { hubContextEventId } from "@/lib/hub/dev/hub-agent-runtime-ingress";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { CapabilityAction } from "@/lib/hub/capability/types";
 
@@ -141,6 +144,18 @@ export function executeApprovedPublish(input: {
     origin: "platform-bundled",
     rimvioCertified: input.testsPassed,
     capabilityFilter: manifest.capabilities.map((c) => c.id),
+  });
+
+  for (const entry of result.registered) {
+    recordCapabilityVersionPublish({
+      entry,
+      contributorId: ownerCreatorId,
+    });
+  }
+
+  bridgeWorkspaceToPublishedPlatform({
+    contextEventId: hubContextEventId(manifest.package.id),
+    platformId: manifest.package.id,
   });
 
   return {

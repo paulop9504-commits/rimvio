@@ -14,8 +14,10 @@ import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtim
 import {
   metaFromDraft,
   readActivePlatformId,
+  readPlatformRegistry,
   readStoredPlatform,
   setActivePlatformId,
+  subscribePlatformRegistry,
   upsertPlatform,
 } from "@/lib/hub/dev/platform-registry";
 import {
@@ -35,6 +37,7 @@ import {
   parseDevWorkspacePane,
   type DevWorkspacePane,
 } from "@/lib/hub/dev/dev-workspace-nav";
+import type { HubStandardsView } from "@/lib/hub/standards";
 import { buildOperatorDiffForIssue, type OperatorDiff } from "@/lib/hub/dev/operator-diff";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 import {
@@ -50,6 +53,7 @@ import {
   parseOAuthProfileFromSearchParams,
 } from "@/lib/hub/dev/hub-oauth-connect";
 import { HubDevOAuthConnectSheet } from "@/components/hub/dev/hub-dev-oauth-connect-sheet";
+import { HubDevGitHubConnectSheet } from "@/components/hub/dev/hub-dev-github-connect-sheet";
 import { HUB_CONNECTIONS_UPDATED_EVENT } from "@/lib/hub/dev/hub-connection-store";
 import {
   syncHubConnectionsFromServer,
@@ -68,6 +72,17 @@ import {
   type HubFileTouchState,
 } from "@/lib/hub/dev/hub-file-tree";
 import { resolveDevModeLayout } from "@/lib/hub/dev/developer-mode";
+import { subscribeHubWorkspaceCommand } from "@/lib/hub/dev/hub-workspace-commands";
+import type { HubOperatorTab } from "@/lib/hub/dev/hub-workspace-commands";
+import {
+  readDevEnvironment,
+  writeDevEnvironment,
+  type DevEnvironment,
+} from "@/lib/hub/dev/platform-context-values";
+import { readDevExecutionLogForPlatform } from "@/lib/hub/dev/execution-log";
+import type { DevCapabilityInvokeRecord } from "@/lib/hub/dev/invoke-dev-capability";
+import { HubDevHelpSheet, HubDevNotificationSheet } from "@/components/hub/dev/hub-dev-chrome-sheets";
+import { HubDevCreatorNav } from "@/components/hub/dev/hub-dev-creator-nav";
 
 const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
 
@@ -105,12 +120,19 @@ export function HubDevWorkspace() {
   const [vercelConnected, setVercelConnected] = useState(false);
   const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [oauthSheetProvider, setOauthSheetProvider] = useState<HubPlatformProviderId | null>(null);
+  const [githubConnectOpen, setGithubConnectOpen] = useState(false);
   const [liveUser, setLiveUser] = useState<HubConnectionsApiResponse["user"]>(null);
   const [resumeLoopToken, setResumeLoopToken] = useState(0);
   const [resumeUtterance, setResumeUtterance] = useState<string | null>(null);
   const [resumeProvider, setResumeProvider] = useState<HubPlatformProviderId | null>(null);
   const [fileTouches, setFileTouches] = useState<Record<string, HubFileTouchState>>({});
   const [agentRunning, setAgentRunning] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [environment, setEnvironment] = useState<DevEnvironment>("Development");
+  const [operatorTab, setOperatorTab] = useState<HubOperatorTab | null>(null);
+  const [registryTick, setRegistryTick] = useState(0);
 
   const syncConnectionState = useCallback(() => {
     const connections = readHubDevConnections();
@@ -194,6 +216,10 @@ export function HubDevWorkspace() {
 
     void refreshLiveConnections().then((data) => {
       if (!data?.signedIn) return;
+      if (pendingConnect === "github") {
+        setGithubConnectOpen(true);
+        return;
+      }
       const pid = platformIdParam ?? wizard.draft.id;
       const connectedParam = connectedParamForProvider(pendingConnect) ?? `${pendingConnect}_connected`;
       const returnPath = `/hub/workspace?platform=${encodeURIComponent(pid)}&${connectedParam}=1`;
@@ -219,7 +245,15 @@ export function HubDevWorkspace() {
       const result = await connectHubOAuthProvider({ provider, returnPath, platformId: pid });
 
       if (result.ok && result.mode === "login") {
-        setOauthSheetProvider(provider);
+        if (provider === "github") {
+          setGithubConnectOpen(true);
+        } else {
+          setOauthSheetProvider(provider);
+        }
+        return;
+      }
+      if (result.ok && result.mode === "device" && provider === "github") {
+        setGithubConnectOpen(true);
       }
     },
     [platformIdParam, wizard.draft.id],
@@ -304,13 +338,18 @@ export function HubDevWorkspace() {
     [],
   );
 
+  const standardsView = (searchParams.get("standards") as HubStandardsView | null) ?? "overview";
+
   const syncUrl = useCallback(
-    (pane: DevWorkspacePane, capId?: string | null) => {
+    (pane: DevWorkspacePane, capId?: string | null, standards?: HubStandardsView | null) => {
       const params = new URLSearchParams();
       params.set("pane", pane);
       const pid = platformIdParam ?? readActivePlatformId();
       if (pid) params.set("platform", pid);
       if (capId) params.set("cap", capId);
+      if (pane === "standards" && standards && standards !== "overview") {
+        params.set("standards", standards);
+      }
       router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
     },
     [platformIdParam, router],
@@ -319,9 +358,9 @@ export function HubDevWorkspace() {
   const setPane = useCallback(
     (pane: DevWorkspacePane, capId?: string | null) => {
       setActivePane(pane);
-      syncUrl(pane, capId ?? selectedCapabilityId);
+      syncUrl(pane, capId ?? selectedCapabilityId, pane === "standards" ? standardsView : null);
     },
-    [selectedCapabilityId, syncUrl],
+    [selectedCapabilityId, standardsView, syncUrl],
   );
 
   useEffect(() => {
@@ -389,6 +428,43 @@ export function HubDevWorkspace() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    setEnvironment(readDevEnvironment());
+    return subscribePlatformRegistry(() => setRegistryTick((n) => n + 1));
+  }, []);
+
+  useEffect(() => {
+    return subscribeHubWorkspaceCommand((command) => {
+      if (command.kind === "open_pane") setPane(command.pane);
+      if (command.kind === "open_preview") {
+        setShowPreview(true);
+        setPane("runtime");
+      }
+      if (command.kind === "close_preview") setShowPreview(false);
+      if (command.kind === "open_operator_tab") setOperatorTab(command.tab);
+      if (command.kind === "focus_capability") {
+        setSelectedCapabilityId(command.capabilityId);
+        setPane("capabilities", command.capabilityId);
+      }
+      if (command.kind === "test_invoke") {
+        const action = wizard.draft.actions.find(
+          (a) => a.id === command.capabilityId || a.name === command.capabilityId,
+        );
+        if (action) {
+          setSelectedCapabilityId(action.id);
+          setPane("ade");
+          setAgentSeed(`${action.name} Capability를 Test Invoke로 실행하고 결과를 검증해줘`);
+        }
+      }
+      if (command.kind === "loop_updated") {
+        setPane("loops");
+      }
+      if (command.kind === "loop_test_result") {
+        setPane("loops");
+      }
+    });
+  }, [setPane, wizard.draft.actions]);
 
   useEffect(() => {
     if (wizard.publishStatus === "published" && publishedAtMs === null) {
@@ -471,7 +547,9 @@ export function HubDevWorkspace() {
         ? "github"
         : /openapi|swagger|\.json/i.test(trimmed)
           ? "openapi"
-          : "api";
+          : /^https?:\/\//i.test(trimmed)
+            ? "api"
+            : "describe";
 
       const result = await analyzePlatformIngress({ kind, value: trimmed });
       setAnalyzing(false);
@@ -633,18 +711,71 @@ export function HubDevWorkspace() {
       const map: Record<string, DevWorkspacePane> = {
         ai: "ade",
         cap: "capabilities",
+        loop: "loops",
+        loops: "loops",
         test: "tests",
         deploy: "deploy",
         publish: "deploy",
-        logs: "ade",
-        runtime: "deploy",
+        logs: "runtime",
+        runtime: "runtime",
         config: "capabilities",
       };
       const pane = map[id];
       if (pane) setPane(pane);
       if (id === "test") void wizard.runSandboxTest();
+      if (id === "logs") setOperatorTab("terminal");
+      if (id === "ai") setOperatorTab("chat");
     },
     [setPane, wizard],
+  );
+
+  const handleSelectPlatform = useCallback(
+    (id: string) => {
+      setActivePlatformId(id);
+      const stored = readStoredPlatform(id);
+      if (stored) {
+        wizard.updateDraft(stored.draft);
+        setPlatformCreated(true);
+      }
+      const params = new URLSearchParams();
+      params.set("pane", activePane);
+      params.set("platform", id);
+      router.replace(`/hub/workspace?${params.toString()}`, { scroll: false });
+    },
+    [activePane, router, wizard],
+  );
+
+  const handleEnvironmentChange = useCallback(
+    (next: DevEnvironment) => {
+      setEnvironment(next);
+      writeDevEnvironment(next);
+      if (next === "Preview") {
+        setShowPreview(true);
+        setPane("runtime");
+      } else if (next === "Production") {
+        setPane("deploy");
+      }
+    },
+    [setPane],
+  );
+
+  const handleTestInvoke = useCallback(
+    (capabilityId: string, record: DevCapabilityInvokeRecord) => {
+      setExtraActivities((prev) => [
+        ...(prev ?? []),
+        {
+          id: `invoke-${Date.now()}`,
+          label: record.ok ? `Invoked ${capabilityId}` : `Invoke failed ${capabilityId}`,
+          status: record.ok ? "done" : "warning",
+        },
+      ]);
+      setAgentSeed(
+        record.ok
+          ? `${capabilityId} Test Invoke 성공 (${record.latencyMs}ms). 결과를 검증해줘.`
+          : `${capabilityId} Test Invoke 실패: ${record.errorKo ?? "unknown"}. 원인을 분석해줘.`,
+      );
+    },
+    [],
   );
 
   if (!wizard.hydrated) {
@@ -659,13 +790,42 @@ export function HubDevWorkspace() {
     <div className="flex h-dvh flex-col overflow-hidden bg-[#f4f5f7]">
       <HubDevTopbar
         platformName={wizard.draft.name}
-        environment="Development"
-        onRun={() => void wizard.runSandboxTest()}
-        onDeploy={() => setAgentSeed("배포해")}
+        platformId={platformIdParam ?? wizard.draft.id}
+        platforms={(() => {
+          void registryTick;
+          return readPlatformRegistry();
+        })()}
+        environment={environment}
+        previewActive={showPreview}
+        onSelectPlatform={handleSelectPlatform}
+        onEnvironmentChange={handleEnvironmentChange}
+        onTogglePreview={() => {
+          setShowPreview((v) => !v);
+          if (!showPreview) setPane("runtime");
+        }}
+        onRun={() => {
+          setShowPreview(true);
+          setPane("runtime");
+          setAgentSeed("Preview를 열고 스모크 검증해줘");
+          void wizard.runSandboxTest();
+        }}
+        onDeploy={() => {
+          setPane("deploy");
+          setAgentSeed("배포해");
+        }}
         onPublish={() => setPane("deploy")}
         publishDisabled={!wizard.publishReady}
         onOpenCommandPalette={() => setPaletteOpen(true)}
+        onOpenHelp={() => setHelpOpen(true)}
+        onOpenNotifications={() => setNotifOpen(true)}
+        notificationCount={snapshot.issuesCount + snapshot.changesCount}
         liveUser={liveUser}
+      />
+
+      <HubDevCreatorNav
+        activePane={activePane}
+        onPaneChange={setPane}
+        onOpenAgent={() => setOperatorTab("chat")}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -677,7 +837,15 @@ export function HubDevWorkspace() {
           fileTree={fileTree}
           onPaneChange={setPane}
           onOpenAde={() => setPane("ade")}
-          onSelectFile={() => setPane("ade")}
+          onSelectFile={(path) => {
+            setPane("sources");
+            setAgentSeed(`이 파일을 검토해줘: ${path}`);
+          }}
+          onStatusClick={(kind) => {
+            if (kind === "agent") setPane("status");
+            if (kind === "certified") setPane("standards");
+            if (kind === "published") setPane("deploy");
+          }}
         />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -713,16 +881,31 @@ export function HubDevWorkspace() {
             onAcceptAllChanges={handleAcceptAllChanges}
             onRejectChange={handleRejectChange}
             onReviewChanges={() => setPane("changes")}
-            onTestInvoke={() => void wizard.runSandboxTest()}
-            onAnalyzePlatform={() => void handleReAnalyze()}
+            onTestInvoke={handleTestInvoke}
+            onAnalyzePlatform={() => {
+              setAgentSeed("이 Platform을 분석하고 이슈를 찾아줘");
+              void handleReAnalyze();
+            }}
             onFixAllIssues={() => void handleFixAllIssues()}
             onRunTests={() => {
               setPane("tests");
+              setAgentSeed("테스트와 verification을 실행해줘");
               void wizard.runSandboxTest();
             }}
             onPreview={() => {
-              document.getElementById("blueprint-section-quick-actions")?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setShowPreview(true);
+              setPane("runtime");
+              setAgentSeed("Preview를 열고 스모크 검증해줘");
             }}
+            standardsView={standardsView}
+            onOpenPane={setPane}
+            onAskOperator={(text) => setAgentSeed(text)}
+            onConnectStripe={() => void handleConnectStripe()}
+            onConnectVercel={() => void handleConnectVercel()}
+            onConnectSupabase={() => void handleConnectSupabase()}
+            onDraftPatch={(patch) => wizard.updateDraft(patch)}
+            showPreview={showPreview}
+            onBuildIdea={(text) => void runAnalyze(text)}
           />
         </main>
 
@@ -762,7 +945,13 @@ export function HubDevWorkspace() {
           resumeProvider={resumeProvider}
           onFileTouch={handleAgentFileTouch}
           onAgentRunningChange={setAgentRunning}
-          autoFocusTab={autoFocusOperatorTab}
+          agentRunning={agentRunning}
+          autoFocusTab={operatorTab ?? autoFocusOperatorTab}
+          onAcceptAllChanges={handleAcceptAllChanges}
+          onPreview={() => {
+            setShowPreview(true);
+            setPane("runtime");
+          }}
         />
       </div>
 
@@ -781,6 +970,25 @@ export function HubDevWorkspace() {
           returnPath={`/hub/workspace?connect=${oauthSheetProvider}${platformIdParam ? `&platform=${encodeURIComponent(platformIdParam)}` : ""}`}
         />
       ) : null}
+
+      <HubDevHelpSheet open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HubDevNotificationSheet
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        snapshot={snapshot}
+        logs={readDevExecutionLogForPlatform(wizard.draft.id)}
+        onOpenPane={setPane}
+      />
+
+      <HubDevGitHubConnectSheet
+        open={githubConnectOpen}
+        onClose={() => setGithubConnectOpen(false)}
+        onConnected={(profile) => {
+          setGithubConnected(true);
+          void finishOAuthReturn("github", profile);
+        }}
+        returnPath={`/hub/workspace?connect=github${platformIdParam ? `&platform=${encodeURIComponent(platformIdParam)}` : ""}`}
+      />
     </div>
   );
 }

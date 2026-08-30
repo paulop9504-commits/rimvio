@@ -95,7 +95,28 @@ export type ContributorRole =
   | "supplier"
   | "verifier"
   | "capability_developer"
-  | "domain_expert";
+  | "domain_expert"
+  | "business";
+
+export type BusinessSupplyKind =
+  | "inventory"
+  | "price"
+  | "policy"
+  | "photos"
+  | "hours";
+
+export type BusinessSupplyRecord = {
+  readonly supplyId: string;
+  readonly businessId: string;
+  readonly businessLabel: string;
+  readonly domain: RealityTask["domain"];
+  readonly kind: BusinessSupplyKind;
+  readonly targetLabelKo: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly status: "pending" | "verified" | "rejected";
+  readonly submittedAt: string;
+  readonly epistemic: EpistemicLevel;
+};
 
 export type ContributorProfile = {
   readonly contributorId: string;

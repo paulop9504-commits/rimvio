@@ -30,7 +30,7 @@ export function HubDataHome() {
           승격합니다. Agent와 Capability가 사용할 때 Contributor에게 보상이 분배됩니다.
         </p>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
           <Link
             href="/hub/data/supplier?pane=overview"
             className="group rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md"
@@ -67,6 +67,25 @@ export function HubDataHome() {
             </p>
             <span className="mt-4 flex items-center gap-1 text-[12px] font-semibold text-violet-600 opacity-80 group-hover:opacity-100">
               지원자 워크스페이스
+              <ArrowRight className="size-4" />
+            </span>
+          </Link>
+
+          <Link
+            href="/hub/data/business?pane=overview"
+            className="group rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-sm transition-all hover:border-sky-200 hover:shadow-md"
+          >
+            <div className="flex size-10 items-center justify-center rounded-xl bg-sky-50">
+              <span className="text-[18px]">🏨</span>
+            </div>
+            <h2 className="mt-4 text-[17px] font-semibold text-[#111827]">사업자 패널</h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-[#6b7280]">
+              호텔·식당 사업자가 재고 · 가격 · 정책 · 시설을 직접 공급합니다. 현실 세계를 가장
+              잘 아는 사람이 Verified Reality Data를 만듭니다.
+            </p>
+            <p className="mt-3 text-[11px] text-sky-700">재고 ₩40 · 가격 ₩30 · 정책 ₩25+</p>
+            <span className="mt-4 flex items-center gap-1 text-[12px] font-semibold text-sky-600 opacity-80 group-hover:opacity-100">
+              사업자 워크스페이스
               <ArrowRight className="size-4" />
             </span>
           </Link>

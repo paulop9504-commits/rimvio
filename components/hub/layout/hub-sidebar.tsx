@@ -10,6 +10,7 @@ import {
   Layers,
   LayoutDashboard,
   MessageSquare,
+  Repeat,
   Search,
   Settings,
   Upload,
@@ -29,6 +30,7 @@ const DEV_NAV = [
   { label: "Dev Workspace", href: "/hub/workspace", icon: Hammer },
   { label: "AI Build", href: "/hub/workspace?nav=ai-build", icon: Hammer },
   { label: "Capabilities", href: "/hub/workspace?nav=capabilities", icon: FileText },
+  { label: "Loop", href: "/hub/loop", icon: Repeat },
   { label: "Publish", href: "/hub/workspace?nav=deployments", icon: Upload },
   { label: "Settings", href: "/hub", icon: Settings },
 ] as const;

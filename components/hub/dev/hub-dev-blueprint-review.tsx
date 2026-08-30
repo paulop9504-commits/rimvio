@@ -4,6 +4,8 @@ import { AlertTriangle, Check, ChevronLeft } from "lucide-react";
 import type { AnalyzedPlatformBlueprint } from "@/lib/hub/dev/platform-analyzer";
 import { certificationSummary } from "@/lib/hub/dev/platform-analyzer";
 import { cn } from "@/lib/utils";
+import { experienceBlueprintFromUtterance } from "@/lib/hub/dev/experience-os";
+import { HubExperienceGraph } from "@/components/hub/dev/hub-experience-graph";
 
 type HubDevBlueprintReviewProps = {
   readonly blueprint: AnalyzedPlatformBlueprint;
@@ -42,6 +44,14 @@ export function HubDevBlueprintReview({
         <h1 className="mt-2 text-[24px] font-bold">{blueprint.platformName}</h1>
         <p className="mt-1 text-[14px] text-[#6b7684]">{blueprint.tagline}</p>
         <p className="mt-1 text-[11px] text-[#4593fc]">{blueprint.ingressLabel}</p>
+
+        <div className="mt-6">
+          <HubExperienceGraph
+            blueprint={experienceBlueprintFromUtterance(
+              `${blueprint.platformName} ${blueprint.tagline}`,
+            )}
+          />
+        </div>
 
         <div className="mt-6 rounded-2xl border border-white/[0.08] bg-[#151820] p-5">
           <div className="flex items-center justify-between">
@@ -128,7 +138,7 @@ export function HubDevBlueprintReview({
             onClick={onConfirm}
             className="flex-1 rounded-xl bg-[#4593fc] px-5 py-3 text-[13px] font-semibold text-white hover:bg-[#3a82e0]"
           >
-            Review Blueprint → Manage
+            Build this Experience
           </button>
           <button
             type="button"

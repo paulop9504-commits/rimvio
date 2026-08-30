@@ -7,6 +7,7 @@ import {
   runSandboxHotelSearch,
   type SandboxPreviewState,
 } from "@/lib/hub/dev/sandbox-preview";
+import { readPlatformContextValues } from "@/lib/hub/dev/platform-context-values";
 
 type HubDevLivePreviewProps = {
   platformName: string;
@@ -17,20 +18,22 @@ export function HubDevLivePreview({ platformName, draft }: HubDevLivePreviewProp
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<SandboxPreviewState | null>(null);
 
+  const context = readPlatformContextValues(draft.id);
+
   const handleSearch = useCallback(async () => {
     setLoading(true);
     try {
       const result = await runSandboxHotelSearch(draft, {
-        destination: "Namba Station",
-        checkIn: "2026-06-15",
-        checkOut: "2026-06-17",
-        guests: 2,
+        destination: context.destination,
+        checkIn: context.checkIn,
+        checkOut: context.checkOut,
+        guests: context.guests,
       });
       setPreview(result);
     } finally {
       setLoading(false);
     }
-  }, [draft]);
+  }, [draft, context.destination, context.checkIn, context.checkOut, context.guests]);
 
   const hotels = preview?.hotels ?? [];
   const modeLabel =
@@ -63,7 +66,7 @@ export function HubDevLivePreview({ platformName, draft }: HubDevLivePreviewProp
           <div className="space-y-3 p-4">
             <label className="block text-[10px] text-[#6b7684]">Where</label>
             <div className="rounded-lg border border-white/[0.08] bg-[#1a1f28] px-3 py-2 text-[12px] text-[#f2f4f6]">
-              Namba Station
+              {context.destination}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -112,6 +115,7 @@ export function HubDevLivePreview({ platformName, draft }: HubDevLivePreviewProp
                     </p>
                     <button
                       type="button"
+                      onClick={() => void handleSearch()}
                       className="mt-2 w-full rounded-md border border-white/[0.1] py-1 text-[10px] text-[#b0b8c1]"
                     >
                       View Rooms

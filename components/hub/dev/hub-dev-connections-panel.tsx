@@ -21,6 +21,7 @@ import {
   syncHubConnectionsFromServer,
 } from "@/lib/hub/dev/hub-connection-client-sync";
 import { HubDevOAuthConnectSheet } from "@/components/hub/dev/hub-dev-oauth-connect-sheet";
+import { HubDevGitHubConnectSheet } from "@/components/hub/dev/hub-dev-github-connect-sheet";
 import { cn } from "@/lib/utils";
 
 type HubDevConnectionsPanelProps = {
@@ -46,6 +47,7 @@ export function HubDevConnectionsPanel({
   const [connections, setConnections] = useState(readHubDevConnections());
   const [connecting, setConnecting] = useState<HubPlatformProviderId | null>(null);
   const [sheetProvider, setSheetProvider] = useState<HubPlatformProviderId | null>(null);
+  const [githubConnectOpen, setGithubConnectOpen] = useState(false);
 
   const refresh = useCallback(() => setConnections(readHubDevConnections()), []);
 
@@ -68,8 +70,15 @@ export function HubDevConnectionsPanel({
     setConnecting(null);
 
     if (result.ok && result.mode === "login") {
-      setSheetProvider(provider);
+      if (provider === "github") {
+        setGithubConnectOpen(true);
+      } else {
+        setSheetProvider(provider);
+      }
       return;
+    }
+    if (result.ok && result.mode === "device" && provider === "github") {
+      setGithubConnectOpen(true);
     }
   };
 
@@ -159,6 +168,20 @@ export function HubDevConnectionsPanel({
           }
         />
       ) : null}
+
+      <HubDevGitHubConnectSheet
+        open={githubConnectOpen}
+        onClose={() => setGithubConnectOpen(false)}
+        onConnected={() => {
+          refresh();
+          onConnected?.("github");
+        }}
+        returnPath={
+          platformId
+            ? `/hub/workspace?connect=github&platform=${encodeURIComponent(platformId)}`
+            : "/hub/workspace?connect=github"
+        }
+      />
     </>
   );
 }

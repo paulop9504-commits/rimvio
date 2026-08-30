@@ -8,8 +8,11 @@ import {
   type VerifierResponse,
 } from "@/lib/reality-data-network";
 import { cn } from "@/lib/utils";
+import { HubContributorWalletPanel } from "@/components/hub/wallet/hub-contributor-wallet-panel";
+import type { ContributorWalletSnapshot } from "@/lib/hub/wallet/fetch-contributor-wallet";
 import type { DataVerifierPane } from "@/lib/hub/data/data-workspace-nav";
 import { HubDataDemoBadge } from "@/components/hub/data/hub-data-shell";
+import { HubContextualGuide } from "@/components/hub/standards/hub-contextual-guide";
 
 const DEMO_VERIFIER_ID = "verifier-demo";
 
@@ -18,6 +21,8 @@ type HubDataVerifierPanelProps = {
   readonly profile: ContributorProfile | null;
   readonly tasks: readonly RealityTask[];
   readonly responses: readonly VerifierResponse[];
+  readonly wallet: ContributorWalletSnapshot | null;
+  readonly walletLoading?: boolean;
   readonly onApply: () => void;
   readonly onReview: (taskId: string, answerId: string, answerLabelKo: string) => void;
 };
@@ -37,6 +42,8 @@ export function HubDataVerifierPanel({
   profile,
   tasks,
   responses,
+  wallet,
+  walletLoading,
   onApply,
   onReview,
 }: HubDataVerifierPanelProps) {
@@ -86,7 +93,7 @@ export function HubDataVerifierPanel({
             />
             <StatCard
               label="누적 수익"
-              value={`₩${(profile?.totalEarnedKrw ?? 0).toLocaleString()}`}
+              value={`₩${(wallet?.totalCombinedKrw ?? profile?.totalEarnedKrw ?? 0).toLocaleString()}`}
             />
           </div>
         )}
@@ -97,9 +104,11 @@ export function HubDataVerifierPanel({
   if (pane === "task_pool") {
     return (
       <div className="overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-        <p className="text-[10px] font-semibold uppercase text-[#64748b]">Task Pool</p>
-        <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">검수 작업</h2>
-        <div className="mt-4 space-y-4">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div>
+            <p className="text-[10px] font-semibold uppercase text-[#64748b]">Task Pool</p>
+            <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">검수 작업</h2>
+            <div className="mt-4 space-y-4">
           {openTasks.length === 0 ? (
             <p className="text-[12px] text-[#94a3b8]">열린 Task 없음</p>
           ) : (
@@ -168,6 +177,9 @@ export function HubDataVerifierPanel({
               );
             })
           )}
+            </div>
+          </div>
+          <HubContextualGuide mode="reviewer" showScores defaultExpanded />
         </div>
       </div>
     );
@@ -226,20 +238,17 @@ export function HubDataVerifierPanel({
     );
   }
 
-  return (
-    <div className="overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-      <p className="text-[10px] font-semibold uppercase text-[#64748b]">Earnings</p>
-      <h2 className="mt-1 text-[18px] font-bold text-[#0f172a]">검수 수익</h2>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <StatCard label="누적" value={`₩${(profile?.totalEarnedKrw ?? 0).toLocaleString()}`} />
-        <StatCard
-          label="다음 지급 예상"
-          value={`₩${Math.round((profile?.qualityMultiplier ?? 1) * 30).toLocaleString()}`}
-          sub="Task 1건 기준 (attribute_verify)"
-        />
-      </div>
-    </div>
-  );
+  if (pane === "earnings") {
+    return (
+      <HubContributorWalletPanel
+        roleLabel="검수자"
+        wallet={wallet}
+        loading={walletLoading}
+      />
+    );
+  }
+
+  return null;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

@@ -74,6 +74,12 @@ export async function runCodingAgentLoop(input: CodingAgentLoopInput): Promise<C
   const ok = await runSteps(input.plan.steps);
   if (!ok) return { ok: false, stepsRun, repairs };
 
+  const verifyExtras: HubAgentPlanStep[] = [
+    { id: "lint", label: "Lint", toolId: "lint.run" },
+    { id: "types", label: "Type check", toolId: "typecheck.run" },
+  ];
+  await runSteps(verifyExtras);
+
   while (!lastTestOk && repairs < maxRepairs) {
     repairs += 1;
     const draftBefore = input.ctx.getDraft();
@@ -88,7 +94,12 @@ export async function runCodingAgentLoop(input: CodingAgentLoopInput): Promise<C
       testFailed: true,
     });
     const repairPlan = planRepairStepsFromGraph(graph);
-    const repairOk = await runSteps(repairPlan);
+    const repairOk = await runSteps([
+      ...repairPlan,
+      { id: `re-lint-${repairs}`, label: "Lint 재실행", toolId: "lint.run" },
+      { id: `re-types-${repairs}`, label: "타입 재검사", toolId: "typecheck.run" },
+      { id: `re-test-${repairs}`, label: "재테스트", toolId: "test.run" },
+    ]);
     if (!repairOk) break;
 
     const draftAfter = input.ctx.getDraft();

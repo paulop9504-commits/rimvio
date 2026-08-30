@@ -5,6 +5,7 @@ import { ContextStep } from "@/components/hub/capability/steps/context-step";
 import { ManifestStep } from "@/components/hub/capability/steps/manifest-step";
 import { PermissionsStep } from "@/components/hub/capability/steps/permissions-step";
 import { HubDevCapabilityManifestEditor } from "@/components/hub/dev/hub-dev-capability-manifest-editor";
+import { HubContextualGuide } from "@/components/hub/standards/hub-contextual-guide";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import type { CapabilityAction } from "@/lib/hub/capability/types";
 import {
@@ -100,8 +101,9 @@ export function HubDevCapabilityConfig({
         ) : null}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
-        {scope === "platform" ? (
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc] p-6 rimvio-scroll-touch">
+          {scope === "platform" ? (
           <div className="space-y-8">
             <ManifestStep wizard={wizard} />
             <PermissionsStep wizard={wizard} />
@@ -161,6 +163,15 @@ export function HubDevCapabilityConfig({
             </button>
           </div>
         )}
+        </div>
+
+        <div className="hidden w-[300px] shrink-0 overflow-y-auto border-l border-[#E2E8F0] bg-white p-4 rimvio-scroll-touch xl:block">
+          <HubContextualGuide
+            mode="producer"
+            capabilityId={selectedAction?.name}
+            defaultExpanded
+          />
+        </div>
       </div>
     </div>
   );

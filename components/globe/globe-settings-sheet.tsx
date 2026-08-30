@@ -75,6 +75,8 @@ import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy/human-ko";
 import { AuthLogoutButton } from "@/components/auth-logout-button";
 import { GlobeBackerLink } from "@/components/globe/globe-backer-link";
+import { HubStandardsLinkRow } from "@/components/hub/standards/hub-standards-panel";
+import { hubStandardsHref } from "@/lib/hub/standards";
 
 export type GlobeSettingsSheetProps = {
   open: boolean;
@@ -385,6 +387,26 @@ function GlobeSettingsBody({ onShowGlobeGuide }: { onShowGlobeGuide?: () => void
       <Suspense fallback={null}>
         <SettingsIntegrationsPanel variant="embedded" />
       </Suspense>
+
+      <SettingsSection title="Capabilities" description="Producer · Reviewer 작업 표준">
+        <div className="space-y-2">
+          <HubStandardsLinkRow
+            href={hubStandardsHref("overview")}
+            title="Capability Standards"
+            subtitle="Contract · Certification · Main Agent Policy"
+          />
+          <HubStandardsLinkRow
+            href={hubStandardsHref("producer_guide")}
+            title="Producer Guide"
+            subtitle="Reuse Before Create · 제출 Checklist"
+          />
+          <HubStandardsLinkRow
+            href={hubStandardsHref("reviewer_guide")}
+            title="Reviewer Guide"
+            subtitle="Evaluation · Score · PASS / FAIL"
+          />
+        </div>
+      </SettingsSection>
 
       {user ? (
         <Suspense fallback={null}>

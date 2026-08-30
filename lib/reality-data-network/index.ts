@@ -10,6 +10,8 @@ export type {
   RealityTaskType,
   SuggestedRealityPatch,
   VerifierResponse,
+  BusinessSupplyKind,
+  BusinessSupplyRecord,
 } from "@/lib/reality-data-network/types";
 export {
   REALITY_TASK_TYPE_META,

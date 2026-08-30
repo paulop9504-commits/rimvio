@@ -15,7 +15,7 @@ import { registerAgentDelegation } from "@/lib/capability-registry/agent-delegat
 registerAgentDelegation({
   agentId: "lodging",
   domain: "travel",
-  can: ["lodging.search", "lodging.compare", "lodging.reserve"],
+  can: ["BOOK_HOTEL", "SEARCH", "MAP"],
   cannot: ["payment.commit"],
   maxConcurrent: 3,
 });
@@ -64,7 +64,7 @@ async function testHappyPath() {
       resources,
       estimatedCost: 120000,
       actionType: "search",
-      requiredCapabilities: ["lodging.search"],
+      requiredCapabilities: ["BOOK_HOTEL", "SEARCH"],
       explanationFactors: factors,
     },
     stepExecutor,
@@ -157,7 +157,7 @@ async function testConstraintConflict() {
       constraints,
       resources: [],
       actionType: "search",
-      requiredCapabilities: ["lodging.search"],
+      requiredCapabilities: ["BOOK_HOTEL", "SEARCH"],
     },
     stepExecutor,
     compensationExecutor,

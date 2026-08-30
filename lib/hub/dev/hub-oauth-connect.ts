@@ -35,6 +35,7 @@ import {
 export type HubOAuthConnectResult =
   | { readonly ok: true; readonly mode: "redirect"; readonly url: string }
   | { readonly ok: true; readonly mode: "login" }
+  | { readonly ok: true; readonly mode: "device" }
   | { readonly ok: false; readonly error: string; readonly code?: "login_required" | "oauth_not_configured" };
 
 
@@ -304,6 +305,11 @@ export function completeHubOAuthConnectMock(provider: HubPlatformProviderId): vo
 
 
 
+/** GitHub — Cursor-style device code sheet (github.com/login/device). */
+export async function connectHubGithub(options: Omit<HubOAuthConnectOptions, "provider"> = {}): Promise<HubOAuthConnectResult> {
+  return connectHubOAuthProvider({ ...options, provider: "github" });
+}
+
 /** Start live OAuth — requires Google login + server OAuth env. */
 export async function connectHubOAuthProvider(
   options: HubOAuthConnectOptions,
@@ -315,6 +321,15 @@ export async function connectHubOAuthProvider(
 
   if (typeof window === "undefined") {
     return { ok: false, error: "Client only" };
+  }
+
+  if (options.provider === "github") {
+    const statusRes = await fetch("/api/auth/status", { credentials: "include" });
+    const status = (await statusRes.json()) as { signedIn?: boolean };
+    if (!status.signedIn) {
+      return { ok: true, mode: "login" };
+    }
+    return { ok: true, mode: "device" };
   }
 
   const statusRes = await fetch("/api/auth/status", { credentials: "include" });

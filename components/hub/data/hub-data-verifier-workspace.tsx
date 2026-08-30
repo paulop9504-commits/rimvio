@@ -10,6 +10,10 @@ import {
   type DataVerifierPane,
 } from "@/lib/hub/data/data-workspace-nav";
 import {
+  fetchContributorWallet,
+  type ContributorWalletSnapshot,
+} from "@/lib/hub/wallet/fetch-contributor-wallet";
+import {
   applyVerifierApplication,
   applyVerifierResponse,
   getContributorProfile,
@@ -30,6 +34,15 @@ export function HubDataVerifierWorkspace() {
   const [tasks, setTasks] = useState(readRealityTasks);
   const [responses, setResponses] = useState(readVerifierResponses);
   const [profile, setProfile] = useState(() => getContributorProfile(DEMO_VERIFIER_ID));
+  const [wallet, setWallet] = useState<ContributorWalletSnapshot | null>(null);
+  const [walletLoading, setWalletLoading] = useState(true);
+
+  const refreshWallet = useCallback(async () => {
+    setWalletLoading(true);
+    const snap = await fetchContributorWallet(DEMO_VERIFIER_ID);
+    setWallet(snap);
+    setWalletLoading(false);
+  }, []);
 
   const refresh = useCallback(() => {
     setTasks(readRealityTasks());
@@ -39,10 +52,14 @@ export function HubDataVerifierWorkspace() {
 
   useEffect(() => {
     refresh();
-    const onUpdate = () => refresh();
+    void refreshWallet();
+    const onUpdate = () => {
+      refresh();
+      void refreshWallet();
+    };
     window.addEventListener(RDN_STORE_UPDATED, onUpdate);
     return () => window.removeEventListener(RDN_STORE_UPDATED, onUpdate);
-  }, [refresh]);
+  }, [refresh, refreshWallet]);
 
   const setPaneAndUrl = useCallback(
     (next: DataVerifierPane) => {
@@ -71,11 +88,12 @@ export function HubDataVerifierWorkspace() {
           answerLabelKo,
         });
         notifyRdnStoreUpdated();
+        void refreshWallet();
       } catch {
         // already responded
       }
     },
-    [],
+    [refreshWallet],
   );
 
   return (
@@ -94,6 +112,8 @@ export function HubDataVerifierWorkspace() {
             profile={profile}
             tasks={tasks}
             responses={responses}
+            wallet={wallet}
+            walletLoading={walletLoading}
             onApply={handleApply}
             onReview={handleReview}
           />

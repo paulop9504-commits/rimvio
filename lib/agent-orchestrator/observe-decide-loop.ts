@@ -33,9 +33,21 @@ import {
 } from "@/lib/capability-ledger/usage-weight";
 import { decideSpawnRealityTaskFromTool } from "@/lib/reality-data-network/spawn-reality-task";
 
+export type ObserveDecideResolveNext = (input: {
+  readonly ctx: AgentExecutionContext;
+  readonly lastToolId: RimvioToolId | null;
+  readonly lastVerified: boolean;
+}) =>
+  | RimvioToolId
+  | null
+  | { readonly blocked: true; readonly reason: string };
+
 export type ObserveDecideLoopInput = {
   readonly ctx: AgentExecutionContext;
-  readonly toolChain: readonly RimvioToolId[];
+  /** Fixed chain — legacy path; omit when using resolveNextTool. */
+  readonly toolChain?: readonly RimvioToolId[];
+  /** Dynamic state → next capability (P1 Main Agent loop). */
+  readonly resolveNextTool?: ObserveDecideResolveNext;
   readonly maxIterations?: number;
 };
 
@@ -63,6 +75,10 @@ export async function runObserveDecideLoop(
   let ctx = input.ctx;
   let chainIndex = 0;
   let retries = 0;
+  let lastToolId: RimvioToolId | null = null;
+  let lastVerified = false;
+  const useDynamic = Boolean(input.resolveNextTool);
+  const toolChain = input.toolChain ?? [];
 
   ensureSessionGraph({ contextEventId: ctx.task.contextEventId });
 
@@ -89,7 +105,7 @@ export async function runObserveDecideLoop(
   while (ctx.iteration < maxIterations) {
     ctx = { ...ctx, iteration: ctx.iteration + 1, trace };
 
-    if (chainIndex >= input.toolChain.length) {
+    if (!useDynamic && chainIndex >= toolChain.length) {
       const last = ctx.observations[ctx.observations.length - 1];
       if (!last) {
         return {
@@ -118,7 +134,61 @@ export async function runObserveDecideLoop(
       };
     }
 
-    const toolId = input.toolChain[chainIndex]!;
+    let toolId: RimvioToolId;
+    if (useDynamic) {
+      const next = input.resolveNextTool!({
+        ctx,
+        lastToolId,
+        lastVerified,
+      });
+      if (next && typeof next === "object" && "blocked" in next) {
+        return {
+          status: "blocked",
+          observation: {
+            planId: ctx.task.nodeId,
+            stepId: ctx.task.nodeId,
+            stepKind: "blocked",
+            success: false,
+            errors: ["capability_missing"],
+            summaryKo: next.reason,
+          },
+          observations: ctx.observations,
+          reason: next.reason,
+          trace,
+        };
+      }
+      if (!next) {
+        const last = ctx.observations[ctx.observations.length - 1];
+        if (last) {
+          trace = traceEvent(trace, "task.completed", "dynamic loop done", {
+            taskId: ctx.task.nodeId,
+            agentId: ctx.task.agentId,
+          });
+          return {
+            status: "completed",
+            observation: last,
+            observations: ctx.observations,
+            trace,
+          };
+        }
+        return {
+          status: "blocked",
+          observation: {
+            planId: ctx.task.nodeId,
+            stepId: ctx.task.nodeId,
+            stepKind: "blocked",
+            success: false,
+            errors: ["no_next_capability"],
+          },
+          observations: ctx.observations,
+          reason: "다음 Capability 없음",
+          trace,
+        };
+      }
+      toolId = next;
+    } else {
+      toolId = toolChain[chainIndex]!;
+    }
     trace = traceEvent(trace, "tool.called", toolId, {
       taskId: ctx.task.nodeId,
       agentId: ctx.task.agentId,
@@ -152,6 +222,8 @@ export async function runObserveDecideLoop(
     ctx = appendContextObservation(ctx, observation);
 
     const verified = verifyObservation({ observation, toolId });
+    lastToolId = toolId;
+    lastVerified = verified;
     trace = traceEvent(
       trace,
       "verification.completed",
@@ -277,6 +349,14 @@ export async function runObserveDecideLoop(
           trace,
         };
       }
+    }
+
+    if (useDynamic) {
+      trace = traceEvent(trace, "tool.completed", toolId, {
+        taskId: ctx.task.nodeId,
+        toolId,
+      });
+      continue;
     }
 
     chainIndex += 1;

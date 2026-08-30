@@ -31,27 +31,7 @@ export type DiscoveredPlatformContext = {
   readonly lines: readonly string[];
 };
 
-const DEPENDENCY_EDGES: Readonly<Record<string, readonly string[]>> = {
-  "booking.cancel": ["payment.refund", "payment.commit", "payment.prepare", "booking.confirm"],
-  "booking.confirm": ["booking.prepare", "payment.prepare"],
-  "payment.commit": ["payment.prepare"],
-  "hotel.search": ["hotel.detail"],
-  "booking.prepare": ["room.availability", "hotel.detail"],
-};
-
-function expandDependencies(seeds: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const queue = [...seeds];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    for (const dep of DEPENDENCY_EDGES[id] ?? []) {
-      if (!seen.has(dep)) queue.push(dep);
-    }
-  }
-  return [...seen];
-}
+import { expandCapabilityDependencies } from "@/lib/rimvio-index/graph/dependency-graph";
 
 function keywordsFromGoal(goal: PlatformGoal, utterance: string): string[] {
   const base = [
@@ -75,8 +55,10 @@ export function discoverPlatformContext(input: {
 }): DiscoveredPlatformContext {
   const existing = input.draft.actions.map((a) => a.name);
   const requested = [...input.goal.requestedCapabilities];
-  const related = expandDependencies(requested.length ? requested : keywordsFromGoal(input.goal, input.utterance)
-    .filter((k) => k.includes(".")));
+  const related = expandCapabilityDependencies(
+    requested.length ? requested : keywordsFromGoal(input.goal, input.utterance)
+      .filter((k) => k.includes(".")),
+  );
 
   const missing = requested.filter((c) => !existing.includes(c));
   const reuseCandidates = requested.filter((c) => existing.includes(c));

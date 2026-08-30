@@ -110,5 +110,8 @@ export const CHECKPOINT_MUTATING_TOOLS = new Set([
   "file.write",
   "file.patch",
   "code.modifyFile",
+  "code.createFile",
+  "code.deleteFile",
+  "code.transform",
   "publish.request",
 ]);

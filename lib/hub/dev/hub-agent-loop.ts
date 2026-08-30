@@ -46,6 +46,13 @@ import { buildCodingPlan } from "@/lib/hub/dev/platform-agent/coding-plan";
 import { runCodingAgentLoop } from "@/lib/hub/dev/coding-agent/coding-agent-loop";
 import { detectRegression } from "@/lib/hub/dev/hub-verify-repair";
 import { inspectPreviewWithBrowser } from "@/lib/hub/dev/preview-agent-verify";
+import { tickHubBackgroundAgent } from "@/lib/hub/dev/hub-background-agent";
+import { runCursorStyleDeployPipeline } from "@/lib/hub/dev/hub-cursor-deploy-pipeline";
+import { parseDeployTargetsFromUtterance, wantsDeployUtterance } from "@/lib/hub/dev/hub-deploy-targets";
+import { rememberOperatorFocus } from "@/lib/hub/dev/conversation-memory";
+import { getRepoSession } from "@/lib/hub/dev/coding-agent/repo-session";
+import { snapshotVerifyResults, detectVerifyRegression, planRegressionRepair } from "@/lib/hub/dev/coding-agent/regression-repair";
+import type { VerifyCommandResult } from "@/lib/hub/dev/coding-agent/verify-types";
 import {
   initPlatformOrchestrator,
   advanceOrchestratorPhase,
@@ -56,6 +63,10 @@ import {
   orchestratorWorkLog,
   type PlatformOrchestratorContext,
 } from "@/lib/hub/dev/platform-agent/agent-orchestrator";
+import {
+  consumeAgentTurnInjections,
+  consumeAgentTurnPause,
+} from "@/lib/agent-os/agent-turn/interrupt";
 
 export type HubAgentPlanStep = {
   readonly id: string;
@@ -83,10 +94,13 @@ export type HubAgentLoopEvent =
   | { readonly type: "ask_user"; readonly message: string; readonly actionId: string; readonly actionLabel: string; readonly publishGate?: import("@/lib/hub/dev/hub-publish-flow").PublishGateResult }
   | { readonly type: "text"; readonly body: string }
   | { readonly type: "deploy_steps"; readonly steps: readonly DeployWorkStep[] }
+  | { readonly type: "thought"; readonly title: string; readonly body?: string }
+  | { readonly type: "terminal"; readonly title: string; readonly lines: readonly string[]; readonly waiting?: string | null }
   | { readonly type: "test_result"; readonly passed: number; readonly total: number; readonly running?: boolean }
   | { readonly type: "file_touch"; readonly paths: readonly string[]; readonly touch: "reading" | "modified" | "created" | "running" }
   | { readonly type: "complete"; readonly summary: string }
-  | { readonly type: "orchestrator"; readonly workLog: string; readonly progressPct: number };
+  | { readonly type: "orchestrator"; readonly workLog: string; readonly progressPct: number }
+  | { readonly type: "final_report"; readonly report: import("@/lib/agent-os/agent-turn/types").AgentFinalReport };
 
 export type HubAgentLoopInput = {
   readonly utterance: string;
@@ -101,6 +115,8 @@ export type HubAgentLoopInput = {
   readonly platformGoal?: PlatformGoal;
   readonly onEvent: (event: HubAgentLoopEvent) => void;
   readonly maxReplan?: number;
+  readonly modelId?: string | null;
+  readonly conversationMemory?: import("@/lib/hub/dev/conversation-memory").OperatorConversationMemory | null;
 };
 
 export type HubAgentLoopResult = {
@@ -185,9 +201,27 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       supabase: input.connections?.supabase ?? false,
       mcp: input.connections?.mcp ?? false,
     },
+    repoRoot: getRepoSession(input.platformId ?? input.draft.id)?.root,
   };
 
   emit({ type: "phase", phase: "observe", detail: input.utterance });
+
+  const platformId = input.platformId ?? input.draft.name ?? "dev";
+  const bgTick = tickHubBackgroundAgent({
+    platformId,
+    draft: input.draft,
+    metrics: {
+      capabilityCount: input.draft.actions.length,
+      failedTestRate:
+        input.snapshot.testsTotal > 0
+          ? 1 - input.snapshot.testsPassed / input.snapshot.testsTotal
+          : 0,
+      openImprovementTasks: 0,
+    },
+  });
+  if (bgTick.tasksSpawned > 0) {
+    emit({ type: "text", body: bgTick.workLogKo });
+  }
 
   const platformGoal =
     input.platformGoal ??
@@ -242,6 +276,32 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
     emit({ type: "observe", lines: fullObs.lines });
   }
 
+  if (wantsDeployUtterance(input.utterance) && !wantsPayment(input.utterance) && !wantsBuild(input.utterance)) {
+    const targets = parseDeployTargetsFromUtterance(input.utterance);
+    if (targets.length === 0) {
+      emit({
+        type: "ask_user",
+        message: "어디에 배포할까요? 본인 Preview와 우리쪽 Main을 골라 주세요.",
+        actionId: "choose_deploy_targets",
+        actionLabel: "배포 시작",
+      });
+      return {
+        ok: true,
+        pausedForUser: true,
+        actionId: "choose_deploy_targets",
+        snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
+        draft: toolCtx.getDraft(),
+      };
+    }
+    return runCursorStyleDeployPipeline({
+      utterance: input.utterance,
+      targets,
+      toolCtx,
+      platformId: input.platformId,
+      onEvent: emit,
+    });
+  }
+
   const structuredPlan = await planHubAgentTurn({
     utterance: input.utterance,
     inspect,
@@ -250,6 +310,24 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
     skipRuntime: input.skipRuntimeIngress,
     userIntent: input.userIntent,
     draft: toolCtx.getDraft(),
+    modelId: input.modelId,
+    memory: input.conversationMemory,
+  });
+
+  if (structuredPlan.source === "llm") {
+    emit({
+      type: "thought",
+      title: structuredPlan.modelId ? `${structuredPlan.modelId} 플랜` : "LLM 플랜",
+      body: structuredPlan.goalKo ?? structuredPlan.goal,
+    });
+  }
+
+  rememberOperatorFocus(input.platformId ?? input.draft.id, {
+    goal: structuredPlan.goalKo ?? structuredPlan.goal,
+    task: structuredPlan.steps[0]?.label ?? null,
+    utterance: input.utterance,
+    workInProgress: true,
+    capabilities: inspect.capabilities.slice(0, 8),
   });
 
   let planSteps = [...structuredPlan.steps];
@@ -324,8 +402,8 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
     return { ok: codingResult.ok, snapshot: finalSnapshot, draft: finalDraft };
   }
 
-  // Delegate pure build/deploy utterances to existing deploy runtime when appropriate
-  if (!wantsPayment(input.utterance) && (wantsBuild(input.utterance) || wantsDeploy(input.utterance))) {
+  // Delegate pure build utterances to existing deploy runtime when appropriate
+  if (!wantsPayment(input.utterance) && wantsBuild(input.utterance) && !wantsDeploy(input.utterance)) {
     const ctx = {
       mode: "platform" as const,
       draft: toolCtx.getDraft(),
@@ -345,7 +423,32 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
   }
 
   let stepIndex = 0;
+  const sessionKey = input.platformId ?? input.draft.id;
   while (stepIndex < planSteps.length) {
+    if (consumeAgentTurnPause(sessionKey)) {
+      emit({ type: "text", body: "요청하신 대로 여기서 멈췄어요. 이어서 진행할 때 말씀해 주세요." });
+      emit({ type: "phase", phase: "ask_user" });
+      return {
+        ok: false,
+        pausedForUser: true,
+        snapshot: buildProjectSnapshot({ draft: toolCtx.getDraft(), testsPassed }),
+        draft: toolCtx.getDraft(),
+      };
+    }
+    const injected = consumeAgentTurnInjections(sessionKey);
+    if (injected.length > 0) {
+      emit({ type: "replan", reason: `요청을 반영합니다: ${injected.join(", ")}` });
+      planSteps = [
+        ...planSteps.slice(0, stepIndex),
+        {
+          id: `inject-${stepIndex}`,
+          label: injected.join(" · "),
+          toolId: "resource.apply",
+          args: { utterance: injected.join(" ") },
+        },
+        ...planSteps.slice(stepIndex),
+      ];
+    }
     const step = planSteps[stepIndex]!;
     emit({ type: "phase", phase: "execute", detail: step.label });
     emit({
@@ -602,20 +705,91 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
       }
     }
 
-    if (step.toolId === "test.run") {
-      const data = result.data as { passed: number; total: number; ok: boolean };
-      testsPassed = data.ok;
-      emit({ type: "test_result", passed: data.passed, total: data.total, running: false });
+    if (step.toolId === "code.createFile" || step.toolId === "code.modifyFile" || step.toolId === "code.deleteFile") {
+      const path = String((result.data as { path?: string } | undefined)?.path ?? step.args?.path ?? "");
+      if (path) {
+        rememberOperatorFocus(input.platformId ?? input.draft.id, {
+          files: [path],
+          objects: [path],
+          workInProgress: true,
+        });
+      }
+    }
+
+    if (
+      step.toolId === "test.run" ||
+      step.toolId === "test.e2e" ||
+      step.toolId === "lint.run" ||
+      step.toolId === "typecheck.run"
+    ) {
+      const data = result.data as {
+        passed?: number;
+        total?: number;
+        ok?: boolean;
+        kind?: string;
+        skipped?: boolean;
+        stdout?: string;
+        stderr?: string;
+        command?: string;
+      };
+      const ok = data.ok !== false;
+      testsPassed = step.toolId === "test.run" ? ok : testsPassed;
+      if (step.toolId === "test.run") {
+        emit({
+          type: "test_result",
+          passed: data.passed ?? (ok ? 1 : 0),
+          total: data.total ?? 1,
+          running: false,
+        });
+      }
       emit({ type: "phase", phase: "verify" });
       emit({
         type: "verify",
-        ok: data.ok,
-        detail: `${data.passed}/${data.total} passed`,
+        ok,
+        detail:
+          data.command
+            ? `${data.command}${data.skipped ? " (skipped)" : ok ? " ok" : " failed"}`
+            : `${data.passed ?? 0}/${data.total ?? 0} passed`,
       });
+      if (data.stdout || data.stderr) {
+        emit({
+          type: "terminal",
+          title: data.command ?? step.label,
+          lines: `${data.stdout ?? ""}\n${data.stderr ?? ""}`.split("\n").filter(Boolean).slice(0, 24),
+        });
+      }
+
+      const snapshot = snapshotVerifyResults([
+        {
+          kind: (data.kind as VerifyCommandResult["kind"]) ?? "unit",
+          ok,
+          command: data.command ?? step.toolId,
+          exitCode: ok ? 0 : 1,
+          stdout: data.stdout ?? "",
+          stderr: data.stderr ?? "",
+          skipped: data.skipped,
+        },
+      ]);
+
+      if (!ok && replans < maxReplan) {
+        replans += 1;
+        const regression = detectVerifyRegression(null, snapshot);
+        const repair = planRegressionRepair({ after: snapshot, newFailures: regression.newFailures });
+        emit({ type: "replan", reason: repair.summaryKo });
+        planSteps = [...planSteps.slice(0, stepIndex + 1), ...repair.steps];
+        stepIndex += 1;
+        continue;
+      }
+
+      if (step.toolId !== "test.run") {
+        stepIndex += 1;
+        continue;
+      }
+
       const verdict = evaluateOrchestratorVerification(
         orchestrator,
-        data.ok,
-        `${data.passed}/${data.total} passed`,
+        ok,
+        data.command ?? `${data.passed ?? 0}/${data.total ?? 0} passed`,
       );
       orchestrator = verdict.ctx;
       emit({
@@ -624,13 +798,13 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
         progressPct: orchestrator.goalState.progressPct,
       });
 
-      if (!data.ok && replans < maxReplan) {
+      if (!ok && replans < maxReplan) {
         replans += 1;
         repairBaselineDraft = toolCtx.getDraft();
         const repairPlan = planVerifyRepair({
           draft: repairBaselineDraft,
           testFailed: true,
-          testDetail: `${data.passed}/${data.total} passed`,
+          testDetail: `${data.passed ?? 0}/${data.total ?? 0} passed`,
         });
         emit({ type: "replan", reason: repairPlan.summaryKo });
         orchestrator = orchestratorPartialReplan(orchestrator, {
@@ -647,19 +821,23 @@ export async function runHubAgentLoop(input: HubAgentLoopInput): Promise<HubAgen
         continue;
       }
 
-      if (data.ok && repairBaselineDraft) {
+      if (ok && repairBaselineDraft) {
         const regression = detectRegression(repairBaselineDraft, toolCtx.getDraft());
         if (regression.detected) {
           emit({ type: "text", body: regression.summaryKo });
         }
         repairBaselineDraft = null;
       }
+
+      stepIndex += 1;
+      continue;
     }
 
     stepIndex += 1;
   }
 
   emit({ type: "phase", phase: "complete" });
+  rememberOperatorFocus(input.platformId ?? input.draft.id, { workInProgress: false });
   const finalDraft = toolCtx.getDraft();
   const finalSnapshot = buildProjectSnapshot({ draft: finalDraft, testsPassed });
   const summary = buildCompletionSummary(platformGoal, testsPassed);

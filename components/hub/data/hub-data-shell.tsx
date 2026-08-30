@@ -4,14 +4,27 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type HubDataTopbarProps = {
-  readonly role: "supplier" | "verifier";
+  readonly role: "supplier" | "verifier" | "business";
   readonly displayName?: string;
 };
 
 export function HubDataTopbar({ role, displayName }: HubDataTopbarProps) {
-  const roleLabel = role === "supplier" ? "공급자" : "지원자 · 검수";
-  const otherHref = role === "supplier" ? "/hub/data/verifier" : "/hub/data/supplier";
-  const otherLabel = role === "supplier" ? "지원자 패널" : "공급자 패널";
+  const roleLabel =
+    role === "supplier" ? "공급자" : role === "business" ? "사업자" : "지원자 · 검수";
+  const otherHref =
+    role === "supplier"
+      ? "/hub/data/verifier"
+      : role === "business"
+        ? "/hub/data/supplier"
+        : "/hub/data/supplier";
+  const otherLabel =
+    role === "supplier" ? "지원자 패널" : role === "business" ? "공급자 패널" : "공급자 패널";
+  const badgeClass =
+    role === "business"
+      ? "bg-sky-50 text-sky-800"
+      : role === "supplier"
+        ? "bg-emerald-50 text-emerald-800"
+        : "bg-violet-50 text-violet-800";
 
   return (
     <header className="flex h-11 shrink-0 items-center justify-between border-b border-[#e5e7eb] bg-white px-4">
@@ -20,7 +33,7 @@ export function HubDataTopbar({ role, displayName }: HubDataTopbarProps) {
           Rimvio Data
         </Link>
         <span className="text-[#d1d5db]">/</span>
-        <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+        <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-semibold", badgeClass)}>
           {roleLabel}
         </span>
         {displayName ? (

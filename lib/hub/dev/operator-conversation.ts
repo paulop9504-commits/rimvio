@@ -33,6 +33,13 @@ export type OperatorAgentPayload =
       readonly changesCount: number;
     }
   | { readonly type: "text"; readonly body: string }
+  | { readonly type: "thought"; readonly title: string; readonly body?: string }
+  | {
+      readonly type: "terminal";
+      readonly title: string;
+      readonly lines: readonly string[];
+      readonly waiting?: string | null;
+    }
   | { readonly type: "diff"; readonly diff: OperatorDiff }
   | { readonly type: "testResult"; readonly passed: number; readonly total: number; readonly running?: boolean }
   | {
@@ -47,7 +54,11 @@ export type OperatorAgentPayload =
       readonly actionLabel: string;
       readonly publishGate?: import("@/lib/hub/dev/hub-publish-flow").PublishGateResult;
     }
-  | { readonly type: "complete"; readonly summary: string };
+  | { readonly type: "complete"; readonly summary: string }
+  | {
+      readonly type: "finalReport";
+      readonly report: import("@/lib/agent-os/agent-turn/types").AgentFinalReport;
+    };
 
 export type OperatorAgentEntry = {
   readonly kind: "agent";

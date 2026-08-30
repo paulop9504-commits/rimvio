@@ -8,6 +8,11 @@ import {
   analyzePlatformIngress,
   type PlatformIngressKind,
 } from "@/lib/hub/dev/platform-analyzer";
+import {
+  experienceBlueprintFromTemplate,
+  listExperienceTemplates,
+  type ExperienceTemplateId,
+} from "@/lib/hub/dev/experience-os";
 import { HubDevBlueprintReview } from "@/components/hub/dev/hub-dev-blueprint-review";
 import {
   metaFromDraft,
@@ -19,17 +24,17 @@ import { cn } from "@/lib/utils";
 type IngressTab = PlatformIngressKind | "describe";
 
 const INGRESS_TABS: { id: IngressTab; label: string }[] = [
+  { id: "describe", label: "Idea" },
   { id: "github", label: "GitHub" },
-  { id: "api", label: "API 연결" },
-  { id: "upload", label: "코드 업로드" },
+  { id: "upload", label: "Upload" },
+  { id: "api", label: "API" },
   { id: "openapi", label: "OpenAPI" },
   { id: "mcp", label: "MCP" },
-  { id: "describe", label: "직접 만들기" },
 ];
 
 export function HubDevCreatePlatform() {
   const router = useRouter();
-  const [tab, setTab] = useState<IngressTab>("github");
+  const [tab, setTab] = useState<IngressTab>("describe");
   const [value, setValue] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [blueprint, setBlueprint] = useState<Awaited<
@@ -92,7 +97,7 @@ export function HubDevCreatePlatform() {
           Create on Rimvio
         </p>
         <h1 className="mt-3 text-center text-[26px] font-bold tracking-tight">
-          무엇을 올리려고 하나요?
+          What do you want to build?
         </h1>
         <p className="mt-2 text-center text-[13px] text-[#6b7684]">
           GitHub · API · OpenAPI · MCP — Rimvio가 Agent-ready Capability로 자동 변환합니다.
@@ -173,9 +178,26 @@ export function HubDevCreatePlatform() {
               className="flex min-w-[200px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4593fc] to-[#6366f1] px-6 py-2.5 text-[14px] font-semibold text-white hover:opacity-95 disabled:opacity-40"
             >
               <Sparkles className="size-4" />
-              {analyzing ? "Analyzing…" : "Analyze"}
+              {analyzing ? "Building…" : tab === "describe" ? "Build →" : "Analyze"}
             </button>
           </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-center gap-1.5">
+          {listExperienceTemplates().map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                const bp = experienceBlueprintFromTemplate(id as ExperienceTemplateId);
+                setTab("describe");
+                setValue(`${bp.titleKo} 만들어줘. ${bp.pages.join(", ")}`);
+              }}
+              className="rounded-full border border-white/[0.1] px-3 py-1 text-[11px] text-[#b0b8c1] hover:border-[#4593fc]/40 hover:text-white"
+            >
+              {experienceBlueprintFromTemplate(id as ExperienceTemplateId).title}
+            </button>
+          ))}
         </div>
 
         {error ? <p className="mt-4 text-center text-[12px] text-red-400">{error}</p> : null}

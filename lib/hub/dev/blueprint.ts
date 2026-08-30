@@ -2,6 +2,10 @@ import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { createDefaultPlatformDraft } from "@/lib/hub/platform/defaults";
 import { platformDraftFromUtterance } from "@/lib/hub/deploy/hub-deploy-runtime";
 import type { PlatformBlueprintView } from "@/lib/hub/dev/platform-nav";
+import {
+  applyExperienceBlueprintToDraft,
+  experienceBlueprintFromUtterance,
+} from "@/lib/hub/dev/experience-os";
 
 const OSAKA_STAY_CAPABILITIES = [
   "hotel.search",
@@ -132,9 +136,6 @@ export function resolvePlatformDraftFromBuildPrompt(utterance: string): Platform
   const fromRir = platformDraftFromUtterance(utterance);
   if (fromRir) return fromRir;
 
-  if (/쇼핑|shop|commerce|구매/.test(text)) {
-    return createDefaultPlatformDraft();
-  }
-
-  return null;
+  return applyExperienceBlueprintToDraft(experienceBlueprintFromUtterance(utterance));
 }
+

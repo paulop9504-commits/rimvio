@@ -18,6 +18,10 @@ export async function GET(request: Request) {
 
   const unified = getUnifiedContributorWallet(contributorId);
   const capabilityWallet = getDeveloperWallet(contributorId);
+  const entries = readContributorLedger()
+    .filter((e) => e.contributorId === contributorId)
+    .slice(-50)
+    .reverse();
 
   return NextResponse.json({
     ok: true,
@@ -25,5 +29,6 @@ export async function GET(request: Request) {
     unified,
     capabilityWallet,
     totalCombinedKrw: unified.totalKrw + capabilityWallet.pendingPayoutKrw,
+    entries,
   });
 }

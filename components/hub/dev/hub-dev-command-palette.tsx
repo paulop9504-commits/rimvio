@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 const COMMANDS = [
   { id: "ai", label: "Ask AI", hint: "Open AI Build" },
   { id: "cap", label: "Open Capabilities", hint: "Capability list" },
+  { id: "loop", label: "Open Loop Builder", hint: "Visual · AI · Code → one Loop" },
   { id: "config", label: "View Configuration", hint: "Manifest · Permissions" },
   { id: "test", label: "Run Tests", hint: "Agent simulation" },
   { id: "deploy", label: "Deploy", hint: "Sandbox → Production" },

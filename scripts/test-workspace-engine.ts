@@ -1,122 +1,113 @@
 /**
- * Smoke: Workspace Engine — Reality IDE from Context (Osaka Trip Workspace).
- * Reality Object = 원본 · Workspace Object = Instance · no direct Reality mutate.
+ * Workspace Engine — smoke tests.
  */
+
 import assert from "node:assert/strict";
 import {
-  createOsakaTripContext,
-  saveRealityContext,
-  clearRealityContextsForTests,
-} from "@/lib/context";
-import {
-  clearRealityObjects,
-  createRealityObject,
-  getRealityObject,
-} from "@/lib/reality-object/reality-object-store";
-import {
-  WORKSPACE_IDE_PANELS,
-  addWorkspacePrepareDraft,
-  addWorkspaceSimulationResult,
-  assertWorkspaceDoesNotTouchReality,
-  clearAllWorkspaceHistoryForTests,
-  clearAllWorkspacesForTests,
-  listWorkspaceManaged,
-  openWorkspaceFromContext,
-  readWorkspace,
-  withWorkspaceIdePanel,
-} from "@/lib/workspace";
+  MAP_VIEW_CONTRACT,
+  PROPERTY_ONTOLOGY_V1,
+  TRAVEL_ONTOLOGY_V1,
+  bindObjectTypeToMapView,
+  geoObjectsToMapPins,
+  listDomainOntologySchemas,
+  listViewContracts,
+  planWorkspaceFromGoal,
+  validateDomainOntologySchema,
+  validateMapViewExtension,
+  validateWorkspaceExtensionSubmission,
+  workspaceMapPinToGeoObject,
+} from "@/lib/workspace-engine";
+import { ALL_STANDARDS } from "@/lib/hub/standards";
 
-clearAllWorkspacesForTests();
-clearAllWorkspaceHistoryForTests();
-clearRealityContextsForTests();
-clearRealityObjects();
-
-const ctx = createOsakaTripContext({ intent: "오사카 여행" });
-saveRealityContext(ctx);
-assert.equal(ctx.titleKo, "Osaka Trip");
-
-// Reality Objects (원본) for hotel seed ids
-for (const e of ctx.entities) {
-  createRealityObject({
-    objectId: e.entityId,
-    entityId: e.entityId,
-    contextId: ctx.id,
-    kind: e.kind.toLowerCase() === "hotel" ? "hotel" : "place",
-    labelKo: e.titleKo,
-    relationships: [],
-    availableActions: [],
-    metadata: {},
-  });
+function testLayersAndProducers() {
+  assert.ok(listViewContracts().some((c) => c.kind === "map"));
+  assert.equal(listDomainOntologySchemas().length >= 2, true);
 }
-const hotelReality = getRealityObject(
-  ctx.entities.find((e) => e.kind === "Hotel")!.entityId,
-)!;
-const hotelRealityAt = hotelReality.updatedAt;
 
-// Context click → Osaka Trip Workspace
-const opened = openWorkspaceFromContext({
-  context: ctx,
-  activePanel: "hotel",
-});
-assert.equal(opened.created, true);
-assert.equal(opened.ide.titleKo, "Osaka Trip Workspace");
-assert.equal(opened.ide.activePanel, "hotel");
-assert.equal(opened.ide.realityObjectReadonly, true);
-assert.equal(opened.ide.editsStayOnInstance, true);
-assert.ok(opened.ide.objectCount >= 4);
-assert.ok(opened.ide.constraintCount >= 1);
-assert.deepEqual([...WORKSPACE_IDE_PANELS], [
-  "hotel",
-  "schedule",
-  "budget",
-  "agent",
-]);
+function testMapGeoBridge() {
+  const pin = {
+    id: "hotel-1",
+    title: "Test Hotel",
+    lat: 34.6937,
+    lng: 135.5023,
+    kind: "lodging" as const,
+  };
+  const geo = workspaceMapPinToGeoObject(pin);
+  assert.equal(geo.latitude, pin.lat);
+  const back = geoObjectsToMapPins([geo])[0]!;
+  assert.equal(back.id, pin.id);
+}
 
-const managed = listWorkspaceManaged({ workspaceId: opened.workspace.id });
-assert.ok(managed);
-assert.ok(managed!.objects.some((o) => o.title === "Hotel"));
-assert.ok(managed!.constraints.some((c) => c.key === "purpose"));
+function testMapExtensionValidation() {
+  const ok = validateMapViewExtension({
+    extensionId: "ext.map.demo",
+    contractKind: "map",
+    contractVersion: "1.0.0",
+    consumes: ["GeoObject"],
+    supportsEvents: ["select", "hover", "open", "filter", "move"],
+    permissions: ["read:location"],
+    testObjectCount: 100,
+  });
+  assert.equal(ok.valid, true);
 
-// Simulation + Prepare on Workspace (instance layer)
-const afterSim = addWorkspaceSimulationResult({
-  workspaceId: opened.workspace.id,
-  scenarioKo: "예산 What-if",
-  result: { budgetDelta: -30_000 },
-});
-assert.ok(afterSim);
-assert.ok((afterSim!.simulationResults.length ?? 0) >= 1);
+  const bad = validateMapViewExtension({
+    extensionId: "ext.bad",
+    contractKind: "map",
+    contractVersion: "0.0.1",
+    consumes: [],
+    supportsEvents: [],
+    permissions: [],
+  });
+  assert.equal(bad.valid, false);
+}
 
-const afterPrep = addWorkspacePrepareDraft({
-  workspaceId: opened.workspace.id,
-  labelKo: "호텔 예약 준비",
-  payload: { guests: 2 },
-});
-assert.ok(afterPrep);
-const prepManaged = listWorkspaceManaged({ workspaceId: opened.workspace.id });
-assert.ok(prepManaged!.prepare.length >= 1);
+function testOntologyValidation() {
+  assert.equal(validateDomainOntologySchema(TRAVEL_ONTOLOGY_V1).valid, true);
+  assert.equal(validateDomainOntologySchema(PROPERTY_ONTOLOGY_V1).valid, true);
+}
 
-// Panel switch (IDE chrome)
-const scheduleIde = withWorkspaceIdePanel(opened.ide, "schedule");
-assert.equal(scheduleIde.activePanel, "schedule");
+function testWorkspaceComposition() {
+  const plan = planWorkspaceFromGoal({
+    goalSummaryKo: "부동산 투자할 만한 곳 찾아줘",
+    domain: "property",
+    ontology: PROPERTY_ONTOLOGY_V1,
+    capabilityIds: ["property.search", "price.analysis"],
+    preferredViews: ["map", "table"],
+  });
+  assert.equal(plan.domain, "property");
+  assert.ok(plan.slots.some((s) => s.layer === "view" && s.artifactId === "map"));
+  assert.equal(bindObjectTypeToMapView("Property").projection, "marker");
+}
 
-// Reality Object unchanged
-assert.equal(
-  getRealityObject(hotelReality.objectId)!.updatedAt,
-  hotelRealityAt,
-);
+function testSubmissionPipeline() {
+  const sub = validateWorkspaceExtensionSubmission({
+    producerKind: "ontology",
+    ontologySchema: TRAVEL_ONTOLOGY_V1,
+  });
+  assert.equal(sub.valid, true);
+  assert.equal(sub.stage, "sandbox");
+}
 
-assert.throws(() => assertWorkspaceDoesNotTouchReality("mutate_reality"));
+function testStandardsIntegration() {
+  assert.equal(ALL_STANDARDS.length, 9);
+  assert.ok(ALL_STANDARDS.some((s) => s.id === "wdk_overview"));
+  assert.ok(ALL_STANDARDS.some((s) => s.id === "view_producer_guide"));
+}
 
-// Re-open same context → same workspace
-const again = openWorkspaceFromContext({ context: ctx });
-assert.equal(again.created, false);
-assert.equal(again.workspace.id, opened.workspace.id);
+function testMapContractEvents() {
+  assert.deepEqual(
+    MAP_VIEW_CONTRACT.events.map((e) => e.id),
+    ["select", "hover", "open", "filter", "move"],
+  );
+}
 
-clearAllWorkspacesForTests();
-clearAllWorkspaceHistoryForTests();
-clearRealityContextsForTests();
-clearRealityObjects();
+testLayersAndProducers();
+testMapGeoBridge();
+testMapExtensionValidation();
+testOntologyValidation();
+testWorkspaceComposition();
+testSubmissionPipeline();
+testStandardsIntegration();
+testMapContractEvents();
 
-console.log(
-  "ok workspace-engine Osaka-Trip-Workspace IDE objects·constraints·sim·prepare Reality-RO",
-);
+console.log("test-workspace-engine: OK");

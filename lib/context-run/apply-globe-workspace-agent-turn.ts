@@ -11,6 +11,10 @@
 import { runWorkspaceAgentPlan } from "@/lib/context-run/run-workspace-agent-plan";
 import { tryApplyConversationalTurn } from "@/lib/context-run/try-apply-conversational-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import {
+  resolveInteractionMode,
+  workspaceModeFromInteraction,
+} from "@/lib/agent-os/resolve-interaction-mode";
 import { resolveActiveWorkspaceContextId } from "@/lib/context-run/resolve-active-workspace-context";
 import { beginAgentProductTurn } from "@/lib/context-run/agent-product-pipeline";
 import { resolveAgentStatusWorkLog } from "@/lib/context-run/agent-status-work-log";
@@ -318,6 +322,39 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     })
       ? null
       : resolvedActive;
+
+  // P4 — interaction mode: simple answer vs workspace surfaces
+  const interactionMode = resolveInteractionMode(utterance);
+  void workspaceModeFromInteraction(interactionMode);
+  if (interactionMode === "simple_response" && !isWorkspaceAgentWorkUtterance(utterance)) {
+    const ctxForChat = safeContextEventId;
+    const destKo =
+      (ctxForChat
+        ? readContextWorkspace(ctxForChat)?.realityDraft?.destinationKo
+        : null) ?? null;
+    const chat = await tryApplyConversationalTurn({
+      utterance,
+      scopeId: ctxForChat,
+      regionKo: destKo,
+    });
+    if (chat) {
+      return {
+        handled: true,
+        statusKo: chat.replyKo,
+        contextEventId: ctxForChat,
+        workspaceMutated: false,
+        openedWorkspace: false,
+        committed: false,
+        via: "free_talk",
+        patchKind:
+          chat.mode === "direct"
+            ? "fact_direct"
+            : chat.mode === "knowledge"
+              ? "knowledge"
+              : "free_talk",
+      };
+    }
+  }
 
   // Hub Capability Registry — discovery before Workspace / free-talk (ADR-058).
   const capDiscovery = await executeGlobeCapabilityDiscovery({ utterance });

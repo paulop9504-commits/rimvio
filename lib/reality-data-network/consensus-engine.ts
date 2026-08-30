@@ -104,11 +104,20 @@ export function evaluateConsensus(input: {
   };
 }
 
+import { computeContributorRewardV2 } from "@/lib/contributor-ledger/reward-formula-v2";
+
 export function computeVerifierPayout(input: {
   readonly baseRewardKrw: number;
   readonly qualityMultiplier: number;
   readonly difficulty: number;
+  readonly verificationConfidence?: number | null;
+  readonly uniquenessScore?: number | null;
 }): number {
-  const difficultyFactor = 1 + (input.difficulty - 1) * 0.1;
-  return Math.round(input.baseRewardKrw * input.qualityMultiplier * difficultyFactor);
+  return computeContributorRewardV2({
+    baseRewardKrw: input.baseRewardKrw,
+    qualityMultiplier: input.qualityMultiplier,
+    difficulty: input.difficulty,
+    verificationConfidence: input.verificationConfidence,
+    uniquenessScore: input.uniquenessScore,
+  }).amountKrw;
 }

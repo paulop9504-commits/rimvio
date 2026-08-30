@@ -7,8 +7,10 @@ import type { HubAgentPlanStep } from "@/lib/hub/dev/hub-agent-loop";
 import type { HubWorkspaceToolId } from "@/lib/hub/dev/hub-workspace-tools";
 import type { HubWorkspaceFullState } from "@/lib/hub/dev/hub-workspace-observe";
 import { isConnectUtterance } from "@/lib/hub/dev/hub-connect-provider";
+import { wantsLoopBuilderUtterance, wantsLoopTestUtterance } from "@/lib/hub/dev/hub-loop-agent";
 
 export type HubIntentKind =
+  | "loop_builder"
   | "user_approval_gate"
   | "payment_flow"
   | "full_journey"
@@ -71,6 +73,34 @@ export function compileHubCreatorIntent(input: {
 
   if (isConnectUtterance(text)) {
     return null;
+  }
+
+  if (wantsLoopBuilderUtterance(text)) {
+    const steps = [
+      step("loop_create", "Loop 생성", "loop.create", { utterance: text }),
+      step("loop_lint", "Loop AI 검증", "loop.lint"),
+    ];
+    if (/test|테스트|실험|돌려|run/i.test(text)) {
+      steps.push(step("loop_test", "Loop 테스트", "loop.test"));
+    }
+    return {
+      kind: "loop_builder",
+      summaryKo: "Agent Loop를 생성하고 Loop Builder에 반영합니다.",
+      mutations: [{ axis: "workflow", label: "Agent Loop Definition" }],
+      steps,
+    };
+  }
+
+  if (wantsLoopTestUtterance(text)) {
+    return {
+      kind: "loop_builder",
+      summaryKo: "저장된 Loop를 테스트합니다.",
+      mutations: [],
+      steps: [
+        step("loop_read", "Loop 확인", "loop.read"),
+        step("loop_test", "Loop 테스트", "loop.test"),
+      ],
+    };
   }
 
   const caps = input.state.capabilities;

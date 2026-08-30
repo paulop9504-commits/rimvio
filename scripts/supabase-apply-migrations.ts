@@ -5,8 +5,8 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-function loadEnvLocal() {
-  const envPath = path.join(process.cwd(), ".env.local");
+function loadEnvFile(filename: string) {
+  const envPath = path.join(process.cwd(), filename);
   if (!existsSync(envPath)) {
     return;
   }
@@ -28,10 +28,18 @@ function loadEnvLocal() {
     ) {
       value = value.slice(1, -1);
     }
+    if (value === "[SENSITIVE]") {
+      continue;
+    }
     if (!process.env[key]) {
       process.env[key] = value;
     }
   }
+}
+
+function loadEnvLocal() {
+  loadEnvFile(".env.local");
+  loadEnvFile(".env.vercel.production");
 }
 
 function projectRefFromUrl(url: string | undefined): string | null {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CapabilityPreviewCard } from "@/components/hub/wizard/capability-preview-card";
+import { HubContextualGuide } from "@/components/hub/standards/hub-contextual-guide";
 import { MarketAvailabilityBadges } from "@/components/hub/wizard/market-deployment-panel";
 import { WizardStepHeader } from "@/components/hub/wizard/wizard-step-header";
 import { marketsPublishBlockReason } from "@/lib/hub/capability/validation";
@@ -227,13 +228,16 @@ export function ReviewStep({ wizard }: { wizard: HubCapabilityWizard }) {
           ) : null}
         </div>
 
-        <aside>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">
-            Marketplace Preview
-          </p>
-          <CapabilityPreviewCard draft={draft} showRating variant="marketplace" />
-          <MarketAvailabilityBadges draft={draft} className="mt-3" />
-          <p className="mt-2 font-mono text-[10px] text-[#94A3B8]">{draft.id}</p>
+        <aside className="space-y-4">
+          <HubContextualGuide mode="producer" capabilityId={draft.id} />
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+              Marketplace Preview
+            </p>
+            <CapabilityPreviewCard draft={draft} showRating variant="marketplace" />
+            <MarketAvailabilityBadges draft={draft} className="mt-3" />
+            <p className="mt-2 font-mono text-[10px] text-[#94A3B8]">{draft.id}</p>
+          </div>
         </aside>
       </div>
     </div>

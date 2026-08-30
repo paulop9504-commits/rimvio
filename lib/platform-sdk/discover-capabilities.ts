@@ -25,6 +25,7 @@ import {
   filterHitsForExposure,
   type CapabilityExposurePlan,
 } from "@/lib/platform-sdk/capability-exposure-policy";
+import { evaluateReuseGate } from "@/lib/rimvio-index/reuse-gate";
 
 export type CapabilityDiscoveryScores = {
   readonly intentMatch: number;
@@ -54,9 +55,17 @@ export function planCapabilityDiscovery(input: {
   readonly userMarket?: Partial<UserMarketContext>;
   readonly contextPolicy?: PlatformMarketContextPolicy;
   readonly intentFrame?: RimvioIntentFrame | null;
+  readonly skipReuseGate?: boolean;
 }): CapabilityDiscoveryPlan | null {
   const utterance = input.utterance.trim();
   if (!utterance) return null;
+
+  if (!input.skipReuseGate) {
+    const gate = evaluateReuseGate({ utterance });
+    if (gate.decision === "create") {
+      return null;
+    }
+  }
 
   const user = mergeUserMarketContext(
     DEFAULT_USER_MARKET_CONTEXT,

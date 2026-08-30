@@ -10,6 +10,10 @@ import {
   type DataSupplierPane,
 } from "@/lib/hub/data/data-workspace-nav";
 import {
+  fetchContributorWallet,
+  type ContributorWalletSnapshot,
+} from "@/lib/hub/wallet/fetch-contributor-wallet";
+import {
   getContributorProfile,
   notifyRdnStoreUpdated,
   readDataSubmissions,
@@ -29,7 +33,16 @@ export function HubDataSupplierWorkspace() {
   );
   const [tasks, setTasks] = useState(readRealityTasks);
   const [submissions, setSubmissions] = useState(readDataSubmissions);
+  const [wallet, setWallet] = useState<ContributorWalletSnapshot | null>(null);
+  const [walletLoading, setWalletLoading] = useState(true);
   const profile = getContributorProfile(DEMO_SUPPLIER_ID);
+
+  const refreshWallet = useCallback(async () => {
+    setWalletLoading(true);
+    const snap = await fetchContributorWallet(DEMO_SUPPLIER_ID);
+    setWallet(snap);
+    setWalletLoading(false);
+  }, []);
 
   const refresh = useCallback(() => {
     setTasks(readRealityTasks());
@@ -38,10 +51,14 @@ export function HubDataSupplierWorkspace() {
 
   useEffect(() => {
     refresh();
-    const onUpdate = () => refresh();
+    void refreshWallet();
+    const onUpdate = () => {
+      refresh();
+      void refreshWallet();
+    };
     window.addEventListener(RDN_STORE_UPDATED, onUpdate);
     return () => window.removeEventListener(RDN_STORE_UPDATED, onUpdate);
-  }, [refresh]);
+  }, [refresh, refreshWallet]);
 
   const setPaneAndUrl = useCallback(
     (next: DataSupplierPane) => {
@@ -89,6 +106,8 @@ export function HubDataSupplierWorkspace() {
             profile={profile}
             tasks={tasks}
             submissions={submissions}
+            wallet={wallet}
+            walletLoading={walletLoading}
             onSubmit={handleSubmit}
           />
         </main>

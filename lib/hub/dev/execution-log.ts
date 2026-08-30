@@ -8,6 +8,7 @@ export type DevExecutionSource =
   | "preview"
   | "simulation"
   | "sandbox-test"
+  | "test-invoke"
   | "publish"
   | "registry-discovery"
   | "runtime-upload"

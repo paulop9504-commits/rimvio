@@ -2,7 +2,6 @@
  * Domain Agent Executor — registry → real Tool Gateway loops (P3).
  */
 
-import type { RimvioToolId } from "@/lib/tool-registry";
 import { getAgent } from "@/lib/agent-orchestrator/agent-registry";
 import {
   createAgentExecutionContext,
@@ -17,15 +16,7 @@ import { runAgentController } from "@/lib/agent/agent-controller";
 import { isTripPrepUtterance } from "@/lib/action-planner/build-trip-prep-plan";
 import { ensureSessionGraph } from "@/lib/graph-command/session-graph-store";
 import { buildAgentObservation } from "@/lib/agent/observation";
-
-const DOMAIN_TOOL_CHAINS: Record<string, readonly RimvioToolId[]> = {
-  lodging: ["hotel.lookup", "ranking.pick"],
-  eatery: ["restaurant.lookup", "ranking.pick"],
-  route: ["maps.search", "maps.navigate"],
-  flight: ["browse.extract"],
-  weather: ["maps.search"],
-  booking: ["booking.prepare"],
-};
+import { selectNextCapabilityFromState } from "@/lib/agent-os/select-next-capability";
 
 function goalFromTask(task: AgentTaskInput, utterance: string) {
   return {
@@ -158,24 +149,23 @@ export async function executeDomainAgentTask(input: {
     return executeViaAgentController(ctx);
   }
 
-  const chain = DOMAIN_TOOL_CHAINS[input.task.agentId];
-  if (!chain?.length) {
-    return {
-      status: "blocked",
-      observation: {
-        planId: input.task.nodeId,
-        stepId: input.task.nodeId,
-        stepKind: "blocked",
-        success: false,
-        errors: ["no_tool_chain"],
-      },
-      observations: [],
-      reason: "Tool chain 없음",
-      trace: ctx.trace,
-    };
-  }
-
-  const result = await runObserveDecideLoop({ ctx, toolChain: chain });
+  const result = await runObserveDecideLoop({
+    ctx,
+    resolveNextTool: ({ ctx: loopCtx, lastToolId, lastVerified }) => {
+      const selected = selectNextCapabilityFromState({
+        agentId: input.task.agentId,
+        utterance: loopCtx.conversation.utterance,
+        contextEventId: loopCtx.task.contextEventId,
+        observations: loopCtx.observations,
+        lastToolId,
+        lastVerified,
+      });
+      if (!selected.toolId && selected.blockedReasonKo) {
+        return { blocked: true, reason: selected.blockedReasonKo };
+      }
+      return selected.toolId;
+    },
+  });
 
   const convergence = evaluateGoalConvergence({
     goal: ctx.goal,

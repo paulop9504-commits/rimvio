@@ -5,6 +5,11 @@
  */
 
 import { runConversationGate, type UserIntent } from "@/lib/agent/conversation";
+import {
+  readOperatorMemory,
+  rememberOperatorFocus,
+  resolveOperatorTurn,
+} from "@/lib/hub/dev/conversation-memory";
 import { runHubAgentLoop, type HubAgentLoopEvent, type HubAgentLoopInput, type HubAgentLoopResult } from "@/lib/hub/dev/hub-agent-loop";
 import { observeFullWorkspace } from "@/lib/agent/hub-observation";
 import { invokeHubWorkspaceTool, type HubWorkspaceInspectResult, type HubWorkspaceToolContext } from "@/lib/hub/dev/hub-workspace-tools";
@@ -33,6 +38,9 @@ export type HubAgentControllerInput = Omit<HubAgentLoopInput, "onEvent"> & {
   readonly onEvent: (event: HubAgentControllerEvent) => void;
   /** Ignored — execution always starts from current utterance only. */
   readonly staleGoal?: string | null;
+  readonly modelId?: string | null;
+  /** Set by runAgentTurn so the controller does not wrap itself. */
+  readonly agentTurnAlreadyWrapped?: boolean;
 };
 
 export type HubAgentControllerResult = HubAgentLoopResult & {
@@ -234,7 +242,21 @@ export async function runHubAgentController(
   input: HubAgentControllerInput,
 ): Promise<HubAgentControllerResult> {
   const emit = input.onEvent;
-  const utterance = input.utterance.trim();
+  const platformId = input.platformId ?? input.draft.id;
+  const memory = readOperatorMemory(platformId);
+  const resolved = resolveOperatorTurn({ utterance: input.utterance.trim(), memory });
+  const utterance = resolved.expandedUtterance;
+
+  if (resolved.reference.hadReference && resolved.reference.focus) {
+    emit({
+      type: "thought",
+      title: "참조 해석",
+      body: `${resolved.reference.substitutions.map((s) => `${s.from} → ${s.to}`).join(", ") || resolved.reference.focus.label}`,
+    });
+  }
+  if (resolved.implicit.inferred) {
+    emit({ type: "thought", title: "이어지는 작업", body: utterance });
+  }
 
   const gate = runConversationGate({
     utterance,
@@ -242,9 +264,22 @@ export async function runHubAgentController(
       currentPlatform: input.draft.name,
       platformName: input.draft.name,
       staleGoal: input.staleGoal ?? null,
-      currentGoal: null,
+      currentGoal: memory.currentGoal,
+      currentTask: memory.currentTask,
+      currentObject: memory.lastObjects[memory.lastObjects.length - 1] ?? null,
+      history: memory.history,
     },
   });
+
+  const goalChange = resolveOperatorTurn({
+    utterance: input.utterance.trim(),
+    memory,
+    nextGoal: gate.currentGoal ?? utterance,
+  }).goalChange;
+  if (goalChange?.changed && goalChange.reasonKo) {
+    emit({ type: "replan", reason: goalChange.reasonKo });
+    rememberOperatorFocus(platformId, { goal: goalChange.nextGoal, workInProgress: true });
+  }
 
   emit({ type: "intent", intent: gate.intent, executable: gate.executable });
 
@@ -280,8 +315,8 @@ export async function runHubAgentController(
     return runInspectOnly(input, agentState);
   }
 
-  if (gate.intent === "test") {
-    return runTestOnly(input);
+  if (gate.intent === "test" && !/lint|typecheck|타입|e2e|생성|만들/i.test(utterance)) {
+    return runTestOnly({ ...input, utterance });
   }
 
   if (gate.intent === "connect") {
@@ -294,6 +329,8 @@ export async function runHubAgentController(
     utterance,
     userIntent: gate.intent,
     platformGoal: gate.platformGoal ?? undefined,
+    modelId: input.modelId,
+    conversationMemory: readOperatorMemory(platformId),
     onEvent: (event) => {
       if (event.type === "tool" && event.status === "running") {
         toolCalls += 1;

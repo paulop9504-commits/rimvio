@@ -97,3 +97,33 @@ export function buildDevSchemaPreview(action: CapabilityAction): DevSchemaPrevie
 export function formatSchemaPreviewJson(preview: Record<string, unknown>): string {
   return JSON.stringify(preview, null, 2);
 }
+
+/** Concrete sample values for Test Invoke — not type placeholders. */
+export function buildDevInvokeSampleInput(
+  action: CapabilityAction,
+  context?: {
+    readonly destination?: string;
+    readonly checkIn?: string;
+    readonly checkOut?: string;
+    readonly guests?: number;
+  },
+): Record<string, unknown> {
+  const destination = context?.destination ?? "Namba Station";
+  const checkIn = context?.checkIn ?? "2026-06-15";
+  const checkOut = context?.checkOut ?? "2026-06-17";
+  const guests = context?.guests ?? 2;
+
+  if (action.name.includes("hotel.search") || action.name.endsWith(".search")) {
+    return { destination, checkIn, checkOut, guests, filters: { priceMax: 500000, ratingMin: 4 } };
+  }
+  if (action.name.includes("payment.commit")) {
+    return { bookingId: "bk_osaka_demo", amount: 284000, currency: "KRW" };
+  }
+  if (action.name.includes("booking.confirm") || action.name.includes(".confirm")) {
+    return { hotelId: "h2", roomId: "r-deluxe", guests, checkIn, checkOut };
+  }
+  if (action.name.includes("hotel") || action.name.includes("booking")) {
+    return { destination, checkIn, checkOut, guests };
+  }
+  return { request: action.inputSchema, dryRun: true };
+}

@@ -13,12 +13,17 @@ import { discoverPlatformContext } from "@/lib/hub/dev/platform-agent/context-di
 import { decomposePlatformGoal } from "@/lib/hub/dev/platform-agent/task-decomposition";
 import { planPlatformChanges } from "@/lib/hub/dev/platform-agent/platform-planner";
 import { compileHubCreatorIntent } from "@/lib/hub/dev/hub-intent-compiler";
+import { fetchOperatorLlmPlan } from "@/lib/hub/dev/operator-llm-planner";
+import { wantsLoopBuilderUtterance, wantsLoopTestUtterance } from "@/lib/hub/dev/hub-loop-agent";
+import type { OperatorConversationMemory } from "@/lib/hub/dev/conversation-memory";
+import { getRepoSession } from "@/lib/hub/dev/coding-agent/repo-session";
+import { wantsRepoClone } from "@/lib/hub/dev/coding-agent/repo-intent";
 
 export type HubAgentStructuredPlan = {
   readonly goal: string;
   readonly strategy: AgentStrategyId;
   readonly steps: readonly HubAgentPlanStep[];
-  readonly source: "structured" | "regex" | "intent" | "platform";
+  readonly source: "structured" | "regex" | "intent" | "platform" | "llm";
   readonly runtimeContextEventId: string;
   readonly goalKo: string | null;
   readonly intentSummaryKo?: string;
@@ -26,6 +31,7 @@ export type HubAgentStructuredPlan = {
   readonly platformPlanSummary?: string;
   readonly extractedConstraints?: readonly string[];
   readonly relevantContextIds?: readonly string[];
+  readonly modelId?: string | null;
 };
 
 function wantsPayment(utterance: string): boolean {
@@ -68,6 +74,21 @@ function buildStructuredSteps(
   strategy: AgentStrategyId,
 ): HubAgentPlanStep[] {
   const steps: HubAgentPlanStep[] = [step("observe", "프로젝트 확인", "workspace.inspect")];
+
+  if (wantsLoopBuilderUtterance(utterance)) {
+    steps.push(step("loop_create", "Loop 생성", "loop.create", { utterance }));
+    steps.push(step("loop_lint", "Loop AI 검증", "loop.lint"));
+    if (/test|테스트|실험|돌려|run/i.test(utterance)) {
+      steps.push(step("loop_test", "Loop 테스트", "loop.test"));
+    }
+    return steps;
+  }
+
+  if (wantsLoopTestUtterance(utterance)) {
+    steps.push(step("loop_read", "Loop 확인", "loop.read"));
+    steps.push(step("loop_test", "Loop 테스트", "loop.test"));
+    return steps;
+  }
 
   if (wantsPayment(utterance)) {
     steps.push(step("connections", "연결 상태 확인", "connection.list"));
@@ -123,8 +144,48 @@ function buildStructuredSteps(
     return steps;
   }
 
+  if (wantsRepoClone(utterance)) {
+    steps.push(step("clone", "레포 클론", "repo.clone", { utterance }));
+    steps.push(step("tree", "파일 탐색", "code.listFiles"));
+    return steps;
+  }
+
+  if (/lint/i.test(utterance)) {
+    steps.push(step("lint", "Lint", "lint.run"));
+    return steps;
+  }
+
+  if (/type\s*check|타입|tsc/i.test(utterance)) {
+    steps.push(step("types", "Type check", "typecheck.run"));
+    return steps;
+  }
+
+  if (/e2e/i.test(utterance)) {
+    steps.push(step("e2e", "E2E", "test.e2e"));
+    return steps;
+  }
+
+  if (
+    /테이블|버킷|storage|role|역할|secret|도메인|사용자|결제|메뉴|판매자|호텔\s*검색/i.test(utterance) &&
+    /만들|생성|추가|create|연결|되돌려|롤백|배포/i.test(utterance)
+  ) {
+    steps.push(step("resource", "Infrastructure 적용", "resource.apply", { utterance }));
+    steps.push(step("verify", "Verification", "verification.run"));
+    return steps;
+  }
+
+  if (/dev\s*server|개발\s*서버|서버\s*(켜|실행|멈춰)/i.test(utterance)) {
+    const stop = /멈춰|stop|꺼/i.test(utterance);
+    steps.push(step("server", stop ? "Dev 서버 중지" : "Dev 서버 시작", stop ? "server.stop" : "server.start"));
+    return steps;
+  }
+
   if (wantsTest(utterance)) {
+    steps.push(step("discover", "테스트 찾기", "test.discover"));
     steps.push(step("test", "테스트 실행", "test.run"));
+    if (/생성|만들|generate/i.test(utterance)) {
+      steps.unshift(step("gen", "테스트 생성", "test.generate", { query: utterance }));
+    }
     return steps;
   }
 
@@ -140,6 +201,8 @@ function buildStructuredSteps(
   }
 
   if (wantsBuild(utterance) && inspect.capabilities.length === 0) {
+    steps.push(step("resource", "Experience 구성", "resource.apply", { op: "experience.build", utterance }));
+    steps.push(step("verify", "Verification", "verification.run"));
     return steps;
   }
 
@@ -169,6 +232,9 @@ export async function planHubAgentTurn(input: {
   readonly skipRuntime?: boolean;
   readonly userIntent?: import("@/lib/agent/conversation/intent-types").UserIntent;
   readonly draft?: import("@/lib/hub/platform/types").PlatformDraft;
+  readonly modelId?: string | null;
+  readonly memory?: OperatorConversationMemory | null;
+  readonly skipLlm?: boolean;
 }): Promise<HubAgentStructuredPlan> {
   const extracted = extractStructuredGoal({
     utterance: input.utterance,
@@ -211,6 +277,36 @@ export async function planHubAgentTurn(input: {
   });
 
   const executionMode = executionModeFromGoal(platformGoal);
+  const repoReady = Boolean(input.draft && getRepoSession(input.draft.id));
+
+  if (!input.skipLlm && input.modelId) {
+    const llmPlan = await fetchOperatorLlmPlan({
+      utterance: input.utterance,
+      inspect: {
+        platformName: input.inspect.platformName,
+        capabilities: input.inspect.capabilities,
+      },
+      memory: input.memory,
+      repoReady,
+      modelId: input.modelId,
+    });
+    if (llmPlan && llmPlan.steps.length > 0) {
+      return {
+        goal: llmPlan.goalKo || platformGoal.summary,
+        strategy: "planning",
+        steps: llmPlan.steps,
+        source: "llm",
+        runtimeContextEventId: `hub:workspace:${input.platformId ?? "dev"}`,
+        goalKo: llmPlan.goalKo,
+        intentSummaryKo: llmPlan.goalKo,
+        executionMode,
+        platformPlanSummary: llmPlan.goalKo,
+        extractedConstraints: extracted.constraints.map((c) => c.label),
+        relevantContextIds: discovery?.relevantContext.map((r) => r.id),
+        modelId: llmPlan.modelId,
+      };
+    }
+  }
 
   if (input.skipRuntime) {
     const steps =

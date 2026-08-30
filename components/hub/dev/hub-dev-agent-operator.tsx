@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  ArrowUp,
+  Check,
   ChevronDown,
   Mic,
   Paperclip,
   PanelRightClose,
-  Send,
   X,
 } from "lucide-react";
 import { buildPlatformOperatorBrief } from "@/lib/hub/dev/platform-operator-brief";
@@ -33,8 +34,22 @@ import type { DeployExecutorCallbacks } from "@/lib/hub/deploy/hub-deploy-runtim
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { DevProjectIssue, DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
 import { cn } from "@/lib/utils";
+import { HubOperatorModelPicker } from "@/components/hub/dev/hub-operator-model-picker";
+import {
+  HubOperatorMessageQueue,
+  createOperatorQueuedMessage,
+  type OperatorQueuedMessage,
+} from "@/components/hub/dev/hub-operator-message-queue";
+import {
+  readOperatorModelPreference,
+  resolveActiveOperatorModel,
+  writeActiveOperatorModelSession,
+} from "@/lib/hub/dev/operator-model-preference";
 
 type OperatorTab = "chat" | "changes" | "terminal" | "activity";
+type OperatorRunMode = "auto" | "plan";
+
+const OPERATOR_MODE_KEY = "rimvio-hub-operator-run-mode";
 
 type HubDevAgentOperatorProps = {
   readonly draft: PlatformDraft;
@@ -69,10 +84,22 @@ type HubDevAgentOperatorProps = {
   readonly resumeProvider?: import("@/lib/integrations/hub-platform/connection-types").HubPlatformProviderId | null;
   readonly onFileTouch?: (paths: readonly string[], touch: "reading" | "modified" | "created" | "running") => void;
   readonly onAgentRunningChange?: (running: boolean) => void;
+  readonly agentRunning?: boolean;
   readonly autoFocusTab?: OperatorTab | null;
+  readonly onAcceptAllChanges?: () => void;
+  readonly onPreview?: () => void;
 };
 
-const MODELS = ["Claude 3.5 Sonnet", "GPT-4o", "Gemini 1.5 Pro"] as const;
+function readOperatorRunMode(): OperatorRunMode {
+  if (typeof window === "undefined") return "auto";
+  const stored = window.localStorage.getItem(OPERATOR_MODE_KEY);
+  return stored === "plan" ? "plan" : "auto";
+}
+
+function writeOperatorRunMode(mode: OperatorRunMode): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(OPERATOR_MODE_KEY, mode);
+}
 
 const PLANNING_IDLE: OperatorPlanningItem[] = [
   { label: "Plan created", status: "done" },
@@ -90,14 +117,17 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
   const brief = buildPlatformOperatorBrief(props.snapshot, { fixing: props.fixing });
   const [tab, setTab] = useState<OperatorTab>("chat");
   const [chatInput, setChatInput] = useState("");
-  const [model, setModel] = useState<(typeof MODELS)[number]>(MODELS[0]);
+  const [runMode, setRunMode] = useState<OperatorRunMode>(() => readOperatorRunMode());
   const [collapsed, setCollapsed] = useState(false);
   const [entries, setEntries] = useState<OperatorConversationEntry[]>([]);
   const [agentEventLog, setAgentEventLog] = useState<AgentEventLog>(() => readSharedAgentEventLog());
+  const [messageQueue, setMessageQueue] = useState<OperatorQueuedMessage[]>([]);
+  const [showQueueActions, setShowQueueActions] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevFixing = useRef(false);
   const prevAnalyzing = useRef(false);
+  const prevBusyRef = useRef(false);
   const platformAnalyzeActive = useRef(false);
   const lastDiffId = useRef<string | null>(null);
   const localSendRef = useRef<string | null>(null);
@@ -212,9 +242,24 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       }
       if (actionId === "approve_publish") {
         props.onApprovePublish?.();
+        return;
+      }
+      if (actionId.startsWith("confirm_deploy:")) {
+        const raw = actionId.slice("confirm_deploy:".length);
+        const tokens = raw
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const utterance =
+          tokens.includes("personal") && tokens.includes("main")
+            ? "전부 배포"
+            : tokens.includes("main")
+              ? "배포해 main"
+              : "배포해 personal";
+        props.onAskOperator(utterance);
       }
     },
-    [props.onConnectStripe, props.onConnectGithub, props.onConnectVercel, props.onConnectSupabase, props.onApprovePublish],
+    [props.onConnectStripe, props.onConnectGithub, props.onConnectVercel, props.onConnectSupabase, props.onApprovePublish, props.onAskOperator],
   );
 
   const handleLoopEvent = useCallback(
@@ -248,8 +293,8 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
         props.onAgentRunningChange?.(true);
       }
 
-      loopActiveRef.current = event.type !== "complete";
-      if (event.type === "complete") {
+      loopActiveRef.current = event.type !== "complete" && event.type !== "final_report";
+      if (event.type === "complete" || event.type === "final_report") {
         props.onAgentRunningChange?.(false);
       }
       setEntries((prev) => {
@@ -290,6 +335,38 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                 },
               },
             ];
+          case "thought":
+            return [
+              ...base,
+              {
+                kind: "agent" as const,
+                id: `th-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "thought" as const, title: event.title, body: event.body },
+              },
+            ];
+          case "terminal":
+            return [
+              ...base.filter(
+                (e) =>
+                  !(
+                    e.kind === "agent" &&
+                    e.payload.type === "terminal" &&
+                    e.payload.title === event.title
+                  ),
+              ),
+              {
+                kind: "agent" as const,
+                id: `term-${event.title}`,
+                at: Date.now(),
+                payload: {
+                  type: "terminal" as const,
+                  title: event.title,
+                  lines: event.lines,
+                  waiting: event.waiting,
+                },
+              },
+            ];
           case "verify":
             return [
               ...base,
@@ -301,6 +378,8 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               },
             ];
           case "ask_user":
+            loopActiveRef.current = false;
+            props.onAgentRunningChange?.(false);
             return [
               ...base,
               {
@@ -325,6 +404,18 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                 id: `done-${Date.now()}`,
                 at: Date.now(),
                 payload: { type: "complete" as const, summary: event.summary },
+              },
+            ];
+          case "final_report":
+            loopActiveRef.current = false;
+            props.onAgentRunningChange?.(false);
+            return [
+              ...base.filter((e) => !(e.kind === "agent" && e.payload.type === "complete")),
+              {
+                kind: "agent" as const,
+                id: `report-${Date.now()}`,
+                at: Date.now(),
+                payload: { type: "finalReport" as const, report: event.report },
               },
             ];
           case "file_touch":
@@ -362,16 +453,99 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
     setTab(props.autoFocusTab);
   }, [props.autoFocusTab]);
 
+  const isOperatorBusy = Boolean(props.agentRunning || props.fixing || props.analyzing);
+
+  const contextFileCount = Math.max(
+    props.snapshot.changesCount,
+    props.snapshot.changes.length,
+    props.snapshot.capabilityCount,
+  );
+
+  const dispatchMessage = useCallback(
+    (text: string) => {
+      localSendRef.current = text;
+      loopActiveRef.current = false;
+      writeActiveOperatorModelSession(
+        resolveActiveOperatorModel({ preference: readOperatorModelPreference(), configured: {} }),
+      );
+      writeOperatorRunMode(runMode);
+      appendUserTurn(text);
+      props.onAskOperator(text);
+      setChatInput("");
+      setTab("chat");
+    },
+    [appendUserTurn, props, runMode],
+  );
+
+  const enqueueMessage = useCallback(
+    (text: string) => {
+      setMessageQueue((prev) => [...prev, createOperatorQueuedMessage(text, contextFileCount)]);
+      setShowQueueActions(true);
+      setChatInput("");
+    },
+    [contextFileCount],
+  );
+
+  useEffect(() => {
+    if (prevBusyRef.current && !isOperatorBusy && messageQueue.length > 0) {
+      const [next, ...rest] = messageQueue;
+      setMessageQueue(rest);
+      if (rest.length === 0) {
+        setShowQueueActions(false);
+      }
+      dispatchMessage(next.text);
+    }
+    prevBusyRef.current = isOperatorBusy;
+  }, [dispatchMessage, isOperatorBusy, messageQueue]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Backspace" || !event.ctrlKey || !event.shiftKey) return;
+      if (messageQueue.length === 0) return;
+      event.preventDefault();
+      setMessageQueue([]);
+      setShowQueueActions(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [messageQueue.length]);
+
   const sendChat = () => {
     const text = chatInput.trim();
     if (!text) return;
-    localSendRef.current = text;
-    loopActiveRef.current = false;
-    appendUserTurn(text);
-    props.onAskOperator(text);
-    setChatInput("");
-    setTab("chat");
+
+    if (isOperatorBusy) {
+      enqueueMessage(text);
+      return;
+    }
+
+    dispatchMessage(text);
   };
+
+  const handleSendImmediately = useCallback(() => {
+    setMessageQueue((prev) => {
+      if (prev.length === 0) return prev;
+      const target = prev[prev.length - 1]!;
+      const reordered = [target, ...prev.filter((item) => item.id !== target.id)];
+      if (!isOperatorBusy) {
+        window.setTimeout(() => dispatchMessage(target.text), 0);
+        return reordered.slice(1);
+      }
+      return reordered;
+    });
+    setShowQueueActions(false);
+  }, [dispatchMessage, isOperatorBusy]);
+
+  const handleReviewQueued = useCallback((message: OperatorQueuedMessage) => {
+    setMessageQueue((prev) => prev.filter((item) => item.id !== message.id));
+    setChatInput(message.text);
+    setShowQueueActions(false);
+  }, []);
+
+  const handleStopQueue = useCallback(() => {
+    setMessageQueue([]);
+    setShowQueueActions(false);
+  }, []);
 
   useEffect(() => {
     if (!props.agentSeed?.trim()) return;
@@ -493,26 +667,17 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
                 AI
               </span>
             </div>
-            <div className="relative mt-0.5 inline-flex items-center">
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value as (typeof MODELS)[number])}
-                className="appearance-none bg-transparent pr-4 text-[10px] font-medium text-[#6b7280] focus:outline-none"
-              >
-                {MODELS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 size-3 -translate-y-1/2 text-[#9ca3af]" />
-            </div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             <button type="button" onClick={() => setCollapsed(true)} className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6]">
               <PanelRightClose className="size-3.5" />
             </button>
-            <button type="button" className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6]">
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="rounded p-1 text-[#9ca3af] hover:bg-[#f3f4f6]"
+              aria-label="Close Platform Operator"
+            >
               <X className="size-3.5" />
             </button>
           </div>
@@ -560,6 +725,8 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               onRunTests={props.onRunTests}
               onDismissDiff={props.onDismissDiff}
               onAskUserAction={handleAskUserAction}
+              onPreview={props.onPreview}
+              onPublish={props.onPublish}
             />
             <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
@@ -577,47 +744,364 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
       </div>
 
       {tab === "chat" ? (
-        <div className="shrink-0 border-t border-[#e5e7eb] bg-white px-3 py-2.5">
-          <div className="rounded-xl border border-[#e5e7eb] bg-[#fafafa] focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-100">
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendChat();
-                }
-              }}
-              rows={3}
-              placeholder="무엇을 할까요? (예: 깃허브 연결, 테스트 돌려줘, 상태 확인)"
-              className="w-full resize-none bg-transparent px-3 pt-2.5 text-[11px] leading-relaxed text-[#374151] placeholder:text-[#9ca3af] focus:outline-none"
-            />
-            <div className="flex items-center justify-between px-2.5 pb-2">
-              <button type="button" className="flex items-center gap-0.5 rounded-full bg-violet-50 px-2 py-0.5 text-[9px] font-medium text-violet-600">
-                Operator
-                <ChevronDown className="size-2.5" />
+        <OperatorComposerPanel
+          chatInput={chatInput}
+          onChatInputChange={setChatInput}
+          onSend={sendChat}
+          sendDisabled={!chatInput.trim()}
+          isBusy={isOperatorBusy}
+          runMode={runMode}
+          onRunModeChange={setRunMode}
+          changesCount={props.snapshot.changesCount}
+          checkpointCount={listHubCheckpoints(props.draft.id).length}
+          onReviewAll={props.onReviewAllChanges}
+          onUndoAll={props.onUndoCheckpoint}
+          onOpenChanges={() => setTab("changes")}
+          onKeepAll={props.onAcceptAllChanges}
+          messageQueue={messageQueue}
+          showQueueActions={showQueueActions}
+          onKeepQueuing={() => setShowQueueActions(false)}
+          onSendImmediately={handleSendImmediately}
+          onStopQueue={handleStopQueue}
+          onReviewQueued={handleReviewQueued}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function OperatorComposerPanel({
+  chatInput,
+  onChatInputChange,
+  onSend,
+  sendDisabled,
+  isBusy,
+  runMode,
+  onRunModeChange,
+  changesCount,
+  checkpointCount,
+  onReviewAll,
+  onUndoAll,
+  onOpenChanges,
+  onKeepAll,
+  messageQueue,
+  showQueueActions,
+  onKeepQueuing,
+  onSendImmediately,
+  onStopQueue,
+  onReviewQueued,
+}: {
+  chatInput: string;
+  onChatInputChange: (v: string) => void;
+  onSend: () => void;
+  sendDisabled: boolean;
+  isBusy: boolean;
+  runMode: OperatorRunMode;
+  onRunModeChange: (m: OperatorRunMode) => void;
+  changesCount: number;
+  checkpointCount: number;
+  onReviewAll: () => void;
+  onUndoAll?: () => void;
+  onOpenChanges: () => void;
+  onKeepAll?: () => void;
+  messageQueue: readonly OperatorQueuedMessage[];
+  showQueueActions: boolean;
+  onKeepQueuing: () => void;
+  onSendImmediately: () => void;
+  onStopQueue: () => void;
+  onReviewQueued: (message: OperatorQueuedMessage) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
+  const [composerHint, setComposerHint] = useState<string | null>(null);
+
+  const syncHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 72), 160)}px`;
+  }, []);
+
+  useEffect(() => {
+    syncHeight();
+  }, [chatInput, syncHeight]);
+
+  const showChangesBar = changesCount > 0 || checkpointCount > 0;
+
+  return (
+    <div className="shrink-0 bg-[#f9fafb] px-3 pb-3 pt-2">
+      {showChangesBar ? (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-[#e5e7eb] bg-white px-2.5 py-1.5 shadow-sm">
+          <button
+            type="button"
+            onClick={onOpenChanges}
+            className="truncate text-left font-mono text-[10px] font-medium text-[#6b7280] hover:text-violet-700"
+          >
+            › {changesCount || checkpointCount} Changes
+          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {onUndoAll && checkpointCount > 0 ? (
+              <button
+                type="button"
+                onClick={onUndoAll}
+                className="rounded-md px-2 py-1 text-[10px] font-medium text-[#6b7280] hover:bg-[#f3f4f6]"
+              >
+                Undo All
               </button>
-              <div className="flex items-center gap-1">
-                <button type="button" className="rounded p-1 text-[#9ca3af] hover:text-[#6b7280]">
-                  <Paperclip className="size-3.5" />
-                </button>
-                <button type="button" className="rounded p-1 text-[#9ca3af] hover:text-[#6b7280]">
-                  <Mic className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={sendChat}
-                  disabled={!chatInput.trim() || props.fixing || props.analyzing}
-                  className="flex size-7 items-center justify-center rounded-full bg-violet-600 text-white disabled:opacity-40"
-                >
-                  <Send className="size-3" />
-                </button>
-              </div>
-            </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                onKeepAll?.();
+                onOpenChanges();
+              }}
+              className="rounded-md px-2 py-1 text-[10px] font-medium text-[#6b7280] hover:bg-[#f3f4f6]"
+            >
+              Keep All
+            </button>
+            <button
+              type="button"
+              onClick={onReviewAll}
+              className="rounded-md bg-[#111827] px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-[#1f2937]"
+            >
+              Review
+            </button>
           </div>
         </div>
       ) : null}
+
+      <HubOperatorMessageQueue
+        queue={messageQueue}
+        showActions={showQueueActions}
+        onKeepQueuing={onKeepQueuing}
+        onSendImmediately={onSendImmediately}
+        onStop={onStopQueue}
+        onReview={onReviewQueued}
+      />
+
+      <div
+        className={cn(
+          "overflow-hidden rounded-[26px] border border-[#e5e7eb] bg-white",
+          "shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_rgba(15,23,42,0.04)]",
+          "transition-shadow focus-within:border-violet-300 focus-within:shadow-[0_0_0_3px_rgba(139,92,246,0.12)]",
+          isBusy && "opacity-95",
+        )}
+      >
+        {isBusy ? (
+          <div className="border-b border-[#f3f4f6] px-4 py-1.5 text-[10px] font-medium text-violet-700">
+            Operator 작업 중… 새 메시지는 대기열에 쌓여요
+          </div>
+        ) : null}
+        <textarea
+          ref={textareaRef}
+          value={chatInput}
+          onChange={(e) => onChatInputChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!sendDisabled) onSend();
+            }
+          }}
+          rows={1}
+          placeholder={
+            isBusy
+              ? "Add a follow-up — 작업이 끝나면 순서대로 실행돼요"
+              : "Plan, Build — / skills · @ context · 무엇을 할까요?"
+          }
+          className="block w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[12px] leading-[1.55] text-[#111827] placeholder:text-[#9ca3af] focus:outline-none"
+          style={{ minHeight: 72, maxHeight: 160 }}
+        />
+        {composerHint ? (
+          <p className="px-4 pb-1 text-[10px] text-amber-700">{composerHint}</p>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <ComposerPill
+              label="Operator"
+              active
+              onClick={() => textareaRef.current?.focus()}
+            />
+            <HubOperatorModelPicker />
+            <ComposerRunModePill runMode={runMode} onRunModeChange={onRunModeChange} />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-0.5">
+            <input
+              ref={attachRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const names = e.target.files ? [...e.target.files].map((f) => f.name) : [];
+                if (names.length) {
+                  onChatInputChange(
+                    chatInput ? `${chatInput}\n이 파일을 연결해줘: ${names.join(", ")}` : `이 파일을 연결해줘: ${names.join(", ")}`,
+                  );
+                }
+                e.target.value = "";
+              }}
+            />
+            <ComposerIconButton label="Attach file" onClick={() => attachRef.current?.click()}>
+              <Paperclip className="size-4" />
+            </ComposerIconButton>
+            <ComposerIconButton
+              label="Voice input"
+              onClick={() => {
+                const w = window as unknown as {
+                  SpeechRecognition?: new () => {
+                    lang: string;
+                    start: () => void;
+                    onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+                  };
+                  webkitSpeechRecognition?: new () => {
+                    lang: string;
+                    start: () => void;
+                    onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+                  };
+                };
+                const Speech = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+                if (!Speech) {
+                  setComposerHint("이 브라우저에서는 음성 입력을 쓸 수 없어요. 텍스트로 입력하세요.");
+                  return;
+                }
+                const rec = new Speech();
+                rec.lang = "ko-KR";
+                rec.onresult = (event) => {
+                  const spoken = event.results[0]?.[0]?.transcript ?? "";
+                  if (spoken) onChatInputChange(chatInput ? `${chatInput} ${spoken}` : spoken);
+                };
+                rec.start();
+              }}
+            >
+              <Mic className="size-4" />
+            </ComposerIconButton>
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={sendDisabled}
+              aria-label="Send message"
+              className={cn(
+                "flex size-8 items-center justify-center rounded-full transition-colors",
+                sendDisabled
+                  ? "bg-[#e5e7eb] text-[#9ca3af]"
+                  : "bg-violet-600 text-white hover:bg-violet-700",
+              )}
+            >
+              <ArrowUp className="size-4 stroke-[2.5]" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function ComposerPill({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[10px] font-semibold",
+        active
+          ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100"
+          : "bg-[#f3f4f6] text-[#6b7280]",
+      )}
+    >
+      {label}
+      <ChevronDown className="size-3 opacity-70" />
+    </button>
+  );
+}
+
+function ComposerRunModePill({
+  runMode,
+  onRunModeChange,
+}: {
+  runMode: OperatorRunMode;
+  onRunModeChange: (m: OperatorRunMode) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "inline-flex items-center gap-0.5 rounded-full bg-[#f3f4f6] py-1 pl-2.5 pr-1.5 text-[10px] font-semibold capitalize text-[#6b7280]",
+          "hover:bg-[#eceff3] focus:outline-none focus:ring-2 focus:ring-violet-100",
+          open && "bg-[#eceff3]",
+        )}
+      >
+        {runMode}
+        <ChevronDown className={cn("size-3 opacity-70", open && "rotate-180")} />
+      </button>
+      {open ? (
+        <div className="absolute bottom-full left-0 z-[110] mb-2 min-w-[108px] overflow-hidden rounded-xl border border-[#e5e7eb] bg-white py-1 shadow-lg">
+          {(["auto", "plan"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => {
+                onRunModeChange(mode);
+                writeOperatorRunMode(mode);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center justify-between px-3 py-2 text-left text-[11px] font-medium capitalize hover:bg-[#f9fafb]",
+                runMode === mode ? "text-violet-700" : "text-[#374151]",
+              )}
+            >
+              {mode}
+              {runMode === mode ? <Check className="size-3.5 text-violet-600" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ComposerIconButton({
+  label,
+  children,
+  onClick,
+}: {
+  label: string;
+  children: ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="rounded-lg p-1.5 text-[#9ca3af] transition-colors hover:bg-[#f3f4f6] hover:text-[#6b7280]"
+    >
+      {children}
+    </button>
   );
 }
 

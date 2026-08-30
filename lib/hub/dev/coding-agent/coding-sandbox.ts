@@ -24,10 +24,66 @@ const BLOCKED_PATTERNS = [
   /^c:\\/i,
 ];
 
+const overlays = new Map<string, Map<string, string | null>>();
+
+function overlayKey(draftId: string | undefined): string {
+  return draftId?.trim() || "default";
+}
+
 export function isSandboxPathAllowed(path: string): boolean {
   const normalized = path.replace(/\\/g, "/").trim();
   if (!normalized || BLOCKED_PATTERNS.some((p) => p.test(normalized))) return false;
-  return normalized.startsWith("src/") || normalized.endsWith(".json") || normalized === "package.json";
+  return (
+    normalized.startsWith("src/") ||
+    normalized.startsWith("lib/") ||
+    normalized.startsWith("app/") ||
+    normalized.startsWith("components/") ||
+    normalized.startsWith("scripts/") ||
+    normalized.startsWith("tests/") ||
+    normalized.endsWith(".json") ||
+    normalized === "package.json"
+  );
+}
+
+export function writeSandboxOverlay(input: {
+  readonly draftId?: string;
+  readonly path: string;
+  readonly content: string;
+}): { path: string; created: boolean } | null {
+  if (!isSandboxPathAllowed(input.path)) return null;
+  const bucket = overlays.get(overlayKey(input.draftId)) ?? new Map<string, string | null>();
+  const created = !bucket.has(input.path) || bucket.get(input.path) == null;
+  bucket.set(input.path.replace(/\\/g, "/"), input.content);
+  overlays.set(overlayKey(input.draftId), bucket);
+  return { path: input.path.replace(/\\/g, "/"), created };
+}
+
+export function deleteSandboxOverlay(input: {
+  readonly draftId?: string;
+  readonly path: string;
+}): { path: string; deleted: boolean } | null {
+  if (!isSandboxPathAllowed(input.path)) return null;
+  const bucket = overlays.get(overlayKey(input.draftId)) ?? new Map<string, string | null>();
+  const normalized = input.path.replace(/\\/g, "/");
+  const existed = bucket.get(normalized) != null;
+  bucket.set(normalized, null);
+  overlays.set(overlayKey(input.draftId), bucket);
+  return { path: normalized, deleted: existed };
+}
+
+export function transformSandboxOverlay(input: {
+  readonly draftId?: string;
+  readonly draft: PlatformDraft;
+  readonly path: string;
+  readonly find: string;
+  readonly replace: string;
+}): { path: string; changed: boolean } | null {
+  const file = readSandboxFile({ draft: input.draft, path: input.path });
+  if (!file || !input.find) return null;
+  const next = file.content.split(input.find).join(input.replace);
+  if (next === file.content) return { path: file.path, changed: false };
+  writeSandboxOverlay({ draftId: input.draftId, path: file.path, content: next });
+  return { path: file.path, changed: true };
 }
 
 function inferLanguage(path: string): SandboxFile["language"] {
@@ -61,15 +117,26 @@ function defaultContentForPath(path: string, draft: PlatformDraft): string {
   return `// ${path}\nexport {};`;
 }
 
-/** List virtual files derived from platform model. */
+/** List virtual files derived from platform model + overlays. */
 export function listSandboxFiles(draft: PlatformDraft): readonly SandboxFile[] {
   const map = buildPlatformSourceMap(draft);
   const paths = [...new Set(map.flatMap((r) => r.paths))];
-  return paths.filter(isSandboxPathAllowed).map((path) => ({
+  const files = paths.filter(isSandboxPathAllowed).map((path) => ({
     path,
     content: defaultContentForPath(path, draft),
     language: inferLanguage(path),
   }));
+  const bucket = overlays.get(overlayKey(draft.id));
+  if (!bucket) return files;
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  for (const [path, content] of bucket) {
+    if (content == null) {
+      byPath.delete(path);
+      continue;
+    }
+    byPath.set(path, { path, content, language: inferLanguage(path) });
+  }
+  return [...byPath.values()];
 }
 
 /** Read virtual file (partial — never full repo). */
@@ -84,9 +151,11 @@ export function readSandboxFile(input: {
     path = paths[0] ?? "";
   }
   if (!path || !isSandboxPathAllowed(path)) return null;
+  const overlay = overlays.get(overlayKey(input.draft.id))?.get(path.replace(/\\/g, "/"));
+  if (overlay === null) return null;
   return {
     path,
-    content: defaultContentForPath(path, input.draft),
+    content: overlay ?? defaultContentForPath(path, input.draft),
     language: inferLanguage(path),
   };
 }

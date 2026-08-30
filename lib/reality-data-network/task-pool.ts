@@ -25,6 +25,7 @@ import {
   evaluateConsensus,
 } from "@/lib/reality-data-network/consensus-engine";
 import { recordContributorPayout } from "@/lib/contributor-ledger/record-contributor-payout";
+import { computeContributorRewardV2 } from "@/lib/contributor-ledger/reward-formula-v2";
 import { persistRealityTaskAsync } from "@/lib/reality-data-network/persist-tasks";
 
 const TASKS_KEY = "rimvio-rdn-tasks-v2";
@@ -259,20 +260,26 @@ export function submitRealityData(input: {
 
   writeJson(SUBMISSIONS_KEY, [...readDataSubmissions(), submission]);
 
-  const supplierPayout = Math.round(meta.baseRewardKrw * 0.5);
+  const supplier = getContributorProfile(input.supplierId);
+  const supplierReward = computeContributorRewardV2({
+    baseRewardKrw: Math.round(meta.baseRewardKrw * 0.5),
+    qualityMultiplier: supplier?.qualityMultiplier ?? 1,
+    difficulty: meta.difficulty,
+    uniquenessScore: 0.55,
+  });
   recordContributorPayout({
     contributorId: input.supplierId,
     kind: "data_submission",
-    amountKrw: supplierPayout,
+    amountKrw: supplierReward.amountKrw,
     taskId: task.taskId,
     summaryKo: `데이터 제출 · ${input.titleKo}`,
+    rewardFactors: supplierReward.factors as unknown as Record<string, number>,
   });
 
-  const supplier = getContributorProfile(input.supplierId);
   if (supplier) {
     upsertContributorProfile({
       ...supplier,
-      totalEarnedKrw: supplier.totalEarnedKrw + supplierPayout,
+      totalEarnedKrw: supplier.totalEarnedKrw + supplierReward.amountKrw,
       tasksCompleted: supplier.tasksCompleted + 1,
     });
   }
@@ -345,11 +352,14 @@ export function applyVerifierResponse(input: {
   void persistRealityTaskAsync(task);
 
   const verifier = getContributorProfile(input.verifierId);
-  const payoutKrw = computeVerifierPayout({
+  const verifierReward = computeContributorRewardV2({
     baseRewardKrw: task.baseRewardKrw,
     qualityMultiplier: verifier?.qualityMultiplier ?? 1,
     difficulty: task.difficulty,
+    verificationConfidence: consensus.result.confidence,
+    uniquenessScore: 0.5,
   });
+  const payoutKrw = verifierReward.amountKrw;
 
   recordContributorPayout({
     contributorId: input.verifierId,
@@ -357,6 +367,7 @@ export function applyVerifierResponse(input: {
     amountKrw: payoutKrw,
     taskId: task.taskId,
     summaryKo: `검수 · ${task.titleKo}`,
+    rewardFactors: verifierReward.factors as unknown as Record<string, number>,
   });
 
   if (verifier) {

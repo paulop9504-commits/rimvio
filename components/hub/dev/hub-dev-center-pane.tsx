@@ -11,18 +11,40 @@ import type {
 } from "@/lib/hub/dev/dev-project-state";
 import type { ChangeExplanation } from "@/lib/hub/dev/hub-change-explanation";
 import type { AnalyzedPlatformBlueprint } from "@/lib/hub/dev/platform-analyzer";
-import { isBlueprintSectionPane, type DevWorkspacePane } from "@/lib/hub/dev/dev-workspace-nav";
+import { type DevWorkspacePane } from "@/lib/hub/dev/dev-workspace-nav";
 import { cn } from "@/lib/utils";
 import { HubDevCapabilityList } from "@/components/hub/dev/hub-dev-capability-view";
 import { HubDevAgentSimulation } from "@/components/hub/dev/hub-dev-agent-simulation";
 import { HubDevPublishPanel } from "@/components/hub/dev/hub-dev-publish-panel";
 import { HubDevVersionsPanel } from "@/components/hub/dev/hub-dev-versions-panel";
+import { HubStandardsPanel } from "@/components/hub/standards/hub-standards-panel";
+import type { HubStandardsView } from "@/lib/hub/standards";
 import type { HubCapabilityWizard } from "@/hooks/use-hub-capability-wizard";
 import type { HubPublishOptions } from "@/lib/hub/dev/hub-publish-model";
 import { HubDevBlueprintDashboard } from "@/components/hub/dev/hub-dev-blueprint-dashboard";
 import { HubConnectedHubsPanel } from "@/components/hub/dev/hub-connected-hubs-panel";
 import { HubDevConnectionsPanel } from "@/components/hub/dev/hub-dev-connections-panel";
 import type { HubDevConnections } from "@/lib/hub/dev/hub-connection-store";
+import { HubDevWorkflowEditor } from "@/components/hub/dev/hub-dev-workflow-editor";
+import { HubLoopBuilder } from "@/components/hub/dev/hub-loop-builder";
+import { HubDevCommercePanel } from "@/components/hub/dev/hub-dev-commerce-panel";
+import { HubDevRuntimeWorkspace } from "@/components/hub/dev/hub-dev-runtime-workspace";
+import { HubAskRimvioBar } from "@/components/hub/dev/hub-ask-rimvio-bar";
+import { HubDevSandboxPreview } from "@/components/hub/dev/hub-dev-sandbox-preview";
+import { HubExperienceResourcePane } from "@/components/hub/dev/hub-experience-resource-pane";
+import {
+  HubExperienceDomainsPane,
+  HubExperienceLogsPane,
+  HubExperienceSecretsPane,
+  HubExperienceUsersPane,
+  HubExperienceVerificationPane,
+} from "@/components/hub/dev/hub-experience-os-panes";
+import {
+  HubDevContextWorkspace,
+  HubDevDataWorkspace,
+  HubDevHealthWorkspace,
+  HubDevPermissionsWorkspace,
+} from "@/components/hub/dev/hub-dev-section-workspaces";
 
 type HubDevCenterPaneProps = {
   readonly pane: DevWorkspacePane;
@@ -49,7 +71,10 @@ type HubDevCenterPaneProps = {
   readonly onAcceptAllChanges: () => void;
   readonly onRejectChange: (changeId: string) => void;
   readonly onReviewChanges: () => void;
-  readonly onTestInvoke: (capabilityId: string) => void;
+  readonly onTestInvoke: (
+    capabilityId: string,
+    record: import("@/lib/hub/dev/invoke-dev-capability").DevCapabilityInvokeRecord,
+  ) => void;
   readonly onAnalyzePlatform: () => void;
   readonly onFixAllIssues: () => void;
   readonly onRunTests: () => void;
@@ -58,10 +83,19 @@ type HubDevCenterPaneProps = {
   readonly onLoadDemo: () => void;
   readonly platformId?: string;
   readonly connections?: HubDevConnections;
+  readonly standardsView?: HubStandardsView;
+  readonly onOpenPane?: (pane: DevWorkspacePane) => void;
+  readonly onAskOperator?: (text: string) => void;
+  readonly onConnectStripe?: () => void;
+  readonly onConnectVercel?: () => void;
+  readonly onConnectSupabase?: () => void;
+  readonly onDraftPatch?: (patch: Partial<PlatformDraft>) => void;
+  readonly showPreview?: boolean;
+  readonly onBuildIdea?: (text: string) => void;
 };
 
 function isBlueprintPane(pane: DevWorkspacePane): boolean {
-  return pane === "ade" || isBlueprintSectionPane(pane);
+  return pane === "ade";
 }
 
 export function HubDevCenterPane(props: HubDevCenterPaneProps) {
@@ -88,6 +122,14 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         onPublish={() => props.onPublish()}
         onTestInvoke={props.onTestInvoke}
         highlightSection={props.pane === "ade" ? undefined : props.pane}
+        onOpenPane={props.onOpenPane}
+        onSelectCapability={props.onSelectCapability}
+        onAskOperator={props.onAskOperator}
+        onConnectStripe={props.onConnectStripe}
+        onConnectVercel={props.onConnectVercel}
+        onConnectSupabase={props.onConnectSupabase}
+        onBuildIdea={props.onBuildIdea}
+        onDraftPatch={props.onDraftPatch}
       />
     );
   }
@@ -116,7 +158,165 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
         />
       );
     case "status":
-      return <StatusPane snapshot={props.snapshot} onPublish={() => props.onPublish()} />;
+      return (
+        <HubDevHealthWorkspace
+          draft={props.draft}
+          snapshot={props.snapshot}
+          onUpdateDraft={(patch) => props.onDraftPatch?.(patch)}
+          onOpenPane={(pane) => props.onOpenPane?.(pane)}
+        />
+      );
+    case "data":
+      return (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <HubDevDataWorkspace
+            draft={props.draft}
+            snapshot={props.snapshot}
+            onUpdateDraft={(patch) => props.onDraftPatch?.(patch)}
+            onOpenPane={(pane) => props.onOpenPane?.(pane)}
+          />
+          <div className="bg-[#f4f5f7] px-4 pb-4">
+            <HubExperienceResourcePane
+              title="Tables"
+              description="UI와 Agent가 같은 Resource API로 테이블을 만듭니다."
+              draft={props.draft}
+              listOp="database.listTables"
+              listKey="tables"
+              emptyPrompt="상품과 주문을 관리할 데이터베이스를 만들어줘."
+              createLabel="Create Table"
+              createOp="database.createTable"
+              createName="records"
+              onAsk={(text) => props.onAskOperator?.(text)}
+              onDraftPatch={props.onDraftPatch}
+            />
+          </div>
+        </div>
+      );
+    case "storage":
+      return (
+        <HubExperienceResourcePane
+          title="Storage"
+          description="Buckets for images, avatars, and uploads."
+          draft={props.draft}
+          listOp="storage.listBuckets"
+          listKey="buckets"
+          emptyPrompt="상품 이미지용 storage 만들어줘."
+          createLabel="Create Storage"
+          createOp="storage.createBucket"
+          createName="uploads"
+          onAsk={(text) => props.onAskOperator?.(text)}
+          onDraftPatch={props.onDraftPatch}
+        />
+      );
+    case "users":
+      return (
+        <HubExperienceUsersPane
+          draft={props.draft}
+          onAsk={(text) => props.onAskOperator?.(text)}
+          onDraftPatch={props.onDraftPatch}
+        />
+      );
+    case "functions":
+      return (
+        <HubExperienceResourcePane
+          title="Functions"
+          description="API functions generated from Capabilities."
+          draft={props.draft}
+          listOp="function.list"
+          listKey="functions"
+          emptyPrompt="상품 등록 API를 만들어줘."
+          createLabel="Create Function"
+          createOp="function.create"
+          createName="api.health"
+          onAsk={(text) => props.onAskOperator?.(text)}
+          onDraftPatch={props.onDraftPatch}
+        />
+      );
+    case "loops":
+      return (
+        <HubLoopBuilder
+          draft={props.draft}
+          platformId={props.platformId}
+          onAskOperator={props.onAskOperator}
+        />
+      );
+    case "automations":
+      return (
+        <HubExperienceResourcePane
+          title="Automations"
+          description="시간·이벤트 기반 작업. Cron을 직접 쓰지 않아도 됩니다."
+          draft={props.draft}
+          listOp="job.list"
+          listKey="jobs"
+          emptyPrompt="매일 아침 판매자 주문 요약을 보내줘."
+          createLabel="Create Automation"
+          createOp="job.create"
+          createName="daily-summary"
+          onAsk={(text) => props.onAskOperator?.(text)}
+          onDraftPatch={props.onDraftPatch}
+        />
+      );
+    case "workflows":
+      return (
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f4f5f7] p-3">
+          <HubDevWorkflowEditor
+            draft={props.draft}
+            selectedNodeId={props.selectedCapabilityId}
+            onSelectNode={(id) => id && props.onSelectCapability(id)}
+            onApplyDraft={(next) => props.onDraftPatch?.(next)}
+          />
+          <HubAskRimvioBar
+            placeholder="워크플로우를 바꿔줘"
+            onAsk={(text) => props.onAskOperator?.(text)}
+          />
+        </div>
+      );
+    case "permissions":
+      return (
+        <HubDevPermissionsWorkspace
+          draft={props.draft}
+          snapshot={props.snapshot}
+          onUpdateDraft={(patch) => props.onDraftPatch?.(patch)}
+          onOpenPane={(pane) => props.onOpenPane?.(pane)}
+        />
+      );
+    case "context":
+      return (
+        <HubDevContextWorkspace
+          draft={props.draft}
+          snapshot={props.snapshot}
+          onUpdateDraft={(patch) => props.onDraftPatch?.(patch)}
+          onOpenPane={(pane) => props.onOpenPane?.(pane)}
+        />
+      );
+    case "runtime":
+      return (
+        <div className="min-h-0 flex-1">
+          {props.showPreview ? <HubDevSandboxPreview draft={props.draft} /> : null}
+          <HubDevRuntimeWorkspace
+            draft={props.draft}
+            publishStatus={props.publishStatus as "idle"}
+          />
+          <div className="border-t border-[#e5e7eb] bg-[#f4f5f7] px-3 pb-3">
+            <HubAskRimvioBar
+              placeholder="개발 서버 다시 시작해줘"
+              onAsk={(text) => props.onAskOperator?.(text)}
+            />
+          </div>
+        </div>
+      );
+    case "commerce":
+      return (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <HubDevCommercePanel draft={props.draft} />
+          <div className="bg-[#f8fafc] px-6 pb-6">
+            <HubAskRimvioBar
+              placeholder="결제 기능 연결해줘"
+              onAsk={(text) => props.onAskOperator?.(text)}
+            />
+          </div>
+        </div>
+      );
     case "capabilities":
       return (
         <div className="min-h-0 flex-1 bg-[#f4f5f7]">
@@ -127,8 +327,20 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
             testsPassed={props.testsPassed}
             onSelect={props.onSelectCapability}
             onViewConfiguration={props.onSelectCapability}
-            onTest={() => props.onTestComplete(false)}
-            onEditWithAi={() => {}}
+            onTest={() => {
+              const cap = props.draft.actions.find((a) => a.id === props.selectedCapabilityId);
+              if (cap) {
+                props.onAskOperator?.(`${cap.name} Capability를 Test Invoke로 실행하고 검증해줘`);
+                props.onOpenPane?.("ade");
+              }
+              void props.onTestComplete(true);
+            }}
+            onEditWithAi={() => {
+              const cap = props.draft.actions.find((a) => a.id === props.selectedCapabilityId);
+              props.onAskOperator?.(
+                cap ? `${cap.name} Capability를 수정해줘` : "선택한 Capability를 수정해줘",
+              );
+            }}
             onOpenCode={() => {
               if (props.selectedCapabilityId) props.onSelectCapability(props.selectedCapabilityId);
             }}
@@ -138,6 +350,42 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
     case "tests":
       return (
         <HubDevAgentSimulation draft={props.draft} onComplete={props.onTestComplete} />
+      );
+    case "verification":
+      return (
+        <HubExperienceVerificationPane
+          draft={props.draft}
+          onAsk={(text) => props.onAskOperator?.(text)}
+        />
+      );
+    case "logs":
+      return (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <HubExperienceLogsPane
+            draft={props.draft}
+            onAsk={(text) => props.onAskOperator?.(text)}
+          />
+        </div>
+      );
+    case "secrets":
+      return (
+        <HubExperienceSecretsPane
+          draft={props.draft}
+          onAsk={(text) => props.onAskOperator?.(text)}
+        />
+      );
+    case "domains":
+      return (
+        <HubExperienceDomainsPane
+          draft={props.draft}
+          onAsk={(text) => props.onAskOperator?.(text)}
+        />
+      );
+    case "standards":
+      return (
+        <div className="min-h-0 flex-1">
+          <HubStandardsPanel initialView={props.standardsView ?? "overview"} embedded />
+        </div>
       );
     case "deploy":
       return (

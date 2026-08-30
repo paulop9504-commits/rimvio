@@ -1,6 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import {
+  HUB_DEPLOY_TARGET_SPECS,
+  type HubDeployTarget,
+} from "@/lib/hub/dev/hub-deploy-targets";
 import type { OperatorConversationEntry } from "@/lib/hub/dev/operator-conversation";
 import type { DevProjectChange, DevProjectIssue } from "@/lib/hub/dev/dev-project-state";
 import { HubDevOperatorDiffPanel } from "@/components/hub/dev/hub-dev-operator-diff-panel";
@@ -15,6 +20,8 @@ type HubDevOperatorConversationProps = {
   readonly onRunTests: () => void;
   readonly onDismissDiff: () => void;
   readonly onAskUserAction?: (actionId: string) => void;
+  readonly onPreview?: () => void;
+  readonly onPublish?: () => void;
 };
 
 const GREETING =
@@ -29,6 +36,8 @@ export function HubDevOperatorConversation({
   onRunTests,
   onDismissDiff,
   onAskUserAction,
+  onPreview,
+  onPublish,
 }: HubDevOperatorConversationProps) {
   const hasContent = entries.length > 0 || showGreeting;
 
@@ -62,6 +71,8 @@ export function HubDevOperatorConversation({
             onRunTests={onRunTests}
             onDismissDiff={onDismissDiff}
             onAskUserAction={onAskUserAction}
+            onPreview={onPreview}
+            onPublish={onPublish}
           />
         ),
       )}
@@ -106,6 +117,8 @@ function AgentTurn({
   onRunTests,
   onDismissDiff,
   onAskUserAction,
+  onPreview,
+  onPublish,
 }: {
   entry: Extract<OperatorConversationEntry, { kind: "agent" }>;
   onFixIssue: (issue: DevProjectIssue) => void;
@@ -114,6 +127,8 @@ function AgentTurn({
   onRunTests: () => void;
   onDismissDiff: () => void;
   onAskUserAction?: (actionId: string) => void;
+  onPreview?: () => void;
+  onPublish?: () => void;
 }) {
   const { payload } = entry;
 
@@ -131,6 +146,12 @@ function AgentTurn({
           <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
             {payload.body}
           </div>
+        ) : null}
+        {payload.type === "thought" ? (
+          <ThoughtBlock title={payload.title} body={payload.body} />
+        ) : null}
+        {payload.type === "terminal" ? (
+          <TerminalBlock title={payload.title} lines={payload.lines} waiting={payload.waiting} />
         ) : null}
         {payload.type === "analysis" ? (
           <AnalysisBlock
@@ -152,7 +173,9 @@ function AgentTurn({
         {payload.type === "verify" ? (
           <VerifyBlock ok={payload.ok} detail={payload.detail} />
         ) : null}
-        {payload.type === "askUser" ? (
+        {payload.type === "askUser" && payload.actionId === "choose_deploy_targets" ? (
+          <DeployTargetAskBlock message={payload.message} onAction={onAskUserAction} />
+        ) : payload.type === "askUser" ? (
           <AskUserBlock
             message={payload.message}
             actionLabel={payload.actionLabel}
@@ -162,7 +185,19 @@ function AgentTurn({
           />
         ) : null}
         {payload.type === "complete" ? (
-          <CompleteBlock summary={payload.summary} onPreview={onRunTests} />
+          <CompleteBlock
+            summary={payload.summary}
+            onPreview={onPreview ?? onRunTests}
+            onPublish={onPublish}
+          />
+        ) : null}
+        {payload.type === "finalReport" ? (
+          <FinalReportBlock
+            report={payload.report}
+            onPreview={onPreview ?? onRunTests}
+            onRunTests={onRunTests}
+            onPublish={onPublish}
+          />
         ) : null}
       </div>
     </div>
@@ -332,6 +367,99 @@ function VerifyBlock({ ok, detail }: { ok: boolean; detail: string }) {
   );
 }
 
+function ThoughtBlock({ title, body }: { title: string; body?: string }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1 text-left text-[10px] font-medium text-[#6b7280]"
+      >
+        {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+        {title}
+      </button>
+      {open && body ? <p className="mt-1.5 text-[10px] leading-relaxed text-[#9ca3af]">{body}</p> : null}
+    </div>
+  );
+}
+
+function TerminalBlock({
+  title,
+  lines,
+  waiting,
+}: {
+  title: string;
+  lines: readonly string[];
+  waiting?: string | null;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[#1f2937] bg-[#111827] shadow-sm">
+      <p className="flex items-center gap-1.5 border-b border-white/10 px-3 py-1.5 font-mono text-[9px] text-[#9ca3af]">
+        <span className="text-[#6b7280]">&gt;_</span>
+        {title}
+      </p>
+      <div className="max-h-[180px] overflow-y-auto px-3 py-2 font-mono text-[9px] leading-relaxed text-[#d1d5db] rimvio-scroll-touch">
+        {lines.map((line, i) => (
+          <p key={`${i}-${line}`}>{line}</p>
+        ))}
+        {waiting ? (
+          <p className="mt-1 animate-pulse text-[#a78bfa]">{waiting}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function DeployTargetAskBlock({
+  message,
+  onAction,
+}: {
+  message: string;
+  onAction?: (actionId: string) => void;
+}) {
+  const [selected, setSelected] = useState<HubDeployTarget[]>(["personal"]);
+
+  const toggle = (id: HubDeployTarget) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2.5 shadow-sm">
+      <p className="text-[10px] font-medium text-[#92400e]">{message}</p>
+      <ul className="mt-2 space-y-1.5">
+        {HUB_DEPLOY_TARGET_SPECS.map((spec) => {
+          const checked = selected.includes(spec.id);
+          return (
+            <li key={spec.id}>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-white/70 px-2 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(spec.id)}
+                  className="mt-0.5 size-3.5 accent-violet-600"
+                />
+                <span>
+                  <span className="block text-[11px] font-semibold text-[#111827]">{spec.labelKo}</span>
+                  <span className="block text-[9px] text-[#6b7280]">{spec.hintKo}</span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        disabled={selected.length === 0}
+        onClick={() => onAction?.(`confirm_deploy:${selected.join(",")}`)}
+        className="mt-2 rounded-lg bg-violet-600 px-3 py-1 text-[9px] font-semibold text-white hover:bg-violet-700 disabled:opacity-40"
+      >
+        배포 시작
+      </button>
+    </div>
+  );
+}
+
 function AskUserBlock({
   message,
   actionLabel,
@@ -372,7 +500,96 @@ function AskUserBlock({
   );
 }
 
-function CompleteBlock({ summary, onPreview }: { summary: string; onPreview: () => void }) {
+function FinalReportBlock({
+  report,
+  onPreview,
+  onRunTests,
+  onPublish,
+}: {
+  report: import("@/lib/agent-os/agent-turn/types").AgentFinalReport;
+  onPreview: () => void;
+  onRunTests: () => void;
+  onPublish?: () => void;
+}) {
+  const handleNext = (id: string) => {
+    if (id === "run_tests") onRunTests();
+    else if (id === "open_preview" || id === "resume") onPreview();
+    else if (id === "connect_payment") onPublish?.();
+    else onPreview();
+  };
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-3 py-2.5 shadow-sm">
+      <p className="text-[10px] font-semibold text-emerald-800">{report.headlineKo}</p>
+      {report.completed.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-[9px] font-semibold text-[#6b7280]">완료</p>
+          <ul className="mt-1 space-y-0.5">
+            {report.completed.map((item) => (
+              <li key={item} className="flex items-center gap-1.5 text-[9px] text-[#374151]">
+                <Check className="size-3 text-emerald-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {report.verification.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-[9px] font-semibold text-[#6b7280]">검증</p>
+          <ul className="mt-1 space-y-0.5">
+            {report.verification.map((item) => (
+              <li key={item.labelKo} className="flex items-center gap-1.5 text-[9px] text-[#374151]">
+                {item.passed ? (
+                  <Check className="size-3 text-emerald-500" />
+                ) : (
+                  <span className="size-3 rounded-full border border-[#d1d5db]" />
+                )}
+                {item.labelKo}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {report.cautions.length > 0 ? (
+        <div className="mt-2">
+          <p className="text-[9px] font-semibold text-amber-700">주의</p>
+          <ul className="mt-1 space-y-0.5">
+            {report.cautions.map((item) => (
+              <li key={item} className="text-[9px] text-[#92400e]">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {report.nextActions.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {report.nextActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => handleNext(action.id)}
+              className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-[9px] font-semibold text-[#374151] hover:border-violet-200"
+            >
+              {action.labelKo}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CompleteBlock({
+  summary,
+  onPreview,
+  onPublish,
+}: {
+  summary: string;
+  onPreview: () => void;
+  onPublish?: () => void;
+}) {
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 px-3 py-2 shadow-sm">
       <p className="text-[10px] font-medium text-emerald-800">{summary}</p>
@@ -386,6 +603,7 @@ function CompleteBlock({ summary, onPreview }: { summary: string; onPreview: () 
         </button>
         <button
           type="button"
+          onClick={onPublish}
           className="rounded-lg bg-violet-600 px-2.5 py-1 text-[9px] font-semibold text-white hover:bg-violet-700"
         >
           Publish

@@ -31,7 +31,10 @@ import type { DecisionExplanation, ExplanationFactor } from "@/lib/explanation-e
 import { recordExplanation } from "@/lib/explanation-engine";
 import { queryPreferences, learnPreference } from "@/lib/reality-memory";
 import { resolveDelegate } from "@/lib/capability-registry/agent-delegation";
+import { ensureAgentDelegationsRegistered } from "@/lib/capability-registry/bootstrap-agent-delegations";
 import type { CapabilityId } from "@/lib/capability-registry";
+import { createAgentDispatchStepExecutor } from "@/lib/agent-orchestrator/pipeline-step-executor";
+import { spineIngressFromLegacy } from "@/lib/workstream/spine-ingress-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,11 +96,21 @@ export type RealityPipelineResult = {
 
 export type PipelineStepExecutor = (stepId: string) => Promise<unknown>;
 
+const defaultCompensationExecutor: CompensationExecutor = async () => true;
+
 export async function runRealityPipeline(
   input: RealityPipelineInput,
-  stepExecutor: PipelineStepExecutor,
-  compensationExecutor: CompensationExecutor,
+  stepExecutor?: PipelineStepExecutor,
+  compensationExecutor: CompensationExecutor = defaultCompensationExecutor,
 ): Promise<RealityPipelineResult> {
+  ensureAgentDelegationsRegistered();
+  spineIngressFromLegacy({
+    source: "workstream",
+    contextEventId: input.contextId,
+    utterance: input.goalKo,
+    stage: "goal_state",
+  });
+
   const t0 = Date.now();
   const stages: PipelineStageResult[] = [];
   let haltedAt: PipelineStage | null = null;
@@ -194,6 +207,10 @@ export async function runRealityPipeline(
     return null;
   })) return buildResult();
 
+  const executeStep =
+    stepExecutor ??
+    createAgentDispatchStepExecutor({ dag: plan!, utterance: input.goalKo });
+
   // 6. Execute (batch-by-batch)
   const execStart = Date.now();
   if (plan) {
@@ -202,7 +219,7 @@ export async function runRealityPipeline(
       const results = await Promise.all(
         batch.nodeIds.map(async (nodeId) => {
           try {
-            const r = await stepExecutor(nodeId);
+            const r = await executeStep(nodeId);
             return { nodeId, success: true, result: r };
           } catch (e) {
             return {
@@ -281,7 +298,7 @@ export async function runRealityPipeline(
   });
   const sagaStepExecutor: SagaStepExecutor = async (step) => {
     try {
-      const result = await stepExecutor(step.stepId);
+      const result = await executeStep(step.stepId);
       return { success: true, result };
     } catch (e) {
       return { success: false, errorReason: e instanceof Error ? e.message : "unknown" };

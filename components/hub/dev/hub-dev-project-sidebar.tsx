@@ -3,19 +3,29 @@
 import Link from "next/link";
 import {
   AlertCircle,
+  BookOpen,
+  CheckCircle2,
   ChevronLeft,
+  Clock,
   CreditCard,
   Cpu,
   Database,
   FileDiff,
   FlaskConical,
   GitBranch,
+  Globe,
+  HardDrive,
+  Key,
   Layers,
   Link2,
   Package,
   Puzzle,
+  Repeat,
   Rocket,
+  ScrollText,
   Shield,
+  Users,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +35,7 @@ import {
   type DevWorkspacePane,
 } from "@/lib/hub/dev/dev-workspace-nav";
 import { buildDevBlueprintModel } from "@/lib/hub/dev/dev-blueprint-model";
+import { readLoopDefinition } from "@/lib/agent-os/loop-builder";
 import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { HubDevFileTree } from "@/components/hub/dev/hub-dev-file-tree";
@@ -32,8 +43,14 @@ import type { HubFileTreeNode } from "@/lib/hub/dev/hub-file-tree";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   link: Link2,
+  book: BookOpen,
   puzzle: Puzzle,
   database: Database,
+  "hard-drive": HardDrive,
+  users: Users,
+  zap: Zap,
+  clock: Clock,
+  repeat: Repeat,
   "git-branch": GitBranch,
   shield: Shield,
   layers: Layers,
@@ -42,7 +59,11 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   alert: AlertCircle,
   "file-diff": FileDiff,
   flask: FlaskConical,
+  "check-circle": CheckCircle2,
   rocket: Rocket,
+  globe: Globe,
+  key: Key,
+  scroll: ScrollText,
   package: Package,
 };
 
@@ -55,6 +76,7 @@ type HubDevProjectSidebarProps = {
   readonly onPaneChange: (pane: DevWorkspacePane) => void;
   readonly onOpenAde: () => void;
   readonly onSelectFile?: (path: string) => void;
+  readonly onStatusClick?: (kind: "agent" | "certified" | "published") => void;
 };
 
 export function HubDevProjectSidebar({
@@ -66,14 +88,17 @@ export function HubDevProjectSidebar({
   onPaneChange,
   onOpenAde,
   onSelectFile,
+  onStatusClick,
 }: HubDevProjectSidebarProps) {
   const blueprint = buildDevBlueprintModel({ draft, snapshot });
+  const loopDraft = draft.id ? readLoopDefinition(draft.id) : null;
 
   const badges: Record<string, string | number | undefined> = {
     sources: snapshot.sources.length || undefined,
     capabilities: snapshot.capabilityCount || undefined,
     data: blueprint.dataEntities.length,
     workflows: blueprint.workflows.length,
+    loops: loopDraft ? 1 : undefined,
     permissions: blueprint.permissions.length,
     context: blueprint.contextFields.length,
     runtime: blueprint.runtimes.length,
@@ -129,13 +154,25 @@ export function HubDevProjectSidebar({
       <div className="border-t border-[#f3f4f6] p-2.5">
         <p className="text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Status</p>
         <div className="mt-1.5 space-y-1">
-          <StatusRow done={snapshot.status.agentReady} label="Agent Ready" />
-          <StatusRow done={snapshot.status.rimvioCertified} label={snapshot.status.certifiedVersion ? `Certified ${snapshot.status.certifiedVersion}` : "Certified"} />
-          <StatusRow done={snapshot.status.published} label={snapshot.status.published ? `Published ${snapshot.status.publishedAgoKo ?? ""}`.trim() : "Published"} />
+          <StatusRow done={snapshot.status.agentReady} label="Agent Ready" onClick={() => onPaneChange("status")} />
+          <StatusRow
+            done={snapshot.status.rimvioCertified}
+            label={snapshot.status.certifiedVersion ? `Certified ${snapshot.status.certifiedVersion}` : "Certified"}
+            onClick={() => onPaneChange("standards")}
+          />
+          <StatusRow
+            done={snapshot.status.published}
+            label={snapshot.status.published ? `Published ${snapshot.status.publishedAgoKo ?? ""}`.trim() : "Published"}
+            onClick={() => onPaneChange("deploy")}
+          />
         </div>
-        <Link href="#" className="mt-2.5 block text-[9px] text-[#9ca3af] hover:text-violet-600">
+        <button
+          type="button"
+          onClick={() => onPaneChange("standards")}
+          className="mt-2.5 block text-left text-[9px] text-[#9ca3af] hover:text-violet-600"
+        >
           Rimvio Docs
-        </Link>
+        </button>
       </div>
     </aside>
   );
@@ -191,13 +228,25 @@ function NavSection({
   );
 }
 
-function StatusRow({ done, label }: { done: boolean; label: string }) {
+function StatusRow({
+  done,
+  label,
+  onClick,
+}: {
+  done: boolean;
+  label: string;
+  onClick?: () => void;
+}) {
   return (
-    <p className={cn("flex items-center gap-1.5 text-[9px] font-medium", done ? "text-emerald-600" : "text-[#9ca3af]")}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn("flex w-full items-center gap-1.5 text-left text-[9px] font-medium", done ? "text-emerald-600" : "text-[#9ca3af]")}
+    >
       <span className={cn("flex size-3 items-center justify-center rounded-full text-[7px]", done ? "bg-emerald-100" : "bg-[#f3f4f6]")}>
         {done ? "✓" : "○"}
       </span>
       <span className="truncate">{label}</span>
-    </p>
+    </button>
   );
 }

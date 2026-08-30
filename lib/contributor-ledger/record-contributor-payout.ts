@@ -8,7 +8,9 @@ export type ContributorLedgerEntryKind =
   | "data_submission"
   | "human_verification"
   | "expert_review"
-  | "composite_split";
+  | "composite_split"
+  | "business_supply"
+  | "capability_improvement";
 
 export type ContributorLedgerEntry = {
   readonly entryId: string;
@@ -20,6 +22,7 @@ export type ContributorLedgerEntry = {
   readonly executionId?: string | null;
   readonly taskId?: string | null;
   readonly capabilityId?: string | null;
+  readonly rewardFactors?: Readonly<Record<string, number>> | null;
 };
 
 const entries: ContributorLedgerEntry[] = [];
@@ -38,6 +41,7 @@ export function recordContributorPayout(input: {
   readonly executionId?: string | null;
   readonly taskId?: string | null;
   readonly capabilityId?: string | null;
+  readonly rewardFactors?: Readonly<Record<string, number>> | null;
 }): ContributorLedgerEntry {
   const entry: ContributorLedgerEntry = {
     entryId: nextEntryId(),
@@ -49,6 +53,7 @@ export function recordContributorPayout(input: {
     executionId: input.executionId ?? null,
     taskId: input.taskId ?? null,
     capabilityId: input.capabilityId ?? null,
+    rewardFactors: input.rewardFactors ?? null,
   };
   entries.push(entry);
   return entry;
@@ -64,6 +69,7 @@ export type UnifiedContributorWallet = {
   readonly capabilityExecutionKrw: number;
   readonly dataSubmissionKrw: number;
   readonly humanVerificationKrw: number;
+  readonly businessSupplyKrw: number;
   readonly entryCount: number;
 };
 
@@ -80,6 +86,7 @@ export function getUnifiedContributorWallet(
     capabilityExecutionKrw: sum("capability_execution"),
     dataSubmissionKrw: sum("data_submission"),
     humanVerificationKrw: sum("human_verification"),
+    businessSupplyKrw: sum("business_supply"),
     entryCount: mine.length,
   };
 }

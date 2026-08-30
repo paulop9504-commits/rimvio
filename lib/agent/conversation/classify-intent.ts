@@ -76,6 +76,29 @@ const CONNECT_PATTERNS = [
   /연결$/i,
 ];
 
+const CLONE_PATTERNS = [
+  /clone/i,
+  /클론/,
+  /레포\s*(가져와|받아|체크아웃)/,
+  /git\s+clone/i,
+  /github\.com\//i,
+];
+
+const LOOP_BUILD_PATTERNS = [
+  /loop\s*builder/i,
+  /루프\s*빌더/i,
+  /loop\s*만들/i,
+  /루프\s*만들/i,
+  /agent\s*loop/i,
+  /실행\s*루프/i,
+];
+
+const LOOP_DOMAIN_PATTERNS = [
+  /주문.*(결제|재고|승인|재시)/,
+  /재고.*(없으면|있으면|확인)/,
+  /결제.*(실패|재시)/,
+];
+
 const TEST_PATTERNS = [
   /테스트\s*(돌|실|해|실행)/,
   /test\s*run/i,
@@ -83,6 +106,16 @@ const TEST_PATTERNS = [
   /sandbox/i,
   /검증\s*해/,
   /verify\s*test/i,
+  /\blint\b/i,
+  /type\s*check/i,
+  /타입\s*체크/,
+  /\be2e\b/i,
+  /tsc\b/i,
+];
+
+const REFERENCE_ACTION_PATTERNS = [
+  /(그거|이걸|이거|여기|이 기능|저거|that|this).*(고쳐|수정|바꿔|테스트|만들어|삭제|열어|실행)/i,
+  /^(고쳐|수정해|바꿔|테스트해|돌려|실행해|계속|이어서)$/,
 ];
 
 const PUBLISH_PATTERNS = [
@@ -161,8 +194,32 @@ export function classifyIntent(
     return { intent: "chat", confidence: "high", reason: "casual" };
   }
 
+  if (CLONE_PATTERNS.some((p) => p.test(text))) {
+    return { intent: "modify", confidence: "high", reason: "repo_clone" };
+  }
+
+  if (REFERENCE_ACTION_PATTERNS.some((p) => p.test(text))) {
+    return { intent: "modify", confidence: "high", reason: "reference_or_followup" };
+  }
+
+  if (/dev\s*server|개발\s*서버|서버\s*(켜|실행|멈춰|꺼)/i.test(text)) {
+    return { intent: "modify", confidence: "high", reason: "dev_server" };
+  }
+
   if (CONNECT_PATTERNS.some((p) => p.test(text))) {
     return { intent: "connect", confidence: "high", reason: "connection_request" };
+  }
+
+  if (LOOP_BUILD_PATTERNS.some((p) => p.test(text))) {
+    return { intent: "modify", confidence: "high", reason: "loop_build" };
+  }
+
+  if (LOOP_DOMAIN_PATTERNS.some((p) => p.test(text)) && /만들|생성|loop|루프|실험|설계/i.test(text)) {
+    return { intent: "modify", confidence: "high", reason: "loop_build" };
+  }
+
+  if (/loop|루프/i.test(text) && TEST_PATTERNS.some((p) => p.test(text))) {
+    return { intent: "test", confidence: "high", reason: "loop_test" };
   }
 
   if (PUBLISH_PATTERNS.some((p) => p.test(text))) {
@@ -183,6 +240,10 @@ export function classifyIntent(
 
   if (QUESTION_PATTERNS.some((p) => p.test(text)) && !MODIFY_PATTERNS.some((m) => m.test(text))) {
     return { intent: "question", confidence: "high", reason: "informational_question" };
+  }
+
+  if (/배달|delivery|음식점|음식\s*주문/.test(text) && /만들|생성|create|build/i.test(text)) {
+    return { intent: "create", confidence: "high", reason: "create_request" };
   }
 
   if (CREATE_VAGUE_PATTERNS.some((p) => p.test(text))) {
