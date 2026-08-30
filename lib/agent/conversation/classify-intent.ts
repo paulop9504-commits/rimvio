@@ -36,7 +36,28 @@ const QUESTION_PATTERNS = [
   /what\s*is/i,
   /who\s*are\s*you/i,
   /너\s*누구/,
+  /어떤\s*인프라/,
+  /인프라\s*(만들|구성|뭐)/,
+  /인프라를/,
+  /뭐\s*연결/,
+  /무엇을\s*연결/,
+  /Rimvio로\s*뭘/,
+  /림비오.*뭘/,
 ];
+
+/** "연결할 수 있어?" — explain, do not auto-connect */
+function isCapabilityAvailabilityQuestion(text: string): boolean {
+  if (/해\s*줘|해줘|만들어\s*줘|연결해\s*줘|돌려\s*줘|실행해\s*줘/i.test(text)) {
+    return false;
+  }
+  return (
+    /할\s*수\s*있/.test(text) ||
+    /가능해/.test(text) ||
+    /가능한가/.test(text) ||
+    /지원해/.test(text) ||
+    (/돼\??$/.test(text) && /연결|만들|테스트|db|데이터/i.test(text))
+  );
+}
 
 const INSPECT_PATTERNS = [
   /현재\s*(플랫폼|상태|프로젝트|workspace)/,
@@ -111,6 +132,24 @@ const TEST_PATTERNS = [
   /타입\s*체크/,
   /\be2e\b/i,
   /tsc\b/i,
+];
+
+const DEBUG_PATTERNS = [
+  /안\s*돼/,
+  /안\s*됨/,
+  /에러/,
+  /error/i,
+  /bug/i,
+  /broken/i,
+  /doesn'?t\s*work/i,
+  /실패/,
+  /고장/,
+  /crash/i,
+  /주문이\s*안/,
+  /결제\s*안/,
+  /작동\s*안/,
+  /에러\s*나/,
+  /에러가/,
 ];
 
 const REFERENCE_ACTION_PATTERNS = [
@@ -204,6 +243,14 @@ export function classifyIntent(
 
   if (/dev\s*server|개발\s*서버|서버\s*(켜|실행|멈춰|꺼)/i.test(text)) {
     return { intent: "modify", confidence: "high", reason: "dev_server" };
+  }
+
+  if (DEBUG_PATTERNS.some((p) => p.test(text))) {
+    return { intent: "test", confidence: "high", reason: "debug_failure" };
+  }
+
+  if (isCapabilityAvailabilityQuestion(text)) {
+    return { intent: "question", confidence: "high", reason: "capability_availability" };
   }
 
   if (CONNECT_PATTERNS.some((p) => p.test(text))) {

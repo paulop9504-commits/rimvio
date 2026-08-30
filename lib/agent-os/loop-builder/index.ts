@@ -16,6 +16,9 @@ export {
   type LoopTestResult,
   type AgentCapabilityPackage,
   type LoopBuilderMode,
+  type LoopNodeLayout,
+  type RetryStrategy,
+  type LoopGraphPatch,
 } from "@/lib/agent-os/loop-builder/types";
 
 export {
@@ -47,6 +50,27 @@ export {
 
 export { lintLoopDefinition } from "@/lib/agent-os/loop-builder/lint";
 export { generateLoopFromUtterance, wrapCapabilityAsLoop } from "@/lib/agent-os/loop-builder/generate";
+export { autoLayoutLoop, ensureLoopLayout, defaultPositionForIndex } from "@/lib/agent-os/loop-builder/graph-layout";
+export {
+  loopToFlowNodes,
+  loopToFlowEdges,
+  flowGraphToLoop,
+  connectNodesWithKind,
+  removeLoopNodes,
+  duplicateLoopNode,
+  inferEdgeKindForConnection,
+  edgeKindLabel,
+  type LoopFlowNodeData,
+  type LoopFlowEdgeData,
+} from "@/lib/agent-os/loop-builder/graph-sync";
+export {
+  LOOP_BLOCK_LIBRARY,
+  LOOP_BLOCK_LIBRARY_CATEGORIES,
+  listBlocksByCategory,
+  type LoopBlockLibraryCategory,
+  type LoopBlockLibraryItem,
+} from "@/lib/agent-os/loop-builder/block-library";
+export { patchLoopFromUtterance } from "@/lib/agent-os/loop-builder/patch-loop";
 export { loopDefinitionToCode, parseLoopCode, roundTripCode } from "@/lib/agent-os/loop-builder/code-mode";
 export { compileLoopToRuntimeSteps, type CompiledLoopStep } from "@/lib/agent-os/loop-builder/compile";
 export { testLoopDefinition } from "@/lib/agent-os/loop-builder/run-loop";

@@ -1,4 +1,11 @@
-import { BedDouble, PenLine, Plane, ShoppingBag, type LucideIcon } from "lucide-react";
+import {
+  Laptop,
+  Palmtree,
+  UtensilsCrossed,
+  Utensils,
+  type LucideIcon,
+} from "lucide-react";
+import { BedDouble, PenLine, Plane, ShoppingBag } from "lucide-react";
 import { copy } from "@/lib/copy/human-ko";
 
 export type AgentHomeServiceCard = {
@@ -58,8 +65,28 @@ export type AgentHomeActionPill = {
 };
 
 export const AGENT_HOME_ACTION_PILLS: readonly AgentHomeActionPill[] = [
-  { id: "travel", label: copy.globe.agentHomePillTravelShort, seed: copy.globe.agentHomeTaskTravelSeed, icon: Plane },
-  { id: "hotel", label: copy.globe.agentHomePillHotel, seed: "난바역 근처 호텔 찾아줘", icon: BedDouble },
-  { id: "shopping", label: copy.globe.agentHomePillShoppingShort, seed: copy.globe.agentHomeTaskShoppingSeed, icon: ShoppingBag },
-  { id: "blog", label: copy.globe.agentHomePillBlog, seed: "여행 블로그 글 써줘", icon: PenLine },
+  {
+    id: "hungry",
+    label: copy.globe.agentHomeExampleHungry,
+    seed: copy.globe.agentHomeExampleHungrySeed,
+    icon: UtensilsCrossed,
+  },
+  {
+    id: "daejeon",
+    label: copy.globe.agentHomeExampleDaejeon,
+    seed: copy.globe.agentHomeExampleDaejeonSeed,
+    icon: Utensils,
+  },
+  {
+    id: "jeju",
+    label: copy.globe.agentHomeExampleJeju,
+    seed: copy.globe.agentHomeExampleJejuSeed,
+    icon: Palmtree,
+  },
+  {
+    id: "macbook",
+    label: copy.globe.agentHomeExampleMacbook,
+    seed: copy.globe.agentHomeExampleMacbookSeed,
+    icon: Laptop,
+  },
 ];

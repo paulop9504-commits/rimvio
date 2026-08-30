@@ -33,8 +33,11 @@ import { HubAskRimvioBar } from "@/components/hub/dev/hub-ask-rimvio-bar";
 import { HubDevSandboxPreview } from "@/components/hub/dev/hub-dev-sandbox-preview";
 import { HubExperienceResourcePane } from "@/components/hub/dev/hub-experience-resource-pane";
 import {
+  HubExperienceAuthPane,
+  HubExperienceDatabasePane,
   HubExperienceDomainsPane,
   HubExperienceLogsPane,
+  HubExperienceRuntimePane,
   HubExperienceSecretsPane,
   HubExperienceUsersPane,
   HubExperienceVerificationPane,
@@ -175,21 +178,11 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
             onUpdateDraft={(patch) => props.onDraftPatch?.(patch)}
             onOpenPane={(pane) => props.onOpenPane?.(pane)}
           />
-          <div className="bg-[#f4f5f7] px-4 pb-4">
-            <HubExperienceResourcePane
-              title="Tables"
-              description="UI와 Agent가 같은 Resource API로 테이블을 만듭니다."
-              draft={props.draft}
-              listOp="database.listTables"
-              listKey="tables"
-              emptyPrompt="상품과 주문을 관리할 데이터베이스를 만들어줘."
-              createLabel="Create Table"
-              createOp="database.createTable"
-              createName="records"
-              onAsk={(text) => props.onAskOperator?.(text)}
-              onDraftPatch={props.onDraftPatch}
-            />
-          </div>
+          <HubExperienceDatabasePane
+            draft={props.draft}
+            onAsk={(text) => props.onAskOperator?.(text)}
+            onDraftPatch={props.onDraftPatch}
+          />
         </div>
       );
     case "storage":
@@ -211,6 +204,14 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
     case "users":
       return (
         <HubExperienceUsersPane
+          draft={props.draft}
+          onAsk={(text) => props.onAskOperator?.(text)}
+          onDraftPatch={props.onDraftPatch}
+        />
+      );
+    case "auth":
+      return (
+        <HubExperienceAuthPane
           draft={props.draft}
           onAsk={(text) => props.onAskOperator?.(text)}
           onDraftPatch={props.onDraftPatch}
@@ -291,18 +292,18 @@ export function HubDevCenterPane(props: HubDevCenterPaneProps) {
       );
     case "runtime":
       return (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {props.showPreview ? <HubDevSandboxPreview draft={props.draft} /> : null}
+          <HubExperienceRuntimePane
+            draft={props.draft}
+            onAsk={(text) => props.onAskOperator?.(text)}
+            onDraftPatch={props.onDraftPatch}
+            onPreview={() => props.onPreview?.()}
+          />
           <HubDevRuntimeWorkspace
             draft={props.draft}
             publishStatus={props.publishStatus as "idle"}
           />
-          <div className="border-t border-[#e5e7eb] bg-[#f4f5f7] px-3 pb-3">
-            <HubAskRimvioBar
-              placeholder="개발 서버 다시 시작해줘"
-              onAsk={(text) => props.onAskOperator?.(text)}
-            />
-          </div>
         </div>
       );
     case "commerce":

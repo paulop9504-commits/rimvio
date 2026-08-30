@@ -8,6 +8,14 @@ export {
   executionModeFromGoal,
   summarizePlatformGoal,
 } from "@/lib/agent/conversation/conversation-gate";
+export { resolveConversationalResponse } from "@/lib/agent/conversation/resolve-conversational-response";
+export {
+  RIMVIO_INFRASTRUCTURE_CATALOG,
+  infrastructureActionCards,
+  isInfrastructureExploreQuestion,
+  type ConversationalAction,
+  type InfrastructureCategory,
+} from "@/lib/agent/conversation/user-facing-capability-catalog";
 export type {
   UserIntent,
   AgentIntent,

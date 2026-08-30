@@ -48,6 +48,15 @@ export type LoopNode = {
   readonly kind: LoopNodeKind;
   readonly label: string;
   readonly config: LoopNodeConfig;
+  /** Canvas position — persisted with Loop Definition */
+  readonly layout?: LoopNodeLayout;
+};
+
+export type RetryStrategy = "immediate" | "fixed_delay" | "exponential_backoff" | "replan";
+
+export type LoopNodeLayout = {
+  readonly x: number;
+  readonly y: number;
 };
 
 export type LoopNodeConfig = {
@@ -58,6 +67,9 @@ export type LoopNodeConfig = {
   readonly onSuccess?: "continue" | "complete" | "verify";
   readonly onFailure?: "replan" | "retry" | "ask_user" | "fail";
   readonly maxAttempts?: number;
+  readonly retryStrategy?: RetryStrategy;
+  readonly delayMs?: number;
+  readonly timeoutMs?: number;
   readonly predicate?: string;
   /** Rimvio preset template id */
   readonly templateId?: string;
@@ -66,6 +78,14 @@ export type LoopNodeConfig = {
   readonly description?: string;
   readonly inputMap?: Readonly<Record<string, string>>;
   readonly outputVars?: readonly string[];
+};
+
+export type LoopGraphPatch = {
+  readonly summaryKo: string;
+  readonly loop: LoopDefinition;
+  readonly highlightNodeIds: readonly string[];
+  readonly highlightEdgeKeys: readonly string[];
+  readonly changes: readonly { readonly kind: "add" | "remove" | "connect"; readonly label: string }[];
 };
 
 export type LoopEdge = {

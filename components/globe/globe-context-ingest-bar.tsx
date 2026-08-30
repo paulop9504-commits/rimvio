@@ -55,6 +55,7 @@ import {
 } from "@/lib/brand/rimvio-neon-theme";
 import type { GlobeLayerMode } from "@/lib/globe/globe-layer-mode";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveComposerErrorKo } from "@/lib/errors/sanitize-user-facing-error";
 import { resolveRimvioCommandPlaceholder } from "@/lib/rimvio-command";
 import { cn } from "@/lib/utils";
 import { GlobeContextTravelGpsChip } from "@/components/globe/globe-context-travel-gps-chip";
@@ -70,6 +71,11 @@ import {
   softenComposerStatusLine,
   softenComposerSuccessLine,
 } from "@/lib/globe/composer-hint-copy";
+import {
+  hubCreateHrefFromIdea,
+  wantsExperienceOsCreate,
+} from "@/lib/hub/dev/experience-os";
+import { wantsExperienceAppUse } from "@/lib/experience-app";
 
 export type GlobeContextIngestBarHandle = {
   openPhotoPicker: () => void;
@@ -481,11 +487,7 @@ export const GlobeContextIngestBar = forwardRef<
           },
         );
       } catch (caught) {
-        const message =
-          caught instanceof Error
-            ? caught.message
-            : copy.globe.ingestAttachFail;
-        toast.error(message, { id: toastId });
+        toast.error(resolveComposerErrorKo(caught), { id: toastId });
       } finally {
         setBusy(false);
         if (photoRef.current) {
@@ -529,10 +531,16 @@ export const GlobeContextIngestBar = forwardRef<
       );
 
       if (result.status === "error") {
-        showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
-          tone: "error",
-          durationMs: 5000,
-        });
+        showComposerHint(
+          resolveComposerErrorKo(
+            result.errorMessage,
+            copy.globe.ingestAttachFail,
+          ),
+          {
+            tone: "error",
+            durationMs: 5000,
+          },
+        );
         return;
       }
 
@@ -545,9 +553,10 @@ export const GlobeContextIngestBar = forwardRef<
         setMenuOpen(false);
       }
     } catch (caught) {
-      const message =
-        caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
-      showComposerHint(message, { tone: "error", durationMs: 5000 });
+      showComposerHint(resolveComposerErrorKo(caught), {
+        tone: "error",
+        durationMs: 5000,
+      });
     } finally {
       setBusy(false);
     }
@@ -582,6 +591,16 @@ export const GlobeContextIngestBar = forwardRef<
       setBusy(true);
       onComposeOpen?.();
       try {
+        if (wantsExperienceOsCreate(value)) {
+          window.location.assign(hubCreateHrefFromIdea(value));
+          return;
+        }
+
+        if (wantsExperienceAppUse(value)) {
+          window.location.assign(`/experience?q=${encodeURIComponent(value)}`);
+          return;
+        }
+
         if (isPcPurchaseContinuityUtterance(value)) {
           const eventId = routingContextEventId ?? attachHintId;
           const result = await startPcPurchaseAgentRun({
@@ -726,10 +745,16 @@ export const GlobeContextIngestBar = forwardRef<
             }
           }
           if (result.status === "error") {
-            showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
-              tone: "error",
-              durationMs: 5000,
-            });
+            showComposerHint(
+              resolveComposerErrorKo(
+                result.errorMessage,
+                copy.globe.ingestAttachFail,
+              ),
+              {
+                tone: "error",
+                durationMs: 5000,
+              },
+            );
             return;
           }
         }
@@ -783,10 +808,16 @@ export const GlobeContextIngestBar = forwardRef<
         );
 
         if (result.status === "error") {
-          showComposerHint(result.errorMessage ?? copy.globe.ingestAttachFail, {
-            tone: "error",
-            durationMs: 5000,
-          });
+          showComposerHint(
+            resolveComposerErrorKo(
+              result.errorMessage,
+              copy.globe.ingestAttachFail,
+            ),
+            {
+              tone: "error",
+              durationMs: 5000,
+            },
+          );
           return;
         }
 
@@ -812,9 +843,10 @@ export const GlobeContextIngestBar = forwardRef<
           setMenuOpen(false);
         }
       } catch (caught) {
-        const message =
-          caught instanceof Error ? caught.message : copy.globe.ingestAttachFail;
-        showComposerHint(message, { tone: "error", durationMs: 5000 });
+        showComposerHint(resolveComposerErrorKo(caught), {
+          tone: "error",
+          durationMs: 5000,
+        });
       } finally {
         setBusy(false);
       }

@@ -8,8 +8,12 @@ import type { ExperienceBlueprint } from "@/lib/hub/dev/experience-os/experience
 
 function categoryFor(templateId: ExperienceBlueprint["templateId"]): PlatformDraft["category"] {
   if (templateId === "travel" || templateId === "booking") return "travel";
-  if (templateId === "saas" || templateId === "dashboard") return "productivity";
-  if (templateId === "community") return "communication";
+  if (templateId === "saas" || templateId === "dashboard" || templateId === "education") {
+    return "productivity";
+  }
+  if (templateId === "community" || templateId === "social") return "communication";
+  if (templateId === "website" || templateId === "portfolio") return "productivity";
+  if (templateId === "restaurant") return "e-commerce";
   return "e-commerce";
 }
 
@@ -19,10 +23,11 @@ export function applyExperienceBlueprintToDraft(
 ): PlatformDraft {
   const draft = base ?? createDefaultPlatformDraft();
   const slug = blueprint.title.replace(/\s+/g, "").toLowerCase();
+  const suffix = Date.now().toString(36).slice(-4);
   return {
     ...draft,
-    id: `experience.${blueprint.templateId}.${slug}`,
-    name: blueprint.title,
+    id: `experience.${blueprint.templateId}.${slug}.${suffix}`,
+    name: blueprint.domainHint ? `${blueprint.title} · ${blueprint.domainHint}` : blueprint.title,
     description: `${blueprint.titleKo} — pages ${blueprint.pages.join(", ")}`,
     category: categoryFor(blueprint.templateId),
     tags: [blueprint.templateId, ...blueprint.data.slice(0, 3)],

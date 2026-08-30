@@ -1,6 +1,5 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
 import {
   GlobeActionPillGuide,
   readPillSubmitText,
@@ -13,7 +12,7 @@ export type GlobeChatEmptyStateProps = {
   body?: string;
 };
 
-/** First-open chat — one line intent + starter pills. */
+/** GPT-style empty — ask first, no dashboard chrome. */
 export function GlobeChatEmptyState({
   onPillSelect,
   title,
@@ -21,16 +20,13 @@ export function GlobeChatEmptyState({
 }: GlobeChatEmptyStateProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center px-4 py-8 text-center"
+      className="flex flex-col items-center justify-center px-4 py-12 text-center"
       data-globe-chat-empty
     >
-      <span className="mb-2.5 flex size-10 items-center justify-center rounded-full bg-white shadow-[0_1px_6px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.05]">
-        <MessageCircle className="size-[18px] text-[#4e5968]" aria-hidden />
-      </span>
-      <p className="text-[15px] font-semibold tracking-[-0.01em] text-[#191f28]">
+      <p className="text-[26px] font-semibold tracking-[-0.04em] text-[#0d0d0d]">
         {title ?? copy.globe.chatEmptyTitle}
       </p>
-      <p className="mt-1 max-w-[16rem] text-[12px] leading-[1.4] text-[#8b95a1]">
+      <p className="mt-2 max-w-[20rem] text-[15px] leading-relaxed text-[#5d5d5d]">
         {body ?? copy.globe.chatEmptyBody}
       </p>
       {onPillSelect ? (
@@ -39,7 +35,7 @@ export function GlobeChatEmptyState({
           variant="inline"
           showLabel={false}
           tone="light"
-          className="mt-2.5 w-full max-w-[19rem]"
+          className="mt-5 w-full max-w-[22rem]"
           onPillSelect={(pill) => onPillSelect(readPillSubmitText(pill))}
         />
       ) : null}

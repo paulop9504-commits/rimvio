@@ -63,6 +63,7 @@ export type ConversationGateResult = {
   readonly allowPlanner: boolean;
   readonly allowExecution: boolean;
   readonly responseKo: string | null;
+  readonly suggestedActions?: readonly import("@/lib/agent/conversation/user-facing-capability-catalog").ConversationalAction[];
   readonly currentGoal: string | null;
   readonly platformGoal?: PlatformGoal | null;
 };

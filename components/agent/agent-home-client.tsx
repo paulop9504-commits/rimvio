@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Plus } from "lucide-react";
 import { AgentHomeTopbar } from "@/components/agent/agent-home-topbar";
 import { AgentHomeDashboard } from "@/components/agent/agent-home-dashboard";
-import { AgentHomeInspector } from "@/components/agent/agent-home-inspector";
 import { AgentHomeSidebar } from "@/components/agent/agent-home-sidebar";
 import { AgentHomeThemeProvider, useAgentHomeThemeContext } from "@/components/agent/agent-home-theme-context";
 import { ContextWorkspaceShell } from "@/components/context-workspace/context-workspace-shell";
 import { GlobeChatScreen } from "@/components/globe/chat/globe-chat-screen";
+import {
+  readContextWorkspaceExpanded,
+  subscribeContextWorkspaceUpdated,
+  writeContextWorkspaceExpanded,
+} from "@/lib/context-workspace/workspace-store";
+import { subscribeContextWorkspaceExpand } from "@/lib/context-workspace/workspace-expand-bridge";
 import { GlobeSettingsSheet } from "@/components/globe/globe-settings-sheet";
 import { GlobeHomeClient } from "@/components/globe/globe-home-client";
 import { AppShell } from "@/components/app-shell";
@@ -43,9 +47,11 @@ function AgentHomeMain() {
   const [chatSessionKey, setChatSessionKey] = useState(0);
   const [view, setView] = useState<HomeView>(recallEventId ? "chat" : "dashboard");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingCompose, setPendingCompose] = useState<string | null>(null);
-  const [searchDraft, setSearchDraft] = useState("");
   const [composerSeed, setComposerSeed] = useState("");
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [wideLayout, setWideLayout] = useState(false);
   const ingestRef = useRef<GlobeContextIngestBarHandle | null>(null);
 
   const contextEventId = recallEventId;
@@ -89,8 +95,13 @@ function AgentHomeMain() {
       params.delete("recallEvent");
     });
     setChatSessionKey((value) => value + 1);
+    if (contextEventId) {
+      writeContextWorkspaceExpanded(contextEventId, false);
+    }
+    setWorkspaceOpen(false);
+    setSidebarOpen(false);
     setView("dashboard");
-  }, [replaceSearchParams]);
+  }, [replaceSearchParams, contextEventId]);
 
   const handleAttached = useCallback(
     (eventId: string) => {
@@ -107,17 +118,8 @@ function AgentHomeMain() {
   const handleDashboardSubmit = useCallback((text: string, _mode: AgentHomeModeId) => {
     setPendingCompose(text);
     setComposerSeed("");
-    setSearchDraft("");
     setView("chat");
   }, []);
-
-  const handleSearchSubmit = useCallback(() => {
-    const text = searchDraft.trim();
-    if (!text) {
-      return;
-    }
-    handleDashboardSubmit(text, "auto");
-  }, [handleDashboardSubmit, searchDraft]);
 
   useEffect(() => {
     if (view !== "chat" || !pendingCompose?.trim()) {
@@ -129,13 +131,6 @@ function AgentHomeMain() {
     }, 100);
     return () => window.clearTimeout(timer);
   }, [pendingCompose, view]);
-
-  const handleTravelCompose = useCallback(
-    (seedText: string) => {
-      handleDashboardSubmit(seedText, "auto");
-    },
-    [handleDashboardSubmit],
-  );
 
   useEffect(() => {
     const ingress = parseAgentHomeFieldIngressFromSearchParams(searchParams);
@@ -170,73 +165,91 @@ function AgentHomeMain() {
     }
   }, [recallEventId]);
 
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const sync = () => setWideLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    const unsubExpand = subscribeContextWorkspaceExpand((detail) => {
+      setWorkspaceOpen(true);
+      setView("chat");
+      handleSelectEvent(detail.contextEventId);
+    });
+    const unsubUpdate = subscribeContextWorkspaceUpdated((eventId) => {
+      if (eventId === contextEventId) {
+        setWorkspaceOpen(readContextWorkspaceExpanded(eventId));
+      }
+    });
+    if (contextEventId) {
+      setWorkspaceOpen(readContextWorkspaceExpanded(contextEventId));
+    }
+    return () => {
+      unsubExpand();
+      unsubUpdate();
+    };
+  }, [contextEventId, handleSelectEvent]);
+
+  const splitWorkspace = view === "chat" && workspaceOpen && wideLayout;
+
+  const chatScreen = (
+    <GlobeChatScreen
+      key={chatSessionKey}
+      variant="page"
+      pageChrome="minimal"
+      ingestBarRef={ingestRef}
+      open
+      onClose={() => setView("dashboard")}
+      ingest={{
+        targetEventId: contextEventId,
+        targetTitle: activeEvent?.title?.trim() || null,
+        forceAttachToTarget: false,
+        onAttached: handleAttached,
+        layerMode,
+        onIngressConvergeAttachFocus: handleSelectEvent,
+      }}
+    />
+  );
+
+  const goHome = useCallback(() => {
+    if (contextEventId) {
+      writeContextWorkspaceExpanded(contextEventId, false);
+    }
+    setWorkspaceOpen(false);
+    setSidebarOpen(false);
+    setView("dashboard");
+  }, [contextEventId]);
+
   return (
     <>
       <div
         className={cn("flex h-full min-h-0 w-full min-w-0 flex-1", tokens.root)}
         data-surface="agent-home"
         data-agent-home-theme={theme}
+        data-workspace-split={splitWorkspace ? "true" : "false"}
       >
         <AgentHomeSidebar
           activeEventId={contextEventId}
           onSelectEvent={handleSelectEvent}
           onNewTask={handleNewTask}
-          onGoHome={() => setView("dashboard")}
+          onGoHome={goHome}
           onOpenSettings={() => setSettingsOpen(true)}
           view={view}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
         />
 
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <AgentHomeTopbar
             onOpenSettings={() => setSettingsOpen(true)}
-            searchValue={searchDraft}
-            onSearchChange={setSearchDraft}
-            onSearchSubmit={handleSearchSubmit}
+            onOpenSidebar={() => setSidebarOpen(true)}
+            title={view === "chat" ? activeEvent?.title : copy.brand.name}
           />
 
-          <div
-            className={cn(
-              "flex items-center justify-between border-b px-3 py-2 md:hidden",
-              tokens.panelBorder,
-              tokens.panel,
-            )}
-          >
-            {view === "chat" ? (
-              <button
-                type="button"
-                onClick={() => setView("dashboard")}
-                className={cn(
-                  "flex items-center gap-1 text-[12px] font-medium",
-                  tokens.textMuted,
-                )}
-              >
-                <ArrowLeft className="size-3.5" aria-hidden />
-                {copy.globe.agentHomeBackToDashboard}
-              </button>
-            ) : (
-              <div className="min-w-0">
-                <p className={cn("truncate text-[14px] font-semibold", tokens.text)}>
-                  {copy.globe.agentHomeTitle}
-                </p>
-                <p className={cn("truncate text-[11px]", tokens.textSubtle)}>
-                  {copy.globe.agentHomeSubtitle}
-                </p>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleNewTask}
-              className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-full shadow-sm",
-                tokens.accent,
-              )}
-              aria-label={copy.globe.agentHomeNewTask}
-            >
-              <Plus className="size-4" aria-hidden />
-            </button>
-          </div>
-
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 min-w-0 flex-1">
             {view === "dashboard" ? (
               <AgentHomeDashboard
                 key={composerSeed}
@@ -246,36 +259,32 @@ function AgentHomeMain() {
                 activeEventId={contextEventId}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
+            ) : splitWorkspace ? (
+              <>
+                <div className="flex min-h-0 w-[min(42%,440px)] min-w-[260px] shrink-0 flex-col border-r border-black/[0.06]">
+                  {chatScreen}
+                </div>
+                <div className="min-h-0 min-w-0 flex-1">
+                  <ContextWorkspaceShell
+                    contextEventId={contextEventId}
+                    projectTitleKo={activeEvent?.title?.trim() || null}
+                    layout="pane"
+                  />
+                </div>
+              </>
             ) : (
-              <GlobeChatScreen
-                key={chatSessionKey}
-                variant="page"
-                pageChrome="minimal"
-                ingestBarRef={ingestRef}
-                open
-                onClose={() => setView("dashboard")}
-                ingest={{
-                  targetEventId: contextEventId,
-                  targetTitle: activeEvent?.title?.trim() || null,
-                  forceAttachToTarget: false,
-                  onAttached: handleAttached,
-                  layerMode,
-                  onIngressConvergeAttachFocus: handleSelectEvent,
-                }}
-              />
+              chatScreen
             )}
           </div>
         </div>
 
-        <AgentHomeInspector
-          activeEventId={contextEventId}
-          onTravelCompose={handleTravelCompose}
-        />
-
-        <ContextWorkspaceShell
-          contextEventId={contextEventId}
-          projectTitleKo={activeEvent?.title?.trim() || null}
-        />
+        {splitWorkspace ? null : (
+          <ContextWorkspaceShell
+            contextEventId={contextEventId}
+            projectTitleKo={activeEvent?.title?.trim() || null}
+            layout="overlay"
+          />
+        )}
       </div>
 
       <GlobeSettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
@@ -299,7 +308,7 @@ export function AgentHomeRoute() {
   return (
     <AgentHomeThemeProvider>
       <div
-        className="fixed inset-0 z-[1] flex flex-col overflow-hidden bg-[#f8fafc]"
+        className="fixed inset-0 z-[1] flex flex-col overflow-hidden bg-white"
         data-agent-home-root
       >
         <AgentHomeMain />

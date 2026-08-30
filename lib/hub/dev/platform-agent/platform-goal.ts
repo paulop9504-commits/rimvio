@@ -37,11 +37,22 @@ const HOTEL_BOOKING_CAPS = [
 ] as const;
 
 const DELIVERY_MARKETPLACE_CAPS = [
+  "search",
+  "map",
   "restaurant.list",
   "menu.list",
+  "cart",
   "order.create",
   "order.status",
   "payment.prepare",
+  "delivery",
+  "filter",
+] as const;
+
+const FOOD_ORDER_LOOPS = [
+  "food_discovery_loop",
+  "food_order_loop",
+  "food_delivery_loop",
 ] as const;
 
 const REFUND_RELATED = ["booking.cancel", "payment.refund", "payment.commit", "payment.prepare"] as const;
@@ -120,7 +131,7 @@ export function compilePlatformGoal(input: {
     /호텔\s*예약|hotel\s*booking|검색.*예약.*결제|search.*book.*pay/i.test(text);
 
   const wantsDeliveryPlatform =
-    /배달|delivery\s*(platform|app|marketplace)|음식점|음식\s*주문|restaurant\s*order/i.test(text);
+    /배달|delivery\s*(platform|app|marketplace)|음식점|음식\s*주문|restaurant\s*order|food\s*platform|food\s*order/i.test(text);
 
   const wantsRefundFlow = /취소.*환불|환불|refund|cancel.*refund/i.test(text);
 
@@ -151,19 +162,19 @@ export function compilePlatformGoal(input: {
         intent: input.intent,
         summary: text,
         summaryKo: wantsDeliveryPlatform
-          ? "배달 주문 Platform 생성"
+          ? "Food / 배달 주문 Platform 생성"
           : wantsHotelPlatform
             ? "호텔 예약 Platform 생성"
             : "새 Platform 생성",
         scope: { kind: "new_platform" },
-        domain: wantsDeliveryPlatform ? "delivery_marketplace" : wantsHotelPlatform ? "hotel_booking" : null,
+        domain: wantsDeliveryPlatform ? "food_order" : wantsHotelPlatform ? "hotel_booking" : null,
         requestedCapabilities: wantsDeliveryPlatform
           ? [...DELIVERY_MARKETPLACE_CAPS]
           : wantsHotelPlatform
             ? [...HOTEL_BOOKING_CAPS]
             : [],
         flows: wantsDeliveryPlatform
-          ? ["restaurant → menu → cart → order → status"]
+          ? [...FOOD_ORDER_LOOPS]
           : wantsHotelPlatform
             ? ["search → detail → availability → booking → payment"]
             : [],

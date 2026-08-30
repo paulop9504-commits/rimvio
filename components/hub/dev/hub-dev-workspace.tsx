@@ -83,6 +83,11 @@ import { readDevExecutionLogForPlatform } from "@/lib/hub/dev/execution-log";
 import type { DevCapabilityInvokeRecord } from "@/lib/hub/dev/invoke-dev-capability";
 import { HubDevHelpSheet, HubDevNotificationSheet } from "@/components/hub/dev/hub-dev-chrome-sheets";
 import { HubDevCreatorNav } from "@/components/hub/dev/hub-dev-creator-nav";
+import {
+  applyExperienceBlueprintToDraft,
+  experienceBlueprintFromUtterance,
+  invokeExperienceResource,
+} from "@/lib/hub/dev/experience-os";
 
 const OSAKA_DEMO_URL = "https://github.com/dev/osaka-stay";
 
@@ -133,6 +138,7 @@ export function HubDevWorkspace() {
   const [environment, setEnvironment] = useState<DevEnvironment>("Development");
   const [operatorTab, setOperatorTab] = useState<HubOperatorTab | null>(null);
   const [registryTick, setRegistryTick] = useState(0);
+  const [ideaConsumed, setIdeaConsumed] = useState(false);
 
   const syncConnectionState = useCallback(() => {
     const connections = readHubDevConnections();
@@ -381,6 +387,21 @@ export function HubDevWorkspace() {
       }
     }
   }, [wizard.hydrated, platformIdParam, wizard]);
+
+  useEffect(() => {
+    if (!wizard.hydrated || ideaConsumed) return;
+    const idea = searchParams.get("idea")?.trim();
+    if (!idea) return;
+    setIdeaConsumed(true);
+    const next = applyExperienceBlueprintToDraft(experienceBlueprintFromUtterance(idea));
+    wizard.updateDraft(next);
+    setAgentSeed(idea);
+    setPlatformCreated(true);
+    void invokeExperienceResource("experience.build", { utterance: idea }, {
+      draft: next,
+      updateDraft: (patch) => wizard.updateDraft(patch),
+    });
+  }, [wizard, searchParams, ideaConsumed]);
 
   useEffect(() => {
     if (!wizard.hydrated || !platformCreated) return;
@@ -905,7 +926,15 @@ export function HubDevWorkspace() {
             onConnectSupabase={() => void handleConnectSupabase()}
             onDraftPatch={(patch) => wizard.updateDraft(patch)}
             showPreview={showPreview}
-            onBuildIdea={(text) => void runAnalyze(text)}
+            onBuildIdea={(text) => {
+              const next = applyExperienceBlueprintToDraft(experienceBlueprintFromUtterance(text));
+              wizard.updateDraft(next);
+              setAgentSeed(text);
+              void invokeExperienceResource("experience.build", { utterance: text }, {
+                draft: next,
+                updateDraft: (patch) => wizard.updateDraft(patch),
+              });
+            }}
           />
         </main>
 

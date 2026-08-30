@@ -44,6 +44,7 @@ import {
   parseResourceOpFromUtterance,
   type ExperienceResourceOp,
 } from "@/lib/hub/dev/experience-os";
+import { readExperienceActor } from "@/lib/experience-app";
 
 export const HUB_WORKSPACE_TOOL_IDS = [
   "workspace.read",
@@ -650,6 +651,7 @@ export async function invokeHubWorkspaceTool(
         const result = await invokeExperienceResource(parsed.op, parsed.args, {
           draft: ctx.getDraft(),
           updateDraft: ctx.updateDraft,
+          actor: readExperienceActor(),
         });
         return result.ok
           ? { ok: true, toolId, data: result.data }
@@ -659,6 +661,7 @@ export async function invokeHubWorkspaceTool(
         const result = await invokeExperienceResource("verification.run", args, {
           draft: ctx.getDraft(),
           updateDraft: ctx.updateDraft,
+          actor: readExperienceActor(),
         });
         return result.ok
           ? { ok: true, toolId, data: result.data }

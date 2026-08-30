@@ -22,3 +22,11 @@ export { invokePlatformCapability } from "@/lib/hub/dev/experience-os/invoke-cap
 export { applyExperienceBlueprintToDraft } from "@/lib/hub/dev/experience-os/apply-blueprint";
 export { infrastructureForCapability } from "@/lib/hub/dev/experience-os/capability-infra";
 export { resetExperienceResources } from "@/lib/hub/dev/experience-os/resource-store";
+export { wantsExperienceOsCreate, hubCreateHrefFromIdea } from "@/lib/hub/dev/experience-os/wants-experience-create";
+export {
+  EXPERIENCE_BUILD_STEPS,
+  buildProgressPercent,
+  initialBuildSteps,
+  type ExperienceBuildStep,
+} from "@/lib/hub/dev/experience-os/build-steps";
+export { resolveRuntimeAdapter } from "@/lib/hub/dev/experience-os/adapters";

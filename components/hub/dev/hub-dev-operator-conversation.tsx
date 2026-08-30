@@ -14,28 +14,32 @@ import { cn } from "@/lib/utils";
 type HubDevOperatorConversationProps = {
   readonly entries: readonly OperatorConversationEntry[];
   readonly showGreeting: boolean;
+  readonly greetingBody?: string;
   readonly onFixIssue: (issue: DevProjectIssue) => void;
   readonly onReviewAll: () => void;
   readonly onApplyDiff: () => void;
   readonly onRunTests: () => void;
   readonly onDismissDiff: () => void;
   readonly onAskUserAction?: (actionId: string) => void;
+  readonly onSuggestedUtterance?: (utterance: string) => void;
   readonly onPreview?: () => void;
   readonly onPublish?: () => void;
 };
 
-const GREETING =
-  "OsakaStay Platform Builder에 오신 것을 환영합니다. Platform 분석 · 수정 · 테스트 · Publish까지 도와드릴게요.";
+const DEFAULT_GREETING =
+  "안녕하세요 👋\n무엇을 만들거나 실행해볼까요?\n\n예: 인프라 구성 · 외부 연결 · 상태 확인 · 테스트";
 
 export function HubDevOperatorConversation({
   entries,
   showGreeting,
+  greetingBody = DEFAULT_GREETING,
   onFixIssue,
   onReviewAll,
   onApplyDiff,
   onRunTests,
   onDismissDiff,
   onAskUserAction,
+  onSuggestedUtterance,
   onPreview,
   onPublish,
 }: HubDevOperatorConversationProps) {
@@ -57,7 +61,7 @@ export function HubDevOperatorConversation({
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      {showGreeting ? <GreetingTurn body={GREETING} /> : null}
+      {showGreeting ? <GreetingTurn body={greetingBody} /> : null}
       {entries.map((entry) =>
         entry.kind === "user" ? (
           <UserBubble key={entry.id} text={entry.text} />
@@ -71,6 +75,7 @@ export function HubDevOperatorConversation({
             onRunTests={onRunTests}
             onDismissDiff={onDismissDiff}
             onAskUserAction={onAskUserAction}
+            onSuggestedUtterance={onSuggestedUtterance}
             onPreview={onPreview}
             onPublish={onPublish}
           />
@@ -84,7 +89,7 @@ function GreetingTurn({ body }: { body: string }) {
   return (
     <div className="flex gap-2">
       <AgentAvatar />
-      <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
+      <div className="whitespace-pre-line rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
         {body}
       </div>
     </div>
@@ -117,6 +122,7 @@ function AgentTurn({
   onRunTests,
   onDismissDiff,
   onAskUserAction,
+  onSuggestedUtterance,
   onPreview,
   onPublish,
 }: {
@@ -127,6 +133,7 @@ function AgentTurn({
   onRunTests: () => void;
   onDismissDiff: () => void;
   onAskUserAction?: (actionId: string) => void;
+  onSuggestedUtterance?: (utterance: string) => void;
   onPreview?: () => void;
   onPublish?: () => void;
 }) {
@@ -143,9 +150,14 @@ function AgentTurn({
           <ObserveBlock lines={payload.lines} />
         ) : null}
         {payload.type === "text" ? (
-          <div className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
-            {payload.body}
-          </div>
+          <>
+            <div className="whitespace-pre-line rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-[10px] leading-relaxed text-[#374151] shadow-sm">
+              {payload.body}
+            </div>
+            {payload.suggestedActions && payload.suggestedActions.length > 0 ? (
+              <SuggestedActionsRow actions={payload.suggestedActions} onPick={onSuggestedUtterance} />
+            ) : null}
+          </>
         ) : null}
         {payload.type === "thought" ? (
           <ThoughtBlock title={payload.title} body={payload.body} />
@@ -456,6 +468,30 @@ function DeployTargetAskBlock({
       >
         배포 시작
       </button>
+    </div>
+  );
+}
+
+function SuggestedActionsRow({
+  actions,
+  onPick,
+}: {
+  actions: readonly { readonly id: string; readonly label: string; readonly utterance: string }[];
+  onPick?: (utterance: string) => void;
+}) {
+  if (!onPick) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {actions.map((action) => (
+        <button
+          key={action.id}
+          type="button"
+          onClick={() => onPick(action.utterance)}
+          className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[9px] font-semibold text-violet-800 hover:bg-violet-100"
+        >
+          {action.label}
+        </button>
+      ))}
     </div>
   );
 }

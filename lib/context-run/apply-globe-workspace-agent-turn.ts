@@ -44,6 +44,7 @@ import {
   tryApplyPlaceLocateFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveComposerErrorKo } from "@/lib/errors/sanitize-user-facing-error";
 import {
   publishGlobeProjectionLayerPolicy,
   readGlobeProjectionLayerPolicy,
@@ -306,7 +307,43 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     };
   }
 
-  // Drop active hub when NL destination ≠ Workspace destination (오키나와 ≠ 오사카).
+  try {
+    return await runGlobeWorkspaceAgentTurnBody(input, utterance);
+  } catch (caught) {
+    const statusKo = resolveComposerErrorKo(caught);
+    finishAgentActivityTrail({
+      goalKo: utterance,
+      summaryKo: statusKo,
+      contextEventId:
+        input.explicitContextEventId?.trim() ||
+        input.contextEventId?.trim() ||
+        null,
+      offerExpand: false,
+    });
+    return {
+      handled: true,
+      statusKo: shortenWorkspaceAgentStatus(statusKo),
+      contextEventId:
+        input.explicitContextEventId?.trim() ||
+        input.contextEventId?.trim() ||
+        null,
+      workspaceMutated: false,
+      openedWorkspace: false,
+      committed: false,
+    };
+  }
+}
+
+async function runGlobeWorkspaceAgentTurnBody(
+  input: {
+    readonly utterance: string;
+    readonly explicitContextEventId?: string | null;
+    readonly contextEventId?: string | null;
+    readonly lat?: number | null;
+    readonly lng?: number | null;
+  },
+  utterance: string,
+): Promise<GlobeWorkspaceAgentTurnResult> {
   const requestedCtx =
     input.explicitContextEventId?.trim() ||
     input.contextEventId?.trim() ||

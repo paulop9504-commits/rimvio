@@ -18,7 +18,7 @@ const ogImage = storeAbsoluteUrl(STORE_META.ogImage);
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: RIMVIO.lockup,
+    default: STORE_META.seoTitle,
     template: `%s · ${RIMVIO.name}`,
   },
   description: STORE_META.shortDescription,
@@ -47,8 +47,8 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: appUrl,
     siteName: RIMVIO.name,
-    title: RIMVIO.lockup,
-    description: STORE_META.longDescription,
+    title: STORE_META.seoTitle,
+    description: STORE_META.shortDescription,
     images: [
       {
         url: ogImage,
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: RIMVIO.lockup,
+    title: STORE_META.seoTitle,
     description: STORE_META.shortDescription,
     images: [ogImage],
   },

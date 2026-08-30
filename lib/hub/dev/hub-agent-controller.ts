@@ -31,7 +31,11 @@ import { setPendingHubLoopResume } from "@/lib/hub/dev/hub-connection-store";
 
 export type HubAgentControllerEvent =
   | { readonly type: "intent"; readonly intent: UserIntent; readonly executable: boolean }
-  | { readonly type: "conversational"; readonly body: string }
+  | {
+      readonly type: "conversational";
+      readonly body: string;
+      readonly suggestedActions?: readonly { readonly id: string; readonly label: string; readonly utterance: string }[];
+    }
   | HubAgentLoopEvent;
 
 export type HubAgentControllerInput = Omit<HubAgentLoopInput, "onEvent"> & {
@@ -284,7 +288,11 @@ export async function runHubAgentController(
   emit({ type: "intent", intent: gate.intent, executable: gate.executable });
 
   if (gate.conversational || gate.needsClarification) {
-    emit({ type: "conversational", body: gate.responseKo ?? "" });
+    emit({
+      type: "conversational",
+      body: gate.responseKo ?? "",
+      suggestedActions: gate.suggestedActions,
+    });
     return {
       ok: true,
       executionStarted: false,

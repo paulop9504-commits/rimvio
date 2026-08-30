@@ -47,6 +47,38 @@ assert.equal(
 assert.equal(parseWorkspacePatch("Day2로 옮겨")?.kind, "move_schedule");
 assert.equal(parseWorkspacePatch("난바역 근처")?.kind, "spatial_constraint");
 {
+  const korean = parseWorkspacePatch("한식만 보여줘");
+  assert.equal(korean?.kind, "filter_entity");
+  if (korean?.kind === "filter_entity") {
+    assert.equal(korean.filter.queryIncludes, "한식");
+    assert.ok(korean.filter.tagIncludes?.includes("cuisine:korean"));
+  }
+}
+{
+  const budget = parseWorkspacePatch("2만원 이하만 보여줘");
+  assert.equal(budget?.kind, "filter_entity");
+  if (budget?.kind === "filter_entity") {
+    assert.equal(budget.filter.maxNightlyPriceKrw, 20_000);
+  }
+}
+{
+  const rating = parseWorkspacePatch("4.5점 이상만 남겨줘");
+  assert.equal(rating?.kind, "filter_entity");
+  if (rating?.kind === "filter_entity") {
+    assert.equal(rating.filter.minRating, 4.5);
+  }
+}
+{
+  const compound = parseWorkspacePatch(
+    "한식이고 2만원 이하인데 데이트하기 좋은 곳만 보여줘",
+  );
+  assert.equal(compound?.kind, "filter_entity");
+  if (compound?.kind === "filter_entity") {
+    assert.equal(compound.filter.queryIncludes, "한식");
+    assert.equal(compound.filter.maxNightlyPriceKrw, 20_000);
+  }
+}
+{
   const compound = parseWorkspacePatch("이 중 2번을 Day 2에 넣어줘");
   assert.equal(compound?.kind, "move_schedule");
   if (compound?.kind === "move_schedule") {

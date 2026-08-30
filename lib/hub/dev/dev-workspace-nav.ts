@@ -9,6 +9,7 @@ export type DevWorkspacePane =
   | "data"
   | "storage"
   | "users"
+  | "auth"
   | "functions"
   | "automations"
   | "loops"
@@ -62,6 +63,7 @@ export const DEV_SIDEBAR_BUILD_NAV: readonly DevSidebarNavItem[] = [
   { id: "data", label: "Data", icon: "database", section: "build", badgeKey: "data" },
   { id: "storage", label: "Storage", icon: "hard-drive", section: "build", badgeKey: "storage" },
   { id: "users", label: "Users", icon: "users", section: "build", badgeKey: "users" },
+  { id: "auth", label: "Authentication", icon: "lock", section: "build" },
   { id: "functions", label: "Functions", icon: "zap", section: "build", badgeKey: "functions" },
   { id: "automations", label: "Automations", icon: "clock", section: "build", badgeKey: "automations" },
   { id: "loops", label: "Loops", icon: "repeat", section: "build", badgeKey: "loops" },
@@ -108,6 +110,8 @@ export function parseDevWorkspacePane(
     data: "data",
     storage: "storage",
     users: "users",
+    auth: "auth",
+    authentication: "auth",
     functions: "functions",
     automations: "automations",
     loops: "loops",

@@ -13,6 +13,7 @@ import {
   refineExperienceBlueprint,
   resetExperienceResources,
   runExperienceVerification,
+  wantsExperienceOsCreate,
 } from "@/lib/hub/dev/experience-os";
 import { createDefaultPlatformDraft } from "@/lib/hub/platform/defaults";
 import { createOsakaStayPlatformDraft } from "@/lib/hub/dev/blueprint";
@@ -48,6 +49,14 @@ async function testBlueprintFromIdea() {
 
   const refined = refineExperienceBlueprint(commerce, "의류 대신 중고 카메라 거래 플랫폼으로 바꿔줘");
   assert.equal(refined.templateId, "marketplace");
+  assert.ok(refined.data.includes("cameras") || refined.titleKo.includes("카메라"));
+
+  const restaurant = experienceBlueprintFromUtterance("음식점이 메뉴를 등록하고 고객이 주문할 수 있는 배달 플랫폼을 만들어줘");
+  assert.equal(restaurant.templateId, "restaurant");
+  assert.ok(restaurant.capabilities.includes("menu.create"));
+
+  const education = experienceBlueprintFromUtterance("온라인 교육 플랫폼 만들어줘");
+  assert.equal(education.templateId, "education");
 
   const draft = applyExperienceBlueprintToDraft(experienceBlueprintFromTemplate("saas"));
   assert.ok(draft.actions.some((a) => a.name.startsWith("team.") || a.name.startsWith("project.")));
@@ -117,6 +126,29 @@ async function testUiAndAgentSameTool() {
   assert.match(getDraft().dataCollectionsJson, /records|products|listings/);
 }
 
+async function testCreateClassifierAndBuildSteps() {
+  assert.equal(wantsExperienceOsCreate("여행 예약 플랫폼 만들어줘"), true);
+  assert.equal(wantsExperienceOsCreate("음식 배달 플랫폼 만들어줘"), true);
+  assert.equal(wantsExperienceOsCreate("오사카 호텔 찾아줘"), false);
+  assert.equal(wantsExperienceOsCreate("주변 맛집 보여줘"), false);
+
+  resetExperienceResources();
+  const draft = applyExperienceBlueprintToDraft(experienceBlueprintFromTemplate("restaurant"));
+  const built = await invokeExperienceResource(
+    "experience.build",
+    { utterance: "음식 배달 플랫폼 만들어줘" },
+    { draft, updateDraft: (patch) => Object.assign(draft, patch) },
+  );
+  assert.equal(built.ok, true);
+  const data = built.data as { steps?: Array<{ id: string; status: string }>; progress?: number };
+  assert.ok(data.steps && data.steps.length >= 8);
+  assert.ok(data.steps.some((s) => s.id === "verification" && s.status === "done"));
+  assert.ok((data.progress ?? 0) >= 80);
+
+  const runtime = await invokeExperienceResource("runtime.status", {}, { draft });
+  assert.equal((runtime.data as { adapter?: string }).adapter, "mock");
+}
+
 async function testPlannerInfrastructure() {
   const draft = createDefaultPlatformDraft();
   const snapshot = buildProjectSnapshot({ draft });
@@ -141,6 +173,7 @@ async function main() {
   await testCapabilityInfraAndVerify();
   await testUiAndAgentSameTool();
   await testPlannerInfrastructure();
+  await testCreateClassifierAndBuildSteps();
   console.log("test-experience-os: ok");
 }
 

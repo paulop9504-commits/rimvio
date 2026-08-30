@@ -1,9 +1,16 @@
 /**
  * Capability #2 — Goal Extraction.
  * Utterance + intent → structured goal with constraints and success criteria.
+ * Dev Agent OS: task kind + product decomposition (docs/RIMVIO_DEV_AGENT_OS.md).
  */
 
 import type { UserIntent } from "@/lib/agent/conversation/intent-types";
+import {
+  classifyDevTask,
+  decomposeProductIntent,
+  type DevTaskKind,
+  type ProductIntentDecomposition,
+} from "@/lib/hub/dev/dev-agent-os";
 import {
   compilePlatformGoal,
   type PlatformGoal,
@@ -17,6 +24,8 @@ export type ExtractedConstraint = {
 
 export type ExtractedGoal = {
   readonly platformGoal: PlatformGoal;
+  readonly devTaskKind: DevTaskKind;
+  readonly productDecomposition: ProductIntentDecomposition;
   readonly primaryObjective: string;
   readonly constraints: readonly ExtractedConstraint[];
   readonly successCriteria: readonly string[];
@@ -54,8 +63,8 @@ function extractSuccessCriteria(goal: PlatformGoal): string[] {
   if (goal.requestedCapabilities.length) {
     criteria.push(`${goal.requestedCapabilities.length} capabilities ready`);
   }
-  if (goal.domain === "hotel_booking") {
-    criteria.push("End-to-end booking flow runnable");
+  if (goal.domain === "hotel_booking" || goal.domain === "food_order") {
+    criteria.push("End-to-end user journey runnable");
   }
   if (goal.intent === "publish") {
     criteria.push("Publish gate pass");
@@ -73,7 +82,13 @@ export function extractStructuredGoal(input: {
   readonly platformName?: string | null;
 }): ExtractedGoal {
   const text = input.utterance.trim();
-  let platformGoal = compilePlatformGoal(input);
+  const devTask = classifyDevTask(text);
+  const productDecomposition = decomposeProductIntent({ utterance: text });
+  let platformGoal = compilePlatformGoal({
+    utterance: text,
+    intent: devTask.userIntent === "question" || devTask.userIntent === "chat" ? input.intent : devTask.userIntent,
+    platformName: input.platformName,
+  });
 
   for (const { pattern, flow } of FLOW_PATTERNS) {
     if (pattern.test(text) && platformGoal.flows.length === 0) {
@@ -86,6 +101,8 @@ export function extractStructuredGoal(input: {
 
   return {
     platformGoal,
+    devTaskKind: devTask.taskKind,
+    productDecomposition,
     primaryObjective: platformGoal.summaryKo,
     constraints,
     successCriteria,

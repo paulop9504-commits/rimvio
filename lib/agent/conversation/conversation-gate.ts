@@ -6,6 +6,7 @@
 import { classifyIntent, isExecutableIntent } from "@/lib/agent/conversation/classify-intent";
 import { understandIntent } from "@/lib/agent/capabilities/intent-understand";
 import { resolveGoal } from "@/lib/agent/conversation/goal-resolution";
+import { resolveConversationalResponse } from "@/lib/agent/conversation/resolve-conversational-response";
 import { compilePlatformGoal } from "@/lib/hub/dev/platform-agent/platform-goal";
 import {
   CONVERSATIONAL_INTENTS,
@@ -13,21 +14,6 @@ import {
   type ConversationGateResult,
   type UserIntent,
 } from "@/lib/agent/conversation/intent-types";
-
-function conversationalResponse(intent: UserIntent, platformName?: string | null, utterance?: string): string {
-  const name = platformName?.trim() || "Platform";
-  switch (intent) {
-    case "chat":
-      return "안녕하세요! 무엇을 도와드릴까요?";
-    case "question":
-      if (utterance && /연결/i.test(utterance)) {
-        return "어떤 서비스를 연결할까요? GitHub · Vercel · Supabase · Stripe 중 하나를 말씀해 주세요.";
-      }
-      return `${name}에서 capability · test · deploy · 연동을 도와드려요. 예: "깃허브 연결", "테스트 돌려줘", "현재 상태 확인"`;
-    default:
-      return "";
-  }
-}
 
 /**
  * Single ingress gate: Intent → Goal Resolution → allow/deny execution.
@@ -47,7 +33,11 @@ export function runConversationGate(input: {
       allowTools: false,
       allowPlanner: false,
       allowExecution: false,
-      responseKo: "무엇을 도와드릴까요?",
+      responseKo: resolveConversationalResponse({
+        utterance: input.utterance,
+        intent: "chat",
+        context: input.context,
+      }).responseKo,
       currentGoal: null,
     };
   }
@@ -56,6 +46,11 @@ export function runConversationGate(input: {
   const conversational = CONVERSATIONAL_INTENTS.includes(intent);
 
   if (conversational) {
+    const resolved = resolveConversationalResponse({
+      utterance: input.utterance,
+      intent,
+      context: input.context,
+    });
     return {
       intent,
       executable: false,
@@ -64,7 +59,8 @@ export function runConversationGate(input: {
       allowTools: false,
       allowPlanner: false,
       allowExecution: false,
-      responseKo: conversationalResponse(intent, input.context?.platformName ?? input.context?.currentPlatform, input.utterance),
+      responseKo: resolved.responseKo,
+      suggestedActions: resolved.suggestedActions,
       currentGoal: null,
     };
   }

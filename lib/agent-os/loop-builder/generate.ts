@@ -3,6 +3,7 @@
  */
 
 import { createLoopNode } from "@/lib/agent-os/loop-builder/nodes";
+import { autoLayoutLoop } from "@/lib/agent-os/loop-builder/graph-layout";
 import type { LoopDefinition, LoopEdge, LoopNode } from "@/lib/agent-os/loop-builder/types";
 
 function edge(from: string, to: string, kind: LoopEdge["kind"] = "next"): LoopEdge {
@@ -110,7 +111,7 @@ export function generateLoopFromUtterance(utterance: string): LoopDefinition {
     edges.push(edge("n_verify", "n_replan", "fail"));
   }
 
-  return {
+  return autoLayoutLoop({
     id: `loop-${Date.now()}`,
     name: wantsPayment ? "Order Automation" : "Generated Loop",
     version: "1.0.0",
@@ -119,7 +120,7 @@ export function generateLoopFromUtterance(utterance: string): LoopDefinition {
     nodes,
     edges,
     entryId: "n_trigger",
-  };
+  });
 }
 
 export function wrapCapabilityAsLoop(input: {
@@ -141,7 +142,7 @@ export function wrapCapabilityAsLoop(input: {
     createLoopNode("COMPLETE", "n_done", "Complete"),
     createLoopNode("REPLAN", "n_replan", "Replan"),
   ];
-  return {
+  return autoLayoutLoop({
     id: `loop-cap-${input.capabilityId}`,
     name: input.capabilityId,
     version: "1.0.0",
@@ -156,5 +157,5 @@ export function wrapCapabilityAsLoop(input: {
       edge("n_verify", "n_replan", "fail"),
     ],
     entryId: "n_inspect",
-  };
+  });
 }

@@ -146,6 +146,8 @@ export type ContextWorkspaceShellProps = {
   contextEventId: string | null | undefined;
   projectTitleKo?: string | null;
   className?: string;
+  /** overlay = full-screen dialog (default). pane = embed in chat|workspace split. */
+  layout?: "overlay" | "pane";
 };
 
 function formatRating(rating: number | null): string {
@@ -199,6 +201,7 @@ export function ContextWorkspaceShell({
   contextEventId,
   projectTitleKo = null,
   className,
+  layout = "overlay",
 }: ContextWorkspaceShellProps) {
   const [state, setState] = useState<ContextWorkspaceState | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -1531,6 +1534,12 @@ export function ContextWorkspaceShell({
     return null;
   }
 
+  const isPane = layout === "pane";
+  const frameClass = isPane
+    ? "pointer-events-auto relative flex h-full min-h-0 w-full flex-col bg-[#eef1f5]"
+    : "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#eef1f5]";
+  const frameRole = isPane ? "region" : "dialog";
+
   const sharedSheets = (
     <>
       {closeNameOpen ? (
@@ -1563,14 +1572,12 @@ export function ContextWorkspaceShell({
   if (useCapabilityChrome && capabilityLayout && capabilityView) {
     return (
       <div
-        className={cn(
-          "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#eef1f5]",
-          className,
-        )}
-        role="dialog"
+        className={cn(frameClass, className)}
+        role={frameRole}
         aria-label={copy.globe.workspaceOpenTitle}
-        aria-modal="true"
+        aria-modal={isPane ? undefined : "true"}
         data-context-workspace-open
+        data-workspace-layout={layout}
         data-workspace-capability-chrome
       >
         <WorkspaceCapabilityChrome
@@ -1726,14 +1733,12 @@ export function ContextWorkspaceShell({
 
   return (
     <div
-      className={cn(
-        "pointer-events-auto fixed inset-0 z-[10150] flex flex-col bg-[#eef1f5]",
-        className,
-      )}
-      role="dialog"
+      className={cn(frameClass, className)}
+      role={frameRole}
       aria-label={copy.globe.workspaceOpenTitle}
-      aria-modal="true"
+      aria-modal={isPane ? undefined : "true"}
       data-context-workspace-open
+      data-workspace-layout={layout}
     >
       {/* Top chrome — hide while place sheet is open so panel can rise (GPT Maps) */}
       {!showPeek ? (

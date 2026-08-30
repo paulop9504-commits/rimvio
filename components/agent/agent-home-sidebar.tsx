@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  Compass,
-  FolderKanban,
-  History,
-  Home,
-  Star,
-} from "lucide-react";
+import { PanelLeft, Plus, Settings } from "lucide-react";
 import { RimvioLogo } from "@/components/rimvio-logo";
 import { useAgentHomeThemeContext } from "@/components/agent/agent-home-theme-context";
 import { listLifeEventCandidates } from "@/lib/life-read-model";
+import Link from "next/link";
 import { copy } from "@/lib/copy/human-ko";
+import { writeExperienceRole } from "@/lib/experience-app";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 export type AgentHomeSidebarProps = {
@@ -25,30 +19,23 @@ export type AgentHomeSidebarProps = {
   onOpenSettings: () => void;
   view: "dashboard" | "chat";
   className?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 };
-
-type ConnectionRow = {
-  readonly id: string;
-  readonly label: string;
-  readonly connected: boolean;
-};
-
-const CONNECTIONS: readonly ConnectionRow[] = [
-  { id: "github", label: "GitHub", connected: true },
-  { id: "vercel", label: "Vercel", connected: false },
-  { id: "openai", label: "OpenAI", connected: true },
-  { id: "stripe", label: "Stripe", connected: false },
-];
 
 export function AgentHomeSidebar({
   activeEventId,
   onSelectEvent,
+  onNewTask,
   onGoHome,
+  onOpenSettings,
   view,
   className,
+  mobileOpen = false,
+  onMobileClose,
 }: AgentHomeSidebarProps) {
-  const router = useRouter();
-  const { tokens } = useAgentHomeThemeContext();
+  const { tokens, theme } = useAgentHomeThemeContext();
+  const { user } = useAuth();
   const [recentTick, setRecentTick] = useState(0);
 
   useEffect(() => {
@@ -61,78 +48,145 @@ export function AgentHomeSidebar({
     };
   }, []);
 
-  const projects = useMemo(() => {
+  const conversations = useMemo(() => {
     void recentTick;
     return listLifeEventCandidates()
       .filter((e) => e.title?.trim())
-      .slice(0, 3);
+      .slice(0, 40);
   }, [recentTick]);
 
-  const projectCount = projects.length;
+  const displayName =
+    user?.user_metadata?.full_name?.trim() ||
+    user?.email?.split("@")[0] ||
+    copy.brand.name;
 
-  return (
+  const rail = (
     <aside
       className={cn(
-        "hidden h-full w-[200px] min-w-[200px] shrink-0 flex-col border-r md:flex",
+        "flex h-full w-[260px] min-w-[260px] shrink-0 flex-col",
         tokens.sidebar,
-        tokens.sidebarBorder,
         className,
       )}
       data-agent-home-sidebar
     >
-      <div className="flex items-center gap-1.5 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <RimvioLogo size="xs" showWordmark appearance="light" />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 rimvio-scroll-touch">
-        <div className="space-y-px">
-          <NavBtn active={view === "dashboard"} onClick={onGoHome} icon={Home} label={copy.globe.agentHomeNavHome} />
-          <NavBtn
-            active={false}
-            onClick={() => router.push("/?surface=globe")}
-            icon={Compass}
-            label={copy.globe.agentHomeNavExplore}
-          />
-          <NavBtn
-            active={false}
-            onClick={() => router.push("/inbox")}
-            icon={History}
-            label={copy.globe.agentHomeSidebarTaskHistory}
-          />
-          <NavBtn active={false} onClick={() => {}} icon={Star} label={copy.globe.agentHomeSidebarFavorites} />
-        </div>
-
-        <p className={cn("mb-1 mt-4 px-1.5 text-[9px] font-bold uppercase tracking-wide", tokens.textSubtle)}>
-          {copy.globe.agentHomeSidebarWorkspace}
-        </p>
+      <div className="flex items-center justify-between gap-2 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"
+          onClick={() => {
+            onGoHome();
+            onMobileClose?.();
+          }}
+          className="min-w-0"
+          aria-label={copy.brand.name}
+        >
+          <RimvioLogo
+            size="xs"
+            showWordmark
+            appearance={theme === "dark" ? "white" : "light"}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={onMobileClose}
           className={cn(
-            "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-[10px] font-medium",
+            "flex size-8 items-center justify-center rounded-lg md:hidden",
             tokens.textMuted,
-            "hover:bg-[#f3f4f6]",
+            "hover:bg-black/[0.05]",
+          )}
+          aria-label={copy.globe.agentHomeCloseSidebar}
+        >
+          <PanelLeft className="size-4" aria-hidden />
+        </button>
+      </div>
+
+      <div className="px-2 pb-2">
+        <button
+          type="button"
+          onClick={() => {
+            onNewTask();
+            onMobileClose?.();
+          }}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium",
+            view === "dashboard" ? tokens.accentSoft : tokens.text,
+            "hover:bg-black/[0.04] dark:hover:bg-white/[0.06]",
           )}
         >
-          <FolderKanban className="size-3 shrink-0 opacity-70" aria-hidden />
-          <span className="flex-1 truncate">{copy.globe.agentHomeSidebarYourProjects}</span>
-          {projectCount > 0 ? (
-            <span className="flex size-4 items-center justify-center rounded-full bg-[#6366f1] text-[8px] font-bold text-white">
-              {projectCount}
-            </span>
-          ) : null}
+          <Plus className="size-4 shrink-0" aria-hidden />
+          {copy.globe.agentHomeNewTask}
         </button>
-        {projects.length > 0 ? (
-          <ul className="mt-0.5 space-y-px pl-1">
-            {projects.map((event) => (
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 rimvio-scroll-touch">
+        <p className={cn("mb-1 px-2.5 pt-1 text-[11px] font-medium", tokens.textSubtle)}>
+          {copy.experienceApp.mySpace}
+        </p>
+        <Link
+          href="/experience?role=consumer"
+          onClick={() => {
+            writeExperienceRole("consumer");
+            onMobileClose?.();
+          }}
+          className={cn(
+            "mb-2 flex items-center justify-between rounded-lg px-2.5 py-2 text-[13px]",
+            tokens.textMuted,
+            "hover:bg-black/[0.05]",
+          )}
+        >
+          <span>{copy.experienceApp.order}</span>
+          <span className={cn("text-[10px]", tokens.textSubtle)}>{copy.experienceApp.roleConsumer}</span>
+        </Link>
+        <p className={cn("mb-1 px-2.5 pt-2 text-[11px] font-medium", tokens.textSubtle)}>
+          {copy.experienceApp.myServices}
+        </p>
+        <Link
+          href="/experience?role=merchant"
+          onClick={() => {
+            writeExperienceRole("merchant");
+            onMobileClose?.();
+          }}
+          className={cn(
+            "mb-1 flex items-center justify-between rounded-lg px-2.5 py-2 text-[13px]",
+            tokens.textMuted,
+            "hover:bg-black/[0.05]",
+          )}
+        >
+          <span>동네 배달</span>
+          <span className={cn("text-[10px]", tokens.textSubtle)}>{copy.experienceApp.roleMerchant}</span>
+        </Link>
+        <Link
+          href="/hub/create"
+          onClick={onMobileClose}
+          className={cn(
+            "mb-3 flex items-center justify-between rounded-lg px-2.5 py-2 text-[13px]",
+            tokens.textMuted,
+            "hover:bg-black/[0.05]",
+          )}
+        >
+          <span>{copy.experienceApp.createService}</span>
+        </Link>
+        <p className={cn("mb-1 px-2.5 pt-1 text-[11px] font-medium", tokens.textSubtle)}>
+          {copy.globe.agentHomeSidebarRecent}
+        </p>
+        {conversations.length === 0 ? (
+          <p className={cn("px-2.5 py-2 text-[12px] leading-relaxed", tokens.textSubtle)}>
+            {copy.globe.agentHomeSidebarEmpty}
+          </p>
+        ) : (
+          <ul className="space-y-0.5">
+            {conversations.map((event) => (
               <li key={event.id}>
                 <button
                   type="button"
-                  onClick={() => onSelectEvent(event.id)}
+                  onClick={() => {
+                    onSelectEvent(event.id);
+                    onMobileClose?.();
+                  }}
                   className={cn(
-                    "w-full truncate rounded-md px-1.5 py-1 text-left text-[9px] transition-colors",
+                    "w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors",
                     event.id === activeEventId
-                      ? cn(tokens.accentSoft, "font-semibold")
-                      : cn(tokens.textSubtle, "hover:bg-[#f3f4f6]"),
+                      ? cn(tokens.accentSoft, "font-medium")
+                      : cn(tokens.textMuted, "hover:bg-black/[0.05]"),
                   )}
                 >
                   {event.title}
@@ -140,94 +194,51 @@ export function AgentHomeSidebar({
               </li>
             ))}
           </ul>
-        ) : null}
-
-        <p className={cn("mb-1 mt-4 px-1.5 text-[9px] font-bold uppercase tracking-wide", tokens.textSubtle)}>
-          {copy.globe.agentHomeSidebarConnections}
-        </p>
-        <ul className="space-y-px">
-          {CONNECTIONS.map((conn) => (
-            <li
-              key={conn.id}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[10px]",
-                tokens.textMuted,
-              )}
-            >
-              {conn.id === "github" ? (
-                <span className="flex size-3 shrink-0 items-center justify-center rounded bg-[#f3f4f6] text-[7px] font-bold">
-                  GH
-                </span>
-              ) : (
-                <span className="flex size-3 shrink-0 items-center justify-center rounded bg-[#f3f4f6] text-[7px] font-bold">
-                  {conn.label.slice(0, 1)}
-                </span>
-              )}
-              <span className="flex-1 truncate">{conn.label}</span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-0.5 text-[8px] font-semibold",
-                  conn.connected ? "text-[#10b981]" : tokens.textSubtle,
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-1 rounded-full",
-                    conn.connected ? "bg-[#10b981]" : "bg-[#d1d5db]",
-                  )}
-                />
-                {conn.connected
-                  ? copy.globe.agentHomeConnectionConnected
-                  : copy.globe.agentHomeConnectionNotConnected}
-              </span>
-            </li>
-          ))}
-        </ul>
+        )}
       </div>
 
-      <div className="p-2">
-        <div className="rounded-xl bg-gradient-to-br from-[#ede9fe] via-[#e0e7ff] to-[#dbeafe] p-2.5">
-          <p className="text-[10px] font-semibold leading-snug text-[#4338ca]">
-            {copy.globe.agentHomeHubCtaTitle}
-          </p>
-          <Link
-            href="/hub"
-            className="mt-2 inline-flex items-center gap-1 rounded-lg bg-[#6366f1] px-2 py-1 text-[9px] font-semibold text-white hover:bg-[#4f46e5]"
+      <div className="border-t border-black/[0.06] p-2">
+        <button
+          type="button"
+          onClick={() => {
+            onOpenSettings();
+            onMobileClose?.();
+          }}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-black/[0.05]",
+          )}
+        >
+          <span
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+              tokens.accentSoft,
+            )}
           >
-            {copy.globe.agentHomeHubCtaButton}
-            <ArrowRight className="size-2.5" aria-hidden />
-          </Link>
-        </div>
+            {displayName.slice(0, 1).toUpperCase()}
+          </span>
+          <span className={cn("min-w-0 flex-1 truncate text-[13px]", tokens.text)}>
+            {displayName}
+          </span>
+          <Settings className={cn("size-4 shrink-0", tokens.textSubtle)} aria-hidden />
+        </button>
       </div>
     </aside>
   );
-}
 
-function NavBtn({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: typeof Home;
-  label: string;
-}) {
-  const { tokens } = useAgentHomeThemeContext();
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-[10px] font-medium transition-colors",
-        active
-          ? cn(tokens.accentSoft, "font-semibold")
-          : cn(tokens.textMuted, "hover:bg-[#f3f4f6]"),
-      )}
-    >
-      <Icon className="size-3 shrink-0 opacity-80" aria-hidden />
-      {label}
-    </button>
+    <>
+      <div className="hidden h-full md:flex">{rail}</div>
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-[80] md:hidden" data-agent-home-sidebar-drawer>
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            aria-label={copy.globe.agentHomeCloseSidebar}
+            onClick={onMobileClose}
+          />
+          <div className="relative h-full w-[min(86vw,280px)] shadow-xl">{rail}</div>
+        </div>
+      ) : null}
+    </>
   );
 }

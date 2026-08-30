@@ -3,6 +3,22 @@
  * Adapters: draft JSON + session overlay now; real infra later.
  */
 
+import type { ExperienceActor } from "@/lib/experience-app/types";
+import {
+  advanceExperienceOrder,
+  canAdvanceOrder,
+  canCancelOrder,
+  canViewOrder,
+  createExperienceOrder,
+  denyReasonKo,
+  getExperienceOrder,
+  listExperienceOrders,
+  listOrderMetadata,
+  parseExperienceAppUtterance,
+  readExperienceActor,
+  storesForQuery,
+  updateExperienceOrderStatus,
+} from "@/lib/experience-app";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import { buildDevBlueprintModel } from "@/lib/hub/dev/dev-blueprint-model";
 import { buildProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
@@ -22,10 +38,26 @@ import { runExperienceVerification } from "@/lib/hub/dev/experience-os/verificat
 import { invokePlatformCapability } from "@/lib/hub/dev/experience-os/invoke-capability";
 import { applyExperienceBlueprintToDraft } from "@/lib/hub/dev/experience-os/apply-blueprint";
 import { experienceBlueprintFromUtterance } from "@/lib/hub/dev/experience-os/experience-blueprint";
+import {
+  defaultColumnsForTable,
+  listStorageObjects,
+  readAuthProviders,
+  readTableColumns,
+  resolveRuntimeAdapter,
+  writeAuthProvider,
+  writeStorageObjects,
+  writeTableColumns,
+} from "@/lib/hub/dev/experience-os/adapters";
+import type { AuthProviderId, TableColumn } from "@/lib/hub/dev/experience-os/adapters";
+import {
+  EXPERIENCE_BUILD_STEPS,
+  type ExperienceBuildStep,
+} from "@/lib/hub/dev/experience-os/build-steps";
 
 export type ExperienceResourceContext = {
   readonly draft: PlatformDraft;
   readonly updateDraft?: (patch: Partial<PlatformDraft>) => void;
+  readonly actor?: ExperienceActor;
 };
 
 function nowIso(): string {
@@ -39,6 +71,15 @@ function parseCollections(draft: PlatformDraft): Array<{ name: string; schema?: 
   } catch {
     return [];
   }
+}
+
+function actorOf(ctx: ExperienceResourceContext): ExperienceActor {
+  return ctx.actor ?? readExperienceActor();
+}
+
+function visibleOrders(ctx: ExperienceResourceContext) {
+  const actor = actorOf(ctx);
+  return listExperienceOrders().filter((order) => canViewOrder(actor, order));
 }
 
 function resource(
@@ -100,9 +141,20 @@ export async function invokeExperienceResource(
             ]),
           });
         }
-        upsertExperienceResource(resource(projectId, "database_table", name));
+        const columns = defaultColumnsForTable(name);
+        upsertExperienceResource(resource(projectId, "database_table", name, { columns }));
         appendExperienceLog(projectId, `Database table ${name} created`);
-        return { ok: true, op, data: { name } };
+        return { ok: true, op, data: { name, columns } };
+      }
+      case "database.updateSchema": {
+        const name = String(args.name ?? args.table ?? "").trim();
+        if (!name) return { ok: false, op, errorKo: "테이블 이름이 필요합니다." };
+        const columns = Array.isArray(args.columns)
+          ? (args.columns as TableColumn[])
+          : readTableColumns(projectId, name);
+        writeTableColumns(projectId, name, columns);
+        appendExperienceLog(projectId, `Schema updated · ${name}`);
+        return { ok: true, op, data: { name, columns } };
       }
       case "storage.listBuckets": {
         const overlay = resourcesOfType(projectId, "storage_bucket").map((r) => r.name);
@@ -112,12 +164,41 @@ export async function invokeExperienceResource(
       case "storage.createBucket": {
         const name = String(args.name ?? "").trim();
         if (!name) return { ok: false, op, errorKo: "버킷 이름이 필요합니다." };
-        upsertExperienceResource(resource(projectId, "storage_bucket", name, { public: args.public === true }));
+        upsertExperienceResource(
+          resource(projectId, "storage_bucket", name, { public: args.public === true, objects: [] }),
+        );
         appendExperienceLog(projectId, `Storage bucket ${name} created`);
         return { ok: true, op, data: { name } };
       }
+      case "storage.listObjects": {
+        const bucket = String(args.bucket ?? args.name ?? "uploads");
+        return { ok: true, op, data: { bucket, objects: listStorageObjects(projectId, bucket) } };
+      }
+      case "storage.upload": {
+        const bucket = String(args.bucket ?? "uploads");
+        const fileName = String(args.name ?? args.fileName ?? "").trim();
+        if (!fileName) return { ok: false, op, errorKo: "파일 이름이 필요합니다." };
+        const objects = [
+          ...listStorageObjects(projectId, bucket),
+          { name: fileName, size: Number(args.size ?? 0), public: args.public === true },
+        ];
+        writeStorageObjects(projectId, bucket, objects, { public: args.public === true });
+        appendExperienceLog(projectId, `Uploaded ${fileName} → ${bucket}`);
+        return { ok: true, op, data: { bucket, name: fileName } };
+      }
+      case "storage.delete": {
+        const bucket = String(args.bucket ?? "uploads");
+        const fileName = String(args.name ?? args.fileName ?? "").trim();
+        if (!fileName) return { ok: false, op, errorKo: "파일 이름이 필요합니다." };
+        const objects = listStorageObjects(projectId, bucket).filter((o) => o.name !== fileName);
+        writeStorageObjects(projectId, bucket, objects);
+        appendExperienceLog(projectId, `Deleted ${fileName} from ${bucket}`);
+        return { ok: true, op, data: { bucket, name: fileName } };
+      }
       case "auth.listRoles": {
-        const overlay = resourcesOfType(projectId, "auth_role").map((r) => r.name);
+        const overlay = resourcesOfType(projectId, "auth_role")
+          .map((r) => r.name)
+          .filter((name) => name !== "__providers");
         const fromPerms = ctx.draft.permissions.filter((p) => p.enabled).map((p) => p.id);
         return { ok: true, op, data: { roles: [...new Set(["member", ...fromPerms, ...overlay])] } };
       }
@@ -127,6 +208,15 @@ export async function invokeExperienceResource(
         upsertExperienceResource(resource(projectId, "auth_role", name));
         appendExperienceLog(projectId, `Role ${name} created`);
         return { ok: true, op, data: { name } };
+      }
+      case "auth.listProviders":
+        return { ok: true, op, data: { providers: readAuthProviders(projectId) } };
+      case "auth.updateProvider": {
+        const id = String(args.id ?? args.name ?? "").trim() as AuthProviderId;
+        if (!id) return { ok: false, op, errorKo: "Provider가 필요합니다." };
+        const providers = writeAuthProvider(projectId, id, args.enabled !== false);
+        appendExperienceLog(projectId, `Auth provider ${id} ${args.enabled === false ? "off" : "on"}`);
+        return { ok: true, op, data: { providers } };
       }
       case "user.list":
         return {
@@ -208,22 +298,22 @@ export async function invokeExperienceResource(
         appendExperienceLog(projectId, `Secret ${name} stored (value hidden)`);
         return { ok: true, op, data: { name, stored: true } };
       }
-      case "runtime.status":
-        return {
-          ok: true,
-          op,
-          data: {
-            status: "ready",
-            framework: "Next.js",
-            tier: ctx.draft.runtimeTier,
-          },
-        };
+      case "runtime.status": {
+        const runtime = await resolveRuntimeAdapter("mock").status(projectId);
+        return { ok: true, op, data: { ...runtime, tier: ctx.draft.runtimeTier } };
+      }
       case "runtime.start":
-      case "runtime.stop": {
-        const status = op === "runtime.start" ? "running" : "stopped";
-        upsertExperienceResource({ ...resource(projectId, "runtime", "workspace"), status });
-        appendExperienceLog(projectId, `Runtime ${status}`);
-        return { ok: true, op, data: { status, adapter: "local" } };
+      case "runtime.stop":
+      case "runtime.restart": {
+        const adapter = resolveRuntimeAdapter("mock");
+        const runtime =
+          op === "runtime.start"
+            ? await adapter.start(projectId)
+            : op === "runtime.stop"
+              ? await adapter.stop(projectId)
+              : await adapter.restart(projectId);
+        appendExperienceLog(projectId, `Runtime ${runtime.status} (${runtime.adapter})`);
+        return { ok: true, op, data: runtime };
       }
       case "environment.list":
         return {
@@ -287,7 +377,17 @@ export async function invokeExperienceResource(
         return { ok: true, op, data: { applied, capabilityId } };
       }
       case "experience.build": {
+        const steps: ExperienceBuildStep[] = EXPERIENCE_BUILD_STEPS.map((s) => ({
+          ...s,
+          status: "pending",
+        }));
+        const mark = (id: ExperienceBuildStep["id"], status: ExperienceBuildStep["status"], detail?: string) => {
+          const idx = steps.findIndex((s) => s.id === id);
+          if (idx >= 0) steps[idx] = { ...steps[idx]!, status, detail };
+        };
+
         let draft = ctx.draft;
+        mark("workspace", "running");
         if (draft.actions.length === 0) {
           draft = applyExperienceBlueprintToDraft(
             experienceBlueprintFromUtterance(String(args.utterance ?? draft.description ?? draft.name)),
@@ -295,16 +395,43 @@ export async function invokeExperienceResource(
           );
           ctx.updateDraft?.(draft);
         }
+        mark("workspace", "done");
+        mark("repository", "done", draft.id);
+
         const buildCtx = { ...ctx, draft };
+        mark("database", "running");
         const tables = parseCollections(draft);
         for (const table of tables) {
           await invokeExperienceResource("database.createTable", { name: table.name }, buildCtx);
         }
+        mark("database", "done", `${tables.length} tables`);
+
+        mark("storage", "running");
+        await invokeExperienceResource("storage.createBucket", { name: "uploads" }, buildCtx);
+        mark("storage", "done");
+
+        mark("auth", "running");
+        await invokeExperienceResource("auth.createRole", { name: "member" }, buildCtx);
+        await invokeExperienceResource("auth.updateProvider", { id: "email", enabled: true }, buildCtx);
+        mark("auth", "done");
+
+        mark("functions", "running");
         for (const action of draft.actions) {
           await invokeExperienceResource("function.create", { name: action.name }, buildCtx);
         }
-        upsertExperienceResource({ ...resource(projectId, "runtime", "workspace"), status: "running" });
+        mark("functions", "done", `${draft.actions.length} functions`);
+
+        mark("ui", "done", `${draft.uiRoutesJson ? "routes ready" : "default pages"}`);
+
+        mark("runtime", "running");
+        await invokeExperienceResource("runtime.start", {}, buildCtx);
+        mark("runtime", "done");
+
+        mark("verification", "running");
         const report = await runExperienceVerification({ draft });
+        mark("verification", report.ok ? "done" : "error", report.ok ? "passed" : "failed");
+        mark("preview", report.ok ? "done" : "pending");
+
         appendExperienceLog(projectId, "Experience build sequence finished");
         return {
           ok: report.ok,
@@ -314,6 +441,10 @@ export async function invokeExperienceResource(
             functions: draft.actions.map((a) => a.name),
             verification: report,
             resources: listExperienceResources(projectId).length,
+            steps,
+            progress: Math.round(
+              (steps.filter((s) => s.status === "done").length / steps.length) * 100,
+            ),
           },
         };
       }
@@ -359,6 +490,100 @@ export async function invokeExperienceResource(
           op,
           data: { status: "pending_approval", requiresApproval: true },
         };
+      case "order.list": {
+        const actor = actorOf(ctx);
+        const orders = visibleOrders(ctx);
+        return { ok: true, op, data: { role: actor.role, orders } };
+      }
+      case "order.searchStores": {
+        const query = String(args.query ?? args.utterance ?? "");
+        return { ok: true, op, data: { stores: storesForQuery(query) } };
+      }
+      case "order.create": {
+        const actor = actorOf(ctx);
+        if (actor.role !== "consumer") {
+          return { ok: false, op, errorKo: "주문 생성은 소비자 맥락에서만 가능해요." };
+        }
+        const storeId = String(args.storeId ?? "store_42");
+        const storeName = String(args.storeName ?? "BHC 역삼점");
+        const lines = Array.isArray(args.lines)
+          ? (args.lines as Array<{ name: string; qty: number; priceKrw: number }>)
+          : [{ name: "뿌링클", qty: 1, priceKrw: 23000 }];
+        const order = createExperienceOrder({
+          storeId,
+          storeName,
+          consumerId: actor.userId,
+          lines,
+        });
+        appendExperienceLog(projectId, `Order #${order.displayId} created`);
+        return { ok: true, op, data: { order } };
+      }
+      case "order.status": {
+        const actor = actorOf(ctx);
+        const id = String(args.id ?? args.orderId ?? "");
+        const order = id ? getExperienceOrder(id) : visibleOrders(ctx)[0] ?? null;
+        if (!order) return { ok: false, op, errorKo: "주문을 찾지 못했어요." };
+        if (!canViewOrder(actor, order)) {
+          return { ok: false, op, errorKo: denyReasonKo("view") };
+        }
+        const metadata = actor.role === "consumer" ? [] : listOrderMetadata(order.id);
+        return { ok: true, op, data: { order, metadata } };
+      }
+      case "order.cancel": {
+        const actor = actorOf(ctx);
+        const mine = args.mine === true || actor.role === "consumer";
+        const pool = visibleOrders(ctx).filter((o) => (mine ? o.consumerId === actor.userId : true));
+        const id = String(args.id ?? args.orderId ?? "");
+        const order = id
+          ? getExperienceOrder(id)
+          : args.latest === true
+            ? pool[0] ?? null
+            : pool[0] ?? null;
+        if (!order) return { ok: false, op, errorKo: "취소할 주문이 없어요." };
+        if (!canCancelOrder(actor, order)) {
+          return { ok: false, op, errorKo: denyReasonKo("cancel") };
+        }
+        const next = updateExperienceOrderStatus(order.id, "cancelled");
+        appendExperienceLog(projectId, `Order #${order.displayId} cancelled`);
+        return { ok: true, op, data: { order: next, requiresApproval: actor.role === "merchant" } };
+      }
+      case "order.advance": {
+        const actor = actorOf(ctx);
+        const id = String(args.id ?? args.orderId ?? "");
+        const order = id ? getExperienceOrder(id) : visibleOrders(ctx)[0] ?? null;
+        if (!order) return { ok: false, op, errorKo: "주문을 찾지 못했어요." };
+        if (!canAdvanceOrder(actor, order)) {
+          return { ok: false, op, errorKo: denyReasonKo("advance") };
+        }
+        const next = advanceExperienceOrder(order.id);
+        appendExperienceLog(projectId, `Order #${order.displayId} → ${next?.status ?? "?"}`);
+        return { ok: true, op, data: { order: next } };
+      }
+      case "order.stats": {
+        const actor = actorOf(ctx);
+        if (actor.role !== "merchant") {
+          return { ok: false, op, errorKo: "매출·주문 현황은 점주 맥락에서만 볼 수 있어요." };
+        }
+        const orders = visibleOrders(ctx);
+        const today = new Date().toISOString().slice(0, 10);
+        const todays = orders.filter((o) => o.createdAt.startsWith(today));
+        const active = todays.filter((o) => o.status !== "delivered" && o.status !== "cancelled");
+        const sales = todays
+          .filter((o) => o.status !== "cancelled")
+          .reduce((sum, o) => sum + o.totalKrw, 0);
+        return {
+          ok: true,
+          op,
+          data: {
+            count: todays.length,
+            salesKrw: sales,
+            preparing: todays.filter((o) => o.status === "preparing").length,
+            delivering: todays.filter((o) => o.status === "delivering").length,
+            active: active.length,
+            orders: todays,
+          },
+        };
+      }
       default:
         return { ok: false, op, errorKo: `unknown resource op: ${op}` };
     }
@@ -376,6 +601,8 @@ export function parseResourceOpFromUtterance(utterance: string): {
   readonly args: Record<string, unknown>;
 } | null {
   const t = utterance.trim();
+  const appIntent = parseExperienceAppUtterance(t);
+  if (appIntent) return { op: appIntent.op, args: appIntent.args };
   if (/테이블|table/i.test(t) && /만들|생성|create/i.test(t)) {
     const name = t.match(/([a-z_][a-z0-9_]*)/i)?.[1] ?? "records";
     return { op: "database.createTable", args: { name } };
@@ -399,7 +626,14 @@ export function parseResourceOpFromUtterance(utterance: string): {
   if (/배포|deploy/i.test(t)) {
     return { op: "deployment.create", args: {} };
   }
+  if (/스키마|컬럼|column/i.test(t) && /바꾸|수정|update/i.test(t)) {
+    return { op: "database.updateSchema", args: { name: t.match(/([a-z_][a-z0-9_]*)/i)?.[1] ?? "records" } };
+  }
+  if (/업로드|upload/i.test(t)) {
+    return { op: "storage.upload", args: { bucket: "uploads", name: "sample.jpg" } };
+  }
   if (/서버|runtime|재시작/i.test(t)) {
+    if (/재시작|restart/i.test(t)) return { op: "runtime.restart", args: {} };
     return { op: /멈춰|stop|꺼/i.test(t) ? "runtime.stop" : "runtime.start", args: {} };
   }
   if (/검증|verify|테스트해/i.test(t)) {

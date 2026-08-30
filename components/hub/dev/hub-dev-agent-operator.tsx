@@ -276,7 +276,11 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
             kind: "agent" as const,
             id: `conv-${Date.now()}`,
             at: Date.now(),
-            payload: { type: "text" as const, body: event.body },
+            payload: {
+              type: "text" as const,
+              body: event.body,
+              suggestedActions: event.suggestedActions,
+            },
           },
         ]);
         scrollToBottom();
@@ -725,6 +729,7 @@ export function HubDevAgentOperator(props: HubDevAgentOperatorProps) {
               onRunTests={props.onRunTests}
               onDismissDiff={props.onDismissDiff}
               onAskUserAction={handleAskUserAction}
+              onSuggestedUtterance={props.onAskOperator}
               onPreview={props.onPreview}
               onPublish={props.onPublish}
             />

@@ -18,13 +18,14 @@ export function HubExperienceGraph(props: HubExperienceGraphProps) {
     { title: "Pages", nodes: props.blueprint.nodes.filter((n) => n.kind === "page") },
     { title: "Data", nodes: props.blueprint.nodes.filter((n) => n.kind === "data") },
     { title: "Capabilities", nodes: props.blueprint.nodes.filter((n) => n.kind === "capability") },
+    { title: "Infra", nodes: props.blueprint.nodes.filter((n) => n.kind === "infra") },
   ];
 
   return (
     <div className="rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-sm">
       <p className="text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Visual Blueprint</p>
       <p className="mt-0.5 text-[12px] font-semibold text-[#111827]">{props.blueprint.titleKo}</p>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {columns.map((col) => (
           <div key={col.title}>
             <p className="mb-1 text-[8px] font-bold uppercase tracking-wide text-[#9ca3af]">{col.title}</p>

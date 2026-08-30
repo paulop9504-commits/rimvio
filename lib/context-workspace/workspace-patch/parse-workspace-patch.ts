@@ -6,6 +6,11 @@ import type { WorkspacePatch } from "@/lib/context-workspace/workspace-patch/typ
 import { parseLodgingStayTypeFromText } from "@/lib/globe/lodging/lodging-stay-types";
 import { parseMaxNightlyPriceKrw } from "@/lib/globe/context-condition-ai/filter-lodging-for-intent";
 import { parseOrdinalIndex } from "@/lib/graph-command/resolve-selection-ref";
+import {
+  isWorkspaceNlControlUtterance,
+  parseCuisineFromText,
+  parseMinRatingFromText,
+} from "@/lib/context-workspace/workspace-nl-control";
 
 function dayMovePatch(input: {
   readonly dayIndex: number;
@@ -136,7 +141,12 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
   // P1: cold compound (near + find + hotel) → spatial first so Discovery runs;
   //     soft facets ride ConstraintMemory via P1 guards on that scout.
   // L4: 「남겨」「N개만」「그중 … 이하만」also soft.
+  // Click ≡ NL: 「한식만 보여줘」·「2만원 이하」·「4.5점 이상」.
   {
+    const cuisine = parseCuisineFromText(text);
+    const minRatingNl = parseMinRatingFromText(text);
+    const priceCap = parseMaxNightlyPriceKrw(text);
+    const nlControl = isWorkspaceNlControlUtterance(text);
     const softCheap =
       /더\s*싼|더\s*싸|저렴한\s*순|가성비|싼\s*순|cheap|cheaper/iu.test(text);
     const softInSet =
@@ -158,19 +168,38 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
     const coldCompound =
       hasSpatialCue && wantsFind && !softOnlyDeixis && !explicitRescout;
 
-    if ((softCheap || softInSet) && !explicitRescout && !coldCompound) {
+    if (
+      (softCheap || softInSet || nlControl) &&
+      !explicitRescout &&
+      !coldCompound
+    ) {
       const keepTopN = parseKeepTopN(text);
       const maxNightly =
-        softInSet || /남겨|남기|만\s*(?:남겨|남기|보여|골라)/iu.test(text)
-          ? parseMaxNightlyPriceKrw(text)
+        priceCap != null &&
+        (softInSet ||
+          nlControl ||
+          /남겨|남기|만\s*(?:남겨|남기|보여|골라|해줘)/iu.test(text))
+          ? priceCap
           : null;
       const wantsValue = softCheap || /가성비|싼\s*순/iu.test(text);
-      const wantsRating = /평점\s*높|별점\s*높|rating/iu.test(text);
+      const wantsRating =
+        minRatingNl != null || /평점\s*높|별점\s*높|rating/iu.test(text);
+      const wantsNear = /가까운\s*순/iu.test(text);
       return {
         kind: "filter_entity",
         filter: {
           // Soft refine never hard-caps priceBand to force rescout wipe.
-          ...(wantsRating ? { minRating: 4 } : {}),
+          ...(minRatingNl != null
+            ? { minRating: minRatingNl }
+            : wantsRating
+              ? { minRating: 4 }
+              : {}),
+          ...(cuisine
+            ? {
+                tagIncludes: [cuisine.tag],
+                queryIncludes: cuisine.needles[0] ?? null,
+              }
+            : {}),
           ...(keepTopN != null ? { keepTopN } : {}),
           ...(maxNightly != null ? { maxNightlyPriceKrw: maxNightly } : {}),
           ...(wantsValue && keepTopN == null && maxNightly == null
@@ -178,9 +207,9 @@ export function parseWorkspacePatch(utterance: string): WorkspacePatch | null {
             : {}),
           sortBy: wantsValue
             ? "value"
-            : wantsRating
+            : wantsRating || minRatingNl != null
               ? "rating"
-              : /가까운\s*순/iu.test(text)
+              : wantsNear
                 ? "value"
                 : null,
         },

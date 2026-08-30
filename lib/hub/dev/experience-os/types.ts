@@ -37,10 +37,16 @@ export type ExperienceResourceOp =
   | "workspace.read"
   | "database.listTables"
   | "database.createTable"
+  | "database.updateSchema"
   | "storage.listBuckets"
   | "storage.createBucket"
+  | "storage.listObjects"
+  | "storage.upload"
+  | "storage.delete"
   | "auth.listRoles"
   | "auth.createRole"
+  | "auth.listProviders"
+  | "auth.updateProvider"
   | "user.list"
   | "user.create"
   | "function.list"
@@ -52,6 +58,7 @@ export type ExperienceResourceOp =
   | "runtime.status"
   | "runtime.start"
   | "runtime.stop"
+  | "runtime.restart"
   | "environment.list"
   | "domain.list"
   | "domain.connect"
@@ -63,7 +70,14 @@ export type ExperienceResourceOp =
   | "deployment.status"
   | "deployment.create"
   | "deployment.rollback"
-  | "experience.build";
+  | "experience.build"
+  | "order.list"
+  | "order.create"
+  | "order.status"
+  | "order.cancel"
+  | "order.advance"
+  | "order.stats"
+  | "order.searchStores";
 
 export type ExperienceResourceResult = {
   readonly ok: boolean;

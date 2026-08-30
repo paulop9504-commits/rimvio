@@ -32,7 +32,7 @@ export type OperatorAgentPayload =
       readonly changes: readonly DevProjectChange[];
       readonly changesCount: number;
     }
-  | { readonly type: "text"; readonly body: string }
+  | { readonly type: "text"; readonly body: string; readonly suggestedActions?: readonly { readonly id: string; readonly label: string; readonly utterance: string }[] }
   | { readonly type: "thought"; readonly title: string; readonly body?: string }
   | {
       readonly type: "terminal";

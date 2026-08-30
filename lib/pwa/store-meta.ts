@@ -2,23 +2,25 @@ import { RIMVIO } from "@/lib/brand/rimvio";
 
 /** App Store / Play Store / OG listing copy — single source of truth. */
 export const STORE_META = {
-  /** Google / HTML meta · Twitter — consumer line (no internal OS jargon). */
-  shortDescription:
-    "맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다.",
-  /** Open Graph · store full listing. */
-  longDescription:
-    "Rimvio(림비오)는 맥락을 하나로 잇고, AI와 함께 계획하고 비교하고 실행합니다. 장소·경험·일정을 이어 두고 후보를 찾고 비교·일정·예약 준비까지 이어 주며, 실제 실행은 당신이 확인할 때만 진행됩니다.",
+  /** Browser tab · Google title. */
+  seoTitle: "Rimvio(림비오) — 원하는 일을 말하세요",
+  /** Google snippet · HTML meta · Twitter. Keep identical so SERP/OG do not diverge. */
+  shortDescription: "원하는 일을 말하세요. Rimvio가 만들고, AI가 실행합니다.",
+  /** Open Graph · store full listing — same line as Google intro. */
+  longDescription: "원하는 일을 말하세요. Rimvio가 만들고, AI가 실행합니다.",
   keywords: [
     "Rimvio",
     "림비오",
+    "실행 AI",
+    "Agent",
+    "생산자",
+    "참여자",
+    "개발자",
     "맥락",
-    "AI",
-    "여행",
     "계획",
     "비교",
     "예약",
-    "Experience OS",
-    "Globe",
+    "Hub",
     "PWA",
   ],
   category: "productivity",

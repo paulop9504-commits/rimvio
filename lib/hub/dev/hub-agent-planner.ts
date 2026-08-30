@@ -166,6 +166,13 @@ function buildStructuredSteps(
   }
 
   if (
+    /오늘\s*주문|주문\s*몇|내\s*주문|치킨\s*주문|주문\s*취소|매출|조리중|배달중/.test(utterance)
+  ) {
+    steps.push(step("resource", "주문 Experience 적용", "resource.apply", { utterance }));
+    return steps;
+  }
+
+  if (
     /테이블|버킷|storage|role|역할|secret|도메인|사용자|결제|메뉴|판매자|호텔\s*검색/i.test(utterance) &&
     /만들|생성|추가|create|연결|되돌려|롤백|배포/i.test(utterance)
   ) {

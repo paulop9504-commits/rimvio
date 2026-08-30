@@ -4,6 +4,8 @@ Platform Agent + Coding Agent architecture SSOT. Extends existing Hub Agent spin
 
 See `lib/hub/dev/platform-agent/` and `lib/hub/dev/coding-agent/`.
 
+**Dev Agent OS (product engineering protocol):** `docs/RIMVIO_DEV_AGENT_OS.md` · `lib/hub/dev/dev-agent-os/` — Loop · Platform · Capability decomposition, development loop, task classification, definition of done. Dev Agent = Developer Build Mode of the same Rimvio Agent (ADR-058).
+
 ## Product North Star
 
 > **Rimvio = Platform Agent.** File Tree is an artifact view. Blueprint · Capability · Workflow are primary.
