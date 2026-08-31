@@ -115,6 +115,58 @@ function MetricCard({ label, value, spark }: { label: string; value: string; spa
   );
 }
 
+function FlowStatusPill({ status }: { status: DevAgentRuntime["flowStatus"] }) {
+  const labels = {
+    idle: { text: "idle", className: "bg-[#f2f2f7] text-[#86868b]" },
+    queued: { text: "queued", className: "bg-[#f2f2f7] text-[#86868b]" },
+    running: { text: "running", className: "bg-[#f0edff] text-[#6b4cff]" },
+    completed: { text: "completed", className: "bg-[#e8f8ee] text-[#248a3d]" },
+    approval: { text: "approval required", className: "bg-[#fff4e5] text-[#c93400]" },
+  } as const;
+  const pill = labels[status];
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${pill.className}`}>
+      {pill.text}
+    </span>
+  );
+}
+
+function LoopExecutionBar({ runtime }: { runtime: DevAgentRuntime }) {
+  if (!runtime.activeLoop) return null;
+  const activeIndex = runtime.activeLoop.steps.findIndex(
+    (step) => step.capabilityId === runtime.activeCapabilityId,
+  );
+  return (
+    <div className="mb-4 rounded-[14px] border bg-white p-4" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+        Loop Execution · {runtime.activeLoop.label}
+      </p>
+      <div className="mt-3 space-y-2">
+        {runtime.activeLoop.steps.map((step, index) => {
+          const done = activeIndex > index || runtime.flowStatus === "completed";
+          const active = step.capabilityId === runtime.activeCapabilityId && runtime.isRunning;
+          return (
+            <div key={step.capabilityId} className="flex items-center gap-3 text-[12px]">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f2f2f7] text-[11px] font-semibold">
+                {done ? "✓" : index + 1}
+              </span>
+              <span className={active ? "font-semibold text-[#6b4cff]" : "text-[#636366]"}>
+                {step.capabilityId}
+              </span>
+              {step.permission === "approval" ? (
+                <span className="rounded-md bg-[#fff4e5] px-1.5 py-0.5 text-[10px] font-semibold text-[#c93400]">
+                  Approval
+                </span>
+              ) : null}
+              {active ? <span className="text-[#6b4cff]">● Running</span> : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function DevAgentSandboxPanel({ runtime }: { runtime: DevAgentRuntime }) {
   const stageIndex = FLOW_STEPS.indexOf(runtime.flowStage);
 
@@ -143,6 +195,7 @@ export function DevAgentSandboxPanel({ runtime }: { runtime: DevAgentRuntime }) 
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#34c759]" />
             Live Simulation
           </span>
+          <FlowStatusPill status={runtime.flowStatus} />
           <span>Environment: Sandbox</span>
           <ChevronDown className="h-3.5 w-3.5" />
         </div>
@@ -154,6 +207,8 @@ export function DevAgentSandboxPanel({ runtime }: { runtime: DevAgentRuntime }) 
             <p className="mb-3 text-[13px] text-[#636366]">
               Agent가 실제로 Capability를 실행 중입니다.
             </p>
+
+            <LoopExecutionBar runtime={runtime} />
 
             <div className="mb-4 flex items-stretch gap-2 overflow-x-auto">
               <FlowNode

@@ -1,11 +1,20 @@
 "use client";
 
-import { ArrowUp, AtSign, Sparkles, X } from "lucide-react";
+import { ArrowUp, AtSign, ChevronDown, Sparkles, X } from "lucide-react";
+import { useState } from "react";
 import { CHAT_SUGGESTIONS } from "@/lib/dev/rimvio-dev-agent/fixtures";
 import type { DevAgentRuntime } from "@/lib/dev/rimvio-dev-agent/use-dev-agent-runtime";
 import { Panel } from "./dev-agent-primitives";
 
+const NEXT_STEPS = [
+  "Auth & Test Execution",
+  "Agent Invoke Test",
+  "Publish to Rimvio Hub",
+] as const;
+
 export function DevAgentChatPanel({ runtime }: { runtime: DevAgentRuntime }) {
+  const [stepsOpen, setStepsOpen] = useState(true);
+
   return (
     <aside
       className="flex w-[320px] shrink-0 flex-col border-l bg-[#fbfbfd]"
@@ -59,7 +68,8 @@ export function DevAgentChatPanel({ runtime }: { runtime: DevAgentRuntime }) {
                   </div>
                   <button
                     type="button"
-                    className="mt-3 w-full rounded-[10px] border px-3 py-2 text-[12px] font-medium"
+                    onClick={() => runtime.setCenterMode({ kind: "sandbox" })}
+                    className="mt-3 w-full rounded-[10px] border px-3 py-2 text-[12px] font-medium hover:border-[#6b4cff]/30"
                     style={{ borderColor: "rgba(0,0,0,0.08)" }}
                   >
                     Blueprint 보기
@@ -71,10 +81,36 @@ export function DevAgentChatPanel({ runtime }: { runtime: DevAgentRuntime }) {
         ))}
 
         {runtime.isRunning ? (
-          <div className="flex items-center gap-2 text-[12px] text-[#6b4cff]">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#6b4cff]" />
-            Executing in Sandbox…
+          <div className="rounded-[12px] border border-[#6b4cff]/20 bg-[#f7f5ff] px-3 py-2">
+            <div className="flex items-center gap-2 text-[12px] font-medium text-[#6b4cff]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#6b4cff]" />
+              ● Executing in Sandbox…
+            </div>
+            {runtime.activeCapabilityId ? (
+              <p className="mt-1 text-[11px] text-[#86868b]">
+                Capability: {runtime.activeCapabilityId}
+              </p>
+            ) : null}
           </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setStepsOpen((v) => !v)}
+          className="flex w-full items-center justify-between rounded-[10px] border bg-white px-3 py-2 text-[12px] font-medium text-[#636366]"
+          style={{ borderColor: "rgba(0,0,0,0.08)" }}
+        >
+          Next Steps
+          <ChevronDown className={`h-3.5 w-3.5 transition ${stepsOpen ? "rotate-180" : ""}`} />
+        </button>
+        {stepsOpen ? (
+          <ul className="space-y-1 rounded-[10px] border bg-white p-2 text-[12px] text-[#636366]" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+            {NEXT_STEPS.map((step) => (
+              <li key={step} className="rounded-md px-2 py-1.5 hover:bg-black/[0.03]">
+                {step}
+              </li>
+            ))}
+          </ul>
         ) : null}
       </div>
 

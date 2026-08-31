@@ -18,7 +18,10 @@ export function RimvioDevAgentApp() {
         <DevAgentSandboxPanel runtime={runtime} />
         <DevAgentChatPanel runtime={runtime} />
       </div>
-      <DevAgentStatusBar latencyMs={320} usage={12431} />
+      <DevAgentStatusBar
+        latencyMs={Math.round((runtime.metrics.responseMs || 1.23) * 1000) || 320}
+        usage={runtime.metrics.tokens || 12431}
+      />
     </DevAgentShell>
   );
 }

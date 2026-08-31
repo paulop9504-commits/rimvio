@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { RimvioDevAgentApp } from "@/components/dev/rimvio-dev-agent/rimvio-dev-agent-app";
 
 export default function RimvioDevAgentPage() {
-  redirect("/hub/workspace");
+  return <RimvioDevAgentApp />;
 }

@@ -116,8 +116,14 @@ function parseCommand(text: string): {
   stopAtApproval?: boolean;
 } {
   const lower = text.toLowerCase();
-  if (lower.includes("booking loop")) {
+  if (lower.includes("booking loop") || (lower.includes("booking") && lower.includes("loop"))) {
     return { loopId: "booking" };
+  }
+  if (lower.includes("hotel-search") || (lower.includes("hotel") && lower.includes("loop"))) {
+    return { loopId: "hotel-search" };
+  }
+  if (lower.includes("payment loop")) {
+    return { loopId: "payment" };
   }
   if (lower.includes("payment") && (lower.includes("멈춰") || lower.includes("승인"))) {
     return { capabilityId: "payment.commit", stopAtApproval: true };
@@ -162,9 +168,28 @@ export function useDevAgentRuntime(): DevAgentRuntime {
   const [eventLines, setEventLines] = useState<EventLine[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: "boot",
+      id: "boot-user",
+      role: "user",
+      text: "GitHub 프로젝트를 Rimvio에 연결하고 Agent가 사용할 수 있게 준비해줘.",
+    },
+    {
+      id: "boot-agent",
       role: "agent",
-      text: "OsakaStay Sandbox가 준비됐어요. 명령을 내면 Capability를 실행해요.",
+      text: "프로젝트 분석을 시작할게요.",
+      checklist: [
+        { label: "Repository connected", done: true },
+        { label: "Routes & APIs analyzed", done: true },
+        { label: "Schemas generated", done: true },
+        { label: "Permissions inferred", done: true },
+        { label: "Capabilities discovered", done: true },
+        { label: "Tests executing", done: true },
+      ],
+      summary: { capabilities: 8, approvals: 2 },
+    },
+    {
+      id: "boot-ready",
+      role: "agent",
+      text: "분석이 완료되었습니다. OsakaStay Sandbox가 준비됐어요. 명령을 내면 Capability를 실행해요.",
     },
   ]);
   const [command, setCommand] = useState("");
