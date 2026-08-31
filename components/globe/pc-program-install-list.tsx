@@ -18,6 +18,8 @@ function rimvioPcUpdateOffer(): PcProgramInstallOffer {
     filename: programFilename("rimvio-pc"),
   };
 }
+
+function startDownload(url: string, filename: string) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;

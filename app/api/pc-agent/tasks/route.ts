@@ -84,6 +84,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "device_not_found" }, { status: 404 });
   }
 
+  const offline = device.status !== "ONLINE";
+
   const created = await insertQueuedOpenUrlTask({
     userId: auth.user.id,
     deviceId,

@@ -27,7 +27,7 @@ export const DEV_ONLY_ROUTE_PREFIXES = [
 
 export const DEV_ONLY_API_PREFIXES = ["/api/dev/"] as const;
 
-export type DevSurfaceNavId = "context-ops" | "intelligence";
+export type DevSurfaceNavId = "context-ops" | "intelligence" | "dev-agent";
 
 export const DEV_SURFACE_NAV: ReadonlyArray<{
   id: DevSurfaceNavId;
@@ -46,6 +46,12 @@ export const DEV_SURFACE_NAV: ReadonlyArray<{
     href: DEV_INTELLIGENCE_ROUTE,
     label: "Dev Intelligence",
     blurb: "PMF · opportunity · goal · analytics",
+  },
+  {
+    id: "dev-agent",
+    href: "/dev/rimvio-dev-agent",
+    label: "Dev Agent",
+    blurb: "Capability · Loop · Sandbox Runtime",
   },
 ];
 

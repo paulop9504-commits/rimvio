@@ -8,6 +8,7 @@ import {
   PC_AGENT_HEARTBEAT_TIMEOUT_MS,
   type PcAgentDevice,
 } from "@/lib/pc-local-agent/types";
+import type { PcLocalAgentDeviceRow } from "@/types/database";
 
 export type AgentAuthContext = {
   deviceId: string;
@@ -114,7 +115,7 @@ export async function touchDeviceHeartbeat(
 
   const now = new Date().toISOString();
   const version = parsePcAppVersion(appVersion);
-  const patch: Record<string, unknown> = {
+  const patch: Partial<PcLocalAgentDeviceRow> = {
     status: "ONLINE",
     last_seen_at: now,
     updated_at: now,
@@ -125,7 +126,10 @@ export async function touchDeviceHeartbeat(
       .select("permissions")
       .eq("id", deviceId)
       .maybeSingle();
-    patch.permissions = permissionsWithAppVersion(row?.permissions, version);
+    patch.permissions = permissionsWithAppVersion(row?.permissions, version) as Record<
+      string,
+      boolean
+    >;
   }
   await admin.from("pc_local_agent_devices").update(patch).eq("id", deviceId);
 }
