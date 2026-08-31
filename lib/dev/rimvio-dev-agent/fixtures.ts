@@ -34,6 +34,18 @@ export type DevAgentHotel = {
 
 export const DEV_AGENT_CAPABILITIES: DevAgentCapability[] = [
   {
+    id: "product.search",
+    label: "product.search",
+    description: "Search products on Rimvio Shop",
+    permission: "auto",
+    inputs: [
+      { name: "query", type: "string" },
+      { name: "limit", type: "integer" },
+    ],
+    runtime: "Cloud Agent",
+    usedBy: ["Product Search Demo"],
+  },
+  {
     id: "hotel.search",
     label: "hotel.search",
     description: "Search hotels",
@@ -196,3 +208,27 @@ export const CHAT_SUGGESTIONS = [
   "전체 booking loop 실행해줘",
   "payment.commit은 승인 전에서 멈춰",
 ] as const;
+
+export const DEMO_HOTEL_SEARCH_CONSOLE = [
+  { time: "10:31:02", text: "Agent started · hotel.search", tone: "default" as const },
+  { time: "10:31:02", text: "Intent recognized · hotel.search", tone: "default" as const },
+  { time: "10:31:03", text: "Opened website · /sandbox/osakastay", tone: "default" as const },
+  { time: "10:31:03", text: "Typing · 오사카, 일본", tone: "default" as const },
+  { time: "10:31:04", text: "Click · search button", tone: "default" as const },
+  { time: "10:31:04", text: "API Call · GET /api/sandbox/osakastay/hotels 200 220ms", tone: "success" as const },
+  { time: "10:31:05", text: "Extracted · 8 hotels", tone: "success" as const },
+  { time: "10:31:05", text: "Execution completed in 1.23s", tone: "success" as const },
+];
+
+export const DEMO_HOTEL_SEARCH_NETWORK = [
+  { method: "GET", path: "/sandbox/osakastay", status: 200, ms: 180 },
+  { method: "GET", path: "/api/sandbox/osakastay/hotels", status: 200, ms: 220 },
+] as const;
+
+export const DEMO_HOTEL_SEARCH_METRICS = {
+  responseMs: 1.23,
+  apiCalls: 3,
+  successRate: 100,
+  tokens: 2847,
+  actions: 8,
+};

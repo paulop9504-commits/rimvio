@@ -7,7 +7,7 @@ import type { DevAgentRuntime } from "@/lib/dev/rimvio-dev-agent/use-dev-agent-r
 import { Panel } from "./dev-agent-primitives";
 
 const NEXT_STEPS = [
-  "Auth & Test Execution",
+  "인증 및 테스트 실행",
   "Agent Invoke Test",
   "Publish to Rimvio Hub",
 ] as const;

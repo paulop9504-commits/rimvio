@@ -5,9 +5,8 @@ import { planCapabilityDiscovery } from "@/lib/platform-sdk/discover-capabilitie
 import {
   publishMvpCapability,
   readMvpCapabilities,
-  readMvpLoops,
   saveMvpCapability,
-} from "@/lib/hub/dev/mvp/capability-store";
+} from "@/lib/hub/dev/mvp/local-capabilities";
 import type {
   ActivityLine,
   ChatMessage,
@@ -16,6 +15,7 @@ import type {
   SandboxProduct,
   WorkflowStage,
 } from "@/lib/hub/dev/mvp/types";
+import { readMvpLoops } from "@/lib/hub/dev/mvp/local-capabilities";
 
 export type CenterView = "sandbox" | "capability" | "loop" | "ready";
 

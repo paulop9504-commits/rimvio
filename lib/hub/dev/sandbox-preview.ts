@@ -1,3 +1,9 @@
+/**
+ * Legacy Hub sandbox preview — platform-host invoke path.
+ *
+ * @deprecated Dev Agent default UI uses `lib/sandbox/` session API + Playwright.
+ * Full Hub workspace (`?full=1`) may still call this until unified in Phase 2.
+ */
 import { capabilityDraftToPlatformManifest } from "@/lib/hub/capability/manifest-bridge";
 import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
 import type { PlatformDraft } from "@/lib/hub/platform/types";

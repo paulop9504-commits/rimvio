@@ -24,5 +24,5 @@ export function wantsExperienceOsCreate(utterance: string): boolean {
 
 export function hubCreateHrefFromIdea(idea: string): string {
   const trimmed = idea.trim();
-  return `/hub/create?idea=${encodeURIComponent(trimmed)}`;
+  return `/hub/idea?idea=${encodeURIComponent(trimmed)}`;
 }

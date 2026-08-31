@@ -1,8 +1,13 @@
+/**
+ * MVP workspace local capability drafts (UI state only).
+ * Publish path → lib/capability-core/registry.ts → capability-index SSOT.
+ */
+
 import {
-  persistCapabilityIndex,
+  publishStandaloneCapabilityEntry,
   readCapabilityIndex,
   type CapabilityIndexEntry,
-} from "@/lib/platform-sdk/capability-index";
+} from "@/lib/capability-core";
 import type { MvpCapability, MvpLoop } from "@/lib/hub/dev/mvp/types";
 
 const CAPABILITIES_KEY = "rimvio.hub.mvp.capabilities.v1";
@@ -77,14 +82,6 @@ export function readMvpLoops(): MvpLoop[] {
   return stored ?? DEFAULT_LOOPS;
 }
 
-export function saveMvpLoop(loop: MvpLoop): MvpLoop[] {
-  const list = readMvpLoops();
-  const idx = list.findIndex((row) => row.id === loop.id);
-  const next = idx >= 0 ? list.map((row, i) => (i === idx ? loop : row)) : [...list, loop];
-  writeJson(LOOPS_KEY, next);
-  return next;
-}
-
 function keywordsFor(cap: MvpCapability): string[] {
   const base = [cap.name, cap.description, cap.id];
   if (cap.id.includes("search")) return [...base, "검색", "찾", "search", "상품"];
@@ -113,7 +110,10 @@ export function publishMvpCapability(cap: MvpCapability): MvpCapability {
     origin: "standalone",
   };
 
-  const index = readCapabilityIndex().filter((row) => row.capabilityId !== cap.id);
-  persistCapabilityIndex([...index, entry]);
+  publishStandaloneCapabilityEntry(entry);
   return published;
+}
+
+export function readMvpPublishedFromIndex(): CapabilityIndexEntry[] {
+  return readCapabilityIndex().filter((row) => row.platformId === "platform.dev-hub");
 }
