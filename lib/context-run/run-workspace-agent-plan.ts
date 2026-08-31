@@ -205,6 +205,18 @@ export async function runWorkspaceAgentPlan(input: {
   });
   persistAgentPlan({ contextEventId, plan });
 
+  const { tryExecuteViaRealityPipeline } = await import(
+    "@/lib/reality-orchestration/delegate-from-workspace-plan"
+  );
+  const delegated = await tryExecuteViaRealityPipeline({
+    utterance,
+    contextEventId,
+    plan,
+  });
+  if (delegated) {
+    return delegated;
+  }
+
   const nextSteps: WorkspaceAgentPlanStep[] = [];
   let workspaceMutated = false;
   let lastLoop: WorkspaceAgentLoopResult | null = null;

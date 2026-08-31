@@ -1,0 +1,42 @@
+# Rimvio Platform SDK (locked)
+
+**Canonical:** `docs/RIMVIO_PLATFORM_SDK_SPEC.md` · ADR-054 · `lib/platform-sdk/`  
+**OS parent:** `docs/RIMVIO_OS_CONSTITUTION.md` · ADR-057 · `lib/rimvio-protocol/`
+
+> One manifest · three runtime tiers · five APIs · tenant-strict data · capability-first Agent discovery.
+
+## Stack
+
+```
+rimvio.platform.manifest.v1
+ → Permission gate (4 layers)
+ → Runtime tier (native | sandbox | external)
+ → Context API · Data API · Capability API
+ → Prepare → Human Commit (Article 0)
+```
+
+## Do
+
+- Publish platforms as `RimvioPlatformManifest` — Hub wizard is a view over it
+- Register `capabilities[]` for Agent discovery — not UI routes alone
+- Data via `data.<collection>.*` permissions · `tenant_strict` isolation
+- Cross-platform via `composition.imports` + user Commit
+- Extend `lib/platform-sdk/` for manifest/permission SSOT
+
+## Relationship
+
+| Package | Role |
+|---------|------|
+| `lib/platform-sdk/` | Developer Platform OS contract (Hub, Agent index) |
+| `lib/platform-builder/` | RIR + AI Builder → manifest compiler |
+| `lib/platform/` | Internal behavioral OS host (plugins) |
+| `lib/hub/capability/` | Developer submission wizard → manifest export |
+| `/hub/build` | Builder UI (natural language) |
+| `/hub/submit` | Developer wizard (code-first) |
+
+## PR reject
+
+- Cross-tenant data · arbitrary code without manifest
+- UI routes as Agent SSOT · parallel manifest formats
+- Auto Reality Commit from platform handlers
+- New `*-platform-runtime` package (ADR-045)

@@ -1,0 +1,254 @@
+"use client";
+
+import Link from "next/link";
+import {
+  AlertCircle,
+  BookOpen,
+  CheckCircle2,
+  ChevronLeft,
+  Clock,
+  CreditCard,
+  Cpu,
+  Database,
+  FileDiff,
+  FlaskConical,
+  GitBranch,
+  Globe,
+  HardDrive,
+  Key,
+  Layers,
+  Link2,
+  Lock,
+  Package,
+  Puzzle,
+  Repeat,
+  Rocket,
+  ScrollText,
+  Shield,
+  Users,
+  Zap,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  DEV_SIDEBAR_BUILD_NAV,
+  DEV_SIDEBAR_SHIP_NAV,
+  DEV_SIDEBAR_VALIDATE_NAV,
+  type DevWorkspacePane,
+} from "@/lib/hub/dev/dev-workspace-nav";
+import { buildDevBlueprintModel } from "@/lib/hub/dev/dev-blueprint-model";
+import { readLoopDefinition } from "@/lib/agent-os/loop-builder";
+import type { DevProjectSnapshot } from "@/lib/hub/dev/dev-project-state";
+import type { PlatformDraft } from "@/lib/hub/platform/types";
+import { HubDevFileTree } from "@/components/hub/dev/hub-dev-file-tree";
+import type { HubFileTreeNode } from "@/lib/hub/dev/hub-file-tree";
+
+const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  link: Link2,
+  book: BookOpen,
+  puzzle: Puzzle,
+  database: Database,
+  "hard-drive": HardDrive,
+  users: Users,
+  lock: Lock,
+  zap: Zap,
+  clock: Clock,
+  repeat: Repeat,
+  "git-branch": GitBranch,
+  shield: Shield,
+  layers: Layers,
+  cpu: Cpu,
+  "credit-card": CreditCard,
+  alert: AlertCircle,
+  "file-diff": FileDiff,
+  flask: FlaskConical,
+  "check-circle": CheckCircle2,
+  rocket: Rocket,
+  globe: Globe,
+  key: Key,
+  scroll: ScrollText,
+  package: Package,
+};
+
+type HubDevProjectSidebarProps = {
+  readonly platformName: string;
+  readonly draft: PlatformDraft;
+  readonly activePane: DevWorkspacePane;
+  readonly snapshot: DevProjectSnapshot;
+  readonly fileTree: readonly HubFileTreeNode[];
+  readonly onPaneChange: (pane: DevWorkspacePane) => void;
+  readonly onOpenAde: () => void;
+  readonly onSelectFile?: (path: string) => void;
+  readonly onStatusClick?: (kind: "agent" | "certified" | "published") => void;
+};
+
+export function HubDevProjectSidebar({
+  platformName,
+  draft,
+  activePane,
+  snapshot,
+  fileTree,
+  onPaneChange,
+  onOpenAde,
+  onSelectFile,
+  onStatusClick,
+}: HubDevProjectSidebarProps) {
+  const blueprint = buildDevBlueprintModel({ draft, snapshot });
+  const loopDraft = draft.id ? readLoopDefinition(draft.id) : null;
+
+  const badges: Record<string, string | number | undefined> = {
+    sources: snapshot.sources.length || undefined,
+    capabilities: snapshot.capabilityCount || undefined,
+    data: blueprint.dataEntities.length,
+    workflows: blueprint.workflows.length,
+    loops: loopDraft ? 1 : undefined,
+    permissions: blueprint.permissions.length,
+    context: blueprint.contextFields.length,
+    runtime: blueprint.runtimes.length,
+    commerce: 1,
+    issues: snapshot.issuesCount || undefined,
+    changes: snapshot.changesCount || undefined,
+    tests: snapshot.testsTotal ? `${snapshot.testsPassed}/${snapshot.testsTotal}` : undefined,
+  };
+
+  return (
+    <aside className="flex w-[188px] shrink-0 flex-col border-r border-[#e5e7eb] bg-white">
+      <div className="border-b border-[#f3f4f6] p-2.5">
+        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Platform</p>
+        <button type="button" onClick={onOpenAde} className="w-full rounded-lg border border-[#f3f4f6] bg-[#fafafa] p-2 text-left hover:bg-white">
+          <div className="flex items-start gap-2">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-[11px] font-bold text-violet-700">
+              {(platformName || "N").slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <p className="truncate text-[11px] font-bold text-[#111827]">{platformName || "New Platform"}</p>
+                {snapshot.status.agentReady ? (
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-1 py-px text-[8px] font-bold text-emerald-700">
+                    Ready
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-[#9ca3af]">
+                {draft.description || "Platform Builder workspace"}
+              </p>
+            </div>
+          </div>
+        </button>
+        <Link href="/hub" className="mt-2 flex items-center gap-0.5 text-[9px] text-[#9ca3af] hover:text-violet-600">
+          <ChevronLeft className="size-2.5" />
+          All Platforms
+        </Link>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto p-2 rimvio-scroll-touch">
+        <NavSection title="Build" items={DEV_SIDEBAR_BUILD_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="" />
+        <NavSection title="Validate" items={DEV_SIDEBAR_VALIDATE_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="mt-3" />
+        <NavSection title="Ship" items={DEV_SIDEBAR_SHIP_NAV} activePane={activePane} badges={badges} onPaneChange={onPaneChange} className="mt-3" />
+
+        {fileTree.length > 0 ? (
+          <div className="mt-3 border-t border-[#f3f4f6] pt-2">
+            <p className="mb-1 px-1.5 text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Files</p>
+            <HubDevFileTree nodes={fileTree} onSelectPath={onSelectFile} />
+          </div>
+        ) : null}
+      </nav>
+
+      <div className="border-t border-[#f3f4f6] p-2.5">
+        <p className="text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">Status</p>
+        <div className="mt-1.5 space-y-1">
+          <StatusRow done={snapshot.status.agentReady} label="Agent Ready" onClick={() => onPaneChange("status")} />
+          <StatusRow
+            done={snapshot.status.rimvioCertified}
+            label={snapshot.status.certifiedVersion ? `Certified ${snapshot.status.certifiedVersion}` : "Certified"}
+            onClick={() => onPaneChange("standards")}
+          />
+          <StatusRow
+            done={snapshot.status.published}
+            label={snapshot.status.published ? `Published ${snapshot.status.publishedAgoKo ?? ""}`.trim() : "Published"}
+            onClick={() => onPaneChange("deploy")}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => onPaneChange("standards")}
+          className="mt-2.5 block text-left text-[9px] text-[#9ca3af] hover:text-violet-600"
+        >
+          Rimvio Docs
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function NavSection({
+  title,
+  items,
+  activePane,
+  badges,
+  onPaneChange,
+  className,
+}: {
+  title: string;
+  items: typeof DEV_SIDEBAR_BUILD_NAV;
+  activePane: DevWorkspacePane;
+  badges: Record<string, string | number | undefined>;
+  onPaneChange: (pane: DevWorkspacePane) => void;
+  className?: string;
+}) {
+  const paneIsActive = (id: DevWorkspacePane) => activePane === id;
+  return (
+    <div className={className}>
+      <p className="mb-1 px-1.5 text-[9px] font-bold uppercase tracking-wide text-[#9ca3af]">{title}</p>
+      <div className="space-y-px">
+        {items.map((item) => {
+          const Icon = ICONS[item.icon] ?? Puzzle;
+          const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
+          const active = paneIsActive(item.id);
+          const warn = item.id === "issues" && Number(badge) > 0;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onPaneChange(item.id)}
+              className={cn(
+                "flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[10px] font-medium transition-colors",
+                active ? "bg-violet-50 text-violet-700" : "text-[#4b5563] hover:bg-[#f9fafb]",
+              )}
+            >
+              <Icon className={cn("size-3 shrink-0", warn ? "text-red-500" : active ? "text-violet-600" : "text-[#9ca3af]")} />
+              <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              {badge !== undefined && badge !== 0 && badge !== "0/0" ? (
+                <span className={cn("shrink-0 rounded px-1 py-px text-[9px] font-semibold tabular-nums", warn ? "bg-red-50 text-red-600" : "bg-[#f3f4f6] text-[#6b7280]")}>
+                  {badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatusRow({
+  done,
+  label,
+  onClick,
+}: {
+  done: boolean;
+  label: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn("flex w-full items-center gap-1.5 text-left text-[9px] font-medium", done ? "text-emerald-600" : "text-[#9ca3af]")}
+    >
+      <span className={cn("flex size-3 items-center justify-center rounded-full text-[7px]", done ? "bg-emerald-100" : "bg-[#f3f4f6]")}>
+        {done ? "✓" : "○"}
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}

@@ -1,0 +1,37 @@
+# Rimvio Dev Agent OS (locked)
+
+**Canonical:** `docs/RIMVIO_DEV_AGENT_OS.md` · **Wire:** `lib/hub/dev/dev-agent-os/` · **Parent:** ADR-058
+
+> Dev Agent = **Rimvio Agent — Developer Build Mode**. Loop · Platform · Capability를 설계→만들→연결→테스트→수정→배포. 코드 생성기 아님.
+
+## Stack
+
+```text
+UNDERSTAND → INSPECT → PLAN → DESIGN → BUILD → CONNECT → TEST → VERIFY → DEPLOY → MONITOR → FIX ↺
+```
+
+## Do
+
+- NL → **Product Intent** (Platform · Capability · Loop · Workspace) — not code-first
+- **INSPECT** current system state before CREATE — reuse Capabilities from `capability-index`
+- **CONNECT** UI → State → Capability → External Service — never UI-only shells
+- Classify tasks: CREATE · MODIFY · DEBUG · PLAN · CONNECT · TEST · DEPLOY · REMOVE
+- Shared click/chat actions on same state (`setCategory("korean")`)
+- DEBUG → diagnose → fix → retest — do not stop at "error occurred"
+- Scoped changes on shared Capabilities — test all affected Platforms
+- Definition of Done = **complete product behavior**, deployable when requested
+
+## Don't
+
+- Separate Dev Agent runtime package (ADR-045/058)
+- Skip INSPECT/CONNECT/TEST/VERIFY stages on meaningful work
+- Duplicate Capabilities when registry has a match
+- Equate "code written" with "task done"
+- UI without state/Capability/integration wiring
+
+## PR reject
+
+- New platform feature without Platform/Capability/Loop identification in plan
+- CREATE without reuse check against existing Capabilities
+- Shared Capability change without impact assessment
+- Deploy claim without health/verify step

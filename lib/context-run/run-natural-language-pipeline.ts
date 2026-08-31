@@ -96,6 +96,8 @@ import {
 } from "@/lib/globe-ingress/pending-context-create-store";
 import { tryPatchPendingContextCreate } from "@/lib/globe-ingress/try-patch-pending-context-create";
 import { writeActionPlanUi } from "@/lib/action-planner/action-plan-ui-store";
+import type { RimvioIntentFrame } from "@/lib/rimvio-protocol/intent";
+import { runNlIntentCompilerStage } from "@/lib/context-run/compile-nl-intent";
 import { publishShortToolPlanPreview } from "@/lib/action-planner/publish-short-tool-plan";
 import {
   tryRunActionPlanner,
@@ -122,6 +124,8 @@ export type NlPipelineTrace = {
   readonly ruleDecision: RuleEngineDecision;
   readonly contextPack: ContextPackV1;
   readonly deferredToScout?: boolean;
+  readonly intentFrame?: RimvioIntentFrame | null;
+  readonly intentWorkLogKo?: string | null;
 };
 
 export type NlPipelineRun = {
@@ -304,6 +308,22 @@ function pushStage(
   }
 }
 
+function compilePipelineIntent(utterance: string): Pick<
+  NlPipelineTrace,
+  "intentFrame" | "intentWorkLogKo"
+> {
+  const compiled = runNlIntentCompilerStage(utterance);
+  return {
+    intentFrame: compiled.intentFrame,
+    intentWorkLogKo: compiled.workLogKo,
+  };
+}
+
+function pushIntentParserStages(visited: NlPipelineStage[]): void {
+  pushStage(visited, "intent_parser");
+  pushStage(visited, "intent_compiler");
+}
+
 function ruleStopResult(input: {
   contextEventId: string;
   pack: ContextPackV1;
@@ -315,7 +335,7 @@ function ruleStopResult(input: {
   >;
   utterance: string;
 }): NlPipelineRun {
-  pushStage(input.visited, "intent_parser");
+  pushIntentParserStages(input.visited);
   const via = input.gate.kind === "blocked" ? "rule_blocked" : "clarify";
   const clarify = input.ruleDecision.clarify;
   let clarifyChips:
@@ -408,6 +428,8 @@ export function runNaturalLanguagePipeline(
     });
   }
 
+  const intentTrace = compilePipelineIntent(input.utterance);
+
   if (!multiIntent) {
     const soft = tryRunSoftSurfaceCommand({
       utterance: input.utterance,
@@ -416,7 +438,7 @@ export function runNaturalLanguagePipeline(
       contextLabelKo: input.contextLabelKo,
     });
     if (soft) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "tool_router");
       if (soft.waitingCommit) {
         pushStage(visited, "agent_runtime");
@@ -434,7 +456,7 @@ export function runNaturalLanguagePipeline(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -444,7 +466,7 @@ export function runNaturalLanguagePipeline(
     if (pendingCreate) {
       if (isPendingContextCreateCancel(input.utterance)) {
         clearPendingContextCreate(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -458,7 +480,7 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isPendingContextCreateApprove(input.utterance)) {
@@ -471,7 +493,7 @@ export function runNaturalLanguagePipeline(
             navigateUrl: () => {},
           },
         });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_engine");
         return {
           result: {
@@ -488,7 +510,7 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       const patchedCreate = tryPatchPendingContextCreate({
@@ -498,10 +520,10 @@ export function runNaturalLanguagePipeline(
         pack,
       });
       if (patchedCreate) {
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: patchedCreate,
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -515,10 +537,10 @@ export function runNaturalLanguagePipeline(
       pack,
     });
     if (pendingCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: pendingCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -531,10 +553,10 @@ export function runNaturalLanguagePipeline(
       pack,
     });
     if (softCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: softCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -547,11 +569,11 @@ export function runNaturalLanguagePipeline(
       pack,
     });
     if (hardCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "agent_runtime");
       return {
         result: hardCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -564,10 +586,10 @@ export function runNaturalLanguagePipeline(
       pack,
     });
     if (createOffer) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: createOffer,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -580,7 +602,7 @@ export function runNaturalLanguagePipeline(
     if (pendingStay) {
       if (isLodgingStayReviseRejectUtterance(input.utterance)) {
         const summaryKo = cancelLodgingStayRevisePending(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -594,12 +616,12 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isLodgingStayReviseAffirmUtterance(input.utterance)) {
         const applied = applyLodgingStayRevisePending({ contextEventId });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_command_ir");
         pushStage(visited, "graph_engine");
         pushStage(visited, "reality_graph");
@@ -617,7 +639,7 @@ export function runNaturalLanguagePipeline(
               ruleDecision,
               contextPack: pack,
             },
-            trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+            trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
           };
         }
         bumpSessionGraphProjection(contextEventId);
@@ -636,7 +658,7 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -649,7 +671,7 @@ export function runNaturalLanguagePipeline(
       contextEventId,
     });
     if (revised) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "graph_command_ir");
       if (revised.via === "revise_confirm") {
         pushStage(visited, "graph_engine");
@@ -660,7 +682,7 @@ export function runNaturalLanguagePipeline(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -671,7 +693,7 @@ export function runNaturalLanguagePipeline(
     if (pendingSoft) {
       if (isSoftConfirmRejectUtterance(input.utterance)) {
         const summaryKo = cancelSoftConfirmPending(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -685,7 +707,7 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isSoftConfirmAffirmUtterance(input.utterance)) {
@@ -695,7 +717,7 @@ export function runNaturalLanguagePipeline(
           anchorLng: input.anchorLng,
           contextLabelKo: input.contextLabelKo,
         });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_command_ir");
         pushStage(visited, "graph_engine");
         pushStage(visited, "reality_graph");
@@ -714,7 +736,7 @@ export function runNaturalLanguagePipeline(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -733,7 +755,7 @@ export function runNaturalLanguagePipeline(
         pack,
       ))
   ) {
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     const shortPlan = publishShortPlanIfNeeded({
       utterance: input.utterance,
       contextEventId,
@@ -753,13 +775,14 @@ export function runNaturalLanguagePipeline(
         ruleDecision,
         contextPack: pack,
         deferredToScout: true,
+        ...intentTrace,
       },
     };
   }
 
   if (compound) {
     pushStage(visited, "entity_resolver");
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     pushStage(visited, "action_planner");
     const planned = tryRunActionPlanner(input);
     if (planned) {
@@ -798,14 +821,14 @@ export function runNaturalLanguagePipeline(
           ruleDecision,
           contextPack: nextPack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: nextPack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: nextPack, ...intentTrace },
       };
     }
   }
 
   // Single Graph Command — Context Engine move · Pin / Filter / Delete / Reserve …
   pushStage(visited, "entity_resolver");
-  pushStage(visited, "intent_parser");
+  pushIntentParserStages(visited);
   let shortPlan: ActionPlanV1 | null = null;
   // Search → short plan + Tool Registry before Graph IR (canonical order).
   {
@@ -852,6 +875,7 @@ export function runNaturalLanguagePipeline(
         stagesVisited: visited,
         ruleDecision,
         contextPack: nextPack,
+        ...intentTrace,
       },
     };
   }
@@ -877,7 +901,7 @@ export function runNaturalLanguagePipeline(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -897,14 +921,14 @@ export function runNaturalLanguagePipeline(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
 
   const single = tryRunGraphCommandOs(input);
   if (!single) {
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     const recovery = recoverUnmatchedNlTurn({
       utterance: input.utterance,
       contextEventId,
@@ -924,7 +948,7 @@ export function runNaturalLanguagePipeline(
         contextPack: pack,
         clarifyChips: recovery.clarifyChips,
       },
-      trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
     };
   }
   pushStage(visited, "graph_engine");
@@ -966,6 +990,7 @@ export function runNaturalLanguagePipeline(
       stagesVisited: visited,
       ruleDecision,
       contextPack: nextPack,
+      ...intentTrace,
     },
   };
 }
@@ -1018,6 +1043,8 @@ export async function runNaturalLanguagePipelineAsync(
     });
   }
 
+  const intentTrace = compilePipelineIntent(input.utterance);
+
   if (!multiIntent) {
     const soft = tryRunSoftSurfaceCommand({
       utterance: input.utterance,
@@ -1026,7 +1053,7 @@ export async function runNaturalLanguagePipelineAsync(
       contextLabelKo: input.contextLabelKo,
     });
     if (soft) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "tool_router");
       if (soft.waitingCommit) {
         pushStage(visited, "agent_runtime");
@@ -1044,7 +1071,7 @@ export async function runNaturalLanguagePipelineAsync(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1054,7 +1081,7 @@ export async function runNaturalLanguagePipelineAsync(
     if (pendingCreate) {
       if (isPendingContextCreateCancel(input.utterance)) {
         clearPendingContextCreate(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -1068,7 +1095,7 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isPendingContextCreateApprove(input.utterance)) {
@@ -1081,7 +1108,7 @@ export async function runNaturalLanguagePipelineAsync(
             navigateUrl: () => {},
           },
         });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_engine");
         return {
           result: {
@@ -1098,7 +1125,7 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       const patchedCreate = tryPatchPendingContextCreate({
@@ -1108,10 +1135,10 @@ export async function runNaturalLanguagePipelineAsync(
         pack,
       });
       if (patchedCreate) {
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: patchedCreate,
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -1125,10 +1152,10 @@ export async function runNaturalLanguagePipelineAsync(
       pack,
     });
     if (pendingCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: pendingCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1141,10 +1168,10 @@ export async function runNaturalLanguagePipelineAsync(
       pack,
     });
     if (softCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: softCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1157,11 +1184,11 @@ export async function runNaturalLanguagePipelineAsync(
       pack,
     });
     if (hardCreate) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "agent_runtime");
       return {
         result: hardCreate,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1174,10 +1201,10 @@ export async function runNaturalLanguagePipelineAsync(
       pack,
     });
     if (createOffer) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       return {
         result: createOffer,
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1190,7 +1217,7 @@ export async function runNaturalLanguagePipelineAsync(
     if (pendingStay) {
       if (isLodgingStayReviseRejectUtterance(input.utterance)) {
         const summaryKo = cancelLodgingStayRevisePending(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -1204,12 +1231,12 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isLodgingStayReviseAffirmUtterance(input.utterance)) {
         const applied = applyLodgingStayRevisePending({ contextEventId });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_command_ir");
         pushStage(visited, "graph_engine");
         pushStage(visited, "reality_graph");
@@ -1227,7 +1254,7 @@ export async function runNaturalLanguagePipelineAsync(
               ruleDecision,
               contextPack: pack,
             },
-            trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+            trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
           };
         }
         bumpSessionGraphProjection(contextEventId);
@@ -1246,7 +1273,7 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -1259,7 +1286,7 @@ export async function runNaturalLanguagePipelineAsync(
       contextEventId,
     });
     if (revised) {
-      pushStage(visited, "intent_parser");
+      pushIntentParserStages(visited);
       pushStage(visited, "graph_command_ir");
       if (revised.via === "revise_confirm") {
         pushStage(visited, "graph_engine");
@@ -1270,7 +1297,7 @@ export async function runNaturalLanguagePipelineAsync(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1281,7 +1308,7 @@ export async function runNaturalLanguagePipelineAsync(
     if (pendingSoft) {
       if (isSoftConfirmRejectUtterance(input.utterance)) {
         const summaryKo = cancelSoftConfirmPending(contextEventId);
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         return {
           result: {
             ok: true,
@@ -1295,7 +1322,7 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
       if (isSoftConfirmAffirmUtterance(input.utterance)) {
@@ -1305,7 +1332,7 @@ export async function runNaturalLanguagePipelineAsync(
           anchorLng: input.anchorLng,
           contextLabelKo: input.contextLabelKo,
         });
-        pushStage(visited, "intent_parser");
+        pushIntentParserStages(visited);
         pushStage(visited, "graph_command_ir");
         pushStage(visited, "graph_engine");
         pushStage(visited, "reality_graph");
@@ -1324,7 +1351,7 @@ export async function runNaturalLanguagePipelineAsync(
             ruleDecision,
             contextPack: pack,
           },
-          trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+          trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
         };
       }
     }
@@ -1340,7 +1367,7 @@ export async function runNaturalLanguagePipelineAsync(
         pack,
       ))
   ) {
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     const shortPlan = publishShortPlanIfNeeded({
       utterance: input.utterance,
       contextEventId,
@@ -1360,13 +1387,14 @@ export async function runNaturalLanguagePipelineAsync(
         ruleDecision,
         contextPack: pack,
         deferredToScout: true,
+        ...intentTrace,
       },
     };
   }
 
   if (compound) {
     pushStage(visited, "entity_resolver");
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     pushStage(visited, "action_planner");
     const agent = await runAgentController({
       utterance: input.utterance,
@@ -1423,13 +1451,13 @@ export async function runNaturalLanguagePipelineAsync(
           ruleDecision,
           contextPack: nextPack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: nextPack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: nextPack, ...intentTrace },
       };
     }
   }
 
   pushStage(visited, "entity_resolver");
-  pushStage(visited, "intent_parser");
+  pushIntentParserStages(visited);
   let shortPlan: ActionPlanV1 | null = null;
   // Search → short plan + Tool Registry before Graph IR (canonical order).
   {
@@ -1476,6 +1504,7 @@ export async function runNaturalLanguagePipelineAsync(
         stagesVisited: visited,
         ruleDecision,
         contextPack: nextPack,
+        ...intentTrace,
       },
     };
   }
@@ -1501,7 +1530,7 @@ export async function runNaturalLanguagePipelineAsync(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
@@ -1521,14 +1550,14 @@ export async function runNaturalLanguagePipelineAsync(
           ruleDecision,
           contextPack: pack,
         },
-        trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+        trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
       };
     }
   }
 
   const single = await tryRunGraphCommandOsAsync(input);
   if (!single) {
-    pushStage(visited, "intent_parser");
+    pushIntentParserStages(visited);
     const recovery = recoverUnmatchedNlTurn({
       utterance: input.utterance,
       contextEventId,
@@ -1548,7 +1577,7 @@ export async function runNaturalLanguagePipelineAsync(
         contextPack: pack,
         clarifyChips: recovery.clarifyChips,
       },
-      trace: { stagesVisited: visited, ruleDecision, contextPack: pack },
+      trace: { stagesVisited: visited, ruleDecision, contextPack: pack, ...intentTrace },
     };
   }
   pushStage(visited, "graph_engine");
@@ -1590,6 +1619,7 @@ export async function runNaturalLanguagePipelineAsync(
       stagesVisited: visited,
       ruleDecision,
       contextPack: nextPack,
+      ...intentTrace,
     },
   };
 }

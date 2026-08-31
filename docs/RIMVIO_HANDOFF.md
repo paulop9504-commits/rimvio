@@ -16,7 +16,9 @@
 >
 > **실기기 QA:** [PHONE_QA.md](./PHONE_QA.md) · **상표:** [RIMVIO_KIPRIS.md](./RIMVIO_KIPRIS.md)
 >
-> **한 줄 정의:** **Your Life, Operable.** — Human Intent를 Action Dock으로 실행하는 **개인 Action OS** (링크 공유는 ingress)
+> **North star (2026-08):** [RIMVIO_AGENT_HUB_VISION.md](./RIMVIO_AGENT_HUB_VISION.md)
+>
+> **한 줄 정의:** **해줘 — Rimvio가 실행한다.** — Rimvio Agent + Hub + Runtime **초연결 AI 실행 플랫폼** (Travel/Globe = L1 Market projection)
 
 ---
 

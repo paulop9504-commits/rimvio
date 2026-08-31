@@ -11,6 +11,10 @@
 import { runWorkspaceAgentPlan } from "@/lib/context-run/run-workspace-agent-plan";
 import { tryApplyConversationalTurn } from "@/lib/context-run/try-apply-conversational-turn";
 import { isWorkspaceAgentWorkUtterance } from "@/lib/context-run/is-workspace-agent-work-utterance";
+import {
+  resolveInteractionMode,
+  workspaceModeFromInteraction,
+} from "@/lib/agent-os/resolve-interaction-mode";
 import { resolveActiveWorkspaceContextId } from "@/lib/context-run/resolve-active-workspace-context";
 import { beginAgentProductTurn } from "@/lib/context-run/agent-product-pipeline";
 import { resolveAgentStatusWorkLog } from "@/lib/context-run/agent-status-work-log";
@@ -40,6 +44,7 @@ import {
   tryApplyPlaceLocateFromUtterance,
 } from "@/lib/context-workspace/reality-anchor";
 import { copy } from "@/lib/copy/human-ko";
+import { resolveComposerErrorKo } from "@/lib/errors/sanitize-user-facing-error";
 import {
   publishGlobeProjectionLayerPolicy,
   readGlobeProjectionLayerPolicy,
@@ -47,6 +52,8 @@ import {
 import { isAgentExecuteVerbUtterance } from "@/lib/context-run/is-agent-execute-verb";
 import { resolveRecentTravelDestinationHint } from "@/lib/context-run/resolve-recent-travel-destination-hint";
 import { utteranceConflictsActiveDestination } from "@/lib/context-run/destination-context-conflict";
+import { executeGlobeCapabilityDiscovery } from "@/lib/context-run/globe-capability-discovery-turn";
+import type { GlobeCapabilityDiscoveryProjection } from "@/lib/context-run/globe-capability-discovery-turn";
 
 export type GlobeWorkspaceAgentTurnResult = {
   readonly handled: boolean;
@@ -64,7 +71,8 @@ export type GlobeWorkspaceAgentTurnResult = {
     | "continuum_mint"
     | "free_talk"
     | "map_overlay"
-    | "network_absorb";
+    | "network_absorb"
+    | "capability_discovery";
   readonly patchKind?: string | null;
   readonly commitPending?: boolean;
   /** Alias — Article 0: never auto Commit. */
@@ -83,6 +91,8 @@ export type GlobeWorkspaceAgentTurnResult = {
     readonly kind: string;
     readonly ctaKo: string;
   }[];
+  /** Hub Registry discovery — Platform handoff for consumer Agent. */
+  readonly capabilityDiscovery?: GlobeCapabilityDiscoveryProjection | null;
 };
 
 const STATUS_MAX = 72;
@@ -297,7 +307,43 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     };
   }
 
-  // Drop active hub when NL destination ≠ Workspace destination (오키나와 ≠ 오사카).
+  try {
+    return await runGlobeWorkspaceAgentTurnBody(input, utterance);
+  } catch (caught) {
+    const statusKo = resolveComposerErrorKo(caught);
+    finishAgentActivityTrail({
+      goalKo: utterance,
+      summaryKo: statusKo,
+      contextEventId:
+        input.explicitContextEventId?.trim() ||
+        input.contextEventId?.trim() ||
+        null,
+      offerExpand: false,
+    });
+    return {
+      handled: true,
+      statusKo: shortenWorkspaceAgentStatus(statusKo),
+      contextEventId:
+        input.explicitContextEventId?.trim() ||
+        input.contextEventId?.trim() ||
+        null,
+      workspaceMutated: false,
+      openedWorkspace: false,
+      committed: false,
+    };
+  }
+}
+
+async function runGlobeWorkspaceAgentTurnBody(
+  input: {
+    readonly utterance: string;
+    readonly explicitContextEventId?: string | null;
+    readonly contextEventId?: string | null;
+    readonly lat?: number | null;
+    readonly lng?: number | null;
+  },
+  utterance: string,
+): Promise<GlobeWorkspaceAgentTurnResult> {
   const requestedCtx =
     input.explicitContextEventId?.trim() ||
     input.contextEventId?.trim() ||
@@ -313,6 +359,64 @@ export async function applyGlobeWorkspaceAgentTurn(input: {
     })
       ? null
       : resolvedActive;
+
+  // P4 — interaction mode: simple answer vs workspace surfaces
+  const interactionMode = resolveInteractionMode(utterance);
+  void workspaceModeFromInteraction(interactionMode);
+  if (interactionMode === "simple_response" && !isWorkspaceAgentWorkUtterance(utterance)) {
+    const ctxForChat = safeContextEventId;
+    const destKo =
+      (ctxForChat
+        ? readContextWorkspace(ctxForChat)?.realityDraft?.destinationKo
+        : null) ?? null;
+    const chat = await tryApplyConversationalTurn({
+      utterance,
+      scopeId: ctxForChat,
+      regionKo: destKo,
+    });
+    if (chat) {
+      return {
+        handled: true,
+        statusKo: chat.replyKo,
+        contextEventId: ctxForChat,
+        workspaceMutated: false,
+        openedWorkspace: false,
+        committed: false,
+        via: "free_talk",
+        patchKind:
+          chat.mode === "direct"
+            ? "fact_direct"
+            : chat.mode === "knowledge"
+              ? "knowledge"
+              : "free_talk",
+      };
+    }
+  }
+
+  // Hub Capability Registry — discovery before Workspace / free-talk (ADR-058).
+  const capDiscovery = await executeGlobeCapabilityDiscovery({ utterance });
+  if (capDiscovery) {
+    beginAgentActivityTrail({
+      goalKo: utterance,
+      contextEventId: safeContextEventId,
+    });
+    finishAgentActivityTrail({
+      goalKo: utterance,
+      summaryKo: capDiscovery.statusKo,
+      contextEventId: safeContextEventId,
+      offerExpand: false,
+    });
+    return {
+      handled: true,
+      statusKo: shortenWorkspaceAgentStatus(capDiscovery.statusKo),
+      contextEventId: safeContextEventId,
+      workspaceMutated: false,
+      openedWorkspace: false,
+      committed: false,
+      via: "capability_discovery",
+      capabilityDiscovery: capDiscovery,
+    };
+  }
 
   // Catalog Workspace routes (finance / document / coding) — stub prepare + open.
   {

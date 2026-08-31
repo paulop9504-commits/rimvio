@@ -8,6 +8,7 @@ export async function callOpenAiTextJsonDirect(input: {
   systemPrompt: string;
   userText: string;
   temperature?: number;
+  model?: string;
 }): Promise<string | null> {
   if (!isOpenAiConfigured()) {
     return null;
@@ -21,7 +22,7 @@ export async function callOpenAiTextJsonDirect(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: openAiVisionModel(),
+        model: input.model?.trim() || openAiVisionModel(),
         temperature: input.temperature ?? 0.1,
         response_format: { type: "json_object" },
         messages: [

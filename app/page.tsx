@@ -1,11 +1,11 @@
-import { AppShell } from "@/components/app-shell";
-import { GlobeHomeClient } from "@/components/globe/globe-home-client";
+import { Suspense } from "react";
+import { AgentHomeRoute } from "@/components/agent/agent-home-client";
 
-/** Globe-first home — giant earth, pins only. */
+/** Agent-first home — Cursor-style 2D workspace; legacy globe at `?surface=globe`. */
 export default function HomePage() {
   return (
-    <AppShell title="지구" hideBranding immersive hideTitle globeHome>
-      <GlobeHomeClient />
-    </AppShell>
+    <Suspense fallback={null}>
+      <AgentHomeRoute />
+    </Suspense>
   );
 }

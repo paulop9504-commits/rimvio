@@ -34,6 +34,7 @@ assert.deepEqual(
     "rule_constitution",
     "entity_resolver",
     "intent_parser",
+    "intent_compiler",
     "action_planner",
     "tool_router",
     "graph_command_ir",

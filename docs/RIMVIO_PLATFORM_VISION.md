@@ -1,8 +1,11 @@
 # Rimvio 플랫폼 비전 (Platform Vision)
 
+> **📌 통합 제품 정의:** “Rimvio가 무엇인가?”에 대한 **단일 답** → **[RIMVIO_PRODUCT_DEFINITION.md](./RIMVIO_PRODUCT_DEFINITION.md)**  
+> (소비자·생산자 양면 경제 · 핵심 루프 · 5 product lines · Platform/Capability/Agent · 코드 맵)
+>
 > **대상:** 창업자, PM, 다음 AI 에이전트 — "이 방향으로 깊게 가면 결국 어떤 플랫폼이 되는가"
 >
-> **관련 문서:** [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [ACTION_OS_SPINE.md](./ACTION_OS_SPINE.md)
+> **관련 문서:** [RIMVIO_PRODUCT_DEFINITION.md](./RIMVIO_PRODUCT_DEFINITION.md) · [RIMVIO_PRODUCT.md](./RIMVIO_PRODUCT.md) · [RIMVIO_CONSTITUTION.md](./RIMVIO_CONSTITUTION.md) · [ACTION_OS_SPINE.md](./ACTION_OS_SPINE.md)
 >
 > **한 줄 비전:** **맥락이 연결되면, 대신 실행합니다.**
 >
@@ -81,6 +84,8 @@
 ## 4. 구현 규율 (중요)
 
 비전은 4단계지만 **구현은 1단계 수직 슬라이스부터.** 이 순서를 지켜야 3~4단계가 실제로 열린다.
+
+**Platform OS 규격 (4단계 목표의 기술 SSOT):** [RIMVIO_PLATFORM_SDK_SPEC.md](./RIMVIO_PLATFORM_SDK_SPEC.md) · ADR-054 · `lib/platform-sdk/`
 
 워크스페이스 규칙(`.cursor/rules/action-os-spine.mdc`, Context OS 레이어법)상 **지금은 아래 한 루프에만 집중하도록 잠겨 있음:**
 

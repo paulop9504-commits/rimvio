@@ -126,10 +126,10 @@ export async function touchDeviceHeartbeat(
       .select("permissions")
       .eq("id", deviceId)
       .maybeSingle();
-    patch.permissions = permissionsWithAppVersion(row?.permissions, version) as Record<
-      string,
-      boolean
-    >;
+    patch.permissions = permissionsWithAppVersion(
+      row?.permissions,
+      version,
+    ) as PcLocalAgentDeviceRow["permissions"];
   }
   await admin.from("pc_local_agent_devices").update(patch).eq("id", deviceId);
 }

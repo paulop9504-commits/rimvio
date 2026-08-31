@@ -236,4 +236,13 @@ export {
   runObjectDiscovery,
   type ObjectDiscoveryPlan,
   type ObjectDiscoveryResult,
+  type CapabilityDiscoveryPlan,
 } from "@/lib/context-run/object-discovery";
+
+export {
+  compileNlIntentFrame,
+  formatIntentWorkLogKo,
+  isCommerceCapabilityIntent,
+  runNlIntentCompilerStage,
+  type NlIntentCompileResult,
+} from "@/lib/context-run/compile-nl-intent";

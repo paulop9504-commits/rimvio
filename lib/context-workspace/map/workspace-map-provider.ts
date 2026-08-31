@@ -38,6 +38,13 @@ export type WorkspaceMapPin = {
   readonly awaitingField?: boolean;
   /** Optional leg cue under selected pin (e.g. 13분 · 3.2km). */
   readonly legHintKo?: string | null;
+  /** Venue hero for itinerary map pin (thumbnail + stop order). */
+  readonly thumbnailUrl?: string | null;
+  /**
+   * 1-based stop order on the itinerary map (day / focus list).
+   * When set with thumbnailUrl → photo pin + number badge.
+   */
+  readonly stopOrder?: number | null;
   /** User photo/video saved in this Context — MapLibre embed. */
   readonly contextMedia?: WorkspaceMapContextMedia | null;
 };

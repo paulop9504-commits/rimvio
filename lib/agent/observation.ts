@@ -105,12 +105,30 @@ export function normalizeToolInvokeResult(input: {
         }
       : undefined;
 
+  const status: AgentObservation["status"] =
+    errors.length > 0
+      ? "empty"
+      : candidates.length > 0
+        ? "success"
+        : input.tool.waitingCommit
+          ? "partial"
+          : "success";
+
   return {
     planId: input.planId,
     stepId: input.stepId,
     stepKind: input.stepKind,
     success: errors.length === 0,
     summaryKo: input.tool.summaryKo,
+    taskId: input.stepId.split(":")[0],
+    actionId: input.stepId,
+    status,
+    facts: {
+      toolId: input.tool.toolId,
+      candidateCount: candidates.length,
+      waitingCommit: input.tool.waitingCommit ?? false,
+    },
+    timestamp: new Date().toISOString(),
     ...(candidates.length > 0 ? { candidates } : {}),
     ...(selected ? { selected } : {}),
     ...(errors.length > 0 ? { errors } : {}),

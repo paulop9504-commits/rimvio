@@ -38,6 +38,8 @@ import { tryEnterCompareDecisionAfterRefine } from "@/lib/context-workspace/proj
 import { projectAgentTurnSurfaces } from "@/lib/agent-policy/project-agent-turn-surfaces";
 import { resolveWorkspaceMutationMode } from "@/lib/agent-policy/resolve-workspace-mutation-mode";
 import { composeAgentVagueClarifyFromWorkspace } from "@/lib/context-run/compose-agent-vague-clarify";
+import { resolveCapabilityIntent } from "@/lib/rimvio-index/resolve-capability-intent";
+import { selectNextCapabilityFromState } from "@/lib/agent-os/select-next-capability";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -203,8 +205,22 @@ export async function runWorkspaceAgentLoop(input: {
     return fail({ statusKo: "Context 없음", contextEventId });
   }
 
-  // 4. Select Tool — Patch always preferred when parseable
+  // 4. Select Tool — Patch always preferred when parseable; P2 reuse gate
   phases.push("select_tool");
+  const capabilityIntent = resolveCapabilityIntent({
+    utterance,
+    contextEventId,
+  });
+  if (
+    capabilityIntent.reuse.decision === "create" &&
+    !/(?:호텔|숙소|맛집|식당|lodging|eatery)/iu.test(utterance)
+  ) {
+    return fail({
+      statusKo: shorten(capabilityIntent.reuse.reasonKo),
+      contextEventId,
+      toolId: "noop",
+    });
+  }
   const toolId = selectTool({ utterance, understood });
   {
     const product = readLastAgentProductTurn();
@@ -415,6 +431,41 @@ export async function runWorkspaceAgentLoop(input: {
       (after?.patches?.length ?? 0) > (before?.patches?.length ?? 0));
 
   if (lodgingMissing) {
+    // P1 — verify failure → dynamic replan via capability discovery
+    const agentDomain = ctx.domain === "eatery" ? "eatery" : "lodging";
+    const replanPick = selectNextCapabilityFromState({
+      agentId: agentDomain,
+      utterance,
+      contextEventId,
+      observations: [],
+      lastToolId: agentDomain === "eatery" ? "restaurant.lookup" : "hotel.lookup",
+      lastVerified: false,
+    });
+    if (replanPick.toolId) {
+      const replan = await tryApplyWorkspacePromptTurn({
+        utterance,
+        contextEventId,
+      });
+      if (replan.handled) {
+        const replanProjection = runAutoProjectionAfterPatch({ contextEventId });
+        phases.push("wait");
+        return {
+          ok: true,
+          phases,
+          toolId: "workspace_prompt",
+          patchKind: "update_entity",
+          contextEventId,
+          workspaceMutated: true,
+          statusKo: shorten(replan.replyKo ?? "조건 반영 · 다시 검색"),
+          projection: replanProjection,
+          verified: replanProjection.ok,
+          waiting: true,
+          essayForbidden: true,
+          commitPending: false,
+        };
+      }
+    }
+
     statusKo =
       "숙소 후보를 아직 못 채웠어요 · 「난바역 근처 캡슐호텔」처럼 다시 말해 주세요";
     const product = readLastAgentProductTurn();

@@ -20,6 +20,7 @@ import {
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
 import type { GraphEntityDomain } from "@/lib/graph-command/types";
+import { inferCuisineTags } from "@/lib/context-workspace/workspace-nl-control";
 
 function inferTags(
   title: string,
@@ -75,6 +76,7 @@ function inferTags(
   ) {
     tags.push("photo_spot");
   }
+  tags.push(...inferCuisineTags(blob));
   return [...new Set(tags)];
 }
 

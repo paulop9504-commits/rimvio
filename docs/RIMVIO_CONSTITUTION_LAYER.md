@@ -1,6 +1,7 @@
 # Rimvio Constitution Layer
 
 **Status:** locked 2026-08  
+**Platform north star:** [`RIMVIO_AGENT_HUB_VISION.md`](./RIMVIO_AGENT_HUB_VISION.md)  
 **Role:** Policy **index** — Intent…Audit. Not a second kernel.  
 **Kernel law (always wins):** [`RIMVIO_CONSTITUTION.md`](./RIMVIO_CONSTITUTION.md) Article 0  
 **Agent runtime laws:** [`RIMVIO_AGENT_OPERATING_CONSTITUTION.md`](./RIMVIO_AGENT_OPERATING_CONSTITUTION.md) (ADR-049) · ADR-048

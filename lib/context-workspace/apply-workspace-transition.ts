@@ -29,6 +29,7 @@ import {
 import { withWorkspaceRelationships } from "@/lib/context-workspace/sync-workspace-relationships";
 import type { SearchToolCandidate } from "@/lib/graph-command/stamp-search-tool-results-to-diff";
 import type { PlaceSearchHit } from "@/lib/search-engine/run-place-search";
+import { blobMatchesCuisine, parseCuisineFromText } from "@/lib/context-workspace/workspace-nl-control";
 import type { GraphFilterPredicate } from "@/lib/graph-command/types";
 import {
   recordHotelSelected,
@@ -123,7 +124,20 @@ function applyFilterToNodes(
       visible = false;
     }
     if (filter.tagIncludes?.length) {
-      const has = filter.tagIncludes.every((tag) => node.tags.includes(tag));
+      const has = filter.tagIncludes.every((tag) => {
+        if (node.tags.includes(tag)) {
+          return true;
+        }
+        if (!tag.startsWith("cuisine:")) {
+          return false;
+        }
+        const cuisine = parseCuisineFromText(tag.slice("cuisine:".length));
+        if (!cuisine) {
+          return false;
+        }
+        const blob = `${node.title} ${node.summaryKo} ${node.tags.join(" ")}`;
+        return blobMatchesCuisine(blob, node.tags, cuisine);
+      });
       if (!has) {
         visible = false;
       }
@@ -131,7 +145,7 @@ function applyFilterToNodes(
     if (filter.queryIncludes?.trim()) {
       const q = filter.queryIncludes.trim().toLowerCase();
       const blob = `${node.title} ${node.summaryKo} ${node.tags.join(" ")}`.toLowerCase();
-      if (!blob.includes(q)) {
+      if (!blob.includes(q) && !node.tags.some((t) => t.toLowerCase().includes(q))) {
         visible = false;
       }
     }

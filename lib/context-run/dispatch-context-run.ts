@@ -1,4 +1,5 @@
 import { bindSituation } from "@/lib/context-run/bind-situation";
+import { resolveComposerErrorKo } from "@/lib/errors/sanitize-user-facing-error";
 import { assertCommitPermitted } from "@/lib/context-run/commit-gate";
 import { commitMentionContextIngress } from "@/lib/context-run/commit-mention-context";
 import { commitTextContextIngress } from "@/lib/context-run/commit-text-context";
@@ -315,8 +316,7 @@ export async function dispatchContextRun(
   try {
     return await executeContextRunPlan(bound, plan, handlers);
   } catch (caught) {
-    const errorMessage =
-      caught instanceof Error ? caught.message : "Context run failed";
+    const errorMessage = resolveComposerErrorKo(caught, "Context run failed");
     return {
       graphId,
       status: "error",

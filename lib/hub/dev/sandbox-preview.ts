@@ -1,0 +1,178 @@
+import { capabilityDraftToPlatformManifest } from "@/lib/hub/capability/manifest-bridge";
+import { appendDevExecutionLog } from "@/lib/hub/dev/execution-log";
+import type { PlatformDraft } from "@/lib/hub/platform/types";
+import {
+  mountPlatformHostApis,
+  readPlatformHostApis,
+  registerPlatformManifest,
+} from "@/lib/platform-sdk/platform-host";
+
+export type PreviewHotelResult = {
+  readonly id: string;
+  readonly name: string;
+  readonly rating: number;
+  readonly priceKrw: number;
+  readonly nights: number;
+};
+
+export type SandboxPreviewState = {
+  readonly mode: "demo" | "sandbox";
+  readonly platformId: string;
+  readonly invokeOk: boolean;
+  readonly invokeDetail: string;
+  readonly hotels: readonly PreviewHotelResult[];
+};
+
+const OSAKA_DEMO_HOTELS: readonly PreviewHotelResult[] = [
+  { id: "h1", name: "Swissotel Nankai Osaka", rating: 4.8, priceKrw: 462_000, nights: 2 },
+  { id: "h2", name: "Hotel Monterey Grasmere", rating: 4.7, priceKrw: 284_000, nights: 2 },
+];
+
+export async function runSandboxHotelSearch(
+  draft: PlatformDraft,
+  input: { destination: string; checkIn: string; checkOut: string; guests: number },
+): Promise<SandboxPreviewState> {
+  const started = Date.now();
+  const manifest = capabilityDraftToPlatformManifest(draft);
+  const platformId = manifest.package.id;
+
+  mountPlatformHostApis();
+  registerPlatformManifest(manifest);
+
+  const apis = readPlatformHostApis();
+  const searchCap =
+    draft.actions.find((a) => a.name === "hotel.search")?.name ?? "hotel.search";
+
+  const result = await apis.capabilities.invoke({
+    platformId,
+    capabilityId: searchCap,
+    input: input as unknown as Record<string, unknown>,
+    approvalPolicy: "user_required",
+  });
+
+  const isOsaka =
+    /osaka|오사카|난바|namba|hotel/i.test(draft.name + draft.description) ||
+    draft.actions.some((a) => a.name === "hotel.search");
+
+  const state: SandboxPreviewState = {
+    mode: result.ok ? "sandbox" : "demo",
+    platformId,
+    invokeOk: result.ok,
+    invokeDetail: result.ok
+      ? `Sandbox invoke · ${searchCap} · prepareOnly`
+      : result.errorKo ?? "Sandbox invoke failed — showing demo data",
+    hotels: isOsaka ? OSAKA_DEMO_HOTELS : [],
+  };
+
+  appendDevExecutionLog({
+    platformId,
+    platformName: draft.name,
+    capabilityId: searchCap,
+    source: "preview",
+    ok: result.ok,
+    detail: state.invokeDetail,
+    durationMs: Date.now() - started,
+    input: input as unknown as Record<string, unknown>,
+    output: result.output as Record<string, unknown> | undefined,
+  });
+
+  return state;
+}
+
+// ── Capabilities #86–90 Browser Agent (skeleton) ─────────────────────────────
+
+export type BrowserAgentActionKind =
+  | "navigate"
+  | "click"
+  | "type"
+  | "screenshot"
+  | "console"
+  | "network";
+
+export type BrowserAgentAction = {
+  readonly kind: BrowserAgentActionKind;
+  readonly target?: string;
+  readonly value?: string;
+};
+
+export type BrowserAgentObservation = {
+  readonly ok: boolean;
+  readonly detailKo: string;
+  readonly url?: string;
+  readonly consoleLines?: readonly string[];
+  readonly networkRequests?: readonly string[];
+};
+
+export type BrowserAgentSession = {
+  readonly sessionId: string;
+  readonly previewUrl: string;
+  readonly actions: readonly BrowserAgentAction[];
+  readonly observations: readonly BrowserAgentObservation[];
+};
+
+/** Capability #86 — Start browser agent session against sandbox preview. */
+export function createBrowserAgentSession(previewState: SandboxPreviewState): BrowserAgentSession {
+  return {
+    sessionId: `browser-${Date.now()}`,
+    previewUrl: `/hub/dev/preview?platform=${previewState.platformId}`,
+    actions: [],
+    observations: [],
+  };
+}
+
+/** Capability #87–90 — Execute one browser agent step (stub; Computer Use hooks later). */
+export function runBrowserAgentStep(
+  session: BrowserAgentSession,
+  action: BrowserAgentAction,
+): BrowserAgentSession {
+  let observation: BrowserAgentObservation;
+
+  switch (action.kind) {
+    case "navigate":
+      observation = { ok: true, detailKo: `Navigate: ${action.target ?? session.previewUrl}`, url: action.target };
+      break;
+    case "click":
+      observation = { ok: true, detailKo: `Click: ${action.target ?? "primary CTA"}` };
+      break;
+    case "type":
+      observation = { ok: true, detailKo: `Type into ${action.target ?? "input"}` };
+      break;
+    case "screenshot":
+      observation = { ok: true, detailKo: "Screenshot captured (stub)" };
+      break;
+    case "console":
+      observation = {
+        ok: true,
+        detailKo: "Console inspected",
+        consoleLines: ["[preview] sandbox invoke ok"],
+      };
+      break;
+    case "network":
+      observation = {
+        ok: true,
+        detailKo: "Network inspected",
+        networkRequests: [`POST /capabilities/hotel.search`],
+      };
+      break;
+    default:
+      observation = { ok: false, detailKo: "Unknown browser action" };
+  }
+
+  return {
+    ...session,
+    actions: [...session.actions, action],
+    observations: [...session.observations, observation],
+  };
+}
+
+/** Run default preview inspection flow (#85 + #86–90). */
+export function runBrowserPreviewInspection(
+  previewState: SandboxPreviewState,
+): BrowserAgentSession {
+  let session = createBrowserAgentSession(previewState);
+  session = runBrowserAgentStep(session, { kind: "navigate", target: session.previewUrl });
+  session = runBrowserAgentStep(session, { kind: "screenshot" });
+  session = runBrowserAgentStep(session, { kind: "console" });
+  session = runBrowserAgentStep(session, { kind: "network" });
+  return session;
+}

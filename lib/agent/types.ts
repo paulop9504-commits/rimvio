@@ -30,8 +30,16 @@ export type AgentDecision =
   | { readonly type: "ask_user"; readonly message: string }
   | { readonly type: "stop" };
 
+export type AgentObservationStatus =
+  | "success"
+  | "partial"
+  | "empty"
+  | "failed"
+  | "blocked";
+
 /**
  * Normalized step Observation for LLM — never raw ToolInvokeResult.
+ * Extended fields optional for orchestrator / trace (backward compatible).
  */
 export type AgentObservation = {
   readonly planId: string;
@@ -44,6 +52,14 @@ export type AgentObservation = {
   readonly errors?: readonly string[];
   readonly sessionState?: unknown;
   readonly diffState?: unknown;
+  /** Orchestrator extensions (P4) */
+  readonly taskId?: string;
+  readonly actionId?: string;
+  readonly status?: AgentObservationStatus;
+  readonly facts?: Readonly<Record<string, unknown>>;
+  readonly workspaceChanges?: readonly string[];
+  readonly confidence?: number;
+  readonly timestamp?: string;
 };
 
 /** Slim candidate card — safe for LLM prompts. */

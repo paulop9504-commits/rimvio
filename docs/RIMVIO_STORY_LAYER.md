@@ -1,6 +1,7 @@
 # Rimvio Story Layer — 층별 언어 SSOT
 
-> **Experience OS**는 내부 정체성. **Story Layer**는 사용자·키노트·UI가 말하는 방식.  
+> **Platform north star (2026-08):** `docs/RIMVIO_AGENT_HUB_VISION.md`  
+> **Context OS**는 Travel Market·memory **substrate**. **Story Layer**는 사용자·키노트·UI가 말하는 방식.  
 > 코드 SSOT: `lib/copy/story-layer.ts` · UI 카피: `lib/copy/human-ko.ts`
 
 ---
@@ -157,15 +158,17 @@ Every Cursor task on Globe: **one L0/L1 line at top**, then **L3 constraints** (
 
 ---
 
-## Rimvio 전체 vs Globe
+## Rimvio 전체 vs Surface
 
 | Area | L0 anchor | L1 focus |
 |------|-----------|----------|
-| **Globe** | You were here… | 흔적 · 발견 · 그때 거기 |
-| **Feed / Action OS** | Your Life, Operable. | 쌓인 경험 · @실행 |
-| **Peers** | *(conversation ingress)* | 대화 · 실행 버튼 |
+| **Agent home (`/`)** | Say it. We perform. | 실행 · 비교 · 승인 |
+| **Workspace** | Connect every capability… | 지금 이어서 작업 |
+| **Field** | *(execution)* | 확인 · 결제 · 진행 |
+| **Globe (Travel L1)** | You were here… | 흔적 · 발견 · 그때 거기 |
+| **Peers** | *(conversation ingress)* | 대화 · 실행 |
 
-Globe Story Layer는 **공간·기억** 축. Feed North Star는 **다음 행동** 축. 충돌 없음.
+**Platform L0** = Agent/execution. **Travel L0** = memory/spatial — Globe is projection, not company headline.
 
 ---
 

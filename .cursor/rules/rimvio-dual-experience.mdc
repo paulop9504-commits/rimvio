@@ -1,0 +1,46 @@
+# Rimvio Dual Experience (locked)
+
+**Canonical:** `docs/RIMVIO_DUAL_EXPERIENCE.md` · ADR-058 · ADR-064
+
+> **One Agent, Two Experiences** — **Rimvio Agent 하나**가 User Context(Execute)와 Developer Context(Build)를 제공한다. UI **AI Build** = Rimvio Agent Developer Build Mode (**별도 Agent 아님**).  
+> Agent discovers **Published Capabilities** only — not Platforms. Hub = **Infrastructure · Capability · Runtime · Adapter** + Compatibility Graph.
+
+## Stack
+
+```text
+USER:  Utterance → Intent → Capability Discovery → Execution Binding → Runtime → Prepare → Commit
+DEV:   Utterance → Rimvio Agent (Build) → Platform Graph → Sandbox → Publish → Hub Registry
+```
+
+## Do
+
+- **One Agent** — extend ADR-045 spine; Dev Build Mode is a context switch, not a second runtime package
+- Agent discovers **capabilities** (`discover-capabilities`, `capability-index`) — **not** platform home URLs or Platform Discovery
+- Dev work in `components/hub/dev/` + `components/hub/deploy/` — NL-first
+- Publish registers **Published Capabilities** → registry — only then Agent may invoke
+- Show Compatibility: Capability ↔ Runtime ↔ Infrastructure in Dev Test UI
+- User UI: work log (“호텔 검색 ✓”) — hide Capability/Platform/Manifest nouns (L1)
+- Side effects: `payment.prepare` until human `payment.commit` (booking · payment)
+- Extend Platform OS via `lib/platform-sdk/` — do not reinvent permission/registry/runtime
+
+## Don't
+
+- User Agent + Dev Agent as two products or two runtime packages
+- “AI Builder Agent” as separate from Rimvio Agent
+- Agent Platform Discovery (`OsakaStay` as discovery target)
+- Direct vendor API from Globe chat bypassing registry
+- Hub as Capability-Registry-only in docs/diagrams (omit Runtime/Infra/Adapter)
+- `payment.process` in capability contracts
+- Auto Commit on booking/payment from agent
+- Parallel discovery stores beside capability-index + workspace
+
+## Reference vertical
+
+OsakaStay (`hotel.search` → `booking.prepare` → `payment.prepare` → user approval → `payment.commit` → `booking.confirm`) — published **capabilities**, not Globe-only hacks.
+
+## PR reject
+
+- User-facing “Capability”“Manifest” in hero/empty states
+- Agent tool invoke before capability discovery on search flows
+- Publish path that skips registry registration
+- Docs/copy implying two Agents or Platform Discovery
