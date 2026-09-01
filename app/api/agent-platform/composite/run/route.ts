@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     userRequest?: string;
     startStepIndex?: number;
     platformId?: string;
+    resume?: boolean;
   };
 
   try {
@@ -20,14 +21,38 @@ export async function POST(request: Request) {
 
   const loopId = body.loopId?.trim();
   const contextEventId = body.contextEventId?.trim();
-  if (!loopId || !contextEventId) {
+  if (!contextEventId) {
     return NextResponse.json(
-      { ok: false, errorKo: "loopId와 contextEventId가 필요해요." },
+      { ok: false, errorKo: "contextEventId가 필요해요." },
       { status: 400 },
     );
   }
 
   await ensureRegistryReady();
+
+  if (body.resume) {
+    const { resumeCompositeLoop } = await import("@/lib/agent-platform/pipeline/run-composite-loop");
+    const resumed = await resumeCompositeLoop({
+      contextEventId,
+      userRequest: body.userRequest,
+      platformId: body.platformId,
+    });
+    if (!resumed) {
+      return NextResponse.json(
+        { ok: false, errorKo: "resume할 composite loop가 없어요." },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json(resumed, { status: resumed.ok ? 200 : 422 });
+  }
+
+  if (!loopId) {
+    return NextResponse.json(
+      { ok: false, errorKo: "loopId가 필요해요." },
+      { status: 400 },
+    );
+  }
+
   const result = await runCompositeLoop({
     loopId,
     contextEventId,

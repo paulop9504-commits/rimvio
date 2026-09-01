@@ -49,9 +49,9 @@ import {
   wantsCompositeResume,
 } from "@/lib/agent-platform/composite/resolve-composite-loop";
 import {
-  resumeCompositeLoop,
-  runCompositeLoop,
-} from "@/lib/agent-platform/pipeline/run-composite-loop";
+  resumeCompositeLoopForProduct,
+  runCompositeLoopForProduct,
+} from "@/lib/agent-platform/pipeline/composite-loop-bridge";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -244,7 +244,7 @@ export async function runWorkspaceAgentLoop(input: {
 
   if (wantsCompositeResume(utterance)) {
     phases.push("execute_patch");
-    const resumed = await resumeCompositeLoop({
+    const resumed = await resumeCompositeLoopForProduct({
       contextEventId,
       userRequest: utterance,
     });
@@ -281,7 +281,7 @@ export async function runWorkspaceAgentLoop(input: {
     productTurn?.compositeLoopId ?? resolveCompositeLoopFromUtterance(utterance);
   if (compositeLoopId) {
     phases.push("execute_patch");
-    const composite = await runCompositeLoop({
+    const composite = await runCompositeLoopForProduct({
       loopId: compositeLoopId,
       contextEventId,
       userRequest: utterance,
