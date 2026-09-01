@@ -79,8 +79,19 @@ export function publishCapabilityToRegistry(
 }
 
 export function publishFromManifest(manifest: RimvioPlatformManifest): PublishCapabilityResult[] {
-  const entries = buildCapabilityIndexEntry(manifest);
-  return entries.map((entry) => publishCapabilityToRegistry({ entry }));
+  const now = new Date().toISOString();
+  return buildCapabilityIndexEntry(manifest).map((partial) =>
+    publishCapabilityToRegistry({
+      entry: {
+        ...partial,
+        status: "PUBLISHED",
+        publishedAtIso: now,
+        routePath: `/api/capabilities/${partial.capabilityId}`,
+        keywords: partial.tags,
+        origin: "platform-bundled",
+      },
+    }),
+  );
 }
 
 export function publishCatalogCapability(

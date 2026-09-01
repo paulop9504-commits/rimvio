@@ -83,7 +83,7 @@ export async function runWorkspaceCapability(
         output: {
           workspaceId,
           nodeCount: workspace?.nodes.length ?? 0,
-          title: workspace?.title ?? null,
+          title: workspace?.summaryKo ?? workspace?.query ?? null,
         },
       };
     }
@@ -467,9 +467,7 @@ export async function runTravelCapability(
     case "eatery.search": {
       ensureEditingWorkspace(workspaceId);
       const anchorLabel =
-        readContextWorkspace(workspaceId)?.nodes.find((n) => n.contextAnchor)?.title ??
-        readContextWorkspace(workspaceId)?.nodes.find((n) => n.selected)?.title ??
-        null;
+        readContextWorkspace(workspaceId)?.nodes.find((n) => n.selected)?.title ?? null;
       const discoveryUtterance =
         anchorLabel && !/근처|주변|near|기준/iu.test(utterance)
           ? `${anchorLabel} 근처 ${utterance || "맛집"}`

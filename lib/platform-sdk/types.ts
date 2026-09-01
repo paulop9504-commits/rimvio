@@ -168,9 +168,11 @@ export type CapabilityInvokeResult = {
   readonly platformId: string;
   readonly output?: Record<string, unknown>;
   readonly errorKo?: string;
-  readonly prepareOnly: true;
+  readonly prepareOnly?: true;
   readonly runtimeId?: string;
   readonly durationMs?: number;
+  readonly executionId?: string;
+  readonly sandboxSessionId?: string | null;
 };
 
 export type DataCreateRequest = {

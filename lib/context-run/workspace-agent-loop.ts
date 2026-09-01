@@ -72,6 +72,7 @@ export type WorkspaceAgentToolId =
   | "spatial_discovery"
   | "workspace_prompt"
   | "reality_prepare"
+  | "composite_loop"
   | "noop";
 
 export type WorkspaceAgentLoopResult = {
@@ -85,7 +86,7 @@ export type WorkspaceAgentLoopResult = {
   readonly statusKo: string | null;
   readonly projection: AutoProjectionResult | null;
   readonly verified: boolean;
-  readonly waiting: true;
+  readonly waiting: boolean;
   readonly essayForbidden: true;
   readonly commitPending: boolean;
 };

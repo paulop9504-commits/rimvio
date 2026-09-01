@@ -22,7 +22,7 @@ export function mountPlatformHostApis(): RimvioPlatformHostApis {
 
   const dataApi = createTenantDataApi();
 
-  mountedApis = {
+  const apis: RimvioPlatformHostApis = {
     data: dataApi,
     context: {
       async read(input) {
@@ -174,7 +174,8 @@ export function mountPlatformHostApis(): RimvioPlatformHostApis {
     },
   };
 
-  return mountedApis;
+  mountedApis = apis;
+  return apis;
 }
 
 export function readPlatformHostApis(): RimvioPlatformHostApis {
