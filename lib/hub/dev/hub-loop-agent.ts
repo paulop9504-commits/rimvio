@@ -9,6 +9,7 @@ import { packageLoopAsCapability } from "@/lib/agent-os/loop-builder/package";
 import { testLoopDefinition } from "@/lib/agent-os/loop-builder/run-loop";
 import { readLoopDefinition, writeLoopDefinition } from "@/lib/agent-os/loop-builder/store";
 import type { LoopDefinition, LoopLintResult, LoopTestResult } from "@/lib/agent-os/loop-builder/types";
+import { publishLoopPackageToRegistry } from "@/lib/agent-platform/pipeline/publish-loop";
 import {
   dispatchHubWorkspaceCommand,
   type HubWorkspaceCommand,
@@ -82,6 +83,28 @@ export async function agentTestLoop(input: {
   });
   dispatchHubWorkspaceCommand({ kind: "loop_test_result", platformId: input.platformId, test });
   dispatchHubWorkspaceCommand({ kind: "open_pane", pane: "loops" });
+
+  if (test.passed && lint.ok && !lint.publishBlocked) {
+    const pkg = packageLoopAsCapability({ name: loop.name, loop, tested: true });
+    const published = publishLoopPackageToRegistry({
+      platformId: input.platformId,
+      platformName: input.platformId,
+      pkg,
+      loop,
+    });
+    if (typeof window !== "undefined" && published.ok) {
+      void fetch("/api/agent-platform/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          capabilityId: published.capabilityId,
+          platformId: input.platformId,
+          publishOnly: true,
+        }),
+      });
+    }
+  }
+
   return { loop, test, lint };
 }
 

@@ -1,4 +1,5 @@
 import type { CreateSandboxSessionInput, SandboxSession } from "./types";
+import { persistSandboxSessionSnapshot } from "@/lib/agent-platform/persistence/durable-store";
 
 const sessions = new Map<string, SandboxSession>();
 
@@ -45,6 +46,7 @@ export function createSandboxSession(input: CreateSandboxSessionInput): SandboxS
     updatedAt: now,
   };
   sessions.set(session.sessionId, session);
+  persistSandboxSessionSnapshot(session);
   return session;
 }
 
@@ -62,6 +64,7 @@ export function updateSandboxSession(
   }
   const next = { ...current, ...patch, updatedAt: Date.now() };
   sessions.set(sessionId, next);
+  persistSandboxSessionSnapshot(next);
   return next;
 }
 

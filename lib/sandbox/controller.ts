@@ -15,6 +15,9 @@ import {
 } from "./execution-engine";
 import { recordSandboxExecution } from "./record-sandbox-execution";
 import { verifySandboxOutput } from "./verify";
+import { verifyCapabilityOutput } from "@/lib/agent-platform/pipeline/verify-output";
+import { planSandboxRepair } from "@/lib/agent-platform/pipeline/sandbox-repair";
+import { handleSandboxSessionCompleted } from "@/lib/agent-platform/pipeline/sandbox-completion-hook";
 import {
   createSandboxSession,
   getSandboxSession,
@@ -254,29 +257,95 @@ export class SandboxController {
         return { ok: false, error: result.error };
       }
 
-      const verification = verifySandboxOutput(session.capability, result.output ?? null);
+      const verification = verifyCapabilityOutput({
+        capabilityId: session.capability,
+        output: (result.output ?? null) as Record<string, unknown> | null,
+      });
+      const sandboxVerify = verifySandboxOutput(session.capability, result.output ?? null);
+      const mergedErrors = [
+        ...verification.errors,
+        ...sandboxVerify.errors.filter((e) => !verification.errors.includes(e)),
+      ];
+      const mergedVerification = {
+        ok: verification.ok && sandboxVerify.ok,
+        errors: mergedErrors,
+      };
 
-      patchSession(sessionId, {
-        lifecycleStatus: verification.ok ? "COMPLETED" : "FAILED",
-        flowStage: "result",
-        output: result.output ?? null,
-        verification,
-        error: verification.ok ? null : verification.errors.join("; "),
-        structuredError: verification.ok
-          ? null
-          : {
+      if (!mergedVerification.ok) {
+        const repair = planSandboxRepair({
+          session,
+          errors: mergedVerification.errors,
+        });
+        if (repair) {
+          patchSession(sessionId, {
+            lifecycleStatus: "FAILED",
+            flowStage: "result",
+            output: result.output ?? null,
+            verification: mergedVerification,
+            error: mergedVerification.errors.join("; "),
+            structuredError: {
               code: "OUTPUT_VALIDATION_FAILED",
-              message: verification.errors.join("; "),
+              message: mergedVerification.errors.join("; "),
               step: "validate_output",
               recoverable: true,
             },
-        resultText: formatResultText(session.capability, result.output, verification.ok),
+            resultText: formatResultText(session.capability, result.output, false),
+            completedAt: Date.now(),
+            currentAction: null,
+            metrics: {
+              executionMs: elapsed,
+              actionCount: current?.metrics.actionCount ?? 0,
+              successRate: 0,
+              stepCount: current?.metrics.stepCount ?? 0,
+            },
+          });
+          const repaired = this.createSession({
+            capability: repair.capabilityId,
+            userRequest: session.userRequest,
+            input: {
+              ...repair.input,
+              contextEventId: session.input.contextEventId,
+              workspaceId: session.input.workspaceId,
+              _repair: { strategyKo: repair.strategyKo, retryOf: sessionId },
+            },
+            userId: session.userId,
+            projectId: session.projectId,
+            runtimeId: session.runtimeId,
+            retryOf: sessionId,
+          });
+          this.queueExecution(repaired.sessionId);
+          const failedSession = getSandboxSession(sessionId);
+          if (failedSession) {
+            handleSandboxSessionCompleted(failedSession);
+          }
+          return {
+            ok: false,
+            error: `${mergedVerification.errors.join("; ")} · repair queued`,
+          };
+        }
+      }
+
+      patchSession(sessionId, {
+        lifecycleStatus: mergedVerification.ok ? "COMPLETED" : "FAILED",
+        flowStage: "result",
+        output: result.output ?? null,
+        verification: mergedVerification,
+        error: mergedVerification.ok ? null : mergedVerification.errors.join("; "),
+        structuredError: mergedVerification.ok
+          ? null
+          : {
+              code: "OUTPUT_VALIDATION_FAILED",
+              message: mergedVerification.errors.join("; "),
+              step: "validate_output",
+              recoverable: true,
+            },
+        resultText: formatResultText(session.capability, result.output, mergedVerification.ok),
         completedAt: Date.now(),
         currentAction: null,
         metrics: {
           executionMs: elapsed,
           actionCount: current?.metrics.actionCount ?? 0,
-          successRate: verification.ok ? 100 : 0,
+          successRate: mergedVerification.ok ? 100 : 0,
           stepCount: current?.metrics.stepCount ?? 0,
         },
       });
@@ -286,11 +355,16 @@ export class SandboxController {
         capabilityId: session.capability,
         userRequest: session.userRequest,
         ok: true,
-        verified: verification.ok,
+        verified: mergedVerification.ok,
         executionMs: elapsed,
       });
 
-      return { ok: verification.ok, error: verification.ok ? undefined : verification.errors.join("; ") };
+      const completedSession = getSandboxSession(sessionId);
+      if (completedSession) {
+        handleSandboxSessionCompleted(completedSession);
+      }
+
+      return { ok: mergedVerification.ok, error: mergedVerification.ok ? undefined : mergedVerification.errors.join("; ") };
     } catch (error) {
       if (error instanceof SandboxCancelledError || isExecutionCancelled(executionId)) {
         return this.finishCancelled(sessionId, startedAt);

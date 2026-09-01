@@ -40,6 +40,18 @@ import { resolveWorkspaceMutationMode } from "@/lib/agent-policy/resolve-workspa
 import { composeAgentVagueClarifyFromWorkspace } from "@/lib/context-run/compose-agent-vague-clarify";
 import { resolveCapabilityIntent } from "@/lib/rimvio-index/resolve-capability-intent";
 import { selectNextCapabilityFromState } from "@/lib/agent-os/select-next-capability";
+import {
+  invokePublishedCapabilityForProductTurn,
+  shouldInvokePublishedCapabilityForProduct,
+} from "@/lib/agent-platform/pipeline/product-invoke-bridge";
+import {
+  resolveCompositeLoopFromUtterance,
+  wantsCompositeResume,
+} from "@/lib/agent-platform/composite/resolve-composite-loop";
+import {
+  resumeCompositeLoop,
+  runCompositeLoop,
+} from "@/lib/agent-platform/pipeline/run-composite-loop";
 
 export const WORKSPACE_AGENT_LOOP_PHASES = [
   "observe",
@@ -226,6 +238,111 @@ export async function runWorkspaceAgentLoop(input: {
     const product = readLastAgentProductTurn();
     if (product?.contextEventId === contextEventId) {
       advanceAgentProductStage(product, "planner");
+    }
+  }
+
+  if (wantsCompositeResume(utterance)) {
+    phases.push("execute_patch");
+    const resumed = await resumeCompositeLoop({
+      contextEventId,
+      userRequest: utterance,
+    });
+    if (resumed) {
+      const product = readLastAgentProductTurn();
+      if (product?.contextEventId === contextEventId) {
+        advanceAgentProductStage(
+          product,
+          "workspace_patch",
+          resumed.workLogKo,
+        );
+        advanceAgentProductStage(product, "agent_status", resumed.workLogKo);
+      }
+      writeAgentRuntimeProjectionFromWorkspace({ contextEventId });
+      return {
+        ok: resumed.ok,
+        phases,
+        toolId: "composite_loop",
+        patchKind: "composite_resume",
+        contextEventId,
+        workspaceMutated: resumed.ok,
+        statusKo: shorten(resumed.workLogKo),
+        projection: null,
+        verified: resumed.ok,
+        waiting: !resumed.ok,
+        essayForbidden: true,
+        commitPending: false,
+      };
+    }
+  }
+
+  const productTurn = readLastAgentProductTurn();
+  const compositeLoopId =
+    productTurn?.compositeLoopId ?? resolveCompositeLoopFromUtterance(utterance);
+  if (compositeLoopId) {
+    phases.push("execute_patch");
+    const composite = await runCompositeLoop({
+      loopId: compositeLoopId,
+      contextEventId,
+      userRequest: utterance,
+    });
+    if (productTurn?.contextEventId === contextEventId) {
+      advanceAgentProductStage(
+        productTurn,
+        "workspace_patch",
+        composite.workLogKo,
+      );
+      advanceAgentProductStage(productTurn, "object_discovery");
+      advanceAgentProductStage(productTurn, "agent_status", composite.workLogKo);
+    }
+    writeAgentRuntimeProjectionFromWorkspace({ contextEventId });
+    return {
+      ok: composite.ok,
+      phases,
+      toolId: "composite_loop",
+      patchKind: compositeLoopId,
+      contextEventId,
+      workspaceMutated: composite.stepsCompleted > 0,
+      statusKo: shorten(composite.workLogKo),
+      projection: null,
+      verified: composite.ok,
+      waiting: composite.lastInvoke?.prepareOnly === true,
+      essayForbidden: true,
+      commitPending: false,
+    };
+  }
+
+  const invokeCapabilityId = shouldInvokePublishedCapabilityForProduct(capabilityIntent);
+  if (invokeCapabilityId) {
+    const bridge = await invokePublishedCapabilityForProductTurn({
+      capabilityId: invokeCapabilityId,
+      utterance,
+      contextEventId,
+    });
+    phases.push("execute_patch");
+    if (bridge.invoked) {
+      const product = readLastAgentProductTurn();
+      if (product?.contextEventId === contextEventId) {
+        advanceAgentProductStage(product, "workspace_patch", bridge.workLogKo);
+        if (bridge.ok) {
+          advanceAgentProductStage(product, "object_discovery");
+        }
+        advanceAgentProductStage(product, "agent_status", bridge.workLogKo);
+      }
+      writeAgentRuntimeProjectionFromWorkspace({ contextEventId });
+      return {
+        ok: bridge.ok,
+        phases,
+        toolId: "workspace_patch",
+        patchKind: "invoke_capability",
+        contextEventId,
+        workspaceMutated: Boolean(bridge.result?.output),
+        statusKo: shorten(bridge.workLogKo),
+        projection: null,
+        verified: bridge.ok,
+        waiting: true,
+        essayForbidden: true,
+        commitPending: false,
+      };
     }
   }
 

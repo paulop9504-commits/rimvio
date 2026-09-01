@@ -55,25 +55,114 @@ export function mountPlatformHostApis(): RimvioPlatformHostApis {
           };
         }
 
-        const latencyMs =
-          typeof input.input?.expectedLatencyMs === "number"
-            ? input.input.expectedLatencyMs
-            : undefined;
+        if (typeof window === "undefined") {
+          const { seedServerRegistryFromCatalog, listRegistryEntries } = await import(
+            "@/lib/agent-platform/pipeline/publish"
+          );
+          const { invokePublishedCapability } = await import("@/lib/agent-platform/pipeline/invoke");
+          seedServerRegistryFromCatalog();
+          const result = await invokePublishedCapability({
+            capabilityId: input.capabilityId,
+            input: (input.input ?? {}) as Record<string, unknown>,
+            platformId: input.platformId,
+            userRequest: typeof input.input?.userRequest === "string" ? input.input.userRequest : undefined,
+            syncGoal: true,
+          });
 
-        return {
-          ok: true,
-          capabilityId: input.capabilityId,
-          platformId: input.platformId,
-          output: {
-            prepare: true,
-            runtimeId: runtimeId ?? "rimvio.cloud-runtime",
-          },
-          prepareOnly: true as const,
-          runtimeId,
-          durationMs: latencyMs,
-        };
+          if (result.prepareOnly) {
+            return {
+              ok: result.ok,
+              capabilityId: result.capabilityId,
+              platformId: input.platformId,
+              output: result.output ?? { prepare: true },
+              prepareOnly: true as const,
+              runtimeId,
+              durationMs: result.latencyMs,
+              errorKo: result.errorKo,
+            };
+          }
+
+          return {
+            ok: result.ok,
+            capabilityId: result.capabilityId,
+            platformId: input.platformId,
+            output: result.output ?? {},
+            runtimeId: runtimeId ?? result.runtimeKind,
+            durationMs: result.latencyMs,
+            errorKo: result.errorKo,
+            executionId: result.executionId,
+            sandboxSessionId: result.sandboxSessionId,
+          };
+        }
+
+        try {
+          const res = await fetch("/api/agent-platform/invoke", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              capabilityId: input.capabilityId,
+              platformId: input.platformId,
+              input: input.input ?? {},
+            }),
+          });
+          const result = (await res.json()) as {
+            ok?: boolean;
+            output?: Record<string, unknown>;
+            latencyMs?: number;
+            errorKo?: string;
+            prepareOnly?: boolean;
+            executionId?: string;
+            sandboxSessionId?: string;
+            runtimeKind?: string;
+          };
+          if (result.prepareOnly) {
+            return {
+              ok: result.ok ?? false,
+              capabilityId: input.capabilityId,
+              platformId: input.platformId,
+              output: result.output ?? { prepare: true },
+              prepareOnly: true as const,
+              runtimeId,
+              durationMs: result.latencyMs,
+              errorKo: result.errorKo,
+            };
+          }
+          return {
+            ok: result.ok ?? false,
+            capabilityId: input.capabilityId,
+            platformId: input.platformId,
+            output: result.output ?? {},
+            runtimeId: runtimeId ?? result.runtimeKind,
+            durationMs: result.latencyMs,
+            errorKo: result.errorKo,
+            executionId: result.executionId,
+            sandboxSessionId: result.sandboxSessionId,
+          };
+        } catch {
+          return {
+            ok: false,
+            capabilityId: input.capabilityId,
+            platformId: input.platformId,
+            errorKo: "invoke API unavailable",
+            prepareOnly: true as const,
+            runtimeId,
+          };
+        }
       },
       async listForPlatform(platformId) {
+        if (typeof window === "undefined") {
+          const { listRegistryEntries, seedServerRegistryFromCatalog } = await import(
+            "@/lib/agent-platform/pipeline/publish"
+          );
+          seedServerRegistryFromCatalog();
+          return listRegistryEntries()
+            .filter((e) => e.platformId === platformId)
+            .map((e) => ({
+              capabilityId: e.capabilityId,
+              name: e.capabilityId,
+              approvalRequired: e.approvalRequired,
+            }));
+        }
         return readCapabilityIndex()
           .filter((e) => e.platformId === platformId)
           .map((e) => ({

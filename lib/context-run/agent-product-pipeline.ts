@@ -16,6 +16,11 @@ import { runNlIntentCompilerStage } from "@/lib/context-run/compile-nl-intent";
 import type { RimvioIntentFrame } from "@/lib/rimvio-protocol/intent";
 import type { CapabilityIntentResolution } from "@/lib/rimvio-index/types";
 import { resolveCapabilityIntent } from "@/lib/rimvio-index/resolve-capability-intent";
+import {
+  resolveCompositeLoopFromUtterance,
+  wantsCompositeResume,
+} from "@/lib/agent-platform/composite/resolve-composite-loop";
+import { readPersistedGoalState } from "@/lib/agent-platform/persistence/goal-state";
 
 export const AGENT_PRODUCT_PIPELINE_STAGES = [
   "intent",
@@ -63,6 +68,8 @@ export type AgentProductTurn = {
   readonly intentFrame?: RimvioIntentFrame | null;
   readonly intentWorkLogKo?: string | null;
   readonly capabilityIntent?: CapabilityIntentResolution | null;
+  readonly compositeLoopId?: string | null;
+  readonly wantsResume?: boolean;
 };
 
 let lastProductTurn: AgentProductTurn | null = null;
@@ -122,6 +129,13 @@ export function beginAgentProductTurn(input: {
         contextEventId: contextEventId || null,
       })
     : null;
+  const wantsResume = utterance ? wantsCompositeResume(utterance) : false;
+  const compositeLoopId = utterance
+    ? wantsResume
+      ? readPersistedGoalState(contextEventId)?.compositeLoopId ??
+        resolveCompositeLoopFromUtterance(utterance)
+      : resolveCompositeLoopFromUtterance(utterance)
+    : null;
   const intentStatus =
     capabilityIntent?.workLogKo ??
     (intentCompiled?.workLogKo && intentCompiled.commerceCapability
@@ -142,6 +156,8 @@ export function beginAgentProductTurn(input: {
     intentFrame: intentCompiled?.intentFrame ?? null,
     intentWorkLogKo: intentCompiled?.workLogKo ?? null,
     capabilityIntent,
+    compositeLoopId,
+    wantsResume,
   };
   lastProductTurn = turn;
   emitProductTurnChange();

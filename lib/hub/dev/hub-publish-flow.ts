@@ -22,6 +22,7 @@ import {
 import { recordCapabilityVersionPublish } from "@/lib/capability-ledger/record-capability-version-publish";
 import { bridgeWorkspaceToPublishedPlatform } from "@/lib/context-workspace/workspace-lifecycle";
 import { hubContextEventId } from "@/lib/hub/dev/hub-agent-runtime-ingress";
+import { publishCapabilityToRegistry } from "@/lib/agent-platform/pipeline/publish";
 import type { PlatformDraft } from "@/lib/hub/platform/types";
 import type { CapabilityAction } from "@/lib/hub/capability/types";
 
@@ -151,6 +152,14 @@ export function executeApprovedPublish(input: {
       entry,
       contributorId: ownerCreatorId,
     });
+    publishCapabilityToRegistry({ entry });
+    if (typeof window !== "undefined") {
+      void fetch("/api/agent-platform/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, publishOnly: true }),
+      });
+    }
   }
 
   bridgeWorkspaceToPublishedPlatform({

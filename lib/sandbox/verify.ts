@@ -31,6 +31,9 @@ function verifyHotelSearchOutput(output: unknown): SandboxVerification {
   if (typeof record.hotelsFound !== "number" || record.hotelsFound < 0) {
     errors.push("hotelsFound must be a non-negative number");
   }
+  if (typeof record.hotelsFound === "number" && record.hotelsFound === 0) {
+    errors.push("hotelsFound_is_zero");
+  }
   if (typeof record.location !== "string" || !record.location.trim()) {
     errors.push("location must be a non-empty string");
   }

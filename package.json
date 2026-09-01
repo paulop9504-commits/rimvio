@@ -179,6 +179,7 @@
     "test:agent-runtime-autonomous": "npx tsx scripts/test-agent-runtime-autonomous-e2e.ts",
     "test:capability-ledger": "npx tsx scripts/test-capability-ledger.ts",
     "test:sandbox": "npx tsx scripts/test-sandbox-controller.ts && npx tsx scripts/test-sandbox-verify.ts && npx tsx scripts/test-sandbox-execution-lifecycle.ts && npx tsx scripts/test-product-search-e2e.ts",
+    "test:agent-platform": "npx tsx scripts/test-agent-platform-pipeline.ts",
     "test:reality-data-network": "npx tsx scripts/test-reality-data-network-r0-r7.ts && npx tsx scripts/test-reality-data-network-panels.ts",
     "test:platform-economy": "npx tsx scripts/test-platform-economy-adr066.ts",
     "test:agent-os-p0": "npx tsx scripts/test-agent-os-p0-boundary.ts",

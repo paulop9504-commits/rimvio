@@ -27,6 +27,7 @@ import {
 } from "./fixtures";
 import {
   planDevAgentTurn,
+  runDevAgentOperatorTurn,
   shouldPlanWithOperator,
 } from "./operator-client";
 
@@ -536,19 +537,29 @@ export function useDevAgentRuntime(): DevAgentRuntime {
     };
 
     if (shouldPlanWithOperator(text)) {
-      void planDevAgentTurn(text).then((plan) => {
+      void runDevAgentOperatorTurn(text).then((plan) => {
         setChatMessages((prev) => [
           ...prev,
           {
             id: nextId("a"),
             role: "agent",
-            text: plan.goalKo,
+            text: plan.workLogKo ?? plan.goalKo,
             checklist: plan.steps.map((step, index) => ({
               label: `${step.stage.toUpperCase()} · ${step.label}`,
-              done: index === 0,
+              done: plan.source === "spine" ? index < plan.steps.length - 1 : index === 0,
             })),
+            summary: plan.strategy
+              ? { capabilities: 1, approvals: 0 }
+              : undefined,
           },
         ]);
+
+        if (plan.sandboxSessionId) {
+          setSandboxSessionId(plan.sandboxSessionId);
+          streamSession(plan.sandboxSessionId);
+          return;
+        }
+
         launchSandbox(plan.capabilityId, plan.sandboxInput);
       });
       return;
