@@ -10,6 +10,8 @@ import {
   readPersistedGoalState,
 } from "../persistence/goal-state";
 import { isBrowserCapability } from "../runner-registry";
+import { ingestHotelSearchSandboxOutput } from "../runners/mutation-runners";
+import { readContextWorkspace } from "@/lib/context-workspace/workspace-store";
 import { invokePublishedCapability } from "./invoke";
 import { runToolLoop } from "./tool-loop";
 
@@ -53,11 +55,20 @@ export async function runCompositeLoop(input: {
 
   for (let i = startIndex; i < loop.steps.length; i += 1) {
     const step = loop.steps[i]!;
-    const stepInput = {
+    let stepInput: Record<string, unknown> = {
       ...(step.input ?? {}),
       workspaceId: input.contextEventId,
     };
 
+    if (step.capabilityId === "workspace.entity.select" && !stepInput.entityId) {
+      const ws = readContextWorkspace(input.contextEventId);
+      const lodging = ws?.nodes.find((node) => node.kind === "lodging");
+      if (lodging) {
+        stepInput = { ...stepInput, entityId: lodging.id };
+      }
+    }
+
+    const browserStep = isBrowserCapability(step.capabilityId);
     const invokeInput = {
       capabilityId: step.capabilityId,
       input: stepInput,
@@ -65,7 +76,9 @@ export async function runCompositeLoop(input: {
       contextEventId: input.contextEventId,
       platformId: input.platformId,
       syncGoal: false,
-      toolLoop: !isBrowserCapability(step.capabilityId),
+      toolLoop: !browserStep,
+      waitForSandbox: browserStep,
+      sandboxTimeoutMs: browserStep ? 120_000 : undefined,
     };
 
     const result = isBrowserCapability(step.capabilityId)
@@ -81,6 +94,15 @@ export async function runCompositeLoop(input: {
     });
 
     lastInvoke = result;
+    if (
+      browserStep &&
+      step.capabilityId === "hotel.search" &&
+      result.ok &&
+      result.output
+    ) {
+      ingestHotelSearchSandboxOutput(input.contextEventId, result.output);
+    }
+
     if (!result.ok && !result.prepareOnly) {
       advanceGoalPipeline({
         contextEventId: input.contextEventId,

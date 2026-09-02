@@ -5,6 +5,7 @@ import {
   resumeGoalWorkLog,
   syncPersistedGoalState,
 } from "@/lib/agent-platform";
+import { isAgentPlatformSupabaseEnabled } from "@/lib/agent-platform/persistence/supabase-store";
 import type { PersistedGoalState } from "@/lib/agent-platform/types";
 
 export const runtime = "nodejs";
@@ -21,6 +22,7 @@ export async function GET(_request: Request, context: RouteContext) {
     goal,
     resumeWorkLogKo: resumeGoalWorkLog(decoded),
     hydrated: true,
+    supabaseWriteThrough: isAgentPlatformSupabaseEnabled(),
   });
 }
 

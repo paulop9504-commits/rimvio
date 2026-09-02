@@ -24,8 +24,8 @@ import {
 } from "./runners/mutation-runners";
 
 export function resolveAgentPlatformRuntimeKind(capabilityId: string): CapabilityRuntimeKind {
-  const browserRunner = resolveCapabilityRunner(capabilityId);
-  if (browserRunner) return "browser";
+  if (resolveCapabilityRunner(capabilityId)) return "browser";
+  if (isLodgingCompositeCapability(capabilityId)) return "composite";
   return resolveRuntimeKind(capabilityId);
 }
 
@@ -89,12 +89,12 @@ export async function executeAgentPlatformRunner(
   };
 }
 
-export function isBrowserCapability(capabilityId: string): boolean {
-  return resolveAgentPlatformRuntimeKind(capabilityId) === "browser";
-}
-
 function isLodgingCompositeCapability(capabilityId: string): boolean {
   return ["hotel.filter", "hotel.rank", "hotel.compare", "hotel.nearby"].includes(capabilityId);
+}
+
+export function isBrowserCapability(capabilityId: string): boolean {
+  return resolveAgentPlatformRuntimeKind(capabilityId) === "browser";
 }
 
 function isTravelCapability(capabilityId: string): boolean {

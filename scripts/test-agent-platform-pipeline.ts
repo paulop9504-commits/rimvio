@@ -3,6 +3,8 @@
  * Run: npx tsx scripts/test-agent-platform-pipeline.ts
  */
 
+process.env.SANDBOX_PLAYWRIGHT ??= "0";
+
 import assert from "node:assert/strict";
 import { catalogSize, listRunnableCapabilities } from "../lib/agent-platform/capability-catalog";
 import { publishCatalogCapability, ensureRegistryReady, listRegistryEntries } from "../lib/agent-platform/pipeline/publish";
@@ -71,6 +73,8 @@ async function main() {
     userRequest: "hotel search test",
     contextEventId: "hub:workspace:test",
     syncGoal: true,
+    waitForSandbox: false,
+    toolLoop: false,
   });
   assert.ok(browserInvoke.sandboxSessionId, "browser invoke should queue sandbox");
 
@@ -110,6 +114,43 @@ async function main() {
   assert.ok(tripFrame.ok, tripFrame.workLogKo);
   assert.equal(tripFrame.stepsCompleted, 4);
   assert.ok(tripFrame.goalPercent >= 90);
+
+  const lodgingBasic = await runCompositeLoop({
+    loopId: "osaka.lodging.basic",
+    contextEventId: "hub:workspace:osaka-lodging-basic",
+    userRequest: "오사카 호텔 검색",
+  });
+  assert.ok(lodgingBasic.ok, lodgingBasic.workLogKo);
+  assert.equal(lodgingBasic.stepsCompleted, 4, lodgingBasic.workLogKo);
+  assert.ok(lodgingBasic.goalPercent >= 90, `goal=${lodgingBasic.goalPercent}`);
+  const browserLog = lodgingBasic.logs.find((log) => log.capabilityId === "hotel.search");
+  assert.ok(browserLog?.ok, "hotel.search browser step should complete");
+  assert.ok(
+    lodgingBasic.lastInvoke?.output?.sandboxCompleted === true ||
+      lodgingBasic.logs.some((log) => log.capabilityId === "hotel.search" && log.ok),
+    "browser sandbox should finish before advancing",
+  );
+
+  const browserWithWait = await invokePublishedCapability({
+    capabilityId: "hotel.search",
+    input: {
+      location: "오사카",
+      checkIn: "2024-06-01",
+      checkOut: "2024-06-03",
+      workspaceId: "hub:workspace:browser-wait-test",
+    },
+    userRequest: "hotel search wait test",
+    contextEventId: "hub:workspace:browser-wait-test",
+    syncGoal: false,
+    waitForSandbox: true,
+    toolLoop: false,
+  });
+  assert.ok(browserWithWait.ok, browserWithWait.errorKo);
+  assert.equal(browserWithWait.output?.sandboxCompleted, true);
+  assert.ok(
+    typeof browserWithWait.output?.hotelsFound === "number" &&
+      browserWithWait.output.hotelsFound > 0,
+  );
 
   assert.equal(resolveCompositeLoopFromUtterance("오사카 3박 일정"), "osaka.trip.frame");
   assert.equal(resolveCompositeLoopFromUtterance("오사카 호텔 검색"), "osaka.lodging.basic");

@@ -56,6 +56,9 @@ export type InvokeCapabilityInput = {
   /** Enable Verify → Repair loop (default true for non-browser). */
   readonly toolLoop?: boolean;
   readonly maxRepairAttempts?: number;
+  /** Browser sandbox: block until session reaches terminal lifecycle (composite loops). */
+  readonly waitForSandbox?: boolean;
+  readonly sandboxTimeoutMs?: number;
 };
 
 export type InvokeCapabilityResult = {

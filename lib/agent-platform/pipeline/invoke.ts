@@ -5,6 +5,10 @@
 import { nextExecutionId, appendLedgerEntry } from "@/lib/capability-ledger/execution-store";
 import { persistCapabilityExecutionAsync } from "@/lib/capability-ledger/persist-execution";
 import { sandboxController } from "@/lib/sandbox/server";
+import {
+  isSandboxSessionSuccessful,
+  waitForSandboxSession,
+} from "@/lib/sandbox/wait-for-sandbox-session";
 import { persistSandboxSessionSnapshot } from "../persistence/durable-store";
 import {
   createInitialGoalState,
@@ -103,6 +107,36 @@ export async function invokePublishedCapability(
       queued: queued.ok,
     };
     errorKo = queued.ok ? undefined : queued.error ?? "sandbox_queue_failed";
+
+    if (queued.ok && input.waitForSandbox) {
+      const { session: finalSession, timedOut } = await waitForSandboxSession(
+        session.sessionId,
+        { timeoutMs: input.sandboxTimeoutMs ?? 120_000 },
+      );
+      const sandboxOk = isSandboxSessionSuccessful(finalSession);
+      ok = sandboxOk;
+      output = {
+        ...output,
+        ...(finalSession?.output ?? {}),
+        sandboxCompleted: !timedOut && finalSession != null,
+        sandboxLifecycle: finalSession?.lifecycleStatus ?? null,
+        sandboxVerified: finalSession?.verification?.ok ?? null,
+        hotelsFound:
+          finalSession?.output &&
+          typeof finalSession.output === "object" &&
+          "hotelsFound" in finalSession.output
+            ? (finalSession.output as { hotelsFound: number }).hotelsFound
+            : undefined,
+      };
+      if (timedOut) {
+        errorKo = "sandbox_timeout";
+      } else if (!sandboxOk) {
+        errorKo =
+          finalSession?.error ??
+          finalSession?.verification?.errors?.join("; ") ??
+          "sandbox_execution_failed";
+      }
+    }
   } else {
     const runnerResult = await executeAgentPlatformRunner(capabilityId, {
       ...input,

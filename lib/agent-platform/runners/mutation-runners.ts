@@ -68,6 +68,61 @@ function nodeCount(contextEventId: string): number {
   return readContextWorkspace(contextEventId)?.nodes.length ?? 0;
 }
 
+/** Bridge browser hotel.search sandbox output → Workspace lodging nodes for rank/select steps. */
+export function ingestHotelSearchSandboxOutput(
+  contextEventId: string,
+  output: Record<string, unknown> | null,
+): { readonly ok: boolean; readonly nodeCount: number } {
+  const hotelsFound = typeof output?.hotelsFound === "number" ? output.hotelsFound : 0;
+  if (hotelsFound <= 0) {
+    return { ok: false, nodeCount: nodeCount(contextEventId) };
+  }
+  ensureEditingWorkspace(contextEventId);
+  const prev = readContextWorkspace(contextEventId);
+  if (!prev) {
+    return { ok: false, nodeCount: 0 };
+  }
+  if (prev.nodes.some((node) => node.kind === "lodging")) {
+    return { ok: true, nodeCount: prev.nodes.length };
+  }
+
+  const location =
+    output && typeof output.location === "string" ? output.location : "오사카";
+  const count = Math.min(3, hotelsFound);
+  const nodes = Array.from({ length: count }, (_, index) => {
+    const id = `hotel-${index + 1}`;
+    return {
+      id,
+      kind: "lodging" as const,
+      placeId: `lodging-${id}`,
+      title: `${location} Hotel ${index + 1}`,
+      summaryKo: `${location} 숙소 후보`,
+      lat: 34.6937 + index * 0.001,
+      lng: 135.5023 + index * 0.001,
+      rating: 4.2 - index * 0.1,
+      priceBand: 3 - index,
+      amountLabel: `${(120_000 - index * 15_000).toLocaleString("ko-KR")}원 / 1박`,
+      thumbnailUrl: null,
+      tags: ["lodging", "sandbox"],
+      visible: true,
+      selected: index === 0,
+      bookmarked: false,
+      source: "agent-platform:hotel.search",
+    };
+  });
+
+  writeContextWorkspace({
+    ...prev,
+    domain: "lodging",
+    nodes: [...prev.nodes, ...nodes],
+    selectedIds: nodes[0] ? [nodes[0].id] : prev.selectedIds,
+    updatedAtIso: new Date().toISOString(),
+    lastChangeKo: `호텔 ${count}곳 · Sandbox 검색 반영`,
+  });
+
+  return { ok: true, nodeCount: prev.nodes.length + nodes.length };
+}
+
 export async function runWorkspaceCapability(
   capabilityId: string,
   ctx: RunnerContext,
