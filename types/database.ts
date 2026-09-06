@@ -221,6 +221,19 @@ export type PersonalGlobePinRow = {
   cell_key: string | null;
 };
 
+/** Owner-scoped Harness library (RLS). enabled = runtime on/off. */
+export type UserHarnessRow = {
+  id: string;
+  user_id: string;
+  harness_id: string;
+  harness: Json;
+  enabled: boolean;
+  status: "draft" | "published";
+  visibility: "private" | "public";
+  created_at: string;
+  updated_at: string;
+};
+
 export type PcLocalAgentDeviceRow = {
   id: string;
   user_id: string;
@@ -527,6 +540,22 @@ export type Database = {
           cell_key?: string | null;
         };
         Update: Partial<PersonalGlobePinRow>;
+        Relationships: [];
+      };
+      user_harnesses: {
+        Row: UserHarnessRow;
+        Insert: {
+          id?: string;
+          user_id: string;
+          harness_id: string;
+          harness: Json;
+          enabled?: boolean;
+          status?: "draft" | "published";
+          visibility?: "private" | "public";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<UserHarnessRow>;
         Relationships: [];
       };
       peer_threads: {

@@ -279,6 +279,12 @@
     "test:surface-ux-stability": "npx tsx scripts/test-surface-ux-stability.ts",
     "test:surface-adoption": "npx tsx scripts/test-surface-adoption-boundary.ts && npx tsx scripts/test-surface-adoption-integration.ts",
     "test:capability-registry": "npx tsx scripts/test-capability-registry.ts && npx tsx scripts/test-capability-boundary.ts",
+    "test:harness-schema": "npx tsx scripts/test-harness-schema.ts",
+    "test:harness-labelling": "npx tsx scripts/test-harness-labelling.ts",
+    "test:harness-builder": "npx tsx scripts/test-harness-builder.ts",
+    "test:harness-execute": "npx tsx scripts/test-harness-execute.ts",
+    "test:harness-nl-agent": "npx tsx scripts/test-harness-nl-agent.ts",
+    "test:harness-personal-registry": "npx tsx scripts/test-harness-personal-registry.ts",
     "test:engine": "npx tsx scripts/test-engine-registry.ts && npx tsx scripts/test-flight-prep-flow.ts && npx tsx scripts/test-transit-prep-flow.ts && npx tsx scripts/test-finance-prep-flow.ts && npx tsx scripts/test-engine-event-timeline.ts && npx tsx scripts/test-engine-team-collab.ts && npx tsx scripts/test-discovery-quality-gate.ts && npx tsx scripts/test-engine-turn-plan-sync.ts && npx tsx scripts/test-capability-invocation-timeline.ts && npx tsx scripts/test-context-installed-engines.ts && npx tsx scripts/test-blueprint-engine-sync.ts && npx tsx scripts/test-engine-store-ui.ts && npx tsx scripts/test-plan-step-auto-advance.ts && npx tsx scripts/test-plan-step-sequencer.ts",
     "test:execution-plane": "npx tsx scripts/test-execution-plane.ts && npx tsx scripts/test-execution-boundary.ts",
     "test:learning-layer": "npx tsx scripts/test-learning-layer.ts && npx tsx scripts/test-learning-boundary.ts",
@@ -379,6 +385,8 @@
     "store:check:android": "powershell -ExecutionPolicy Bypass -File scripts/mobile/check-android-toolchain.ps1",
     "auth:check": "npx tsx scripts/check-google-auth-setup.ts",
     "verify:deploy": "npx tsx scripts/verify-deploy-readiness.ts",
+    "team:verify": "npm run verify:pipeline && node scripts/typecheck-ci.mjs && npm run verify:lib-boundaries",
+    "team:ship-check": "npm run team:verify && npm run build",
     "deploy:prod": "powershell -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
     "supabase:boost": "powershell -ExecutionPolicy Bypass -File scripts/supabase-boost-performance.ps1",
     "setup:preview-env": "powershell -ExecutionPolicy Bypass -File scripts/setup-preview-env.ps1",
@@ -465,7 +473,8 @@
     "tailwind-merge": "^3.6.0",
     "tesseract.js": "^7.0.0",
     "three": "^0.184.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

@@ -98,3 +98,15 @@ export {
   type RimvioPolicyRequest,
   type RimvioPolicyResult,
 } from "@/lib/rimvio-protocol/policy";
+
+export {
+  harnessSchema,
+  type Harness,
+  type HarnessNode,
+  type HarnessAction,
+  type HarnessPermission,
+  type HarnessConstraint,
+  type HarnessVerification,
+  type HarnessRuntime,
+  type HarnessStatus,
+} from "@/lib/rimvio-protocol/harness";

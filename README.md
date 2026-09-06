@@ -55,17 +55,23 @@ Not another chat app. **Rimvio** structures what you lived (place · people · m
 ## Quick start (local)
 
 ```bash
-git clone https://github.com/paulop9504-dotcom/rimvio-public.git
-cd rimvio-public
-npm install
+git clone https://github.com/paulop9504-dotcom/rimvio.git
+cd rimvio
+npm ci
 cp .env.example .env.local   # optional Supabase
 npm run dev                  # http://localhost:3000
 ```
 
 ```bash
-npm test                     # script tests
+npm run team:verify          # push 전 최소 게이트 (팀 권장)
+npm test                     # 넓은 script tests
 npm run build                # production build
 ```
+
+### Team
+
+로스터·역할: **[docs/TEAM_ROSTER.md](./docs/TEAM_ROSTER.md)** · 온보딩: **[docs/TEAM_BUILD.md](./docs/TEAM_BUILD.md)**  
+루프: `branch → PR → CI + Vercel Preview → 손검증 → main → Production`
 
 ---
 
@@ -79,6 +85,9 @@ See [CHANGELOG.md](./CHANGELOG.md) · latest: **context hubs** (plug-in departur
 
 | Doc | |
 |-----|---|
+| [TEAM_ROSTER.md](./docs/TEAM_ROSTER.md) | 팀 로스터 · 역할 · 초대 체크 |
+| [TEAM_BUILD.md](./docs/TEAM_BUILD.md) | 온보딩 · PR Preview · 검증 |
+| [TEAM_SECRETS.md](./docs/TEAM_SECRETS.md) | env 등급 · vault |
 | [LAUNCH.md](./docs/LAUNCH.md) | Deploy checklist · Vercel · Supabase |
 | [PHONE_QA.md](./docs/PHONE_QA.md) | Device QA |
 | [GOOGLE_AUTH.md](./docs/GOOGLE_AUTH.md) | Google sign-in |
