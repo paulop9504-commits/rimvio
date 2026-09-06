@@ -1,0 +1,31 @@
+name: Feature
+about: Propose a product or technical feature for Rimvio
+labels: [feature]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or system problem are we solving?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the intended behavior and scope.
+    validations:
+      required: true
+  - type: checkboxes
+    id: area
+    attributes:
+      label: Area
+      options:
+        - label: Agent
+        - label: Capability
+        - label: Runtime
+        - label: Standard
+        - label: Security / Permission
+        - label: Verification
+        - label: Hub / UX
+        - label: Infrastructure
